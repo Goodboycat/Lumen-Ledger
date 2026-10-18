@@ -1,0 +1,64 @@
+/* LUMEN LEDGER — Title screen (Chat 7C). Extends ui/base.css. DOM/CSS only.
+   Motion: panel fade 260 ms · logo letters 420 ms outBack stagger 60 ms · lantern swing 2.4 s · buttons slide-up 380 ms outBack stagger 90 ms
+   · press translateY 4px instant, release 140 ms outBack · hide 320 ms fade + zoom 1.04 · beam sweep 6 s · clouds drift 40 s. */
+.ll-title { position: absolute; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; overflow: hidden; pointer-events: auto; opacity: 0; transition: opacity .26s ease-out, transform .32s ease-in; }
+.ll-title.open { display: flex; animation: ll-title-in .26s ease-out both; opacity: 1; }
+.ll-title.hide { display: flex; opacity: 0; transform: scale(1.04); pointer-events: none; }
+@keyframes ll-title-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* backdrop: sky / sea / island silhouette */
+.ll-title-sky { position: absolute; inset: 0; background: linear-gradient(180deg, #7ec8ff 0%, #bfe8ff 55%, #fff3c4 100%); }
+.ll-title-clouds i { position: absolute; top: 12%; width: 160px; height: 46px; border-radius: 40px; background: rgba(255,255,255,.85); box-shadow: 30px -18px 0 10px rgba(255,255,255,.85), 70px -6px 0 6px rgba(255,255,255,.85); animation: ll-cloud 40s linear infinite; }
+.ll-title-clouds i:nth-child(2) { top: 26%; transform: scale(.7); animation-duration: 55s; animation-delay: -20s; }
+.ll-title-clouds i:nth-child(3) { top: 6%; transform: scale(1.2); animation-duration: 70s; animation-delay: -40s; }
+@keyframes ll-cloud { from { left: -260px; } to { left: 110%; } }
+.ll-title-sea { position: absolute; left: 0; right: 0; bottom: 0; height: 28%; background: linear-gradient(180deg, #4FC3F7, #1e88e5); }
+.ll-title-sea::before { content: ''; position: absolute; left: -10%; right: -10%; top: -10px; height: 24px; background: radial-gradient(circle at 50% 100%, rgba(255,255,255,.55) 0 6px, transparent 7px) 0 0 / 48px 24px repeat-x; animation: ll-wave 3s linear infinite; }
+@keyframes ll-wave { from { background-position-x: 0; } to { background-position-x: 48px; } }
+.ll-title-isle { position: absolute; left: 50%; bottom: 24%; width: 46%; max-width: 520px; height: 70px; transform: translateX(-50%); background: var(--grass); border-radius: 50% 50% 8px 8px / 100% 100% 8px 8px; border: 4px solid var(--ink); border-bottom: 0; }
+.ll-title-tower { position: absolute; left: 50%; bottom: 40px; width: 34px; height: 92px; transform: translateX(-50%); background: repeating-linear-gradient(180deg, #fff 0 18px, #e53935 18px 36px); border: 4px solid var(--ink); border-radius: 6px 6px 2px 2px; }
+.ll-title-tower::after { content: ''; position: absolute; left: -8px; right: -8px; top: -22px; height: 22px; background: var(--gold); border: 4px solid var(--ink); border-radius: 8px 8px 0 0; }
+.ll-title-beam { position: absolute; left: 50%; bottom: 128px; width: 0; height: 0; border-left: 180px solid transparent; border-right: 180px solid transparent; border-bottom: 34px solid rgba(255,235,120,.55); transform-origin: 50% 100%; transform: translateX(-50%) rotate(0deg); animation: ll-beam 6s ease-in-out infinite; filter: blur(2px); }
+@keyframes ll-beam { 0%, 100% { transform: translateX(-50%) rotate(-70deg); } 50% { transform: translateX(-50%) rotate(70deg); } }
+
+/* card */
+.ll-title-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 22px 12px; max-width: 94vw; }
+.ll-title-lantern { font-size: 44px; color: var(--gold); text-shadow: 0 0 18px rgba(255,213,79,.9), 0 3px 0 var(--ink); transform-origin: 50% -10px; animation: ll-swing 2.4s ease-in-out infinite; }
+@keyframes ll-swing { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+.ll-title-logo { margin: 0; display: flex; flex-direction: column; align-items: center; line-height: .9; }
+.ll-title-word { display: flex; }
+.ll-title-ch { display: inline-block; font-weight: 900; font-size: clamp(44px, 11vw, 92px); letter-spacing: 2px; color: var(--gold); -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; text-shadow: 0 6px 0 var(--ink); transform: translateY(40px) scale(.6); opacity: 0; animation: ll-ch-in .42s cubic-bezier(.34,1.56,.64,1) both; }
+.ll-title-word:nth-child(2) .ll-title-ch { color: var(--paper); font-size: clamp(34px, 8.5vw, 70px); }
+@keyframes ll-ch-in { to { transform: none; opacity: 1; } }
+.ll-title-tag { margin: 6px 0 0; background: var(--paper); border: 3px solid var(--ink); border-radius: 999px; padding: 4px 16px; font-weight: 800; font-size: 15px; box-shadow: var(--shadow); transform: rotate(-2deg); animation: ll-ch-in .42s .5s cubic-bezier(.34,1.56,.64,1) both; }
+.ll-title-tag b { color: #1b5e20; }
+.ll-title-sub { margin: 0; font-size: 13px; font-weight: 700; opacity: .75; text-align: center; animation: ll-ch-in .42s .6s cubic-bezier(.34,1.56,.64,1) both; }
+.ll-title.replay .ll-title-sub { color: #4a148c; opacity: 1; }
+
+/* menu */
+.ll-title-menu { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; width: min(320px, 86vw); }
+.ll-title-btn { position: relative; display: grid; grid-template-columns: 44px 1fr; grid-template-rows: auto auto; column-gap: 8px; align-items: center; text-align: left; width: 100%; min-height: 64px; padding: 8px 14px; border: 4px solid var(--ink); border-radius: 16px; background: var(--gold); color: var(--ink); box-shadow: 0 6px 0 var(--ink); font: inherit; cursor: pointer; opacity: 0; transform: translateY(30px); animation: ll-btn-in .38s cubic-bezier(.34,1.56,.64,1) both; transition: transform .14s cubic-bezier(.34,1.56,.64,1), box-shadow .14s cubic-bezier(.34,1.56,.64,1), filter .2s; touch-action: manipulation; }
+@keyframes ll-btn-in { to { opacity: 1; transform: none; } }
+.ll-title-btn.play { background: var(--orange); }
+.ll-title-btn.cont { background: var(--blue); }
+.ll-title-btn.endless { background: var(--grass); }
+.ll-title-btn-ico { grid-row: 1 / 3; font-size: 30px; font-weight: 900; text-align: center; }
+.ll-title-btn-lab { font-size: 20px; font-weight: 900; letter-spacing: 1.5px; line-height: 1; }
+.ll-title-btn-sub { font-size: 11px; font-weight: 700; opacity: .7; }
+.ll-title-btn:hover, .ll-title-btn.focus { filter: brightness(1.06); transform: translateY(-2px); box-shadow: 0 8px 0 var(--ink); }
+.ll-title-btn.focus::before { content: '▸'; position: absolute; left: -22px; top: 50%; transform: translateY(-50%); font-size: 20px; animation: ll-swing 1s ease-in-out infinite; }
+.ll-title-btn.down, .ll-title-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--ink); transition: none; }
+.ll-title-btn:disabled, .ll-title.busy .ll-title-btn { opacity: .5; filter: grayscale(.4); pointer-events: none; }
+
+.ll-title-foot { display: flex; gap: 14px; justify-content: space-between; width: min(320px, 86vw); margin-top: 16px; font-size: 10px; font-weight: 700; opacity: .6; }
+.ll-title-ver { font-variant-numeric: tabular-nums; }
+
+/* small / landscape phones */
+@media (max-height: 460px) {
+  .ll-title-card { flex-direction: row; flex-wrap: wrap; justify-content: center; column-gap: 24px; padding: 8px; }
+  .ll-title-lantern { display: none; }
+  .ll-title-logo { order: 1; } .ll-title-tag { order: 2; } .ll-title-sub { order: 3; width: 100%; } .ll-title-menu { order: 4; margin-top: 4px; width: min(280px, 60vw); gap: 8px; }
+  .ll-title-btn { min-height: 48px; padding: 4px 10px; } .ll-title-btn-lab { font-size: 16px; } .ll-title-btn-sub { display: none; } .ll-title-btn-ico { font-size: 22px; }
+  .ll-title-ch { font-size: clamp(30px, 7vw, 56px); } .ll-title-word:nth-child(2) .ll-title-ch { font-size: clamp(24px, 5.5vw, 44px); }
+  .ll-title-foot { display: none; } .ll-title-isle { display: none; }
+}

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Lumen Ledger — Foundation Demo</title>
+<link rel="stylesheet" href="ui/base.css">
+</head>
+<body>
+<div id="game-root">
+  <div id="game-container"></div>
+
+  <header id="hud" class="hud">
+    <div class="ribbon">
+      <span class="ribbon-title">LUMEN LEDGER</span>
+      <span class="ribbon-sub">Foundation · Chat 0</span>
+    </div>
+    <div id="stats" class="stats">fps — · calls —</div>
+  </header>
+
+  <aside id="help" class="help">
+    <b>Move</b> WASD / Arrows / drag left half &nbsp;·&nbsp; <b>Attack</b> Space / J / tap right half
+    &nbsp;·&nbsp; <b>Zoom</b> wheel &nbsp;·&nbsp; <b>1/2/3</b> outline thin/med/thick &nbsp;·&nbsp; <b>T</b> slow-mo
+  </aside>
+
+  <nav id="touch-ui" class="touch-ui">
+    <div id="joy-base" class="joy-base"><div id="joy-knob" class="joy-knob"></div></div>
+    <button id="btn-attack" class="btn-action" aria-label="Attack">⚔</button>
+  </nav>
+</div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Lumen Ledger — Chat 9B VFX pack 2 (Debt Fog) Demo</title>
+<link rel="stylesheet" href="ui/base.css">
+<style>
+  .panel { position: absolute; left: 12px; top: 70px; z-index: 50; background: rgba(255,248,231,.94); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px 10px; font-size: 12px; font-weight: 600; max-width: 320px; pointer-events: auto; }
+  .panel b { display: block; font-size: 13px; margin-bottom: 4px; }
+  .row { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; align-items: center; }
+  .btn { background: var(--gold); border: 3px solid var(--ink); border-radius: 10px; padding: 4px 10px; font: inherit; font-weight: 800; box-shadow: 0 3px 0 var(--ink); cursor: pointer; }
+  .btn:active, .btn.on { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+  .btn.alt { background: var(--blue); } .btn.warn { background: var(--orange); } .btn.fog { background: #c9b8e8; } .btn.win { background: #7ED957; }
+  #fog-slider { width: 180px; accent-color: #7B5EA7; }
+  #fog-val { min-width: 42px; font-family: ui-monospace, Menlo, monospace; }
+  #log { font-size: 11px; line-height: 1.35; white-space: pre; font-family: ui-monospace, Menlo, monospace; font-weight: 600; max-height: 30vh; overflow: auto; margin-top: 4px; }
+  @media (max-width: 600px) { .panel { max-width: 210px; font-size: 11px; top: 64px; } #log { display: none; } #fog-slider { width: 120px; } }
+</style>
+</head>
+<body>
+<div id="game-root">
+  <div id="game-container"></div>
+  <header id="hud" class="hud">
+    <div class="ribbon"><span class="ribbon-title">LUMEN LEDGER</span><span class="ribbon-sub">Chat 9B · VFX pack 2 · Debt Fog</span></div>
+    <div id="stats" class="stats">fps — · calls —</div>
+  </header>
+  <section class="panel" id="panel">
+    <b>Debt Fog coverage (keys 1–9 = 10–90 %, 0 = none, F = full)</b>
+    <div class="row"><input id="fog-slider" type="range" min="0" max="100" value="0"><span id="fog-val">0 %</span></div>
+    <div class="row" id="fx-buttons"></div>
+    <div class="row">
+      <button class="btn alt" id="btn-slow">T · Slow-mo: OFF</button>
+      <button class="btn win" id="btn-win">W · WIN: fog recedes</button>
+    </div>
+    <div id="log"></div>
+  </section>
+  <aside id="help" class="help">
+    <b>slider / 0–9 / F</b> fog coverage · <b>P</b> debtPulse · <b>R</b> coinRain · <b>L</b> lighthouse beam · <b>V</b> vignette on/off · <b>Space</b> Fog Sweep (push blobs) · <b>W</b> win recede · <b>T</b> slow-mo · <b>WASD</b> walk · wheel zoom
+  </aside>
+</div>
+<script type="module">
+import * as THREE from './vendor/three.module.js';
+import { Game } from './src/core/Game.js';
+import { Island } from './src/world/Island.js';
+import { VFX } from './src/vfx/VFX.js';
+import { installPack1 } from './src/vfx/pack1.js';
+import { installPack2, PACK2_NAMES } from './src/vfx/pack2.js';
+import { HeroController } from './src/entities/HeroController.js';
+import { makeLighthouse } from './src/assets/props/landmarks.js';
+
+const container = document.getElementById('game-container');
+const game = new Game(container);
+window.game = game;
+
+// World: Island v2 with all zones unlocked so the fog ring reads against land on every side
+const island = new Island({ radius: 11, seed: 7, zonesUnlocked: 3 });
+island.unlockAll();
+game.scene.add(island.group);
+game.add({ update: (dt) => island.update(dt) });
+
+// Lighthouse on the far lobe (same placement as demo_landmarks.html)
+const far = island.zones[0];
+const lighthouse = makeLighthouse();
+lighthouse.position.set(far.center.x, 0, far.center.z - 1); lighthouse.rotation.y = Math.PI; far.group.add(lighthouse);
+game.add({ update: (dt) => lighthouse.userData.update && lighthouse.userData.update(dt) });
+window.lighthouse = lighthouse;
+const lampWorld = () => lighthouse.getWorldPosition(new THREE.Vector3()).add(lighthouse.userData.lampPos || new THREE.Vector3(0, 4, 0));
+
+// VFX: foundation + pack1 (coins for coinRain) + pack2 (this chat)
+const vfx = game.add(new VFX(game));
+installPack1(vfx);
+const pack = installPack2(vfx, { island, lighthouse: lampWorld() });
+window.vfx = vfx; window.pack = pack;
+
+// Hero
+const hero = new HeroController(game, { vfx, targets: () => [], isLand: (x, z) => island.isLand(x, z) });
+hero.root.position.set(0, 0, 1.5);
+game.add({ update: (dt) => hero.update(dt) });
+game.followTarget = hero.root.position;
+game.camera.zoom = 1.5;
+game.camera.snapTo(hero.root.position);
+game.input.onWheel = (dir) => { game.camera.zoom = THREE.MathUtils.clamp(game.camera.zoom + dir * 0.1, 0.6, 1.8); };
+window.hero = hero;
+
+// ---- controls ----
+const log = []; const logEl = document.getElementById('log');
+const say = (s) => { log.unshift(s); log.length = Math.min(log.length, 6); logEl.textContent = log.join('\n'); };
+const slider = document.getElementById('fog-slider'), fogVal = document.getElementById('fog-val');
+let vignetteOn = true;
+function setFog(f01, { immediate = false } = {}) {
+  f01 = Math.max(0, Math.min(1, f01));
+  vfx.fog.setCoverage(f01, { immediate });
+  slider.value = Math.round(f01 * 100); fogVal.textContent = `${Math.round(f01 * 100)} %`;
+  say(`fog.setCoverage(${f01.toFixed(2)})  → reach ${(f01 * (vfx.fog.edge - vfx.fog.core)).toFixed(1)} u in 600 ms outCubic · ${vfx.fog.n} blobs, 1 draw call`);
+  if (f01 > 0.75) vfx.debtPulse(0.35);
+}
+slider.addEventListener('input', () => setFog(+slider.value / 100));
+const _hp = () => hero.root.position;
+const FX = {
+  debtPulse: () => { vfx.debtPulse(0.6); game.camera.shake(0.25); say('debtPulse(0.6)  red vignette: 80 ms inQuad in → 520 ms outCubic out'); },
+  coinRain: () => { const n = vfx.coinRain(_hp(), 14, { radius: 1.8, height: 4 }); say(`coinRain ×${n}  around Pip (fall ≈ 0.7 s, bounce once, shrink out) · uses pack1 coin pool`); },
+  lighthouseBeam: () => { if (vfx.lighthouseBeam.on) { vfx.lighthouseBeam.hide(); say('lighthouseBeam.hide()  fade out 400 ms'); } else { vfx.lighthouseBeam.show(lampWorld(), { on: true }); lighthouse.userData.setState?.('lit'); say('lighthouseBeam.show(lamp)  additive cone, fade in 400 ms, sweep 0.6 rad/s'); } },
+  vignette: () => { vignetteOn = !vignetteOn; vfx.fog.vignette = vignetteOn ? vfx.vignette : null; if (!vignetteOn) vfx.vignette.set(0); say(`vignette ${vignetteOn ? 'follows fog (max(0, fog−0.15)·0.8)' : 'OFF'}`); },
+  fogSweep: () => { const dir = new THREE.Vector3(Math.sin(hero.facing ?? 0), 0, Math.cos(hero.facing ?? 0)); if (hero.root.rotation) dir.set(Math.sin(hero.root.rotation.y), 0, Math.cos(hero.root.rotation.y)); const hit = vfx.fogShader.push(_hp(), dir, 1); vfx.dust.burst(_hp(), 8, { size: 0.35 }); say(`fogShader.push(Pip, facing, 1)  ${hit} blobs shoved (150 ms inQuad out → 750 ms outElastic back)${hit === 0 ? ' — walk INTO the fog first' : ''}`); },
+  fogRecede: () => { if (vfx.fog.coverage < 0.3) setFog(0.7, { immediate: true }); say('fogRecede()  WIN: anticipation 300 (inhale) → recede 1200 outCubic (sink) → relight 400 (beam + confetti + coinRain)'); vfx.fogRecede({ lighthouse: lampWorld(), onDone: () => { lighthouse.userData.setState?.('lit'); say('fogRecede done → lighthouse LIT'); slider.value = 0; fogVal.textContent = '0 %'; } }); },
+};
+const bRoot = document.getElementById('fx-buttons');
+[['P · debtPulse', 'debtPulse'], ['R · coinRain', 'coinRain'], ['L · beam', 'lighthouseBeam'], ['V · vignette', 'vignette'], ['Space · Fog Sweep', 'fogSweep']].forEach(([label, fn]) => { const b = document.createElement('button'); b.className = 'btn' + (fn === 'fogSweep' ? ' fog' : ''); b.textContent = label; b.addEventListener('click', () => FX[fn]()); bRoot.appendChild(b); });
+document.getElementById('btn-win').addEventListener('click', FX.fogRecede);
+let slow = false; const slowBtn = document.getElementById('btn-slow');
+function toggleSlow() { slow = !slow; game.timeScale = slow ? 0.25 : 1; slowBtn.textContent = `T · Slow-mo: ${slow ? 'ON' : 'OFF'}`; slowBtn.classList.toggle('on', slow); }
+slowBtn.addEventListener('click', toggleSlow);
+
+window.addEventListener('keydown', (e) => {
+  if (e.repeat) return;
+  const k = e.code;
+  if (k.startsWith('Digit')) { const d = +k.slice(5); setFog(d / 10); }
+  if (k === 'KeyF') setFog(1);
+  if (k === 'KeyP') FX.debtPulse();
+  if (k === 'KeyR') FX.coinRain();
+  if (k === 'KeyL') FX.lighthouseBeam();
+  if (k === 'KeyV') FX.vignette();
+  if (k === 'KeyW' && (e.shiftKey || !game.input.actions.move)) {} // W is also "walk forward" — WIN is on Shift+W or the button
+  if (k === 'KeyW' && e.shiftKey) FX.fogRecede();
+  if (k === 'Space') FX.fogSweep();
+  if (k === 'KeyT') toggleSlow();
+});
+// tap: pulse at tap + rain there
+game.input.onTap = (world) => { vfx.coinRain(new THREE.Vector3(world.x, 0, world.z), 8, { radius: 1 }); };
+
+// stats
+const statsEl = document.getElementById('stats');
+game.add({ update: () => { const s = game.stats; statsEl.textContent = `fps ${s.fps} · calls ${s.drawCalls} · tris ${(s.triangles / 1000).toFixed(0)}k · fog ${(vfx.fog.coverage * 100).toFixed(0)} %`; } });
+// start with a bit of fog so the page shows something
+setFog(0.3);
+game.start();
+</script>
+</body>
+</html>

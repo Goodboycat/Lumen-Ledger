@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Lumen Ledger — Chat 7A UI: HUD + Jars + Build menu</title>
+<link rel="stylesheet" href="ui/base.css">
+<link rel="stylesheet" href="ui/hud.css">
+<link rel="stylesheet" href="ui/jars.css">
+<link rel="stylesheet" href="ui/build.css">
+<style>
+  .panel { position: absolute; left: 12px; top: 78px; z-index: 15; background: rgba(255,248,231,.94); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px 10px; font-size: 12px; font-weight: 600; max-width: 280px; pointer-events: auto; }
+  .panel b { display: block; font-size: 13px; margin-bottom: 4px; }
+  .row { display: flex; gap: 5px; margin: 6px 0; flex-wrap: wrap; align-items: center; }
+  .btn { background: var(--gold); border: 3px solid var(--ink); border-radius: 10px; padding: 4px 8px; font: inherit; font-weight: 800; box-shadow: 0 3px 0 var(--ink); cursor: pointer; font-size: 11px; }
+  .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+  .btn.alt { background: var(--blue); } .btn.warn { background: var(--orange); } .btn.fog { background: #CE93D8; }
+  #log { font-size: 11px; line-height: 1.3; white-space: pre; font-family: ui-monospace, Menlo, monospace; max-height: 30vh; overflow: auto; margin-top: 6px; }
+  @media (max-width: 640px) { .panel { max-width: 170px; font-size: 11px; } #log { display: none; } }
+</style>
+</head>
+<body>
+<div id="game-root">
+  <div id="game-container"></div>
+  <section class="panel" id="panel">
+    <b>7A · HUD / Jars / Build (DOM only, no Three)</b>
+    <div class="row">
+      <button class="btn" id="b-sale">1 · sale +12</button>
+      <button class="btn warn" id="b-spend">2 · spend −40</button>
+      <button class="btn alt" id="b-season">3 · end season</button>
+      <button class="btn fog" id="b-fog">4 · fog +10 %</button>
+      <button class="btn" id="b-deny">5 · denied</button>
+      <button class="btn alt" id="b-loan">6 · loan 100</button>
+    </div>
+    <label><input type="checkbox" id="auto" checked> fake bus events every 2 s</label>
+    <div id="log"></div>
+  </section>
+  <aside id="help" class="help"><b>B</b> build menu · drag a jar slider → others rebalance → APPLY · 1–6 fire fake economy events · Esc closes</aside>
+</div>
+<script type="module">
+import { bus } from './src/core/EventBus.js';
+import { mountHUD } from './ui/hud.js';
+import { mountJars } from './ui/jars.js';
+import { mountBuildMenu } from './ui/build.js';
+import { PROP_CATALOG } from './src/assets/props.js';   // catalog only (names/costs); nothing is rendered
+
+// ---- a fake "game" so smoke.mjs can read stats (no Three on this page) ----
+const game = { bus, stats: { fps: 0, drawCalls: 0, triangles: 0 }, time: 0, scene: { traverse() {} } };   // scene stub so tools/smoke.mjs can read stats
+window.game = game;
+let frames = 0, acc = 0, last = performance.now();
+const tick = (t) => { const dt = (t - last) / 1000; last = t; acc += dt; frames++; if (acc > 0.5) { game.stats.fps = Math.round(frames / acc); frames = 0; acc = 0; } game.time += dt; requestAnimationFrame(tick); };
+requestAnimationFrame(tick);
+
+// ---- fake economy state driven by buttons / timer ----
+const eco = { spark: 120, season: 1, day01: 0, fog01: 0.35, debt: 200, reputation: 0.5, jars: { spend: 0, save: 40, invest: 0, protect: 0 } };
+const root = document.getElementById('game-root');
+const hud = mountHUD(root, { bus, stats: () => game.stats, seasonsToWin: 10 });
+hud.sync(eco);
+const jars = mountJars(root, { bus, pct: { spend: 40, save: 30, invest: 20, protect: 10 } });
+jars.setBalances(eco.jars);
+const menu = mountBuildMenu(root, { bus, catalog: PROP_CATALOG, spark: () => eco.spark, categories: ['stall', 'decor', 'nature'] });
+menu.setLocked('stall_sparkExchange', true); menu.setLocked('stall_book', true);
+window.hud = hud; window.jars = jars; window.menu = menu;
+
+const $ = (id) => document.getElementById(id);
+const lines = []; const log = (s) => { lines.unshift(s); if (lines.length > 14) lines.pop(); $('log').textContent = lines.join('\n'); };
+const setSpark = (d, reason) => { eco.spark = Math.max(0, eco.spark + d); bus.emit('eco:spark', { spark: eco.spark, delta: d, reason }); };
+
+const actions = {
+  sale() { const n = 6 + Math.floor(Math.random() * 12); setSpark(n, 'sale'); eco.reputation = Math.min(1, eco.reputation + 0.02); hud.setReputation(eco.reputation); bus.emit('cust:paid', { paid: n, type: 'regular', stallId: 'stall_fruit' }); log(`sale +${n}`); },
+  spend() { if (eco.spark < 40) { bus.emit('eco:denied', { cost: 40, reason: 'build' }); log('denied: cannot afford 40'); return; } setSpark(-40, 'build'); log('spend −40'); },
+  season() {
+    const interest = Math.round(eco.jars.save * 0.05); eco.jars.save += interest; eco.debt = Math.round(eco.debt * 1.2);
+    eco.fog01 = Math.min(1, Math.max(0, eco.fog01 + (eco.debt > 0 ? 0.08 : -0.1)));
+    const report = { season: eco.season, income: 90, expenses: 40, interestEarned: interest, interestPaid: Math.round(eco.debt / 6), fog01: eco.fog01, debt: eco.debt, spark: eco.spark, jars: { ...eco.jars }, stars: 2, lessonId: 'budgeting', reputation: eco.reputation };
+    eco.season++; eco.day01 = 0; bus.emit('eco:season', report); log(`season ${report.season} ended → S${eco.season}, fog ${(eco.fog01 * 100).toFixed(0)} %, debt ${eco.debt}`);
+  },
+  fog() { eco.fog01 = Math.min(1, eco.fog01 + 0.1); bus.emit('eco:fog', { fog01: eco.fog01, delta: 0.1, reason: 'demo' }); log(`fog → ${(eco.fog01 * 100).toFixed(0)} %`); },
+  deny() { bus.emit('eco:denied', { cost: 999, reason: 'demo' }); bus.emit('build:denied', { why: 'blocked', id: menu.state.selected }); log('denied (shake)'); },
+  loan() { eco.debt += 100; setSpark(100, 'loan'); bus.emit('eco:loan', { debt: eco.debt, delta: 100, kind: 'take' }); log(`loan +100 → debt ${eco.debt}`); },
+};
+$('b-sale').onclick = actions.sale; $('b-spend').onclick = actions.spend; $('b-season').onclick = actions.season; $('b-fog').onclick = actions.fog; $('b-deny').onclick = actions.deny; $('b-loan').onclick = actions.loan;
+window.addEventListener('keydown', (e) => { const m = { 1: 'sale', 2: 'spend', 3: 'season', 4: 'fog', 5: 'deny', 6: 'loan' }[e.key]; if (m) actions[m](); });
+
+// jar events → fake allocate: APPLY moves pouch Spark into jars by pct
+bus.on('ui:jar', (p) => { log(`ui:jar ${p.changed} → ${Object.entries(p.pct).map(([k, v]) => k[0] + v).join(' ')} (${p.source})`); });
+bus.on('ui:jar:apply', (p) => {
+  const pool = Math.round(eco.spark * 0.5); let spent = 0;
+  for (const k of ['spend', 'save', 'invest', 'protect']) { const d = Math.round(pool * p.pct[k] / 100); eco.jars[k] += d; spent += d; }
+  setSpark(-spent, 'allocate'); bus.emit('eco:jar', { jars: { ...eco.jars }, deltas: {} }); log(`APPLY: moved ${spent} ✦ into jars`);
+});
+// build events → fake BuildSystem flow (select → enter → ghost → confirm → placed)
+bus.on('ui:build', (p) => {
+  log(`ui:build ${p.action}${p.id ? ' ' + p.id : ''}`);
+  if (p.action === 'select') { bus.emit('build:enter', { id: p.id, cost: p.cost, rot: 0 }); setTimeout(() => bus.emit('build:ghost', { id: p.id, ok: true }), 200); }
+  if (p.action === 'confirm' && menu.state.placing) { const id = menu.state.placing; const cost = PROP_CATALOG[id].cost || 0; if (eco.spark < cost) { bus.emit('build:denied', { why: 'cannot afford', id }); return; } setSpark(-cost, 'build:' + id); bus.emit('build:placed', { id, level: 1, cost }); }
+  if (p.action === 'cancel') bus.emit('build:exit', { id: menu.state.placing });
+});
+
+// day progress + auto events
+let t = 0, autoT = 0;
+(function loop(prev) { requestAnimationFrame((now) => { const dt = Math.min(0.1, (now - prev) / 1000); t += dt; eco.day01 = (t % 30) / 30; bus.emit('eco:tick', { day01: eco.day01, season: eco.season }); if ($('auto').checked) { autoT += dt; if (autoT > 2) { autoT = 0; const pick = ['sale', 'sale', 'sale', 'spend', 'fog', 'sale', 'loan', 'season'][Math.floor(Math.random() * 8)]; actions[pick](); } } loop(now); }); })(performance.now());
+log('ready — press B for the build menu');
+</script>
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Lumen Ledger — Chat 2C Villains Demo</title>
+<link rel="stylesheet" href="ui/base.css">
+<style>
+  .panel { position: absolute; left: 12px; top: 70px; z-index: 10; background: rgba(255,248,231,.94); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px 10px; font-size: 12px; font-weight: 600; max-width: 300px; pointer-events: auto; }
+  .panel b { display: block; font-size: 13px; margin-bottom: 4px; }
+  .row { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
+  .btn { background: var(--gold); border: 3px solid var(--ink); border-radius: 10px; padding: 4px 10px; font: inherit; font-weight: 800; box-shadow: 0 3px 0 var(--ink); cursor: pointer; }
+  .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+  .btn.alt { background: var(--blue); } .btn.warn { background: var(--orange); } .btn.fog { background: #B39DDB; } .btn.on { outline: 3px solid #fff; }
+  #tris { font-size: 11px; line-height: 1.3; white-space: pre; font-family: ui-monospace, Menlo, monospace; font-weight: 600; }
+  .label { position: absolute; transform: translate(-50%, -100%); background: var(--paper); border: 2px solid var(--ink); border-radius: 8px; padding: 1px 6px; font-size: 10px; font-weight: 800; pointer-events: none; white-space: nowrap; }
+  .label small { display: block; font-weight: 600; opacity: .7; }
+  @media (max-width: 600px) { .panel { max-width: 190px; font-size: 11px; top: 64px; } #tris { display: none; } }
+</style>
+</head>
+<body>
+<div id="game-root">
+  <div id="game-container"></div>
+  <header id="hud" class="hud">
+    <div class="ribbon"><span class="ribbon-title">LUMEN LEDGER</span><span class="ribbon-sub">Chat 2C · Baron Gilt &amp; Fog Collectors</span></div>
+    <div id="stats" class="stats">fps — · calls —</div>
+  </header>
+  <section class="panel" id="panel">
+    <b>Villains · VillainAnimator</b>
+    <div class="row" id="anim-buttons"></div>
+    <div class="row">
+      <button class="btn warn" id="btn-slow">Slow-mo</button>
+      <button class="btn alt" id="btn-parade">Parade</button>
+      <button class="btn fog" id="btn-storm">Fog storm</button>
+    </div>
+    <div id="counters">deals: 0 · slips: 0 · puffs: 0</div>
+    <div id="tris"></div>
+  </section>
+  <aside id="help" class="help">
+    <b>1–6</b> strut · taunt · offerDeal · flee · slipOnCoin · fogPuff &nbsp;·&nbsp; <b>7–9</b> idle · walk · angry &nbsp;·&nbsp; <b>T</b> slow-mo &nbsp;·&nbsp; <b>P</b> parade (they walk) &nbsp;·&nbsp; <b>F</b> fog storm &nbsp;·&nbsp; tap a villain = hit → flee &nbsp;·&nbsp; <b>WASD</b> move Pip
+  </aside>
+  <div id="labels"></div>
+</div>
+<script type="module">
+import * as THREE from './vendor/three.module.js';
+import { Game } from './src/core/Game.js';
+import { Island } from './src/world/Island.js';
+import { VFX } from './src/vfx/VFX.js';
+import { HeroController } from './src/entities/HeroController.js';
+import { VillainAnimator, VILLAIN_ANIMS, VILLAIN_INFO, makeBaronGilt, makeFogCollector, FogPuffPool, measureVillain } from './src/assets/creatures/index.js';
+
+const container = document.getElementById('game-container');
+const game = new Game(container);
+window.game = game;
+
+const island = new Island({ radius: 11, seed: 7 });
+game.scene.add(island.group);
+game.add({ update: (dt) => island.update(dt) });
+const vfx = game.add(new VFX(game));
+const fog = game.add(new FogPuffPool(game.scene, 48));
+const isLand = (x, z) => island.isLand(x, z);
+
+// hooks (4B/8B replace these: onDeal → Too-Good Deal popup, onSlip → coin refund)
+let deals = 0, slips = 0;
+const countersEl = document.getElementById('counters');
+const refresh = () => { countersEl.textContent = `deals: ${deals} · slips: ${slips} · puffs: ${cast.reduce((n, c) => n + c.anim.puffs, 0)}`; };
+const onDeal = (pos) => { deals++; vfx.pop.show(pos.clone().add(new THREE.Vector3(0, 0.3, 0)), 'TOO-GOOD DEAL!', { color: '#7B5EA7', dur: 0.9, size: 0.8 }); refresh(); };
+const onSlip = () => { slips++; refresh(); };
+
+// ---- cast: Baron in the middle, 3 collectors around him ----
+const DEMO_ANIMS = [...VILLAIN_ANIMS, 'idle', 'walk', 'angry'];
+const cast = [];
+const place = [[-2.4, -2.4, 'collector0', () => makeFogCollector(0, { seed: 1 })], [0, -2.9, 'baron', () => makeBaronGilt({ seed: 1 })], [2.4, -2.4, 'collector1', () => makeFogCollector(1, { seed: 2 })], [4.3, -1.6, 'collector2', () => makeFogCollector(2, { seed: 3 })]];
+for (const [x, z, key, make] of place) {
+  const g = make(); g.position.set(x, 0, z); game.scene.add(g);
+  const anim = new VillainAnimator(g, { vfx, fogPool: fog, game, onDeal, onSlip });
+  anim.faceToNow(new THREE.Vector3(x, 0, 10));
+  anim.play('strut');
+  cast.push({ g, anim, key, home: new THREE.Vector3(x, 0, z), dir: new THREE.Vector3(0, 0, 1) });
+}
+game.add({ update: (dt) => { for (const c of cast) c.anim.update(dt); refresh(); } });
+
+// ---- parade: villains actually move while strutting / fleeing (strut ≈ 1.1 u/s, flee ≈ 2.6 u/s) ----
+let parade = false;
+game.add({ update: (dt) => {
+  for (const c of cast) {
+    const n = c.anim.current;
+    if (!parade || (n !== 'strut' && n !== 'flee' && n !== 'walk')) { if (!parade) c.anim.faceTo(hero.root.position); continue; }
+    const sp = n === 'flee' ? 2.6 : n === 'walk' ? 1.4 : 1.1;
+    const nx = c.g.position.x + c.dir.x * sp * dt, nz = c.g.position.z + c.dir.z * sp * dt;
+    if (isLand(nx, nz) && Math.hypot(nx, nz) < 9) { c.g.position.x = nx; c.g.position.z = nz; } else { c.dir.set(-c.g.position.x, 0, -c.g.position.z).normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), (Math.random() - 0.5) * 1.2); }
+    c.anim.faceTo(c.g.position.clone().add(c.dir));
+  }
+} });
+function toggleParade() { parade = !parade; document.getElementById('btn-parade').classList.toggle('on', parade); if (parade) for (const c of cast) { c.dir.set(Math.random() - 0.5, 0, Math.random() - 0.5).normalize(); } }
+
+// ---- fog storm: everyone puffs in a round (pool stress: 4 × 6 puffs) ----
+let storm = 0;
+game.add({ update: (dt) => { if (storm > 0) { storm -= dt; if (Math.random() < dt * 3) cast[(Math.random() * cast.length) | 0].anim.play('fogPuff'); } } });
+
+// ---- Hero for scale; villains track him unless parading ----
+const hero = new HeroController(game, { vfx, targets: () => [], isLand });
+hero.root.position.set(0, 0, 2.4);
+game.add({ update: (dt) => hero.update(dt) });
+game.followTarget = hero.root.position;
+game.camera.zoom = 1.4;
+game.camera.snapTo(hero.root.position);
+game.input.onWheel = (dir) => { game.camera.zoom = THREE.MathUtils.clamp(game.camera.zoom + dir * 0.1, 0.6, 1.8); };
+
+// ---- controls ----
+const btns = document.getElementById('anim-buttons');
+const playAll = (name) => { for (const c of cast) c.anim.play(name); document.querySelectorAll('#anim-buttons .btn').forEach((b) => b.classList.toggle('on', b.dataset.anim === name)); };
+DEMO_ANIMS.forEach((name, i) => { const b = document.createElement('button'); b.className = 'btn' + (name === 'strut' ? ' on' : '') + (VILLAIN_ANIMS.includes(name) ? '' : ' alt'); b.dataset.anim = name; b.textContent = `${i + 1} ${name}`; b.addEventListener('click', () => playAll(name)); btns.appendChild(b); });
+let slow = false;
+const toggleSlow = () => { slow = !slow; game.timeScale = slow ? 0.25 : 1; game.sequences.timeScale = game.timeScale; document.getElementById('btn-slow').classList.toggle('on', slow); };
+document.getElementById('btn-slow').addEventListener('click', toggleSlow);
+document.getElementById('btn-parade').addEventListener('click', toggleParade);
+document.getElementById('btn-storm').addEventListener('click', () => { storm = 3; });
+window.addEventListener('keydown', (e) => {
+  const k = e.code;
+  if (k.startsWith('Digit')) { const n = +k.slice(5) - 1; if (DEMO_ANIMS[n]) playAll(DEMO_ANIMS[n]); }
+  if (k === 'KeyT') toggleSlow();
+  if (k === 'KeyP') toggleParade();
+  if (k === 'KeyF') storm = 3;
+});
+// tap = Pip's Haggle Shout lands: hit react, then the villain flees
+game.input.onTap = (world) => {
+  let best = null, bd = 1.0;
+  for (const c of cast) { const d = Math.hypot(c.g.position.x - world.x, c.g.position.z - world.z); if (d < bd) { bd = d; best = c; } }
+  if (best) { const dir = best.g.position.clone().sub(hero.root.position); best.anim.hit(dir, 1); best.anim.play('angry'); game.hitstop(60); game.camera.shake && game.camera.shake(0.15); setTimeout(() => { if (best.anim.current !== 'flee') best.anim.play('flee'); }, 520); }
+};
+
+// ---- measurements (visible at rest: scroll + sweat hidden → −3 dc) ----
+const rows = cast.map(({ g, key }) => { const m = measureVillain(g); return `${key.padEnd(11)} ${String(m.tris).padStart(4)}t ${m.meshes}m+${m.hulls}o=${m.drawCalls - 3}dc`; });
+document.getElementById('tris').textContent = 'villain      tris  draw calls (at rest)\n' + rows.join('\n') + '\n+3 dc while scroll/sweat shown · fog pool 1 dc';
+
+// ---- labels ----
+const labelsRoot = document.getElementById('labels');
+const labels = cast.map(({ key }) => { const el = document.createElement('div'); el.className = 'label'; el.innerHTML = `${VILLAIN_INFO[key].name}<small>${VILLAIN_INFO[key].title}</small>`; labelsRoot.appendChild(el); return el; });
+const v = new THREE.Vector3();
+game.add({ lateUpdate: () => {
+  const w = container.clientWidth, h = container.clientHeight;
+  cast.forEach(({ g }, i) => { v.set(g.position.x, (g.userData.height || 1.5) + 0.55, g.position.z).project(game.camera.three); const el = labels[i]; if (v.z > 1) { el.style.display = 'none'; return; } el.style.display = ''; el.style.left = ((v.x + 1) / 2 * w) + 'px'; el.style.top = ((1 - v.y) / 2 * h) + 'px'; });
+} });
+
+const statsEl = document.getElementById('stats');
+game.add({ update: () => { const s = game.stats; statsEl.textContent = `fps ${s.fps} · calls ${s.drawCalls} · tris ${(s.triangles / 1000).toFixed(0)}k · fog ${fog.active}`; } });
+
+if (game.input.isTouch) document.body.classList.add('is-touch');
+game.start();
+</script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Lumen Ledger — Chat 7C UI: Title · Pause/Settings · Touch</title>
+<link rel="stylesheet" href="ui/base.css">
+<link rel="stylesheet" href="ui/hud.css">
+<link rel="stylesheet" href="ui/touch.css">
+<link rel="stylesheet" href="ui/title.css">
+<link rel="stylesheet" href="ui/pause.css">
+<style>
+  .panel { position: absolute; left: 12px; top: 84px; z-index: 15; background: rgba(255,248,231,.94); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px 10px; font-size: 12px; font-weight: 600; max-width: 250px; pointer-events: auto; }
+  .panel b { display: block; font-size: 13px; margin-bottom: 4px; }
+  .row { display: flex; gap: 5px; margin: 6px 0; flex-wrap: wrap; align-items: center; }
+  .btn { background: var(--gold); border: 3px solid var(--ink); border-radius: 10px; padding: 4px 8px; font: inherit; font-weight: 800; box-shadow: 0 3px 0 var(--ink); cursor: pointer; font-size: 11px; }
+  .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+  .btn.alt { background: var(--blue); } .btn.warn { background: var(--orange); } .btn.ok { background: var(--grass); }
+  #log { font-size: 11px; line-height: 1.3; white-space: pre; font-family: ui-monospace, Menlo, monospace; max-height: 26vh; overflow: auto; margin-top: 6px; }
+  body.ll-title-open .panel { display: none; }
+  @media (max-width: 640px) { .panel { max-width: 150px; font-size: 10px; } #log { display: none; } }
+</style>
+</head>
+<body>
+<div id="game-root">
+  <div id="game-container"></div>
+  <section class="panel" id="panel">
+    <b>7C · Title / Pause / Touch</b>
+    <div class="row">
+      <button class="btn" id="b-title">1 · title</button>
+      <button class="btn alt" id="b-pause">2 · pause (Esc)</button>
+      <button class="btn ok" id="b-touch">3 · touch pad</button>
+      <button class="btn warn" id="b-lose">4 · eco:lose</button>
+      <button class="btn" id="b-badge">5 · build badge</button>
+    </div>
+    <div id="log"></div>
+  </section>
+  <aside id="help" class="help"><b>Esc</b> pause · <b>WASD</b> move · <b>Space</b> attack · <b>3</b> shows the touch pad on desktop · <code>?touch=1</code> forces it</aside>
+</div>
+<script type="module">
+import * as THREE from './vendor/three.module.js';
+import { Game } from './src/core/Game.js';
+import { setOutlineThickness } from './src/core/Outline.js';
+import { PALETTE as P } from './src/core/Toon.js';
+import { Island } from './src/world/Island.js';
+import { VFX } from './src/vfx/VFX.js';
+import { HeroController } from './src/entities/HeroController.js';
+import { makeGlimmer, GlimmerController } from './src/assets/glimmer.js';
+import { mountHUD } from './ui/hud.js';
+import { mountTouch } from './ui/touch.js';
+import { mountTitle } from './ui/title.js';
+import { mountPause } from './ui/pause.js';
+
+// ---- Foundation scene -------------------------------------------------------------------------
+const game = new Game(document.getElementById('game-container'));
+window.game = game;
+const bus = game.bus;
+const island = new Island({ radius: 11, seed: 7 }); game.scene.add(island.group); game.add({ update: (dt) => island.update(dt) });
+const vfx = game.add(new VFX(game));
+const glimmers = []; const colors = [P.glimmerBlue, P.glimmerPink, P.glimmerGreen, P.glimmerYellow, P.glimmerBlue];
+for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2 + 0.4; const g = makeGlimmer({ color: colors[i], size: 0.9 + (i % 2) * 0.25 }); g.position.set(Math.cos(a) * 3.2, 0, Math.sin(a) * 3.2); g.rotation.y = -a + Math.PI / 2; game.scene.add(g); const c = new GlimmerController(g); c.hopping = i % 2 === 0; glimmers.push(c); }
+game.add({ update: (dt) => { for (const g of glimmers) { g.update(dt); const pos = g.root.position; if (!island.isLand(pos.x, pos.z)) pos.multiplyScalar(0.96); } } });
+const hero = new HeroController(game, { vfx, targets: () => glimmers, isLand: (x, z) => island.isLand(x, z) });
+hero.root.position.set(0, 0, 0.5); game.add({ update: (dt) => hero.update(dt) }); game.followTarget = hero.root.position; game.camera.snapTo(hero.root.position);
+game.input.onWheel = (dir) => { game.camera.zoom = THREE.MathUtils.clamp(game.camera.zoom + dir * 0.1, 0.6, 1.8); };
+game.input.onTap = () => { if (!title.isOpen && !pause.isOpen) game.input.press('attack'); };
+
+// ---- UI ----------------------------------------------------------------------------------------
+const root = document.getElementById('game-root');
+const hud = mountHUD(root, { bus, stats: () => game.stats, seasonsToWin: 10 });
+hud.sync({ spark: 120, season: 1, day01: 0.2, fog01: 0.35, debt: 0, reputation: 0.5, jars: { spend: 0, save: 40, invest: 0, protect: 0 } });
+const touch = mountTouch(root, game.input, { bus, buttons: ['attack', 'interact', 'build', 'dash'] });
+const pause = mountPause(root, { bus, onOutline: setOutlineThickness, canOpen: () => !title.isOpen });
+const title = mountTitle(root, { bus, version: 'demo 7C', hasSave: () => !!localStorage.getItem('lumen.demo.save') });
+window.hud = hud; window.touch = touch; window.title = title; window.pause = pause;
+
+const $ = (id) => document.getElementById(id);
+const lines = []; const log = (s) => { lines.unshift(s); if (lines.length > 12) lines.pop(); $('log').textContent = lines.join('\n'); };
+
+// title → play hides title, shows touch controls (always in this demo, so desktop testers see them too), unpauses
+game.paused = true;
+bus.on('ui:start', (p) => {
+  log(`ui:start ${p.mode}`); title.setBusy(true);
+  setTimeout(() => { title.hide(); title.setBusy(false); game.paused = false; touch.show(); localStorage.setItem('lumen.demo.save', '1'); vfx.pop.show(hero.root.position.clone().add(new THREE.Vector3(0, 2.2, 0)), p.mode === 'endless' ? 'Endless!' : 'Season 1', { color: '#FFD54F', size: 1.2 }); }, 350);
+});
+bus.on('ui:pause', (p) => { game.paused = !!p.on; log(`ui:pause ${p.on ? 'on' : 'off'} (${p.by})`); });
+bus.on('ui:settings', (p) => { log(`ui:settings ${p.key} = ${JSON.stringify(p.value)}`); if (p.key === 'quality') game.setQuality && game.setQuality(p.value); });
+bus.on('ui:restart', () => { log('ui:restart'); hero.root.position.set(0, 0, 0.5); vfx.pop.show(hero.root.position.clone().add(new THREE.Vector3(0, 2.2, 0)), 'Restarted', { color: '#FFA726' }); });
+bus.on('ui:title', () => { log('ui:title'); game.paused = true; title.show(); });
+bus.on('ui:touch', (p) => { log(`ui:touch ${p.action}`); if (p.action === 'build') touch.setBadge('build', ''); });
+bus.on('ui:title:open', () => log('ui:title:open'));
+bus.on('ui:title:close', (p) => log(`ui:title:close (${p.mode})`));
+
+$('b-title').onclick = () => { game.paused = true; title.show(); };
+$('b-pause').onclick = () => pause.toggle();
+$('b-touch').onclick = () => (touch.visible ? touch.hide() : touch.show());
+$('b-lose').onclick = () => bus.emit('eco:lose', { reason: 'fog 100 %' });
+$('b-badge').onclick = () => touch.setBadge('build', '!');
+window.addEventListener('keydown', (e) => { if (title.isOpen || pause.isOpen) return; const m = { 1: 'b-title', 2: 'b-pause', 3: 'b-touch', 4: 'b-lose', 5: 'b-badge' }[e.key]; if (m) $(m).click(); });
+game.start();
+log('ready — title is open; PLAY starts the scene');
+</script>
+</body>
+</html>

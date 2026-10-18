@@ -1,0 +1,23 @@
+/* LUMEN LEDGER — Toast queue (Chat 7B). Top-centre stack, newest on top. Extends ui/base.css.
+   Motion: in 320 ms outBack · bar = duration linear · out 200 ms inQuad · bump 260 ms outBack on coalesce */
+.ll-toasts { position: absolute; top: calc(max(10px, env(safe-area-inset-top)) + 62px); left: 50%; transform: translateX(-50%); z-index: 30; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; width: min(380px, calc(100vw - 24px)); }
+.ll-toast { position: relative; display: flex; align-items: center; gap: 8px; background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; box-shadow: 0 4px 0 var(--ink); padding: 6px 12px 8px 10px; font-size: 12px; font-weight: 800; pointer-events: auto; cursor: pointer; overflow: hidden; max-width: 100%; animation: ll-toast-in .32s cubic-bezier(.34,1.56,.64,1) both; transition: transform .22s cubic-bezier(.22,1,.36,1), opacity .22s; }
+.ll-toast.out { animation: ll-toast-out .2s cubic-bezier(.55,0,1,.45) both; pointer-events: none; }
+.ll-toast.bump { animation: ll-toast-bump .26s cubic-bezier(.34,1.56,.64,1); }
+.ll-toast-icon { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; border: 2px solid var(--ink); background: #fff; }
+.ll-toast-text { flex: 1; line-height: 1.25; }
+.ll-toast-badge { flex: none; font-size: 10px; font-weight: 900; background: var(--ink); color: #fff; border-radius: 999px; padding: 1px 6px; }
+.ll-toast-bar { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--ink); opacity: .35; width: 100%; transform-origin: left; animation: ll-toast-bar linear both; }
+.ll-toast.ok { background: #e3f7d6; } .ll-toast.ok .ll-toast-icon { background: var(--grass); }
+.ll-toast.info { background: var(--paper); } .ll-toast.info .ll-toast-icon { background: var(--blue); }
+.ll-toast.warn { background: #fff3cd; } .ll-toast.warn .ll-toast-icon { background: var(--orange); }
+.ll-toast.bad { background: #ffe0e0; } .ll-toast.bad .ll-toast-icon { background: #ef5350; color: #fff; }
+.ll-toast.gold { background: var(--gold); } .ll-toast.gold .ll-toast-icon { background: #fff; }
+
+@keyframes ll-toast-in { 0% { transform: translateY(-24px) scale(.8); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes ll-toast-out { 0% { transform: none; opacity: 1; max-height: 60px; } 100% { transform: translateY(-10px) scale(.9); opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; margin-top: -6px; } }
+@keyframes ll-toast-bump { 0% { transform: scale(1); } 40% { transform: scale(1.06); } 100% { transform: scale(1); } }
+@keyframes ll-toast-bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+@media (max-width: 640px) { .ll-toasts { top: calc(max(10px, env(safe-area-inset-top)) + 54px); } .ll-toast { font-size: 11px; padding: 5px 10px 7px 8px; } }
+@media (orientation: portrait) and (max-width: 640px) { .ll-toasts { top: calc(max(10px, env(safe-area-inset-top)) + 96px); } }
