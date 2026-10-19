@@ -60,11 +60,51 @@ export function createAudio(opts = {}) {
     destroy() { for (const off of offs) off(); offs.length = 0; stopMusic(0); if (state.ctx && state.ctx !== window.lumenAudioCtx) state.ctx.close?.(); },
   };
 
-  // ---- filled in below (P1.1 loader · P1.2 synth · P1.3 bus map) ----
-  function playSfx(id, o) { const d = def('sfx', id); state.played[id] = (state.played[id] || 0) + 1; state.lastPlay[id] = now(); if (!d) state.log.push(`unknown sfx ${id}`); return !!d; }
-  function playMusic(id) { state.currentMusic = id; return !!def('music', id); }
-  function stopMusic() { state.currentMusic = null; }
-  function wireBus() {}
+  // ---- P1.1 loader: decode a file on first use (lazy — the jam build has few/no files, synth covers the rest) ----
+  const base = () => (state.manifest?.base ?? './audio/');
+  async function buffer(kind, id) {
+    const d = def(kind, id); if (!d || !d.file || !state.ctx || state.missing.has(id)) return null;
+    if (state.buffers.has(id)) return state.buffers.get(id);
+    const p = (async () => {
+      try { const r = await fetch(base() + d.file); if (!r.ok) throw new Error('HTTP ' + r.status); return await state.ctx.decodeAudioData(await r.arrayBuffer()); }
+      catch (e) { state.missing.add(id); state.buffers.delete(id); if (!state.log.includes(`missing ${id}`)) state.log.push(`missing ${id}`); return null; }
+    })();
+    state.buffers.set(id, p); const b = await p; if (b) state.buffers.set(id, b); return b;
+  }
+  /** preload every manifest file (optional; play() loads lazily anyway). Resolves when all attempts finished. */
+  api.preload = async () => { if (!state.ctx) return api; const ids = []; for (const k of ['sfx', 'music']) for (const id of Object.keys(state.manifest?.[k] || {})) ids.push(buffer(k, id)); await Promise.all(ids); return api; };
+
+  // ---- play ----
+  function playSfx(id, o) {
+    const d = def('sfx', id); state.played[id] = (state.played[id] || 0) + 1; state.lastPlay[id] = now();
+    if (!d) { if (!state.log.includes(`unknown sfx ${id}`)) state.log.push(`unknown sfx ${id}`); return false; }
+    if (!state.ctx || !state.unlocked || state.volumes.sfx <= 0) return true;                     // inert (Node / before gesture / muted) but counted
+    const vol = clamp01((o.vol ?? 1) * (d.vol ?? 1));
+    const pv = d.pitchVar ?? 0; const pitch = (o.pitch ?? 1) * (pv ? 1 + (Math.random() * 2 - 1) * pv : 1);
+    const b = state.buffers.get(id);
+    if (b && !(b instanceof Promise)) { const s = state.ctx.createBufferSource(); s.buffer = b; s.playbackRate.value = pitch; const g = state.ctx.createGain(); g.gain.value = vol; s.connect(g); g.connect(sfxGain); s.start(); return true; }
+    if (d.file && !state.missing.has(id) && !b) buffer('sfx', id);                                // kick off decode for next time; synth now
+    if (d.synth) synthSfx(state.ctx, sfxGain, d.synth, vol, pitch);
+    return true;
+  }
+  function playMusic(id) {
+    if (id === state.currentMusic && state.musicNode) return true;
+    const d = def('music', id); if (!d) { state.currentMusic = null; return false; }
+    state.currentMusic = id; if (!state.ctx || !state.unlocked) { state.pendingMusic = id; return true; }
+    stopMusic(0.5);
+    const start = (node) => { state.musicNode = node; };
+    buffer('music', id).then((b) => {
+      if (state.currentMusic !== id) return;
+      if (b) { const s = state.ctx.createBufferSource(); s.buffer = b; s.loop = d.loop !== false; const g = state.ctx.createGain(); g.gain.value = d.vol ?? 1; s.connect(g); g.connect(musicGain); s.start(); start({ stop: () => { try { s.stop(); } catch {} }, gain: g }); }
+      else if (d.synth) start(synthMusic(state.ctx, musicGain, d.synth, d.vol ?? 0.5));
+    });
+    return true;
+  }
+  function stopMusic(fade = 0.4) {
+    const n = state.musicNode; state.musicNode = null; state.currentMusic = state.currentMusic && fade === 0 ? null : state.currentMusic;
+    if (!n) return; if (fade > 0 && n.gain) { ramp(n.gain.gain, 0, fade); setTimeout(() => n.stop(), fade * 1000 + 50); } else n.stop();
+  }
+  function wireBus() { /* P1.3 */ }
 
   return api;
 }
@@ -72,6 +112,47 @@ export function createAudio(opts = {}) {
 async function fetchJson(url, state) {
   try { const r = await fetch(url); if (!r.ok) throw new Error(r.status); return await r.json(); }
   catch (e) { state.log.push(`manifest ${url} failed: ${e.message || e}`); return {}; }
+}
+// ---- P1.2 procedural fallback — tiny oscillator sketches so the build is never silent when a Ludo.ai file is missing ----
+// synth: { type: 'coin'|'blip'|'thud'|'whoosh'|'chime'|'buzz'|'fanfare'|'sad'|'pop'|'tick', f (Hz), dur (s) }
+export function synthSfx(ctx, out, s, vol = 1, pitch = 1) {
+  const t0 = ctx.currentTime, f = (s.f || 440) * pitch, dur = s.dur || 0.2;
+  const osc = (type, freq, t, d, v, slideTo) => {
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(20, slideTo), t + d);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * vol), t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + d + 0.02);
+  };
+  const noise = (t, d, v, hp = 800) => {
+    const n = ctx.sampleRate * d, b = ctx.createBuffer(1, Math.max(1, n | 0), ctx.sampleRate), ch = b.getChannelData(0);
+    for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / ch.length);
+    const src = ctx.createBufferSource(); src.buffer = b; const fl = ctx.createBiquadFilter(); fl.type = 'highpass'; fl.frequency.value = hp;
+    const g = ctx.createGain(); g.gain.setValueAtTime(v * vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); src.connect(fl); fl.connect(g); g.connect(out); src.start(t); src.stop(t + d + 0.02);
+  };
+  switch (s.type) {
+    case 'coin':    osc('square', f, t0, dur * 0.45, 0.25); osc('square', f * 1.5, t0 + dur * 0.3, dur * 0.7, 0.25); break;
+    case 'blip':    osc('sine', f, t0, dur, 0.3, f * 1.25); break;
+    case 'tick':    osc('triangle', f, t0, Math.min(dur, 0.06), 0.2); break;
+    case 'pop':     osc('sine', f, t0, dur, 0.35, f * 0.5); break;
+    case 'thud':    osc('sine', f, t0, dur, 0.6, f * 0.4); noise(t0, dur * 0.5, 0.15, 200); break;
+    case 'whoosh':  noise(t0, dur, 0.3, 400); break;
+    case 'chime':   [1, 1.5, 2].forEach((m, i) => osc('sine', f * m, t0 + i * 0.07, dur, 0.22)); break;
+    case 'buzz':    osc('sawtooth', f, t0, dur, 0.18, f * 0.9); break;
+    case 'fanfare': [1, 1.25, 1.5, 2].forEach((m, i) => osc('square', f * m, t0 + i * 0.11, dur * 0.6, 0.18)); break;
+    case 'sad':     [1, 0.84, 0.75].forEach((m, i) => osc('triangle', f * m, t0 + i * 0.18, dur * 0.8, 0.25)); break;
+    default:        osc('sine', f, t0, dur, 0.3); break;
+  }
+}
+// music fallback: slow pad loop over `chords` (semitone offsets from `root` Hz), `bpm` beats per chord. Returns { stop(), gain }.
+export function synthMusic(ctx, out, s, vol = 0.5) {
+  const root = s.root || 220, chords = s.chords || [[0, 4, 7], [5, 9, 12], [7, 11, 14], [0, 4, 7]], beat = 60 / (s.bpm || 72) * 4;
+  const gain = ctx.createGain(); gain.gain.value = 0; gain.connect(out); ramp(gain.gain, vol, 1.2);
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.connect(gain);
+  const voices = [0, 1, 2].map(() => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle'; g.gain.value = 0.25; o.connect(g); g.connect(lp); o.start(); return { o, g }; });
+  let i = 0, alive = true;
+  const step = () => { if (!alive) return; const c = chords[i % chords.length]; const t = ctx.currentTime; voices.forEach((v, k) => v.o.frequency.setTargetAtTime(root * Math.pow(2, (c[k] ?? c[0]) / 12), t, 0.25)); i++; timer = setTimeout(step, beat * 1000); };
+  let timer = null; step();
+  return { gain: { gain: gain.gain }, stop: () => { alive = false; clearTimeout(timer); voices.forEach((v) => { try { v.o.stop(); } catch {} }); try { gain.disconnect(); } catch {} } };
 }
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
 function ramp(param, to, sec) { try { const t = param.context ? param.context.currentTime : 0; param.cancelScheduledValues(t); param.setValueAtTime(param.value, t); param.linearRampToValueAtTime(to, t + sec); } catch { param.value = to; } }
