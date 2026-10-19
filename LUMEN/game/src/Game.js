@@ -370,6 +370,7 @@ function installStart(lg) {
     const sb = lg.sb = createSandbox(game, { headless: !!opts.headless, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, starterStalls: lg._resuming ? false : undefined });
     if (lg.mode === 'endless') sb.updateScheduler = wrapNoScam(sb);                      // endless: events yes, Baron's deals no
     lg.story = (lg.mode === 'story' && opts.storyData) ? new StorySystem(sb.eco, { data: opts.storyData, bus, ledgerLinesBeforeReview: true, autoAdvance: !!opts.autoAdvance, lineGap: opts.lineGap }) : null;
+    if (lg._resuming?.story && lg.story) Object.assign(lg.story.state, StorySystem.deserialize(lg._resuming.story, sb.eco, { data: opts.storyData, autoplay: false }).state);   // 10D: before title.hide() → no toast replay
     installRunWires(lg);
     ui?.hud?.sync?.(sb.eco.state); ui?.jars?.setBalances?.(sb.eco.state.jars); ui?.build?.setSpark?.(sb.eco.state.spark);
     lg.stats.starts++;
@@ -513,8 +514,8 @@ function installSave(lg) {
   };
   lg.resume = (snap = Save.load(storage)) => {
     if (!snap) return false;
-    lg._resuming = true;
-    try { lg.start(snap.mode === 'endless' ? 'endless' : 'story'); } finally { lg._resuming = false; }
+    lg._resuming = snap;
+    try { lg.start(snap.mode === 'endless' ? 'endless' : 'story'); } finally { lg._resuming = null; }
     const sb = lg.sb; if (!sb) return false;
     applySnapshot(lg, sb, snap);
     bus.emit('game:resumed', { season: sb.eco.state.season, mode: lg.mode });
@@ -539,7 +540,6 @@ function applySnapshot(lg, sb, snap) {
     if (lg.mode === 'endless') eco.config.winRequiresSeasons = false;
   }
   if (Array.isArray(snap.build) && snap.build.length) { build.load(snap.build); eco.state.stalls = build.placed.size; sb.cust?.reroute?.(); }
-  if (snap.story && lg.story) { const s2 = StorySystem.deserialize(snap.story, eco, { data: lg.opts.storyData, bus: { on: () => () => {}, emit: () => {} } }); Object.assign(lg.story.state, s2.state); s2.destroy?.(); }
   for (const id of snap.helpers || []) { const type = String(id).replace(/^helper_/, ''); if (HELPER_TYPES.includes(type) && !sb.helpers.some((h) => h.type === type)) { const paid = eco.spend; eco.spend = () => true; try { hireHelper(sb); } finally { eco.spend = paid; } } }
   if (snap.hero && sb.hero?.root) { sb.hero.root.position.set(snap.hero.x, 0, snap.hero.z); lg.game.camera?.snapTo?.(sb.hero.root.position); }
   if (snap.jars) { lg.jarPct = { ...snap.jars }; lg.ui?.jars?.setPct?.(snap.jars); }
@@ -557,10 +557,24 @@ function applySnapshot(lg, sb, snap) {
 //   tut:upgrade   season ≥ 2, 10 s in, spark ≥ upgrade cost, no upgrade yet → "stand by a stall, press U/⬆ to upgrade"
 // Gates only run in story mode, season ≤ 2, while playing and unpaused. They are observable as `lg.tut.fired` for check.mjs.
 export const TUTORIAL_GATES = ['tut:move', 'tut:build', 'tut:jars', 'tut:endSeason', 'tut:upgrade'];
+export const TUTORIAL_LINES = {                                               // used only when data/story.json has no entry for the trigger
+  'tut:move':      { icon: '🦉', text: 'Nice — Pip walks wherever you point. Glimmers wander in from the dock on the left.' },
+  'tut:build':     { icon: '🔨', text: 'Press B (or tap 🔨) and pick a stall. Place it on the grass near the path so Glimmers can reach it.' },
+  'tut:jars':      { icon: '🫙', text: 'Spark piles up in your pouch. Open the jars and press APPLY to move some into Save, Invest and Protect.' },
+  'tut:endSeason': { icon: '📒', text: 'The season ends when the day bar fills. The Ledger then shows income, interest and what the Fog took.' },
+  'tut:upgrade':   { icon: '⬆️', text: 'Stand next to a stall and press U (or ⬆ in the build tray) to upgrade it — more sales, a bit more upkeep.' },
+};
 function installTutorialGates(lg) {
   const { bus } = lg, on = (n, f) => lg._offs.push(bus.on(n, f));
   const T = lg.tut = { fired: new Set(), t: 0, sinceSale: null, built: 0, applied: 0, upgraded: 0, sold: 0, spawn: null, enabled: lg.opts.tutorial !== false };
-  const fire = (name, extra = {}) => { if (T.fired.has(name)) return false; T.fired.add(name); bus.emit(name, { tutorial: true, ...extra }); return true; };
+  // fire: bus event (8B picks it up if data/story.json names the trigger) → else the built-in line below, recorded in 8B's toastsFired so it is saved.
+  const fire = (name, extra = {}) => {
+    if (T.fired.has(name)) return false; T.fired.add(name); bus.emit(name, { tutorial: true, ...extra });
+    const st = lg.story; if (!st || !st.opts?.tutorial || st.state.toastsFired.includes(name)) return true;
+    if ((st.data?.tutorial || []).some((x) => x.trigger === name)) { st.tutorialFor?.(name); return true; }
+    const t = TUTORIAL_LINES[name]; if (!t) return true;
+    st.state.toastsFired.push(name); bus.emit('story:toast', { id: name, text: t.text, icon: t.icon || '🦉', kind: 'info', trigger: name }); return true;
+  };
   T.fire = fire;
   on('game:start', () => { T.fired.clear(); T.t = 0; T.sinceSale = null; T.built = 0; T.applied = 0; T.upgraded = 0; T.sold = 0; T.spawn = null; });
   on('game:resumed', () => { for (const id of lg.story?.state.toastsFired || []) T.fired.add(id); });   // resumed run: whatever 8B already showed counts as fired

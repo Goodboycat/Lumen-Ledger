@@ -37,6 +37,7 @@ const doUI = args.includes('--ui');                // 7A/7B/7C DOM UI on a tiny 
 const doVFX = args.includes('--vfx');
 const doSandbox = args.includes('--sandbox');      // 10B integrated systems sandbox (headless createSandbox: economy + build + customers + abilities + helpers, 2 seasons)
 const doGame = args.includes('--game');            // 10C the whole game headless: real UI (domshim) + real story + real sandbox driven by createLumenGame's state machine
+const doSave = args.includes('--save');            // 10D save/load + tutorial: play to S2 → autosave → fresh lg → CONTINUE → same season/spark/stalls/toasts; export/import text; lose clears
 const doWorld = args.includes('--world');          // 10A integrated world: bakeStatic batches + Island v2 + every content pack placed headless (mirrors demo_world.html), counts meshes ≤ budget              // 9A/9B VFX packs: installPack1/installPack2 on a mock VFX+scene, fire every effect, step headless, check pools drain, 0 NaN, draw calls
 let files = args.filter((a) => !a.startsWith('--'));
 if (!files.length) { files = []; (function walk(d) { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (p.endsWith('.js') && !p.endsWith('main.js')) files.push(p); } })('src'); }  // main.js is the DOM entry; skipped
@@ -1281,6 +1282,87 @@ if (doGame) {
     console.log(`  5. ui:title → title (teardown → ${mEmpty} meshes) → PLAY → fresh S1 → forced fog loss → ${dLose} ending lines → ledger "Fogged out" TRY AGAIN ▸ → title → PLAY → S1 · ui:restart → new sandbox S1 · ${lg.stats.starts} starts · lg.destroy + ui.destroy clean  OK`);
     console.log(`  game: ${frames} frames · states ${lg.log.join(' · ')}  OK`);
   } catch (err) { bad++; console.log('  game FAIL →', err.message); }
+}
+if (doSave) {
+  // 10D: same headless rig as --game. (1) run A: PLAY → S1 drained → clock to the S1 ledger → autosave on eco:season → CONTINUE (autosave again)
+  // → build one stall → play 5 s → tutorial gates fired. (2) run B: new bus/ui/lg with the SAME storage → title shows CONTINUE → click →
+  // season 2, spark/stalls/helpers/toastsFired identical, no toast replays, the S2 opening is not replayed. (3) exportText → clear → importText
+  // → hasSave again · bad text refused. (4) forced lose → save cleared → title has no CONTINUE.
+  console.log('\nSAVE (10D):');
+  try {
+    const { installDomShim } = await import(pathToFileURL(resolve('tools/domshim.mjs')).href); installDomShim();
+    const THREE = await import(pathToFileURL(resolve('vendor/three.module.js')).href);
+    const { SequencePlayer, HitStop } = await import(pathToFileURL(resolve('src/anim/Sequencer.js')).href);
+    const { EventBus } = await import(pathToFileURL(resolve('src/core/EventBus.js')).href);
+    const { tweens } = await import(pathToFileURL(resolve('src/anim/Tween.js')).href);
+    const { createLumenGame, TUTORIAL_GATES } = await import(pathToFileURL(resolve('src/Game.js')).href);
+    const Save = await import(pathToFileURL(resolve('src/systems/save.js')).href);
+    const { mountUI } = await import(pathToFileURL(resolve('ui/index.js')).href);
+    const { PROP_CATALOG } = await import(pathToFileURL(resolve('src/assets/props.js')).href);
+    const { readFileSync } = await import('node:fs'); const storyData = JSON.parse(readFileSync(resolve('data/story.json'), 'utf8'));
+    const mem = new Map(); const storage = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
+    const rig = () => {
+      const bus = new EventBus(); const ev = {}; for (const n of ['game:saved', 'game:resumed', 'story:toast', 'story:line', 'ui:start']) bus.on(n, (p) => { (ev[n] ??= []).push(p); });
+      const game = { scene: new THREE.Scene(), bus, sequences: new SequencePlayer(), tweens, hitStop: new HitStop(), input: { pointerWorld: new THREE.Vector3(), hasPointerWorld: false, move: new THREE.Vector2(), joystick: new THREE.Vector2(), actions: {}, pressed: () => false, press() {} }, camera: { zoom: 1, shake() {}, snapTo() {} }, time: 0, timeScale: 1, paused: false, followTarget: null, systems: [], stats: { fps: 60, drawCalls: 0 }, add(s) { this.systems.push(s); return s; }, hitstop() {} };
+      document.body.innerHTML = '';
+      const ui = mountUI(document.body, { bus, stats: () => game.stats, input: game.input, catalog: PROP_CATALOG, seasonsToWin: 10, touch: false, version: 'check', hasSave: () => Save.hasSave(storage) });
+      const lg = createLumenGame(game, { ui, storyData, headless: true, seasonSeconds: 30, seed: 3, storage });
+      const dt = 1 / 30; const step = () => { game.time += dt; game.sequences.update(dt); game.tweens.update(dt); for (const s of game.systems) s.update?.(game.paused ? 0 : dt, game, dt); };
+      const run = (sec) => { for (let i = 0; i < sec * 30; i++) step(); };
+      const drain = () => { let n = 0; while (ui.dialogue.isOpen && n < 40) { if (ui.dialogue.line?.choices) ui.dialogue.choose(1); else { ui.dialogue.skip(); ui.dialogue.advance(); } step(); n++; } return n; };
+      return { bus, ev, game, ui, lg, step, run, drain };
+    };
+    // 1. run A
+    const A = rig();
+    if (A.ui.title.buttons.continue.style.display !== 'none') throw new Error('CONTINUE visible with no save');
+    A.ui.title.buttons.story.click(); A.step(); A.drain();
+    const ecoA = A.lg.sb.eco;
+    A.lg.sb.hero.root.position.x += 3; A.run(0.5);                                                       // tut:move
+    let guard = 0; while (ecoA.state.season === 1 && !A.ui.ledger.isOpen && guard++ < 45 * 30) { A.step(); if (A.ui.dialogue.isOpen) A.drain(); }
+    if (!A.ui.ledger.isOpen) throw new Error('A: S1 ledger never opened');
+    if ((A.ev['game:saved'] || []).length !== 1 || !Save.hasSave(storage)) throw new Error('A: autosave on eco:season → ' + (A.ev['game:saved'] || []).length);
+    A.ui.ledger.skip(); A.ui.ledger.continue(); A.step(); A.drain();
+    if ((A.ev['game:saved'] || []).length !== 2) throw new Error('A: autosave on review→playing → ' + A.ev['game:saved'].length);
+    A.bus.emit('ui:build', { action: 'select', id: 'stall_fruit' }); A.bus.emit('ui:build', { action: 'confirm' }); A.run(0.2);
+    A.bus.emit('ui:jar:apply', { pct: { spend: 40, save: 30, invest: 20, protect: 10 } });
+    A.run(11);
+    const firedA = [...A.lg.tut.fired]; if (!firedA.includes('tut:move') || !firedA.includes('tut:endSeason') || !firedA.includes('tut:upgrade')) throw new Error('A: tutorial gates ' + firedA.join(','));
+    if (!A.lg.tut.fired.has('tut:build') || A.lg.tut.built !== 1) throw new Error('A: tut:build (12 s idle in S1) ' + A.lg.tut.fired.has('tut:build') + ' built ' + A.lg.tut.built);
+    const toastsA = (A.ev['story:toast'] || []).map((t) => t.id); if (new Set(toastsA).size !== toastsA.length) throw new Error('A: duplicate toasts ' + toastsA.join(','));
+    A.lg.save.write();                                                                                   // manual save mid-S2 (what index.html's visibilitychange does)
+    const snapA = A.lg.save.read(); const stallsA = A.lg.sb.build.placed.size, sparkA = ecoA.state.spark, seasonA = ecoA.state.season, toastsSaved = snapA.story.state.toastsFired.slice();
+    if (seasonA !== 2 || snapA.build.length !== stallsA || snapA.state !== 'playing' || snapA.mode !== 'story') throw new Error('A: snapshot ' + JSON.stringify({ seasonA, b: snapA.build.length, stallsA, st: snapA.state }));
+    if (!toastsSaved.includes('tut:move') && !toastsSaved.includes('t_move')) throw new Error('A: toastsFired not saved ' + toastsSaved.join(','));
+    A.lg.destroy(); A.ui.destroy();
+    console.log(`  1. run A: PLAY → S1 → ledger (autosave #1) → CONTINUE (autosave #2) → build + jars + 11 s → gates ${firedA.join(' ')} · ${toastsA.length} toasts no dupes · snapshot S${seasonA} ${stallsA} stalls ${sparkA} spark  OK`);
+    // 2. run B resumes
+    const B = rig();
+    if (B.ui.title.buttons.continue.style.display === 'none' || !/Season 2/.test(Save.describe(Save.load(storage)))) throw new Error('B: CONTINUE hidden / describe ' + Save.describe(Save.load(storage)));
+    B.ui.title.buttons.continue.click(); B.step();
+    const ecoB = B.lg.sb?.eco; if (!ecoB || B.lg.state !== 'playing' || (B.ev['game:resumed'] || []).length !== 1) throw new Error('B: resume → ' + B.lg.state);
+    if (ecoB.state.season !== seasonA || ecoB.state.spark !== sparkA || B.lg.sb.build.placed.size !== stallsA) throw new Error(`B: season ${ecoB.state.season}/${seasonA} spark ${ecoB.state.spark}/${sparkA} stalls ${B.lg.sb.build.placed.size}/${stallsA}`);
+    if (B.ui.dialogue.isOpen) throw new Error('B: S2 opening replayed on resume');
+    if (JSON.stringify(B.lg.story.state.toastsFired) !== JSON.stringify(toastsSaved)) throw new Error('B: toastsFired ' + B.lg.story.state.toastsFired.join(','));
+    if (Math.abs(B.lg.sb.hero.root.position.x - snapA.hero.x) > 0.01) throw new Error('B: hero pos ' + B.lg.sb.hero.root.position.x);
+    B.run(12); if ((B.ev['story:toast'] || []).some((t) => toastsSaved.includes(t.id))) throw new Error('B: toast replayed ' + B.ev['story:toast'].map((t) => t.id).join(','));
+    if (B.lg.tut.fired.size === 0 && ![...B.lg.tut.fired].every((f) => toastsSaved.includes(f))) throw new Error('B: gates re-fired');
+    const ecoDay = ecoB.state.day01; if (!(ecoDay > 0.3)) throw new Error('B: clock not running after resume ' + ecoDay);
+    console.log(`  2. run B: title shows CONTINUE ("${Save.describe(Save.load(storage))}") → resume S${ecoB.state.season} spark ${ecoB.state.spark} stalls ${B.lg.sb.build.placed.size} hero x ${B.lg.sb.hero.root.position.x.toFixed(1)} · no opening/toast replay · clock runs  OK`);
+    // 3. export / import text
+    const txt = B.lg.save.exportText(); if (!txt.startsWith('LUMEN1:') || txt.length < 100) throw new Error('export ' + txt.slice(0, 20));
+    B.lg.save.clear(); if (Save.hasSave(storage) || B.ui.title.buttons.continue.style.display !== 'none') throw new Error('clear left a save');
+    if (B.lg.save.importText('not a save') || B.lg.save.importText('LUMEN1:@@@@')) throw new Error('bad import accepted');
+    if (!B.lg.save.importText('  ' + txt + '\n') || !Save.hasSave(storage) || Save.load(storage).build.length !== stallsA) throw new Error('import roundtrip');
+    console.log(`  3. exportText ${txt.length} chars (LUMEN1: base64) → clear → bad text refused ×2 → importText → save back, ${Save.load(storage).build.length} stalls  OK`);
+    // 4. lose clears
+    ecoB.state.fog01 = 1; ecoB.state.day01 = 0.99; ecoB.endSeason(); if (ecoB.state.ended !== 'lose' || B.lg.state !== 'ending') throw new Error('forced lose → ' + ecoB.state.ended + ' ' + B.lg.state);
+    if (Save.hasSave(storage)) throw new Error('save not cleared on lose');
+    B.step(); B.drain(); B.ui.ledger.skip(); B.ui.ledger.continue();
+    if (B.lg.state !== 'title' || B.ui.title.buttons.continue.style.display !== 'none') throw new Error('after lose: ' + B.lg.state + ' continue shown ' + B.ui.title.buttons.continue.style.display);
+    B.lg.destroy(); B.ui.destroy();
+    console.log(`  4. forced fog loss → eco:lose → save cleared → TRY AGAIN → title without CONTINUE · destroy clean  OK`);
+    if (TUTORIAL_GATES.length !== 5) throw new Error('TUTORIAL_GATES');
+  } catch (err) { bad++; console.log('  save FAIL →', err.message); }
 }
 if (doWorld) {
   // 10A integrated world: real Three in Node. (1) src/assets/props/bake.js: bakeStatic merges N placed props into ≤ 4 meshes
