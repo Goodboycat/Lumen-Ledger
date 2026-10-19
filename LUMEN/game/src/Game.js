@@ -23,6 +23,7 @@ import { makeGlimmerAny, CreatureAnimator, HelperAnimator, makeHelper, HELPER_TY
 import { makeEconomy, UPGRADES, pickEvent } from './systems/economyData.js';
 import { BuildSystem } from './systems/build.js';
 import { CustomerSystem } from './systems/customers.js';
+import { StorySystem } from './systems/story.js';
 
 export const SANDBOX_VERSION = '10B';
 export const STALL_PICKS = STALL_TYPES.slice(0, 9);          // keys 1–9 → stall types
@@ -88,7 +89,7 @@ export function createSandbox(game, opts = {}) {
     for (const h of sb.helpers) h.anim.update(dt);
     updateCoins(sb, dt);
   };
-  game.add({ update: (dt) => sb.update(dt) });
+  sb._system = game.add({ update: (dt) => sb.update(dt) });   // kept so 10C destroySandbox can unregister it
   bus.emit('sandbox:ready', { version: SANDBOX_VERSION });
   return sb;
 }
@@ -354,7 +355,52 @@ function emitTick(lg) {
   const s = lg.sb.eco.state, t = lg.game.time; if (lg._tickAt != null && t - lg._tickAt < 0.1) return; lg._tickAt = t;
   lg.bus.emit('eco:tick', { day01: s.day01, season: s.season, spark: s.spark });
 }
-function installStart(lg) { /* next commit */ }
+// ui:start {mode} → createSandbox (story: default BALANCE · endless: winRequiresSeasons:false, no scams) → StorySystem (story mode only,
+// when opts.storyData is given) → hud.sync → title.hide() → 'playing'. A second ui:start (restart / back-to-title) tears the old run down first.
+function installStart(lg) {
+  const { game, bus, ui, opts } = lg;
+  lg.start = (mode = 'story') => {
+    lg.teardown?.();
+    lg.mode = mode === 'endless' ? 'endless' : 'story';
+    const balance = lg.mode === 'endless' ? { ...(opts.balance || {}), winRequiresSeasons: false } : opts.balance;
+    const sb = lg.sb = createSandbox(game, { headless: !!opts.headless, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive });
+    if (lg.mode === 'endless') sb.updateScheduler = wrapNoScam(sb);                      // endless: events yes, Baron's deals no
+    lg.story = (lg.mode === 'story' && opts.storyData) ? new StorySystem(sb.eco, { data: opts.storyData, bus, ledgerLinesBeforeReview: true, autoAdvance: !!opts.autoAdvance, lineGap: opts.lineGap }) : null;
+    installRunWires(lg);
+    ui?.hud?.sync?.(sb.eco.state); ui?.jars?.setBalances?.(sb.eco.state.jars); ui?.build?.setSpark?.(sb.eco.state.spark);
+    lg.stats.starts++;
+    ui?.title?.hide?.(); lg.pause('title', false);
+    lg.setState('playing');
+    bus.emit('game:start', { mode: lg.mode, seasonsToWin: sb.eco.config.seasonsToWin });
+    return sb;
+  };
+  lg.teardown = () => {
+    if (!lg.sb) return;
+    lg.story?.destroy?.(); lg.story = null;
+    for (const f of lg._runOffs || []) f(); lg._runOffs = [];
+    destroySandbox(lg.sb); lg.sb = null;
+    lg.pauseBy.clear(); lg.pause('none', false);
+  };
+  lg._offs.push(bus.on('ui:start', (p) => { if (lg.state !== 'title') return; lg.start(p?.mode === 'continue' ? 'story' : p?.mode); }));
+}
+// endless: keep the 10B scheduler's events, drop the Too-Good Deal (scams are a story beat).
+function wrapNoScam(sb) { const inner = sb.updateScheduler; return () => { inner?.(); if (sb.eco.pendingOffer) sb.eco.refuseOffer(); }; }
+// remove the sandbox from the scene + loop and release its bus listeners (createSandbox has no destroy — 10B owns it, so this is glue).
+function destroySandbox(sb) {
+  const { game } = sb;
+  for (const f of sb._offs || []) f(); sb._offs = [];
+  if (sb._onKey && typeof window !== 'undefined') window.removeEventListener('keydown', sb._onKey);
+  sb.build?.exit?.(true);
+  game.systems = game.systems.filter((s) => s !== sb._system && s !== sb.vfx);
+  if (sb.island?.group) game.scene.remove(sb.island.group);
+  if (sb.hero?.root) game.scene.remove(sb.hero.root);
+  if (sb.coinMesh) game.scene.remove(sb.coinMesh);
+  for (const h of sb.helpers || []) game.scene.remove(h.g);
+  for (const c of sb.cust?.active || []) if (c.root) game.scene.remove(c.root);
+  for (const e of sb.build?.placed?.values?.() || []) if (e.group?.parent) e.group.parent.remove(e.group);
+  game.followTarget = null;
+}
+function installRunWires(lg) { /* next commit */ }
 function installSeasonLoop(lg) { /* next commit */ }
 
 /** VFX stand-in for Node: every pool call is a no-op counter. */
