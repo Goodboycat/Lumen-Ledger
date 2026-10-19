@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Lumen Ledger — Chat 10B Sandbox Season (systems integrated, no UI)</title>
+<link rel="stylesheet" href="ui/base.css">
+<style>
+  .panel { position: absolute; left: 12px; top: 70px; z-index: 10; background: rgba(255,248,231,.94); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px 10px; font-size: 12px; font-weight: 600; max-width: 330px; pointer-events: auto; }
+  .panel b { display: block; font-size: 13px; margin-bottom: 4px; }
+  .row { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
+  .btn { background: var(--gold); border: 3px solid var(--ink); border-radius: 10px; padding: 4px 9px; font: inherit; font-weight: 800; box-shadow: 0 3px 0 var(--ink); cursor: pointer; font-size: 11px; }
+  .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+  .btn.alt { background: var(--blue); } .btn.warn { background: var(--orange); } .btn.on { outline: 3px solid #fff; }
+  #eco, #log { font-size: 11px; line-height: 1.35; white-space: pre; font-family: ui-monospace, Menlo, monospace; font-weight: 600; margin-top: 6px; }
+  #log { max-height: 120px; overflow: hidden; color: #5b4a2f; }
+  @media (max-width: 600px) { .panel { max-width: 210px; font-size: 11px; top: 64px; } #log { display: none; } }
+</style>
+</head>
+<body>
+<div id="game-root">
+  <div id="game-container"></div>
+  <header id="hud" class="hud">
+    <div class="ribbon"><span class="ribbon-title">LUMEN LEDGER</span><span class="ribbon-sub">Chat 10B · Sandbox season</span></div>
+    <div id="stats" class="stats">fps — · calls —</div>
+  </header>
+  <section class="panel" id="panel">
+    <b>Economy + Build + Customers, live</b>
+    <div class="row" id="pick-buttons"></div>
+    <div class="row">
+      <button class="btn" id="btn-build">B build</button>
+      <button class="btn warn" id="btn-end">E end season</button>
+      <button class="btn alt" id="btn-hire">H hire helper</button>
+      <button class="btn alt" id="btn-zone">Z unlock zone</button>
+      <button class="btn" id="btn-wave">W wave</button>
+    </div>
+    <div class="row" id="abil-buttons"></div>
+    <div id="eco"></div>
+    <div id="log"></div>
+  </section>
+  <aside id="help" class="help">
+    <b>WASD</b> move · <b>Space</b> sword · <b>1–9</b> pick stall · <b>B</b> build (tap/click = place, R rotate, Esc) · <b>X</b> demolish · <b>U</b> upgrade · <b>E</b> end season → LedgerReport in console · <b>H</b> hire · <b>Z</b> zone · <b>Q/W/E/R/F/G</b> abilities
+  </aside>
+</div>
+<script type="module">
+import * as THREE from './vendor/three.module.js';
+import { Game } from './src/core/Game.js';
+import { createSandbox, STALL_PICKS } from './src/Game.js';
+import { ABILITY_NAMES, FINLIT } from './src/anim/heroAbilities.js';
+
+const game = new Game(document.getElementById('game-container'));
+window.game = game;
+const sb = createSandbox(game, { seasonSeconds: 90 });     // 2 seasons in 3 minutes for the demo (BALANCE default is 150 s)
+window.sb = sb; window.eco = sb.eco; window.build = sb.build; window.cust = sb.cust;
+
+// pick buttons 1–9
+const pickRoot = document.getElementById('pick-buttons');
+STALL_PICKS.forEach((t, i) => { const b = document.createElement('button'); b.className = 'btn'; b.dataset.i = i; b.textContent = `${i + 1} ${t}`; b.addEventListener('click', () => sb.keys.pick(i)); pickRoot.appendChild(b); });
+const refreshPick = () => pickRoot.querySelectorAll('.btn').forEach((b) => b.classList.toggle('on', +b.dataset.i === sb.pick));
+game.bus.on('sandbox:pick', refreshPick); refreshPick();
+document.getElementById('btn-build').addEventListener('click', () => sb.keys.build());
+document.getElementById('btn-end').addEventListener('click', () => sb.keys.endSeason());
+document.getElementById('btn-hire').addEventListener('click', () => sb.keys.hire());
+document.getElementById('btn-zone').addEventListener('click', () => sb.keys.unlock());
+document.getElementById('btn-wave').addEventListener('click', () => sb.cust.spawnWave(sb.eco.state.season));
+// ability buttons (P2: they touch the economy through sb.abilities)
+const abRoot = document.getElementById('abil-buttons');
+ABILITY_NAMES().forEach((n) => { const b = document.createElement('button'); b.className = 'btn alt'; b.textContent = `${FINLIT[n].key} ${n}`; b.addEventListener('click', () => sb.ability?.(n)); abRoot.appendChild(b); });
+window.addEventListener('keydown', (e) => { if (e.repeat) return; const k = e.key.toUpperCase(); const n = ABILITY_NAMES().find((a) => FINLIT[a].key === k); if (n && k !== 'E') sb.ability?.(n); if (e.code === 'KeyW' && e.shiftKey) sb.cust.spawnWave(sb.eco.state.season); });
+
+// live economy readout + event log
+const ecoEl = document.getElementById('eco'), logEl = document.getElementById('log'), statsEl = document.getElementById('stats');
+const lines = []; const log = (s) => { lines.push(s); if (lines.length > 7) lines.shift(); logEl.textContent = lines.join('\n'); };
+game.bus.on('cust:paid', (p) => log(`+${p.paid} ${p.type} @ ${p.stallId} (${p.reaction})`));
+game.bus.on('cust:angry', (p) => log(`angry ${p.type}: ${p.why || p.reason || ''}`));
+game.bus.on('build:placed', (p) => log(`built ${p.id} −${p.cost}`));
+game.bus.on('build:denied', (p) => log(`denied: ${p.why}`));
+game.bus.on('eco:denied', (p) => log(`denied: ${p.why} ${p.id || ''}`));
+game.bus.on('eco:season', (r) => log(`SEASON ${r.season} ★${r.stars} income ${r.income} exp ${r.expenses} debt ${r.debt}`));
+game.bus.on('eco:event', (p) => log(`event: ${p.id || p.eventId || ''}`));
+game.bus.on('sandbox:hired', (p) => log(`hired ${p.type} −${p.cost}`));
+game.bus.on('sandbox:ability', (p) => log(`${p.name}: ${p.effect}`));
+game.bus.on('eco:win', () => log('★ THE LIGHTHOUSE IS LIT — you win')); game.bus.on('eco:lose', (p) => log(`lost: ${p.reason}`));
+let acc = 0;
+game.add({ update: (dt) => {
+  acc += dt; if (acc < 0.25) return; acc = 0;
+  const s = sb.eco.state, st = game.stats, j = s.jars;
+  ecoEl.textContent = `season ${s.season}  day ${(s.day01 * 100).toFixed(0)}%   spark ${s.spark}   debt ${s.debt}   fog ${(s.fog01 * 100).toFixed(0)}%   rep ${s.reputation.toFixed(2)}\njars spend ${j.spend} save ${j.save} invest ${j.invest} protect ${j.protect}\nstalls ${s.stalls}  customers ${sb.cust.count}  paid ${sb.cust.totals.paid}  earned ${sb.cust.totals.sparkEarned}  helpers ${sb.helpers.length}\n${sb.build.mode === 'place' ? `PLACING stall_${STALL_PICKS[sb.pick]} — click/tap to place, R rotate, Esc` : `pick: stall_${STALL_PICKS[sb.pick]} (${sb.build.cost('stall_' + STALL_PICKS[sb.pick])})`}`;
+  statsEl.textContent = `fps ${st.fps} · calls ${st.drawCalls} · tris ${(st.triangles / 1000).toFixed(0)}k`;
+} });
+game.input.onWheel = (dir) => { game.camera.zoom = THREE.MathUtils.clamp(game.camera.zoom + dir * 0.1, 0.5, 2.2); };
+if (game.input.isTouch) document.body.classList.add('is-touch');
+setTimeout(() => sb.vfx.pop.show(sb.hero.root.position.clone().setY(1.9), 'Sandbox season — build & sell!', { color: '#FFA726', dur: 1.6, size: 1.1 }), 500);
+game.start();
+</script>
+</body>
+</html>
