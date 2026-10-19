@@ -24,6 +24,8 @@ import { makeEconomy, UPGRADES, pickEvent } from './systems/economyData.js';
 import { BuildSystem } from './systems/build.js';
 import { CustomerSystem } from './systems/customers.js';
 import { StorySystem } from './systems/story.js';
+import { Economy } from './systems/economy.js';
+import * as Save from './systems/save.js';
 
 export const SANDBOX_VERSION = '10B';
 export const STALL_PICKS = STALL_TYPES.slice(0, 9);          // keys 1–9 → stall types
@@ -340,11 +342,12 @@ export function createLumenGame(game, opts = {}) {
   installStart(lg);
   installSeasonLoop(lg);
   installMenu(lg);
+  installSave(lg);                                                                  // 10D: autosave + ui:start {mode:'continue'} + tutorial gates
 
   // ---- loop: UI clock + story clock + HUD day bar -------------------------------------------------------------------------
   lg.update = (dt, _g, dtReal) => {
     ui?.update?.(dtReal ?? dt);                                                       // UI animates even while the game is paused
-    if (lg.sb && !game.paused) { lg.story?.update?.(dt); emitTick(lg); }
+    if (lg.sb && !game.paused) { lg.story?.update?.(dt); emitTick(lg); lg.tut?.update?.(dt); }
   };
   game.add({ update: (dt, g, dtReal) => lg.update(dt, g, dtReal) });
   lg.destroy = () => { for (const f of offs) f(); offs.length = 0; lg.teardown?.(); };
@@ -364,7 +367,7 @@ function installStart(lg) {
     lg.teardown?.();
     lg.mode = mode === 'endless' ? 'endless' : 'story';
     const balance = lg.mode === 'endless' ? { ...(opts.balance || {}), winRequiresSeasons: false } : opts.balance;
-    const sb = lg.sb = createSandbox(game, { headless: !!opts.headless, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys });
+    const sb = lg.sb = createSandbox(game, { headless: !!opts.headless, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, starterStalls: lg._resuming ? false : undefined });
     if (lg.mode === 'endless') sb.updateScheduler = wrapNoScam(sb);                      // endless: events yes, Baron's deals no
     lg.story = (lg.mode === 'story' && opts.storyData) ? new StorySystem(sb.eco, { data: opts.storyData, bus, ledgerLinesBeforeReview: true, autoAdvance: !!opts.autoAdvance, lineGap: opts.lineGap }) : null;
     installRunWires(lg);
@@ -382,7 +385,7 @@ function installStart(lg) {
     destroySandbox(lg.sb); lg.sb = null;
     lg.pauseBy.clear(); lg.pause('none', false);
   };
-  lg._offs.push(bus.on('ui:start', (p) => { if (lg.state !== 'title') return; lg.start(p?.mode === 'continue' ? 'story' : p?.mode); }));
+  lg._offs.push(bus.on('ui:start', (p) => { if (lg.state !== 'title') return; if (p?.mode === 'continue' && lg.resume?.()) return; lg.start(p?.mode === 'continue' ? 'story' : p?.mode); }));
 }
 // P3 — pause menu + settings (7C): ui:restart → same mode from season 1 (10D will restart from its save point) · ui:title → teardown →
 // title · ui:settings quality → game.setQuality?.() / pixel ratio (11A owns presets; outline is already wired by 7C's onOutline).
@@ -489,6 +492,93 @@ function installSeasonLoop(lg) {
   };
   lg.toTitle = (why = 'menu') => { lg.teardown(); lg.setState('title'); if (ui?.title && !ui.title.isOpen) ui.title.show?.(); lg.pause('title', true); bus.emit('game:title', { why }); };
   function finale(lg2, outcome) { lg2.stats.finales++; showLedger(lg2.lastReport || lg2.sb?.eco.history.at(-1), { outcome }); }
+}
+
+// =====================================================================================================================
+// 10D — save / load + tutorial gates. Save = src/systems/save.js (pure). Autosave: after every eco:season report and on review → playing
+// (never per frame). ui:start {mode:'continue'} → lg.resume(): createSandbox(starterStalls:false) → Economy.deserialize state copied into the
+// live sb.eco (keeps the 10B bus wires) → build.load → StorySystem.deserialize (toasts fire once across reloads) → helpers re-hired for free →
+// HUD sync → 'playing' at the saved season's start. lose / back-to-title from a finished run → clear(). opts.storage overrides localStorage.
+export const SAVE_VERSION = Save.SAVE_VERSION;
+function installSave(lg) {
+  const { bus, ui, opts } = lg, on = (n, f) => lg._offs.push(bus.on(n, f));
+  const storage = opts.storage;
+  lg.save = {
+    snapshot: () => Save.snapshot(lg),
+    write: () => { const s = Save.snapshot(lg); if (!s) return false; const ok = Save.save(s, storage); if (ok) { lg.stats.saves = (lg.stats.saves || 0) + 1; bus.emit('game:saved', { season: lg.sb.eco.state.season, at: s.at }); } return ok; },
+    read: () => Save.load(storage), has: () => Save.hasSave(storage), clear: () => { const ok = Save.clear(storage); ui?.title?.setHasSave?.(false); return ok; },
+    exportText: () => Save.exportText(Save.load(storage) || Save.snapshot(lg)),
+    importText: (t) => { const s = Save.importText(t); if (!s) return false; Save.save(s, storage); ui?.title?.setHasSave?.(true); return true; },
+    describe: () => Save.describe(Save.load(storage)),
+  };
+  lg.resume = (snap = Save.load(storage)) => {
+    if (!snap) return false;
+    lg._resuming = true;
+    try { lg.start(snap.mode === 'endless' ? 'endless' : 'story'); } finally { lg._resuming = false; }
+    const sb = lg.sb; if (!sb) return false;
+    applySnapshot(lg, sb, snap);
+    bus.emit('game:resumed', { season: sb.eco.state.season, mode: lg.mode });
+    return true;
+  };
+  on('eco:season', () => { if (lg.sb && !lg.sb.eco.state.ended) lg.save.write(); });
+  on('game:state', (p) => { if (p.prev === 'review' && (p.state === 'playing' || p.state === 'endless')) lg.save.write(); });
+  on('game:endless', () => lg.save.write());
+  on('game:title', (p) => { if (p?.why === 'lose') lg.save.clear(); });
+  on('eco:lose', () => lg.save.clear());
+  on('game:start', () => { if (!lg._resuming) ui?.title?.setHasSave?.(lg.save.has()); });
+  on('ui:jar', (p) => { if (p?.pct) lg.jarPct = { ...p.pct }; });
+  installTutorialGates(lg);
+}
+// Put a snapshot onto a freshly started sandbox. Economy: deserialize into a throwaway, then copy state/ledger/history/pendingOffer so the
+// live instance keeps its bus + config (seasonSeconds etc.). Build: load() places silently at no cost. Helpers: re-hire without paying.
+function applySnapshot(lg, sb, snap) {
+  const { eco, build } = sb;
+  if (snap.eco) {
+    const e2 = Economy.deserialize(snap.eco, eco.config, { bus: null, events: eco.events, scams: eco.scams, upgrades: eco.upgrades });
+    eco.state = { ...eco.state, ...e2.state, day01: 0, ended: null }; eco.ledger = e2.ledger; eco.history = e2.history; eco.pendingOffer = null;
+    if (lg.mode === 'endless') eco.config.winRequiresSeasons = false;
+  }
+  if (Array.isArray(snap.build) && snap.build.length) { build.load(snap.build); eco.state.stalls = build.placed.size; sb.cust?.reroute?.(); }
+  if (snap.story && lg.story) { const s2 = StorySystem.deserialize(snap.story, eco, { data: lg.opts.storyData, bus: { on: () => () => {}, emit: () => {} } }); Object.assign(lg.story.state, s2.state); s2.destroy?.(); }
+  for (const id of snap.helpers || []) { const type = String(id).replace(/^helper_/, ''); if (HELPER_TYPES.includes(type) && !sb.helpers.some((h) => h.type === type)) { const paid = eco.spend; eco.spend = () => true; try { hireHelper(sb); } finally { eco.spend = paid; } } }
+  if (snap.hero && sb.hero?.root) { sb.hero.root.position.set(snap.hero.x, 0, snap.hero.z); lg.game.camera?.snapTo?.(sb.hero.root.position); }
+  if (snap.jars) { lg.jarPct = { ...snap.jars }; lg.ui?.jars?.setPct?.(snap.jars); }
+  lg.ui?.hud?.sync?.(eco.state); lg.ui?.jars?.setBalances?.(eco.state.jars); lg.ui?.build?.setSpark?.(eco.state.spark);
+  if (lg.story && lg.state === 'playing') lg.story.onSeasonStart?.(eco.state.season);   // 8B: no-op if this season's opening already played (saved mid-season); plays it if the save was taken at the review
+}
+
+// Tutorial gates (P2). 8B fires its 10 toasts from data/story.json on bus events (ui:start, build:placed, cust:paid, ui:jar:apply, eco:fog, …).
+// Three of them have no natural event in season 1, so 10D emits NUDGE events after the player has been idle on that step for a while — each
+// is a bus event 8B's `tutorial[].trigger` can name, and each fires at most once per run (StorySystem keeps toastsFired, which is saved):
+//   tut:move      hero walked > 2 u from spawn (replaces the ui:start toast timing: fires when the player actually moved)
+//   tut:build     12 s into season 1 with no stall placed by the player → "Press B to build"
+//   tut:jars      after the first sale, 15 s without an APPLY → "Set your jars"
+//   tut:endSeason day01 > 0.85 in season 1 → "the season ends soon — the Ledger shows how you did"
+//   tut:upgrade   season ≥ 2, 10 s in, spark ≥ upgrade cost, no upgrade yet → "stand by a stall, press U/⬆ to upgrade"
+// Gates only run in story mode, season ≤ 2, while playing and unpaused. They are observable as `lg.tut.fired` for check.mjs.
+export const TUTORIAL_GATES = ['tut:move', 'tut:build', 'tut:jars', 'tut:endSeason', 'tut:upgrade'];
+function installTutorialGates(lg) {
+  const { bus } = lg, on = (n, f) => lg._offs.push(bus.on(n, f));
+  const T = lg.tut = { fired: new Set(), t: 0, sinceSale: null, built: 0, applied: 0, upgraded: 0, sold: 0, spawn: null, enabled: lg.opts.tutorial !== false };
+  const fire = (name, extra = {}) => { if (T.fired.has(name)) return false; T.fired.add(name); bus.emit(name, { tutorial: true, ...extra }); return true; };
+  T.fire = fire;
+  on('game:start', () => { T.fired.clear(); T.t = 0; T.sinceSale = null; T.built = 0; T.applied = 0; T.upgraded = 0; T.sold = 0; T.spawn = null; });
+  on('game:resumed', () => { for (const id of lg.story?.state.toastsFired || []) T.fired.add(id); });   // resumed run: whatever 8B already showed counts as fired
+  on('build:placed', (p) => { if (!p?.silent) T.built++; });
+  on('build:upgraded', () => { T.upgraded++; });
+  on('cust:paid', () => { T.sold++; if (T.sinceSale == null) T.sinceSale = 0; });
+  on('ui:jar:apply', () => { T.applied++; });
+  T.update = (dt) => {
+    const sb = lg.sb; if (!T.enabled || !sb || lg.mode !== 'story' || lg.state !== 'playing' || lg.game.paused) return;
+    const s = sb.eco.state; if (s.season > 2) return;
+    T.t += dt; if (T.sinceSale != null) T.sinceSale += dt;
+    const h = sb.hero?.root?.position; if (h) { if (!T.spawn) T.spawn = { x: h.x, z: h.z }; else if (!T.fired.has('tut:move') && Math.hypot(h.x - T.spawn.x, h.z - T.spawn.z) > 2) fire('tut:move'); }
+    if (s.season === 1) {
+      if (T.t > 12 && T.built === 0) fire('tut:build');
+      if (T.sinceSale != null && T.sinceSale > 15 && T.applied === 0) fire('tut:jars');
+      if (s.day01 > 0.85) fire('tut:endSeason');
+    } else if (s.season === 2 && T.t > 10 && T.upgraded === 0 && s.spark >= 60) fire('tut:upgrade');
+  };
 }
 
 /** VFX stand-in for Node: every pool call is a no-op counter. */
