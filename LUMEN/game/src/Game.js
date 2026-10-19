@@ -301,6 +301,62 @@ function hireHelper(sb) {
   return h;
 }
 
+// =====================================================================================================================
+// 10C — THE GAME. `createLumenGame(game, { ui, story })` = state machine + UI ↔ systems glue on top of createSandbox().
+//   import { mountUI } from './ui/index.js'; import { createLumenGame } from './src/Game.js';
+//   const ui = mountUI(root, { bus: game.bus, … });  const lg = createLumenGame(game, { ui, storyData });  game.start();
+//   headless: createLumenGame(mockGame, { ui: mockUi, storyData, headless: true, seasonSeconds: 20 })   (tools/check.mjs --game)
+// States: 'title' → ('playing' ⇄ 'review') → 'ending' → 'endless' | 'title'.  Everything is driven by bus events:
+//   ui:start {mode}        title → build the sandbox (createSandbox) → playing. mode 'endless' → no story, no win gate.
+//   eco:season report      playing → review  (8B plays ledger lines first; `story:review` → ui.ledger.show(report))
+//   ui:continue {outcome}  review → playing ('season') · → endless ('win') · → title ('lose')
+//   eco:win / eco:lose     → ending (8B finale lines) → story:finale → endless | title
+//   ui:pause {on, by}      pause reasons are OR-ed (menu ∨ dialogue ∨ ledger ∨ title) into game.paused — the only place that touches it.
+// Nothing here edits a system; it only constructs, routes and owns `lg.state`.
+export const GAME_VERSION = '10C';
+export const GAME_STATES = ['title', 'playing', 'review', 'ending', 'endless'];
+export const ABILITY_KEYS = { KeyQ: 'coinMagnetDash', KeyW: 'bubbleShield', KeyE: 'growthStomp', KeyR: 'ledgerFlash', KeyF: 'haggleShout', KeyG: 'fogSweep' };   // = FINLIT[name].key (3B)
+
+/**
+ * @param {object} game  core Game (or the check.mjs mock)
+ * @param {{ui:object, storyData?:object, headless?:boolean, seasonSeconds?:number, seed?:number, autoStart?:boolean, mode?:string}} opts
+ *   ui = mountUI() result (or a mock with the same shape). storyData = parsed data/story.json (null → no story, sandbox pacing only).
+ */
+export function createLumenGame(game, opts = {}) {
+  const bus = game.bus, ui = opts.ui || null;
+  const lg = { game, ui, bus, opts, version: GAME_VERSION, state: 'title', mode: 'story', sb: null, story: null, pauseBy: new Set(), log: [], stats: { starts: 0, seasons: 0, reviews: 0, finales: 0 } };
+  const offs = []; lg._offs = offs; const on = (n, f) => offs.push(bus.on(n, f));
+
+  lg.setState = (s) => { if (!GAME_STATES.includes(s)) throw new Error('bad state ' + s); const prev = lg.state; lg.state = s; lg.log.push(`${prev} → ${s}`); bus.emit('game:state', { state: s, prev }); return s; };
+  // ---- pause: OR of every reason. game.paused is written ONLY here. --------------------------------------------------
+  lg.pause = (by, on_) => { if (on_) lg.pauseBy.add(by); else lg.pauseBy.delete(by); const p = lg.pauseBy.size > 0; if (game.paused !== p) { game.paused = p; bus.emit('game:paused', { paused: p, by: [...lg.pauseBy] }); } return p; };
+  on('ui:pause', (p) => lg.pause(p?.by || 'menu', !!p?.on));
+  on('ui:ledger:open', () => lg.pause('ledger', true)); on('ui:ledger:close', () => lg.pause('ledger', false));
+  on('ui:title:open', () => lg.pause('title', true)); on('ui:title:close', () => lg.pause('title', false));
+  if (ui?.title?.isOpen) lg.pause('title', true);
+
+  // ---- state machine (filled in by the following commits: start / season loop / story / ending) ------------------------
+  installStart(lg);
+  installSeasonLoop(lg);
+
+  // ---- loop: UI clock + story clock + HUD day bar -------------------------------------------------------------------------
+  lg.update = (dt, _g, dtReal) => {
+    ui?.update?.(dtReal ?? dt);                                                       // UI animates even while the game is paused
+    if (lg.sb && !game.paused) { lg.story?.update?.(dt); emitTick(lg); }
+  };
+  game.add({ update: (dt, g, dtReal) => lg.update(dt, g, dtReal) });
+  lg.destroy = () => { for (const f of offs) f(); offs.length = 0; lg.teardown?.(); };
+  bus.emit('game:ready', { version: GAME_VERSION });
+  return lg;
+}
+// eco:tick {day01, season} at ≤ 10 Hz for the HUD day bar (7A listens; 4A never emits it — integrator's job).
+function emitTick(lg) {
+  const s = lg.sb.eco.state, t = lg.game.time; if (lg._tickAt != null && t - lg._tickAt < 0.1) return; lg._tickAt = t;
+  lg.bus.emit('eco:tick', { day01: s.day01, season: s.season, spark: s.spark });
+}
+function installStart(lg) { /* next commit */ }
+function installSeasonLoop(lg) { /* next commit */ }
+
 /** VFX stand-in for Node: every pool call is a no-op counter. */
 export function mockVfx() {
   const n = { calls: 0 }; const noop = () => { n.calls++; };
