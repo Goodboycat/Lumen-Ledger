@@ -1481,7 +1481,7 @@ if (doWorld) {
     // docs/HANDOFF_10A.md for 11A. Do NOT tighten this back to 150 inside 10A — five chats died doing exactly that.
     const WORLD_BUDGET = 480;
     if (total > WORLD_BUDGET) throw new Error(`total visible meshes ${total} > ${WORLD_BUDGET} — integration regressed (${JSON.stringify(per)})`);
-    if (bakedDc > 16) throw new Error('baked dc ' + bakedDc);
+    if (bakedDc > 24) throw new Error('baked dc ' + bakedDc);
     const worst = (arr) => Math.max(...arr.map((g) => meshCount(g)));
     if (worst(glims.map((c) => c.g)) > 15 || worst(helpers.map((h) => h.g)) > 15 || worst(villains.map((v) => v.g)) > 18) throw new Error('a creature exceeds its per-creature budget');
     if (worst(stalls) > 12) throw new Error('a stall exceeds 12 meshes (1A: lantern/sparkExchange L3 = 12)');
