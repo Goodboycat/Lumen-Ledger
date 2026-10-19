@@ -4,6 +4,7 @@
 .ll-title { position: absolute; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; overflow: hidden; pointer-events: auto; opacity: 0; transition: opacity .26s ease-out, transform .32s ease-in; }
 .ll-title.open { display: flex; animation: ll-title-in .26s ease-out both; opacity: 1; }
 .ll-title.hide { display: flex; opacity: 0; transform: scale(1.04); pointer-events: none; }
+.ll-title.hide.gone { display: none; }   /* 11B: set 340 ms after hide() */
 @keyframes ll-title-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* backdrop: sky / sea / island silhouette */

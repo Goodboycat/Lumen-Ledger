@@ -90,13 +90,15 @@ export function mountTitle(root, opts = {}) {
     setSub(text) { sub.textContent = text; return api; },
     show(o = {}) {
       if (st.open) return api;
-      st.open = true; api.setHasSave(hasSaveFn()); if (o.sub) api.setSub(o.sub); wrap.classList.remove('hide'); wrap.classList.add('open');
+      st.open = true; api.setHasSave(hasSaveFn()); if (o.sub) api.setSub(o.sub); clearTimeout(st.goneT); wrap.classList.remove('hide', 'gone'); wrap.classList.add('open');
       wrap.classList.toggle('replay', !!o.replay); document.body && document.body.classList && document.body.classList.add('ll-title-open');
       bus.emit('ui:title:open', { hasSave: st.hasSave, replay: !!o.replay }); return api;
     },
     hide() {
       if (!st.open) return api;
       st.open = false; wrap.classList.add('hide'); wrap.classList.remove('open'); document.body && document.body.classList && document.body.classList.remove('ll-title-open');
+      // 11B: after the fade the layer is display:none (it stayed display:flex at opacity 0 → full-screen invisible layer, overflow in QA)
+      clearTimeout(st.goneT); st.goneT = setTimeout(() => { if (!st.open) wrap.classList.add('gone'); }, 340);
       bus.emit('ui:title:close', { mode: st.lastMode }); return api;
     },
     start,

@@ -89,7 +89,7 @@ export function mountDialogue(root, opts = {}) {
       clearTimeout(st.hideT); st.line = line; st.full = String(line.text || ''); st.shown = 0; st.acc = 0; st.typing = true;
       text.textContent = ''; text.classList.remove('done'); box.classList.add('typing');
       setSpeaker(line); renderChoices(line);
-      if (!st.open) { st.open = true; wrap.classList.remove('closing'); wrap.classList.add('open'); bus.emit('ui:dialogue:open', { line }); if (opts.pauseGame && !st.pauseEmitted) { st.pauseEmitted = true; bus.emit('ui:pause', { on: true, by: 'dialogue' }); } }
+      if (!st.open) { st.open = true; wrap.classList.remove('closing'); wrap.classList.add('open'); document.body && document.body.classList && document.body.classList.add('ll-dlg-open'); bus.emit('ui:dialogue:open', { line }); if (opts.pauseGame && !st.pauseEmitted) { st.pauseEmitted = true; bus.emit('ui:pause', { on: true, by: 'dialogue' }); } }
       return api;
     },
     queue(lines) { const arr = Array.isArray(lines) ? lines : [lines]; if (!st.open) { const first = arr.shift(); st.queue.push(...arr); if (first) api.say(first); } else st.queue.push(...arr); return api; },
@@ -115,7 +115,7 @@ export function mountDialogue(root, opts = {}) {
     },
     hide() {
       if (!st.open) return api; st.open = false; st.typing = false; st.queue = [];
-      wrap.classList.remove('open'); wrap.classList.add('closing'); st.hideT = setTimeout(() => wrap.classList.remove('closing'), 220);
+      wrap.classList.remove('open'); wrap.classList.add('closing'); document.body && document.body.classList && document.body.classList.remove('ll-dlg-open'); st.hideT = setTimeout(() => wrap.classList.remove('closing'), 220);
       bus.emit('ui:dialogue:close', {}); if (st.pauseEmitted) { st.pauseEmitted = false; bus.emit('ui:pause', { on: false, by: 'dialogue' }); }
       return api;
     },
