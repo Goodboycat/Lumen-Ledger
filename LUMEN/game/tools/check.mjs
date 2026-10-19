@@ -1216,7 +1216,41 @@ if (doGame) {
     step(); if (!ui.dialogue.isOpen || !game.paused || !/Season 1/.test(ev['story:line'][0].text)) throw new Error('S1 opening in dialogue: open ' + ui.dialogue.isOpen + ' paused ' + game.paused);
     const d1 = drain(); if (ui.dialogue.isOpen || game.paused) throw new Error('drain S1 opening: ' + d1 + ' lines, paused ' + game.paused);
     console.log(`  1. title (paused) → PLAY → sandbox ${m0} meshes + story · S1 opening ${d1} lines in the 7B box (paused by dialogue) · Enter ×${d1} → playing, unpaused  OK`);
-    // §2–5 below
+    // 2. seasons 1 → 3 by the clock: mid line → eco:season → ledger lines → story:review → ledger (paused) → CONTINUE → next opening → playing
+    const eco = lg.sb.eco; let mids = 0;
+    for (let s = 1; s <= 3; s++) {
+      let guard = 0; const lines0 = ev['story:line'].length;
+      while (eco.state.season === s && !ui.ledger.isOpen && guard++ < 45 * 30) { step(); if (ui.dialogue.isOpen) { if (eco.state.day01 > 0.4 && eco.state.day01 < 0.9) mids++; drain(); } }
+      if (!ui.ledger.isOpen) throw new Error(`S${s}: ledger never opened (season ${eco.state.season} day ${eco.state.day01.toFixed(2)} state ${lg.state})`);
+      if (lg.state !== 'review' || !game.paused || ui.dialogue.isOpen) throw new Error(`S${s}: review state ${lg.state} paused ${game.paused} dlg ${ui.dialogue.isOpen}`);
+      if ((ev['story:review'] || []).length !== s || ev['eco:season'].length !== s || ev['eco:season'][s - 1].season !== s) throw new Error(`S${s}: story:review ${ev['story:review']?.length} eco:season ${ev['eco:season'].length}`);
+      if (ev['story:line'].length - lines0 < 2) throw new Error(`S${s}: only ${ev['story:line'].length - lines0} story lines this season`);
+      ui.ledger.skip(); ui.ledger.continue();
+      if (ui.ledger.isOpen || ev['ui:continue'].length !== s || ev['ui:continue'][s - 1].outcome !== 'season' || ev['ui:continue'][s - 1].season !== s) throw new Error(`S${s}: CONTINUE → ${JSON.stringify(ev['ui:continue'].at(-1))}`);
+      if (lg.state !== 'playing' || eco.state.season !== s + 1) throw new Error(`S${s}: after continue state ${lg.state} season ${eco.state.season}`);
+      step(); if (!ui.dialogue.isOpen || !game.paused) throw new Error(`S${s + 1}: opening did not start (dlg ${ui.dialogue.isOpen})`); drain();
+      if (ui.dialogue.isOpen || game.paused) throw new Error(`S${s + 1}: opening not drained`);
+    }
+    if (mids < 3) throw new Error('mid-season lines ' + mids);
+    if (lg.stats.seasons !== 3 || lg.stats.reviews !== 3) throw new Error('stats ' + JSON.stringify(lg.stats));
+    console.log(`  2. S1→S3 by the clock (30 s/season): mid lines ×${mids} · eco:season → 8B ledger lines → story:review → ledger (review, paused) · CONTINUE ×3 → next opening → playing · season now ${eco.state.season} · ${ev['story:line'].length} lines total  OK`);
+    // 3. UI → systems while playing: build tray → stall placed + charged · jars APPLY → eco.allocate · ability gated by modal
+    eco.state.spark = 500; const spark0 = eco.state.spark, placed0 = lg.sb.build.placed.size;
+    bus.emit('ui:build', { action: 'select', id: 'stall_' + (await import(pathToFileURL(resolve('src/Game.js')).href)).STALL_PICKS[2] });
+    if (lg.sb.build.mode !== 'place') throw new Error('ui:build select → mode ' + lg.sb.build.mode);
+    bus.emit('ui:build', { action: 'rotate' }); lg.sb.build.moveTo(1, 1); bus.emit('ui:build', { action: 'confirm' });
+    if (lg.sb.build.placed.size !== placed0 + 1 || eco.state.spark >= spark0 || !ev['build:placed']) throw new Error(`ui:build confirm: placed ${lg.sb.build.placed.size} spark ${eco.state.spark}`);
+    bus.emit('ui:build', { action: 'cancel' }); if (lg.sb.build.mode === 'place') throw new Error('ui:build cancel');
+    const pouch = eco.state.spark, j0 = { ...eco.state.jars };
+    bus.emit('ui:jar:apply', { pct: { spend: 40, save: 30, invest: 20, protect: 10 } });
+    if (!ev['game:allocated'] || eco.state.spark >= pouch || eco.state.jars.save <= j0.save || eco.state.jars.protect <= j0.protect) throw new Error(`jars APPLY: spark ${pouch}→${eco.state.spark} jars ${JSON.stringify(eco.state.jars)}`);
+    const moved = ev['game:allocated'][0].moved; if (Math.abs(moved - Math.floor(pouch * 0.3) - Math.floor(pouch * 0.2) - Math.floor(pouch * 0.1)) > 1) throw new Error('jars moved ' + moved);
+    pressKey('Escape'); if (!ui.pause.isOpen || !game.paused || !ui.isModal()) throw new Error('Esc → pause menu');
+    if (lg.ability('coinMagnetDash') !== null) throw new Error('ability while paused should be refused');
+    pressKey('Escape'); if (ui.pause.isOpen || game.paused) throw new Error('Esc → resume');
+    run(1); if (!lg.ability('bubbleShield')) throw new Error(`ability while playing refused: hero ${lg.sb.hero.state}/${lg.sb.hero.currentMove?.name} cd ${JSON.stringify(lg.sb.cooldown)}`); run(2); if (!ev['sandbox:ability'] || !(lg.sb.shield.until > game.time)) throw new Error('ability did not resolve (sandbox:ability / shield)');
+    console.log(`  3. ui:build select/rotate/confirm → stall ${placed0}→${lg.sb.build.placed.size}, spark ${spark0}→${eco.state.spark + moved} · ui:jar:apply 40/30/20/10 → moved ${moved} into save/invest/protect · Esc → pause (modal, ability refused) → Esc resume → ability fired  OK`);
+    // §4–5 below
     console.log(`  game: ${frames} frames · states ${lg.log.join(' · ')}  OK`);
   } catch (err) { bad++; console.log('  game FAIL →', err.message); }
 }
