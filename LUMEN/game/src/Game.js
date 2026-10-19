@@ -401,7 +401,43 @@ function destroySandbox(sb) {
   game.followTarget = null;
 }
 function installRunWires(lg) { /* next commit */ }
-function installSeasonLoop(lg) { /* next commit */ }
+// Season loop on the bus (listeners live for the whole lg, they check lg.sb):
+//   eco:season report → 'review' (economy clock keeps running at 0 because the ledger/dialogue pause the game).
+//     story mode: 8B plays the ledger lines, then emits story:review → ui.ledger.show(report). No story → ledger.show at once.
+//   ui:continue {outcome:'season'} → 'playing' (8B starts the next opening itself) · 'win' → endless · 'lose' → title (7C re-shows it).
+//   eco:win → 'ending' (8B ending lines → story:finale {endless:true}) → ledger.show(last, {outcome:'win'}) → ui:continue → 'endless'.
+//   eco:lose → 'ending' → story:finale → ledger.show(last, {outcome:'lose'}) → TRY AGAIN → teardown → 'title'.
+function installSeasonLoop(lg) {
+  const { bus, ui } = lg, on = (n, f) => lg._offs.push(bus.on(n, f));
+  const showLedger = (report, o = {}) => { if (!report) return; lg.stats.reviews++; if (ui?.ledger?.show) ui.ledger.show(report, o); else bus.emit('ui:ledger:open', { season: report.season }); };
+  lg.lastReport = null; lg.pendingOutcome = null;
+  on('eco:season', (r) => {
+    if (!lg.sb) return; lg.lastReport = r; lg.stats.seasons++;
+    if (lg.sb.eco.state.ended) return;                                                   // win/lose follow → ending path below
+    lg.setState('review');
+    if (!lg.story) showLedger(r, { outcome: 'season' });                                // 8B emits story:review after its ledger lines
+  });
+  on('story:review', (p) => { if (lg.state === 'review') showLedger(p?.report || lg.lastReport, { outcome: 'season' }); });
+  on('eco:win', () => { if (!lg.sb) return; lg.pendingOutcome = 'win'; lg.setState('ending'); if (!lg.story) finale(lg, 'win'); });
+  on('eco:lose', () => { if (!lg.sb) return; lg.pendingOutcome = 'lose'; lg.setState('ending'); if (!lg.story) finale(lg, 'lose'); });
+  on('story:finale', (p) => { if (lg.state === 'ending') finale(lg, p?.outcome || lg.pendingOutcome || 'win'); });
+  on('ui:continue', (p) => {
+    const out = p?.outcome || 'season';
+    if (out === 'season') { if (lg.state === 'review') lg.setState(lg.mode === 'endless' ? 'endless' : 'playing'); }
+    else if (out === 'win') { lg.goEndless(); }
+    else if (out === 'lose') { lg.toTitle('lose'); }
+  });
+  // win → keep the island, drop the win gate, scams off, no more story (8B goes quiet after the finale), state 'endless'
+  lg.goEndless = () => {
+    const sb = lg.sb; if (!sb) return lg.setState('title');
+    lg.mode = 'endless'; sb.eco.config.winRequiresSeasons = false; sb.eco.state.ended = null; sb.eco.state.day01 = 0;
+    sb.updateScheduler = wrapNoScam(sb); lg.stats.finales++;
+    ui?.hud?.setSeason?.(sb.eco.state.season, 0);
+    lg.setState('endless'); bus.emit('game:endless', { season: sb.eco.state.season });
+  };
+  lg.toTitle = (why = 'menu') => { lg.teardown(); lg.setState('title'); if (ui?.title && !ui.title.isOpen) ui.title.show?.(); lg.pause('title', true); bus.emit('game:title', { why }); };
+  function finale(lg2, outcome) { lg2.stats.finales++; showLedger(lg2.lastReport || lg2.sb?.eco.history.at(-1), { outcome }); }
+}
 
 /** VFX stand-in for Node: every pool call is a no-op counter. */
 export function mockVfx() {

@@ -29,7 +29,7 @@ export function mountUI(root, opts = {}) {
   const ui = { version: UI_VERSION, root, bus, panels: [] };
   const add = (name, panel) => { ui[name] = panel; ui.panels.push(panel); return panel; };
 
-  if (opts.title !== false) add('title', mountTitle(root, { bus, hasSave: opts.hasSave || false, version: opts.version || 'jam build', autoShow: opts.autoShowTitle !== false }));
+  if (opts.title !== false) add('title', mountTitle(root, { bus, hasSave: opts.hasSave || false, version: opts.version || 'jam build', autoShow: opts.autoShowTitle !== false, showOnLose: false }));   // 10C shows the title itself after the lose ledger (TRY AGAIN)
   add('hud', mountHUD(root, { bus, stats: opts.stats || null, seasonsToWin, selfDrive: false }));
   add('jars', mountJars(root, { bus, pct: opts.jarPct }));
   add('build', mountBuildMenu(root, { bus, catalog: opts.catalog || {}, spark: opts.spark || 0, categories: opts.categories || ['stall', 'decor', 'nature'], noHotkey: !!opts.noBuildHotkey }));
