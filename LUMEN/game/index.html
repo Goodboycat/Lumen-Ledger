@@ -50,6 +50,7 @@ import { PROP_CATALOG } from './src/assets/props.js';
 import { mountUI } from './ui/index.js';
 import { createLumenGame, GAME_VERSION } from './src/Game.js';
 import * as Save from './src/systems/save.js';
+import { createAudio } from './src/core/Audio.js';
 
 const root = document.getElementById('game-root');
 const errEl = document.getElementById('boot-error');
@@ -74,6 +75,13 @@ try {
   });
   const lg = createLumenGame(game, { ui, storyData, seasonSeconds, seed: +params.get('seed') || undefined, debugKeys: params.has('debug') });
   window.ui = ui; window.lg = lg; window.sb = () => lg.sb; window.eco = () => lg.sb?.eco;
+  // 12: audio — bus→SFX map + music; AudioContext is created only inside the first gesture (bus 'input:first' below). Missing
+  // Ludo.ai files fall back to the manifest's synth sketches, so the build is never silent. Volumes follow the 7C settings sliders.
+  const audio = createAudio({ bus: game.bus, settings: ui.pause?.settings });
+  window.audio = audio;
+  // the title opened before the manifest arrived → queue its music now (plays once 'input:first' unlocks the context)
+  audio.load('./audio/manifest.json').then(() => { if (ui.title?.isOpen && !audio.state.currentMusic) audio.music('title'); }).catch(() => {});
+  if (params.has('mute')) audio.setVolume({ sfx: 0, music: 0 });                           // ?mute (QA / trailer capture)
   // 10D: save slot for the Flutter WebView (14) — copy the text out before storage is cleared, paste it back in: LUMEN1:<base64>
   window.lumenSave = { export: () => lg.save.exportText(), import: (t) => lg.save.importText(t), clear: () => lg.save.clear(), has: () => lg.save.has(), describe: () => lg.save.describe() };
   if (params.has('import')) lg.save.importText(decodeURIComponent(params.get('import')));   // ?import=LUMEN1:… (WebView hand-off)
