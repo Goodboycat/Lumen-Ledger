@@ -1250,7 +1250,35 @@ if (doGame) {
     pressKey('Escape'); if (ui.pause.isOpen || game.paused) throw new Error('Esc → resume');
     run(1); if (!lg.ability('bubbleShield')) throw new Error(`ability while playing refused: hero ${lg.sb.hero.state}/${lg.sb.hero.currentMove?.name} cd ${JSON.stringify(lg.sb.cooldown)}`); run(2); if (!ev['sandbox:ability'] || !(lg.sb.shield.until > game.time)) throw new Error('ability did not resolve (sandbox:ability / shield)');
     console.log(`  3. ui:build select/rotate/confirm → stall ${placed0}→${lg.sb.build.placed.size}, spark ${spark0}→${eco.state.spark + moved} · ui:jar:apply 40/30/20/10 → moved ${moved} into save/invest/protect · Esc → pause (modal, ability refused) → Esc resume → ability fired  OK`);
-    // §4–5 below
+    // 4. WIN: fake the last season being over (season 10, fog 0, debt 0) → endSeason → eco:win → 'ending' → 8B ending lines → story:finale
+    //    → ledger outcome 'win' (ENDLESS MODE ▸) → click → 'endless': island kept, winRequiresSeasons off, scams refused, clock ticking
+    run(2); eco.state.season = 10; eco.state.day01 = 0.99; eco.state.fog01 = 0; eco.state.debt = 0; eco.state.spark = Math.max(eco.state.spark, 50);
+    const r10 = eco.endSeason(); if (!r10 || eco.state.ended !== 'win') throw new Error('forced win: ended=' + eco.state.ended + ' fog ' + eco.state.fog01 + ' debt ' + eco.state.debt);
+    if (lg.state !== 'ending' || lg.pendingOutcome !== 'win') throw new Error('eco:win → state ' + lg.state);
+    if (ui.ledger.isOpen) throw new Error('ledger opened before the ending lines');
+    step(); if (!ui.dialogue.isOpen) throw new Error('ending lines did not start'); const dEnd = drain();
+    if (!ui.ledger.isOpen || ui.ledger.el.querySelector('.ll-ledger-continue').textContent.indexOf('ENDLESS') < 0 || !/Lighthouse/.test(ui.ledger.el.textContent)) throw new Error('win ledger: open ' + ui.ledger.isOpen + ' btn ' + ui.ledger.el.querySelector('.ll-ledger-continue').textContent);
+    const mWin = meshes(); ui.ledger.skip(); ui.ledger.continue();
+    if (lg.state !== 'endless' || lg.mode !== 'endless' || !ev['game:endless'] || eco.config.winRequiresSeasons !== false || eco.state.ended) throw new Error(`ENDLESS → state ${lg.state} mode ${lg.mode} wrs ${eco.config.winRequiresSeasons} ended ${eco.state.ended}`);
+    if (ui.ledger.isOpen || game.paused || meshes() !== mWin || !lg.sb) throw new Error('endless: island not kept / still paused');
+    const d0 = eco.state.day01; run(3); if (!(eco.state.day01 > d0)) throw new Error('endless clock not running'); drain();
+    eco.offerScam('zeroInterestLoan'); lg.sb.updateScheduler(); if (eco.pendingOffer) throw new Error('endless: scam not auto-refused');
+    console.log(`  4. forced S10 win → eco:win → ending · ${dEnd} ending lines (Enter ×${dEnd}) → story:finale → ledger "Lighthouse is lit" ENDLESS MODE ▸ → endless (mode endless, win gate off, ${mWin} meshes kept, clock running, Too-Good Deal auto-refused)  OK`);
+    // 5. LOSE on a fresh run: title via pause menu → PLAY → fog 1.0 → endSeason → eco:lose → ending lines → ledger "Fogged out" TRY AGAIN ▸ → title,
+    //    sandbox torn down (scene back to the UI-less mesh count) → PLAY again → fresh season 1 · ui:restart → same mode from S1
+    bus.emit('ui:title'); if (lg.state !== 'title' || lg.sb || !ui.title.isOpen || !game.paused || !ev['game:title']) throw new Error('ui:title → ' + lg.state);
+    const mEmpty = meshes(); if (mEmpty > 2) throw new Error('teardown left ' + mEmpty + ' meshes in the scene');
+    ui.title.buttons.story.click(); step(); drain(); const eco2 = lg.sb.eco; if (eco2 === eco || eco2.state.season !== 1 || lg.state !== 'playing') throw new Error('second PLAY: season ' + eco2.state.season);
+    eco2.state.fog01 = 1; eco2.state.day01 = 0.99; eco2.endSeason(); if (eco2.state.ended !== 'lose' || lg.state !== 'ending') throw new Error('forced lose → ' + eco2.state.ended + ' ' + lg.state);
+    step(); const dLose = drain(); if (!ui.ledger.isOpen || !/Fogged out/.test(ui.ledger.el.textContent) || ui.ledger.el.querySelector('.ll-ledger-continue').textContent.indexOf('TRY AGAIN') < 0) throw new Error('lose ledger');
+    ui.ledger.skip(); ui.ledger.continue();
+    if (lg.state !== 'title' || lg.sb || !ui.title.isOpen || !game.paused || ui.ledger.isOpen) throw new Error(`TRY AGAIN → state ${lg.state} title ${ui.title.isOpen} paused ${game.paused}`);
+    if (meshes() !== mEmpty) throw new Error('lose teardown meshes ' + meshes());
+    ui.title.buttons.story.click(); step(); drain(); const eco3 = lg.sb.eco; if (eco3.state.season !== 1 || eco3.state.ended) throw new Error('third run not fresh');
+    bus.emit('ui:restart'); if (lg.sb.eco === eco3 || lg.sb.eco.state.season !== 1 || lg.state !== 'playing' || lg.mode !== 'story') throw new Error('ui:restart → ' + lg.state); step(); drain();
+    if (lg.stats.starts !== 4 || lg.stats.finales < 2) throw new Error('stats ' + JSON.stringify(lg.stats));
+    lg.destroy(); ui.destroy(); if (lg.sb || meshes() !== mEmpty || game.systems.length > 1) throw new Error('destroy: systems ' + game.systems.length + ' meshes ' + meshes());
+    console.log(`  5. ui:title → title (teardown → ${mEmpty} meshes) → PLAY → fresh S1 → forced fog loss → ${dLose} ending lines → ledger "Fogged out" TRY AGAIN ▸ → title → PLAY → S1 · ui:restart → new sandbox S1 · ${lg.stats.starts} starts · lg.destroy + ui.destroy clean  OK`);
     console.log(`  game: ${frames} frames · states ${lg.log.join(' · ')}  OK`);
   } catch (err) { bad++; console.log('  game FAIL →', err.message); }
 }

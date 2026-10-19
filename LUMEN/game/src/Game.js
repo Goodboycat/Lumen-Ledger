@@ -408,9 +408,11 @@ function destroySandbox(sb) {
   game.systems = game.systems.filter((s) => s !== sb._system && s !== sb.vfx);
   if (sb.island?.group) game.scene.remove(sb.island.group);
   if (sb.hero?.root) game.scene.remove(sb.hero.root);
+  for (const p of Object.values(sb.hero?.props || {})) if (p?.parent === game.scene) game.scene.remove(p);   // 3A coin + 3B magnetCoins/rings/arc live in world space
   if (sb.coinMesh) game.scene.remove(sb.coinMesh);
   for (const h of sb.helpers || []) game.scene.remove(h.g);
   for (const c of sb.cust?.active || []) if (c.root) game.scene.remove(c.root);
+  for (const list of sb.cust?.pool?.values?.() || []) for (const c of list) if (c.root?.parent) c.root.parent.remove(c.root);   // pooled (hidden) Glimmers too
   for (const e of sb.build?.placed?.values?.() || []) if (e.group?.parent) e.group.parent.remove(e.group);
   game.followTarget = null;
 }
@@ -492,7 +494,8 @@ function installSeasonLoop(lg) {
 /** VFX stand-in for Node: every pool call is a no-op counter. */
 export function mockVfx() {
   const n = { calls: 0 }; const noop = () => { n.calls++; };
-  const pool = { burst: noop, ring: noop, show: noop, emit: noop, stream: noop, hide: noop, push: noop, pulse: noop, flash: noop, setCoverage: noop, coverage: 0 };
+  // the fallback is a FUNCTION that also carries the pool methods, so both `vfx.fogRecede?.()` (9B win hook) and `vfx.pop.show()` work headless
+  const pool = Object.assign(() => { n.calls++; return null; }, { burst: noop, ring: noop, show: noop, emit: noop, stream: noop, hide: noop, push: noop, pulse: noop, flash: noop, setCoverage: noop, coverage: 0 });
   return new Proxy({ _counts: n, fog: pool, coinFly: noop, debtPulse: noop, pop: pool, dust: pool, sparks: pool }, { get: (t, k) => (k in t ? t[k] : (k === 'then' ? undefined : pool)) });
 }
 
