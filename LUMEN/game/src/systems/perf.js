@@ -172,6 +172,21 @@ export class PixelRatioGovernor {
     if (this.index < 0) this.index = this.steps.length - 1;
   }
   get ratio() { return Math.min(this.cap, this.steps[this.index]); }
+  /** Feed real seconds per frame; reads game.stats.fps (Core Game updates it every 0.5 s). */
+  update(dtReal, fps = this.game.stats?.fps) {
+    if (!this.enabled || !fps) return this.ratio;
+    if (fps < this.low) { this.lowT += dtReal; this.highT = 0; } else if (fps > this.high) { this.highT += dtReal; this.lowT = 0; } else { this.lowT = this.highT = 0; }
+    if (this.lowT >= this.lowS && this.index < this.steps.length - 1) { this.index++; this.lowT = 0; this._apply('drop'); }
+    else if (this.highT >= this.highS && this.index > 0 && this.steps[this.index - 1] <= this.cap + 1e-6) { this.index--; this.highT = 0; this._apply('raise'); }
+    return this.ratio;
+  }
+  _apply(why) {
+    this.changes++; this.last = why;
+    const r = this.game.renderer; if (r && r.setPixelRatio) { r.setPixelRatio(this.ratio); this.game.resize?.(); }
+    this.game.bus?.emit?.('perf:pixelRatio', { ratio: this.ratio, why, fps: this.game.stats?.fps });
+  }
+  /** Back to the quality cap. */
+  dispose() { this.index = Math.max(0, this.steps.findIndex((s) => s <= this.cap + 1e-6)); if (this.changes) this._apply('reset'); }
 }
 
 /** Unique geometries referenced by visible-or-not meshes under `root` (cheap memory-growth probe for P3). */
