@@ -43,10 +43,15 @@ export function mergeGroup(root, opts = {}) {
     let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
     _m.multiplyMatrices(inv, o.matrixWorld);
     g.applyMatrix4(_m);
-    const p = g.attributes.position, n = g.attributes.normal;
-    _c.copy(mat.color || 0xffffff);
+    const p = g.attributes.position, n = g.attributes.normal, vc = g.attributes.color;
     const col = new Float32Array(p.count * 3);
-    for (let i = 0; i < p.count; i++) { col[i * 3] = _c.r; col[i * 3 + 1] = _c.g; col[i * 3 + 2] = _c.b; }
+    if (vc && mat.vertexColors) {
+      // 11A perf: re-merging an already-merged (vertex-colored) mesh keeps its colors instead of painting it white
+      for (let i = 0; i < p.count; i++) { col[i * 3] = vc.getX(i); col[i * 3 + 1] = vc.getY(i); col[i * 3 + 2] = vc.getZ(i); }
+    } else {
+      _c.copy(mat.color || 0xffffff);
+      for (let i = 0; i < p.count; i++) { col[i * 3] = _c.r; col[i * 3 + 1] = _c.g; col[i * 3 + 2] = _c.b; }
+    }
     b.pos.push(p.array); b.nor.push(n ? n.array : new Float32Array(p.count * 3)); b.col.push(col); b.count += p.count;
     g.dispose();
   });
