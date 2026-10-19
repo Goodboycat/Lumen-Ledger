@@ -9,6 +9,7 @@
 //   node tools/check.mjs --vfx                → 9A src/vfx/pack1.js (+ 9B pack2.js if present): installs on a mock VFX/scene, fires every effect, steps 3 s headless, every pool drains, no NaN, ≤ 1 dc per pool
 //   node tools/check.mjs --ui                 → 7A/7B/7C DOM UI: mounts ui/*.js on tools/domshim.mjs, fires bus events, clicks, reads text (7A hud/jars/build · 7B ledger/dialogue/toast)
 //   node tools/check.mjs --sandbox            → 10B src/Game.js createSandbox headless (mock game, mock renderer): 3 starter stalls + 1 built, wave, 2 seasons
+//   node tools/check.mjs --game               → 10C src/Game.js createLumenGame + ui/index.js mountUI on domshim: title → PLAY → S1 opening → … → S3 ledger → continue; win → endless; lose → title
 //                                              accelerated (seasonSeconds 30) → 2 LedgerReports no NaN, 6 abilities touch the economy, H hires a helper, event + scam scheduled
 //   node tools/check.mjs src/assets/foo.js    → import just these files
 // Works with no Playwright, no Chromium, no GPU. Three.js r160 runs in Node for geometry/materials.
@@ -35,6 +36,7 @@ const doStory = args.includes('--story');          // 8A story.json data (pure J
 const doUI = args.includes('--ui');                // 7A/7B/7C DOM UI on a tiny DOM shim (tools/domshim.mjs)
 const doVFX = args.includes('--vfx');
 const doSandbox = args.includes('--sandbox');      // 10B integrated systems sandbox (headless createSandbox: economy + build + customers + abilities + helpers, 2 seasons)
+const doGame = args.includes('--game');            // 10C the whole game headless: real UI (domshim) + real story + real sandbox driven by createLumenGame's state machine
 const doWorld = args.includes('--world');          // 10A integrated world: bakeStatic batches + Island v2 + every content pack placed headless (mirrors demo_world.html), counts meshes ≤ budget              // 9A/9B VFX packs: installPack1/installPack2 on a mock VFX+scene, fire every effect, step headless, check pools drain, 0 NaN, draw calls
 let files = args.filter((a) => !a.startsWith('--'));
 if (!files.length) { files = []; (function walk(d) { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (p.endsWith('.js') && !p.endsWith('main.js')) files.push(p); } })('src'); }  // main.js is the DOM entry; skipped
@@ -1173,6 +1175,50 @@ if (doSandbox) {
     const ms = performance.now() - t0;
     console.log(`  createSandbox: 4 zones · 3 starter + 1 built stalls (B/1-9/R/confirm/Esc) · ${meshes} meshes at start · 2 auto seasons + E → 3 reports no NaN · ${ev['cust:paid'].length} sales · events ${ev['eco:event'].map((e) => e.id).join('/')} · scam offered+expired · 6 abilities: magnet +tips, haggle ${[...sb.haggle.values()].reduce((a, h) => a + h.n, 0)} charges, growth ×${sb.growth.mul.toFixed(2)}, ${fogEff.effect}, shield absorbed ${ev['eco:absorbed'][0].id}, ledgerFlash refused · H hired ${h.type} · ${frames} frames in ${ms.toFixed(0)} ms  OK`);
   } catch (err) { bad++; console.log('  sandbox FAIL →', err.message); }
+}
+if (doGame) {
+  // 10C: the real game page minus the renderer. mountUI (7A/7B/7C on tools/domshim.mjs) + StorySystem (8B, data/story.json) + createSandbox (10B)
+  // glued by createLumenGame. The walk clicks the DOM exactly like a player: PLAY → dialogue Enter → seasons tick (30 s each) → ledger CONTINUE …
+  //   1. title open → game.paused · PLAY → sandbox + S1 opening line in the dialogue box (still paused by dialogue) · Enter drains → playing, unpaused
+  //   2. season 1..3: mid line @0.5 · eco:season → ledger lines → story:review → ledger.show → CONTINUE → S(n+1) opening → playing
+  //   3. build via ui:build → stall placed + charged · jars APPLY → eco.allocate · ability Q while modal = refused, while playing = fired
+  //   4. forced eco:win → ending lines → story:finale → ledger outcome win → ENDLESS → state endless, scams off, clock running
+  //   5. forced eco:lose (new run) → ledger lose → TRY AGAIN → title shown, sandbox torn down (scene meshes back to 0), restart → fresh run
+  console.log('\nGAME (10C):');
+  try {
+    const { installDomShim, pressKey } = await import(pathToFileURL(resolve('tools/domshim.mjs')).href); installDomShim();
+    const THREE = await import(pathToFileURL(resolve('vendor/three.module.js')).href);
+    const { SequencePlayer, HitStop } = await import(pathToFileURL(resolve('src/anim/Sequencer.js')).href);
+    const { EventBus } = await import(pathToFileURL(resolve('src/core/EventBus.js')).href);
+    const { tweens } = await import(pathToFileURL(resolve('src/anim/Tween.js')).href);
+    const { createLumenGame, GAME_STATES } = await import(pathToFileURL(resolve('src/Game.js')).href);
+    const { mountUI } = await import(pathToFileURL(resolve('ui/index.js')).href);
+    const { PROP_CATALOG } = await import(pathToFileURL(resolve('src/assets/props.js')).href);
+    const { readFileSync } = await import('node:fs'); const storyData = JSON.parse(readFileSync(resolve('data/story.json'), 'utf8'));
+    const bus = new EventBus(); const ev = {}; for (const n of ['game:state', 'game:paused', 'game:start', 'story:line', 'story:review', 'ui:continue', 'eco:season', 'game:endless', 'game:title', 'game:allocated', 'build:placed', 'sandbox:ability', 'eco:scam']) bus.on(n, (p) => { (ev[n] ??= []).push(p); });
+    const game = { scene: new THREE.Scene(), bus, sequences: new SequencePlayer(), tweens, hitStop: new HitStop(), input: { pointerWorld: new THREE.Vector3(), hasPointerWorld: false, move: new THREE.Vector2(), joystick: new THREE.Vector2(), actions: {}, pressed: () => false, press() {} }, camera: { zoom: 1, shake() {} }, time: 0, timeScale: 1, paused: false, followTarget: null, systems: [], stats: { fps: 60, drawCalls: 0 }, add(s) { this.systems.push(s); return s; }, hitstop() {} };
+    const root = document.body;
+    const ui = mountUI(root, { bus, stats: () => game.stats, input: game.input, catalog: PROP_CATALOG, seasonsToWin: 10, touch: false, version: 'check' });
+    const lg = createLumenGame(game, { ui, storyData, headless: true, seasonSeconds: 30, seed: 3 });
+    const dt = 1 / 30; let frames = 0;
+    const step = () => { game.time += dt; game.sequences.update(dt); game.tweens.update(dt); for (const s of game.systems) s.update?.(game.paused ? 0 : dt, game, dt); frames++; };
+    const run = (sec) => { for (let i = 0; i < sec * 30; i++) step(); };
+    const meshes = () => { let n = 0; game.scene.traverse((o) => { if (o.isMesh || o.isInstancedMesh) n++; }); return n; };
+    /** drain the dialogue box like a player hammering Enter (skip typewriter → advance), max 40 presses */
+    const drain = () => { let n = 0; while (ui.dialogue.isOpen && n < 40) { if (ui.dialogue.line?.choices) ui.dialogue.choose(1); else { ui.dialogue.skip(); ui.dialogue.advance(); } step(); n++; } return n; };
+    // 1. title → PLAY
+    if (lg.state !== 'title' || !ui.title.isOpen || !game.paused) throw new Error('title: state ' + lg.state + ' open ' + ui.title.isOpen + ' paused ' + game.paused);
+    if (GAME_STATES.length !== 5) throw new Error('GAME_STATES');
+    run(1); if (lg.sb) throw new Error('sandbox before PLAY');
+    ui.title.buttons.story.click();
+    if (lg.state !== 'playing' || !lg.sb || !lg.story || ui.title.isOpen) throw new Error('PLAY → ' + lg.state);
+    const m0 = meshes(); if (m0 < 20) throw new Error('scene meshes after start ' + m0);
+    step(); if (!ui.dialogue.isOpen || !game.paused || !/Season 1/.test(ev['story:line'][0].text)) throw new Error('S1 opening in dialogue: open ' + ui.dialogue.isOpen + ' paused ' + game.paused);
+    const d1 = drain(); if (ui.dialogue.isOpen || game.paused) throw new Error('drain S1 opening: ' + d1 + ' lines, paused ' + game.paused);
+    console.log(`  1. title (paused) → PLAY → sandbox ${m0} meshes + story · S1 opening ${d1} lines in the 7B box (paused by dialogue) · Enter ×${d1} → playing, unpaused  OK`);
+    // §2–5 below
+    console.log(`  game: ${frames} frames · states ${lg.log.join(' · ')}  OK`);
+  } catch (err) { bad++; console.log('  game FAIL →', err.message); }
 }
 if (doWorld) {
   // 10A integrated world: real Three in Node. (1) src/assets/props/bake.js: bakeStatic merges N placed props into ≤ 4 meshes
