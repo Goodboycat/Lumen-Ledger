@@ -1,7 +1,7 @@
 # HANDOFF 10C — Integrate UI + story + state machine (IN PROGRESS 2026-10-19)
 
 ## Plan (= Missing list until each line is ticked)
-- [ ] `ui/index.js` — `mountUI(root, { bus, game, eco, catalog, seasonsToWin })` mounts 7A/7B/7C in the right order → `{ hud, jars, build, ledger, dialogue, toast, title, pause, touch, update(dt), destroy }`.
+- [x] `ui/index.js` — `mountUI(root, { bus, game, eco, catalog, seasonsToWin })` mounts 7A/7B/7C in the right order → `{ hud, jars, build, ledger, dialogue, toast, title, pause, touch, update(dt), destroy }`.
 - [ ] `src/Game.js` — `createLumenGame(game, opts)` (P1): state machine `title → playing → ledger → playing … → ending → endless`,
       pause reasons AND-ed (menu ∨ dialogue ∨ ledger ∨ title) → `game.paused`, `ui:start` builds the sandbox via `createSandbox`.
 - [ ] Wire UI → systems: `ui:build {select/rotate/confirm/cancel/demolish/upgrade}` → `sb.build.*`, `ui:jar:apply {pct}` → `eco.allocate` from the pouch,
