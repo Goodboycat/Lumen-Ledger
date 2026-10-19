@@ -64,6 +64,9 @@ export function createDemoMode(lg, opts = {}) {
     const sb = lg.sb; if (!sb) { log('start: no sandbox'); return D; }
     D.rig.prevFollow = game.followTarget; D.rig.prevZoom = game.camera?.zoom ?? 1; D.rig.prevOffset = game.camera?.offset?.clone?.() || null;
     D.rig.target.copy(sb.hero.root.position); game.followTarget = D.rig.target;
+    // Foundation Input.update() rebuilds `move` from the keys at the top of every frame, BEFORE systems run; the autopilot must
+    // write after it and before HeroController reads it → wrap it (restored in stop). Headless rigs have no update(): steer runs in D.update.
+    const inp = game.input; if (inp && typeof inp.update === 'function' && !inp._demoWrapped) { const orig = inp.update; inp._demoOrig = orig; inp._demoWrapped = true; inp.update = function () { orig.call(this); D.steer(0); }; }
     D.state.running = true; D.state.elapsed = 0; D.state.shotIndex = -1;
     D.seq.play(D); bus.emit('demo:start', { shots: SHOTS.length, seconds: O.seconds });
     return D;
@@ -71,6 +74,7 @@ export function createDemoMode(lg, opts = {}) {
   D.stop = (why = 'stop') => {
     if (!D.state.running) return D;
     D.seq.stop(); D.state.running = false; D.release();
+    const inp = game.input; if (inp?._demoWrapped) { inp.update = inp._demoOrig; delete inp._demoOrig; inp._demoWrapped = false; }
     if (D.rig.prevFollow !== undefined) game.followTarget = D.rig.prevFollow || lg.sb?.hero?.root?.position || null;
     if (game.camera) { game.camera.zoom = D.rig.prevZoom; if (D.rig.prevOffset) game.camera.offset.copy(D.rig.prevOffset); }
     if (D.state.hudHidden) D.toggleHud(false);
@@ -82,7 +86,7 @@ export function createDemoMode(lg, opts = {}) {
     const dt = dtReal ?? _dt; D.state.elapsed += dt; D.state.shotElapsed += dt;
     D.seq.update(dt);                                     // real time: shots keep their length even while a modal pauses the sandbox
     D.autoAdvance(dt);
-    if (!game.paused) D.steer(dt);
+    if (!game.paused && !game.input?._demoWrapped) D.steer(dt);
   };
   D._system = game.add({ update: (dt, g, dtReal) => D.update(dt, g, dtReal) });
   D.destroy = () => { D.stop('destroy'); D.destroyDom?.(); const i = game.systems?.indexOf(D._system); if (i >= 0) game.systems.splice(i, 1); };
@@ -115,7 +119,33 @@ function installMarket(D) {
     return sb;
   };
 }
-function installRig(D) { D.lookAt = () => {}; D.walkTo = () => {}; D.steer = () => {}; D.release = () => {}; }
+// P1.2 — camera rig + Pip autopilot. The camera is the game's own GameCamera: it follows `game.followTarget` (we point it at our
+// own Vector3 `rig.target`) and reads `camera.zoom`. Each shot sets a dolly (`from` → `to`) and a zoom (`zoomFrom` → `zoomTo`) that
+// `D.cam(e)` interpolates with the shot's eased 0..1. A target of 'hero' tracks Pip live. Pip walks by writing the Foundation
+// `input.move` vector (screen-relative: +y = −z world) so the real HeroController locomotion, dust and squash all fire.
+function installRig(D) {
+  const { game, lg } = D, R = D.rig, _d = new THREE.Vector3();
+  const hero = () => lg.sb?.hero;
+  const resolveTo = (t) => (t === 'hero' ? hero()?.root.position : t);
+  D.lookAt = (to, zoom) => {                                           // called at shot start; `to` = Vector3-like {x,z} | 'hero'
+    R.from.copy(R.target); R.toRef = to; const p = resolveTo(to); if (p) R.to.set(p.x, 0, p.z);
+    R.zoomFrom = game.camera?.zoom ?? 1; R.zoomTo = zoom ?? R.zoomFrom;
+  };
+  D.cam = (e) => {                                                     // e = eased 0..1 from the shot phase
+    if (R.toRef === 'hero') { const p = hero()?.root.position; if (p) R.to.set(p.x, 0, p.z); }
+    R.target.lerpVectors(R.from, R.to, e);
+    if (game.camera) game.camera.zoom = R.zoomFrom + (R.zoomTo - R.zoomFrom) * e;
+  };
+  D.walkTo = (x, z, speed = 1) => { R.walk = { x, z, speed }; };     // Pip autopilot destination (world); null = stand
+  D.steer = (dt) => {
+    const h = hero(), inp = game.input; if (!h || !inp?.move) return;
+    if (!R.walk) { if (R.steering) { inp.move.set(0, 0); R.steering = false; } return; }
+    _d.set(R.walk.x - h.root.position.x, 0, R.walk.z - h.root.position.z);
+    if (_d.length() < 0.35) { R.walk = null; inp.move.set(0, 0); R.steering = false; D.bus.emit('demo:arrived', { x: h.root.position.x, z: h.root.position.z }); return; }
+    _d.normalize().multiplyScalar(R.walk.speed); inp.move.set(_d.x, -_d.z); R.steering = true;   // screen up = −z world
+  };
+  D.release = () => { R.walk = null; if (R.steering && game.input?.move) game.input.move.set(0, 0); R.steering = false; };
+}
 function installScript(D) { D.seq = new Sequence('demo'); D.fire = () => {}; }
 function installModals(D) { D.autoAdvance = () => {}; }
 function installDom(D) { D.toggleHud = () => {}; D.setCine = () => {}; }
