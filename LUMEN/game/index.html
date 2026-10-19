@@ -77,6 +77,16 @@ try {
     const perf = pf ? ` · dpr ${(pf.governor?.ratio ?? g.renderer?.getPixelRatio?.() ?? 1).toFixed(2)} · shadows ${pf.shadows?.count ?? pf.shadows?.mesh?.count ?? '—'}${pf.lod?.stats ? ` · lod ${pf.lod.stats.near}/${pf.lod.stats.mid}/${pf.lod.stats.far}` : ''}` : '';
     dbg.textContent = `fps ${s.fps} · calls ${s.drawCalls} · tris ${(s.triangles / 1000).toFixed(0)}k · ${lg.state}${e ? ` · S${e.season} ${(e.day01 * 100).toFixed(0)}% · spark ${e.spark} · fog ${(e.fog01 * 100).toFixed(0)}%` : ''}${perf}`; } });
 
+  // 11B P2.1: iOS/Android audio unlock — the FIRST user gesture emits `input:first` once (12 audio hooks it to create/resume its
+  // AudioContext inside the gesture; until then it may park a context on window.lumenAudioCtx and we resume it here).
+  {
+    let fired = false;
+    const unlock = () => { if (fired) return; fired = true; try { window.lumenAudioCtx?.resume?.(); } catch {} game.bus.emit('input:first', { touch: game.input.isTouch }); for (const t of ['pointerdown', 'touchend', 'keydown']) window.removeEventListener(t, unlock, true); };
+    for (const t of ['pointerdown', 'touchend', 'keydown']) window.addEventListener(t, unlock, { capture: true, passive: true });
+  }
+  // 11B P2.1: iOS Safari fires gesturestart for pinch even with user-scalable=no; Android double-tap zoom is killed by touch-action in base.css
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
+
   // ?autoplay (smoke / trailer): skip the title. ?endless: start in Endless.
   if (params.has('autoplay') || params.has('endless')) setTimeout(() => game.bus.emit('ui:start', { mode: params.has('endless') ? 'endless' : 'story' }), 300);
   game.start();
