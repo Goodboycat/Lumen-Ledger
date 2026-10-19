@@ -10,18 +10,18 @@
 Fixes: START_HERE rule 10 (checkpoint 25 %) + rule 11 (skeleton → Edit → wip.sh per method; HANDOFF first).
 
 ## Plan = Missing list (tick items off as they land; each item = one commit + push)
-- [ ] `src/Game.js` skeleton: `createSandbox(container, opts)` → island + VFX + hero + economy/build/customers constructed, update loop
-- [ ] world scenery: port the "place/free/take" helpers + landmarks + stall spots from demo_world (only what Build/Customers need)
-- [ ] debug keys: **B** build mode (enter current pick) · **1–9** pick stall type · **E** end season → LedgerReport to console
-- [ ] `demo_sandbox.html`: window.game, game.stats (fps · dc), help panel, 2 seasons without errors
+- [x] `src/Game.js` skeleton: `createSandbox(container, opts)` → island + VFX + hero + economy/build/customers constructed, update loop
+- [x] world scenery: port the "place/free/take" helpers + landmarks + stall spots from demo_world (only what Build/Customers need)
+- [x] debug keys: **B** build mode (enter current pick) · **1–9** pick stall type · **E** end season → LedgerReport to console
+- [x] `demo_sandbox.html`: window.game, game.stats (fps · dc), help panel, 2 seasons without errors
 - [ ] `check.mjs --sandbox`: headless createSandbox (mock renderer) → place 3 stalls → wave → run 2 seasons (150 s accelerated) → 2 reports, no NaN
 - [ ] P2: abilities → economy via bus: haggleShout → price boost on queued customers · coinMagnetDash → collect pending coins (earn)
       · growthStomp → stall baseMul pulse · bubbleShield → absorbs next event (protect) · fogSweep → eco.pushFog · ledgerFlash → reveal scam
-- [ ] P3: **H** hires next helper (eco.buyUpgrade helper_*) → HelperAnimator work loop at the nearest owned stall
+- [x] P3: **H** hires next helper (eco.buyUpgrade helper_*) → HelperAnimator work loop at the nearest owned stall
 - [ ] close: check ALL OK → this file Done/Measured → README row → remove 10B from Next → commit + push
 
 ## Done
-(nothing yet — see trail: `git log --oneline --grep="WIP 10B"`)
+- chat 3 (2026-10-19): verified headless (mock game, seasonSeconds 30): createSandbox → 3 starter stalls + 1 built → 2 seasons → 2 reports, hire → 1 helper, 2010 frames in 0.66 s, no throw. Remaining: P2 abilities glue, event/scam scheduler, check --sandbox, close.
 
 ## Measured
 —
