@@ -100,7 +100,61 @@ export class CreatureLOD {
     this.hyst = opts.hyst ?? 1;           // hysteresis in u (switch back only when 1 u closer)
     this.enabled = opts.enabled !== false;
     this.stats = { near: 0, mid: 0, far: 0 };
+    this.seen = new Set();
   }
+  /** Classify a root's meshes once: accessory hulls (kit/hat/tool/tail/cape/wings), body hulls, tiny flat bits. */
+  _classify(root) {
+    const acc = [], body = [], bits = [];
+    const ACC = /kit|hat|tool|tail|cape|wing|held|crate|scroll|sword|weapon|scarf/i;
+    const shell = root.userData.parts && root.userData.parts.shell;
+    root.traverse((o) => {
+      if (!o.isMesh) return;
+      if (o.userData.isOutline) {
+        // the hull of parts.shell is always the body (a fused Glimmer's shell lives inside the group named 'kit')
+        if (shell && o.parent === shell) { body.push(o); return; }
+        // otherwise walk up to the first named ancestor to decide if this hull belongs to an accessory
+        let a = o.parent, named = ''; while (a && a !== root) { if (a.name && a.name !== 'merged_toon' && a.name !== 'merged_body') { named = a.name; break; } a = a.parent; }
+        (ACC.test(named) ? acc : body).push(o);
+      } else if (o.material && o.material.isMeshBasicMaterial && !o.isInstancedMesh && o !== findShadow(root)) {
+        bits.push(o);        // eyes / mouth / core / glow — unlit flat bits (never the pooled shadow disc)
+      }
+    });
+    const lod = { acc, body, bits, tier: 0 };
+    root.userData.lod = lod;
+    return lod;
+  }
+  _apply(lod, tier) {
+    if (lod.tier === tier) return;
+    const accOn = tier < 1, allOn = tier < 2;
+    for (const h of lod.acc) h.visible = accOn;
+    for (const h of lod.body) h.visible = allOn;
+    for (const b of lod.bits) b.visible = allOn;
+    lod.tier = tier;
+  }
+  /** @param {Iterable<THREE.Object3D>} roots  creature roots (same list BlobShadows gets) */
+  update(roots) {
+    const st = this.stats; st.near = st.mid = st.far = 0;
+    const cp = this.camera.position;
+    for (const root of roots) {
+      if (!root) continue;
+      const lod = root.userData.lod || this._classify(root);
+      this.seen.add(root);
+      if (!this.enabled) { this._apply(lod, 0); st.near++; continue; }
+      _p.setFromMatrixPosition(root.matrixWorld);
+      const d = _p.distanceTo(cp);
+      // hysteresis: to go UP a tier you must pass the threshold; to come back DOWN you must be `hyst` closer
+      let tier = lod.tier;
+      if (tier === 0 && d > this.near) tier = 1;
+      if (tier === 1 && d > this.far) tier = 2;
+      if (tier === 2 && d < this.far - this.hyst) tier = 1;
+      if (tier === 1 && d < this.near - this.hyst) tier = 0;
+      this._apply(lod, tier);
+      if (tier === 0) st.near++; else if (tier === 1) st.mid++; else st.far++;
+    }
+    return st;
+  }
+  /** Restore every hull/bit we touched (level swap, teardown, settings "outline off" takes over). */
+  dispose() { for (const r of this.seen) if (r.userData.lod) { this._apply(r.userData.lod, 0); delete r.userData.lod; } this.seen.clear(); }
 }
 
 // ═══════════════════════════════════════════ PixelRatioGovernor ═══════════════════════════════════════════
