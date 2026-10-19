@@ -30,6 +30,34 @@
 ## 2. Page body
 ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
 
-(pitch, controls, lessons, FAQ, credits — filled in §2.1–§2.6 below)
+### 🪙 Lumen Ledger
+**Make FinLit Fun.** A cozy, toy‑like 3D market tycoon where every coin you earn must be given a jar before it gets a wish — and the island's purple **Debt Fog** shows you, live, what happens when it isn't.
+
+You are **Pip**, a young *Channeler* who inherits **Glowmarket**, a bankrupt island market, together with a 260‑Spark loan from **Baron Gilt, Lord of the Debt Fog** — at 20 % per season, *compounding*. Build stalls, sell bread, tea, lanterns and toys to the blob‑shaped **Glimmers** who arrive by boat, and route your **Spark** between four jars: **Spend · Save · Invest · Protect**. Save enough and the fog recedes; borrow more and it creeps across the grass toward your stalls.
+
+Every 150‑second **Season** ends in a one‑tap **Ledger Review**: 0–3 stars for *how* you earned, and one short lesson card. Dodge the Fog Collectors' "Too‑Good Deals" (every one has a tell), survive a Spark Storm or two, and push the fog off the island in ten seasons to relight the **Lighthouse**. Then **Endless** mode opens.
+
+No spreadsheets. The spreadsheet is the island.
+
+*~25 minutes for the story run · keyboard, mouse or touch · plays in the browser, nothing to install.*
+
+### How to play
+1. **Build** — press **B** (or the 🔨 button), pick a stall, walk the green ghost to a free tile, confirm. *Needs* stalls (Fruit, Bakery, Fish, Tea) sell volume; *wants* stalls (Flower Cart, Toy Box, Lantern Shop, Pottery, Cloth Weaver, Book Nook, Tool Smith) sell margin — but only when Glimmers have Spark left.
+2. **Sell** — Glimmers queue, browse and pay. Coins fly to Pip. Price near the fair price keeps them happy; 1.4× and they stomp off angry.
+3. **Split** — drag the four jar sliders (always 100 %) and tap **APPLY** before the season's income lands. Save ≥ 200 Spark is what pushes the fog back; Protect absorbs storm damage; Invest grows 8 % ± 4 %.
+4. **Review** — at the season bell, read your Ledger, collect stars, tap CONTINUE. One lesson per season, ten seasons, one lighthouse.
+
+### Controls
+| Action | Keyboard | Touch |
+|---|---|---|
+| Move Pip | WASD / arrows | left‑side virtual joystick |
+| Hammer / confirm | Space · J · Enter | **A** button |
+| Interact | E · F | **B** button |
+| Build menu | B | 🔨 button |
+| Abilities | Q W E R F G | ability tray |
+| Pause / settings | Esc · P | ⏸ in the HUD · Android back button |
+| Dialogue | Enter / click · 1–4 for choices | tap · choice buttons |
+
+**Six abilities, six money ideas:** Coin‑Magnet Dash (Q) *collect income promptly* · Bubble Shield (W) *emergency fund* · Growth Stomp (E) *compound growth* · Ledger Flash (R) *see a deal's true cost* · Haggle Shout (F) *prices are negotiable* · Fog Sweep (G) *repay the highest‑interest loan first*.
 
 ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
