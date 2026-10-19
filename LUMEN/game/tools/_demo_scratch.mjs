@@ -1,0 +1,32 @@
+// scratch harness for 13B (mirrors check.mjs --game rig). Deleted before close.
+import { pathToFileURL } from 'node:url'; import { resolve } from 'node:path'; import { readFileSync } from 'node:fs';
+const { installDomShim } = await import(pathToFileURL(resolve('tools/domshim.mjs')).href); installDomShim();
+const THREE = await import(pathToFileURL(resolve('vendor/three.module.js')).href);
+const { SequencePlayer, HitStop } = await import(pathToFileURL(resolve('src/anim/Sequencer.js')).href);
+const { EventBus } = await import(pathToFileURL(resolve('src/core/EventBus.js')).href);
+const { tweens } = await import(pathToFileURL(resolve('src/anim/Tween.js')).href);
+const { createLumenGame } = await import(pathToFileURL(resolve('src/Game.js')).href);
+const { mountUI } = await import(pathToFileURL(resolve('ui/index.js')).href);
+const { PROP_CATALOG } = await import(pathToFileURL(resolve('src/assets/props.js')).href);
+const { createDemoMode, SHOTS } = await import(pathToFileURL(resolve('src/systems/demoMode.js')).href);
+const storyData = JSON.parse(readFileSync(resolve('data/story.json'), 'utf8'));
+const bus = new EventBus(); const ev = {}; for (const n of ['demo:start', 'demo:shot', 'demo:action', 'demo:stop', 'demo:market', 'build:placed', 'sandbox:ability', 'game:allocated', 'eco:season', 'eco:scam', 'eco:scamResult', 'demo:loop']) bus.on(n, (p) => { (ev[n] ??= []).push(p); });
+const game = { scene: new THREE.Scene(), bus, sequences: new SequencePlayer(), tweens, hitStop: new HitStop(), input: { pointerWorld: new THREE.Vector3(), hasPointerWorld: false, move: new THREE.Vector2(), joystick: new THREE.Vector2(), actions: {}, pressed: () => false, press() {} }, camera: { zoom: 1, offset: new THREE.Vector3(0, 13, 10), shake() {}, snapTo() {} }, time: 0, timeScale: 1, paused: false, followTarget: null, systems: [], stats: { fps: 60, drawCalls: 0 }, add(s) { this.systems.push(s); return s; }, hitstop() {} };
+const ui = mountUI(document.body, { bus, stats: () => game.stats, input: game.input, catalog: PROP_CATALOG, seasonsToWin: 10, touch: false, version: 'scratch' });
+const lg = createLumenGame(game, { ui, storyData, headless: true, seasonSeconds: 150, seed: 3 });
+const dt = 1 / 30; let frames = 0;
+const step = () => { game.time += game.paused ? 0 : dt; game.sequences.update(game.paused ? 0 : dt); game.tweens.update(dt); for (const s of game.systems) s.update?.(game.paused ? 0 : dt, game, dt); frames++; };
+const run = (sec) => { for (let i = 0; i < sec * 30; i++) step(); };
+const demo = createDemoMode(lg, { seconds: 60, loop: false });
+demo.start();
+const sb = lg.sb;
+console.log('state', lg.state, 'stalls', sb.build.placed.size, 'helpers', sb.helpers.length, 'spark', sb.eco.state.spark, 'pending', sb.cust.pendingSpawns?.length, 'hero', sb.hero.root.position.toArray().map((v) => v.toFixed(1)).join(','));
+console.log('market ev', JSON.stringify(ev['demo:market']));
+let last = -1;
+for (let i = 0; i < 65 * 30; i++) { step(); if (demo.state.shotIndex !== last) { last = demo.state.shotIndex; console.log(`t=${demo.state.elapsed.toFixed(1)} shot ${last} ${demo.shot?.id} zoom ${game.camera.zoom.toFixed(2)} target ${demo.rig.target.x.toFixed(1)},${demo.rig.target.z.toFixed(1)} paused ${game.paused} dlg ${ui.dialogue.isOpen} ledger ${ui.ledger.isOpen}`); } }
+console.log('running', demo.state.running, 'elapsed', demo.state.elapsed.toFixed(1), 'actions', demo.state.actions, 'loops', demo.state.loops);
+console.log('events:', Object.fromEntries(Object.entries(ev).map(([k, v]) => [k, v.length])));
+console.log('abilities:', (ev['sandbox:ability'] || []).map((p) => p.name).join(','), '| placed', (ev['build:placed'] || []).map((p) => p.id).join(','));
+console.log('log:\n  ' + demo.state.log.join('\n  '));
+console.log('hero', sb.hero.root.position.toArray().map((v) => v.toFixed(1)).join(','), 'cust', sb.cust.active.length, 'fog', sb.eco.state.fog01, 'season', sb.eco.state.season, 'state', lg.state);
+demo.destroy(); console.log('after destroy followTarget===hero', game.followTarget === sb.hero.root.position, 'systems', game.systems.length);

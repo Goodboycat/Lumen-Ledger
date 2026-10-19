@@ -91,7 +91,30 @@ export function createDemoMode(lg, opts = {}) {
 }
 
 // ---- parts (filled in below, one per commit) -----------------------------------------------------------------------
-function installMarket(D) { D.ensureMarket = () => {}; }
+// P1.1 — pre-built market. If lg has no run yet, start one (default 'endless': no story gate, scams off, so the script owns the
+// beats). Then: clear the 3 starter stalls → load the 8 DEMO_MARKET stalls (L1–L3, no pay) → Spark = DEMO_SPARK → hire 2 helpers
+// (sb.keys.hire = 10B P3 work loop) → a 12-Glimmer wave queued at the pier → Pip at the plaza facing the pier. Idempotent per run.
+function installMarket(D) {
+  const { lg, game } = D;
+  D.ensureMarket = () => {
+    if (!lg.sb) { if (lg.state === 'title' && lg.ui?.title?.hide) { /* title closes inside lg.start */ } lg.start(D.opts.startMode); }
+    const sb = lg.sb; if (!sb || sb._demoMarket) return sb;
+    sb._demoMarket = true;
+    sb.build.clear();
+    const n = sb.build.load(DEMO_MARKET);
+    sb.eco.state.stalls = sb.build.placed.size; sb.cust.reroute();
+    sb.eco.state.spark = Math.max(sb.eco.state.spark, DEMO_SPARK);
+    for (let i = 0; i < DEMO_HELPERS; i++) sb.keys?.hire?.();
+    sb.eco.state.spark = Math.max(sb.eco.state.spark, DEMO_SPARK);                  // helpers are "pre-paid" in the demo
+    sb.cust.spawnWave(Math.max(3, sb.eco.state.season), DEMO_CUSTOMERS);
+    sb.hero.root.position.set(0, 0, 1); sb.hero.facing = Math.PI; sb.hero.root.rotation.y = Math.PI;
+    if (game.camera?.snapTo) game.camera.snapTo(sb.hero.root.position);
+    lg.ui?.hud?.sync?.(sb.eco.state); lg.ui?.jars?.setBalances?.(sb.eco.state.jars); lg.ui?.build?.setSpark?.(sb.eco.state.spark);
+    D.log(`market: ${n} stalls · ${sb.helpers.length} helpers · spark ${sb.eco.state.spark} · wave ${DEMO_CUSTOMERS}`);
+    D.bus.emit('demo:market', { stalls: n, helpers: sb.helpers.length, spark: sb.eco.state.spark });
+    return sb;
+  };
+}
 function installRig(D) { D.lookAt = () => {}; D.walkTo = () => {}; D.steer = () => {}; D.release = () => {}; }
 function installScript(D) { D.seq = new Sequence('demo'); D.fire = () => {}; }
 function installModals(D) { D.autoAdvance = () => {}; }
