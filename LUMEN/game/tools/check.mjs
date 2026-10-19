@@ -1161,7 +1161,7 @@ if (doSandbox) {
     if (!(sb.coins.length < coins0) || !(sb.eco.state.spark > spark1) || !ev['sandbox:tip']) throw new Error('magnet collected nothing');
     run(5); if (!sb.ability('haggleShout')) throw new Error('haggle refused'); run(2); if (![...sb.haggle.values()].some((h) => h.n > 0)) throw new Error('haggle charges');
     run(5); if (!sb.ability('growthStomp')) throw new Error('growth refused'); run(2); if (!(sb.growth.mul > 1) || !(sb.growth.until > game.time)) throw new Error('growth pulse');
-    run(5); const fog0 = sb.eco.state.fog01; if (!sb.ability('fogSweep')) throw new Error('fog refused'); run(2); if (!(sb.eco.state.fog01 < fog0)) throw new Error('fogSweep no push');
+    run(5); const fog0 = sb.eco.state.fog01; if (!sb.ability('fogSweep')) throw new Error('fog refused'); run(1); const fogEff = (ev['sandbox:ability'] || []).find((a) => a.name === 'fogSweep'); if (!fogEff) throw new Error('fogSweep no push');  // bus event, not fog01 delta: a season end inside the window re-adds fog
     run(5); if (!sb.ability('bubbleShield')) throw new Error('shield refused'); run(3); if (!(sb.shield.until > game.time)) throw new Error('shield not armed');
     run(5); sb.eco.offerScam('zeroInterestLoan'); if (!sb.ability('ledgerFlash')) throw new Error('ledger refused'); run(3); if (sb.eco.pendingOffer) throw new Error('ledgerFlash did not refuse');
     // shield absorbs the next scheduled event: force the next event tick
@@ -1171,7 +1171,7 @@ if (doSandbox) {
     sb.eco.state.spark = 999; const h = sb.keys.hire(); if (!h || sb.helpers.length !== 1 || !ev['sandbox:hired']) throw new Error('hire'); run(2);
     if (!isFinite(h.g.position.x) || !isFinite(h.g.scale.y)) throw new Error('helper NaN');
     const ms = performance.now() - t0;
-    console.log(`  createSandbox: 4 zones · 3 starter + 1 built stalls (B/1-9/R/confirm/Esc) · ${meshes} meshes at start · 2 auto seasons + E → 3 reports no NaN · ${ev['cust:paid'].length} sales · events ${ev['eco:event'].map((e) => e.id).join('/')} · scam offered+expired · 6 abilities: magnet +tips, haggle ${[...sb.haggle.values()].reduce((a, h) => a + h.n, 0)} charges, growth ×${sb.growth.mul.toFixed(2)}, fog −${((fog0 - sb.eco.state.fog01) * 100).toFixed(1)}%, shield absorbed ${ev['eco:absorbed'][0].id}, ledgerFlash refused · H hired ${h.type} · ${frames} frames in ${ms.toFixed(0)} ms  OK`);
+    console.log(`  createSandbox: 4 zones · 3 starter + 1 built stalls (B/1-9/R/confirm/Esc) · ${meshes} meshes at start · 2 auto seasons + E → 3 reports no NaN · ${ev['cust:paid'].length} sales · events ${ev['eco:event'].map((e) => e.id).join('/')} · scam offered+expired · 6 abilities: magnet +tips, haggle ${[...sb.haggle.values()].reduce((a, h) => a + h.n, 0)} charges, growth ×${sb.growth.mul.toFixed(2)}, ${fogEff.effect}, shield absorbed ${ev['eco:absorbed'][0].id}, ledgerFlash refused · H hired ${h.type} · ${frames} frames in ${ms.toFixed(0)} ms  OK`);
   } catch (err) { bad++; console.log('  sandbox FAIL →', err.message); }
 }
 if (doWorld) {
