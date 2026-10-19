@@ -62,8 +62,12 @@ BUG GATE (non-negotiable, ~0 credits):
   (errors = top priority; a demo that throws is NOT done). Look at at most ONE screenshot. No screenshot-tweak loops.
   BROWSER FAILED → skip, write "browser QA skipped" in the HANDOFF.
 
-CHECKPOINT RULE (every chat, mechanical): after every THREE things you work on, check whether credits used passed 50 %. If yes →
-  commit + push to GitHub right away (`bash tools/wip.sh "CHECKPOINT: <what>"`), then keep coding. Never skip it.
+CHECKPOINT RULE (every chat, mechanical): after every THREE things you work on (or one big task, e.g. an island / a system wired),
+  check whether credits used passed 25 %. If yes → commit + push to GitHub right away (`bash tools/wip.sh "CHECKPOINT: <what>"`),
+  then keep coding. ~4 pushes per chat (25 / 50 / 75 / close). Never skip it.
+BIG-FILE RULE (two 10B chats died on this): a Write > ~150 lines gets truncated and DISCARDED → nothing on disk → nothing to commit.
+  Write a ≤ 100-line skeleton → wip.sh → grow it with Edit one method at a time → wip.sh after each. Write docs/HANDOFF_<ID>.md
+  (plan as Missing list) and commit it BEFORE the first code file — it is the next chat's resume point.
 
 AT ~80 CREDITS: stop adding features. Close the current ID if it is closable (check.mjs OK → HANDOFF → row → commit);
 if it is not, still write its HANDOFF with an honest Missing list and commit (no README row). Then post the

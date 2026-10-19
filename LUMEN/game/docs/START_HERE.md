@@ -95,11 +95,20 @@ The user never reads mid-chat and does nothing manually; nobody is waiting for a
    `check.mjs` mesh counts are the budget measure (0 credits). **Two identical failed attempts at anything = stop, write it
    under Missing, commit, next item.** The third attempt is the one that gets a chat axed.
 
-10. **CHECKPOINT RULE (added 2026-10-19, user rule — never skip it):** after **every three things you work on** (three files,
-   three items, three fixes — count them), stop and estimate credits used. If you have passed **50 %**, immediately
+10. **CHECKPOINT RULE (added 2026-10-19, user rule — never skip it; threshold lowered 50 % → 25 % on 2026-10-19 after 10B died twice):**
+   after **every three things you work on** (three files, three items, three fixes — count them) OR after every big task (an island,
+   a system wired), stop and estimate credits used. If you have passed **25 %**, immediately
    `cd /home/user/webapp && git add -A && git commit -qm "CHECKPOINT <ID>: <what>" && git push -q origin main` (or `bash tools/wip.sh`),
-   then continue coding. Below 50 % you still commit via rule 8; the 50 % checkpoint is the hard, non-optional push to GitHub so an
-   axed chat loses at most a few items. Do not ignore this; treat it as part of the loop, not an afterthought.
+   then continue coding. Expect ~4 pushes per chat (25 / 50 / 75 / close). Below 25 % you still commit via rule 8; the checkpoint is the
+   hard, non-optional push to GitHub so an axed chat loses at most a few items. Treat it as part of the loop, not an afterthought.
+
+11. **BIG-FILE RULE (added 2026-10-19 — why two 10B chats died with NOTHING committed):** a single `Write` whose content exceeds the
+   output-token limit is **truncated and silently discarded** — nothing lands on disk, so there is nothing to commit, so the chat is
+   axed holding 500 lines "in its head". Never write a file > ~150 lines in one call. Write a **skeleton** (imports + class + empty
+   methods, ≤ 100 lines) → `wip.sh` → grow it with `Edit`/`MultiEdit` one method/section at a time → `wip.sh` after each. The same
+   applies to reading: do not read whole 300–1200-line files; `grep -n` the exports/method names, `sed -n a,bp` only the lines you need.
+   Before writing code, create `docs/HANDOFF_<ID>.md` with the plan as its Missing list and commit it — it is the resume file for the
+   next chat (`next.sh` then reports HALF-DONE with the trail).
 
 ## How to test (cheap — do not reinvent this)
 ```bash
