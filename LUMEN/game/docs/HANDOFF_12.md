@@ -1,33 +1,47 @@
-# HANDOFF 12 — Audio loader + bus→SFX map + Ludo.ai prompt list (IN PROGRESS — resume file)
+# HANDOFF 12 — Audio loader + bus→SFX map + Ludo.ai prompt list ✅ CLOSED
 
-Owned: `src/core/Audio.js` · `audio/manifest.json` · `docs/audio_prompts.md` · `demo_audio.html` · check.mjs `--audio` section (additive) ·
-one wiring line in `index.html` (+ `src/core/index.js` barrel line).
-Start point: 11B master. `index.html` already emits **`bus 'input:first' {touch}`** once on the first gesture and resumes
-`window.lumenAudioCtx` — Audio.js creates/resumes its context there (never at module load — iOS).
-
-## Plan = Missing list (tick as they land; each item = one wip.sh commit)
-- [ ] P1.0 `src/core/Audio.js` skeleton: `createAudio({bus, settings})` → `{ load(manifest), play(id,{vol,pitch}), music(id), stop(), setVolume(sfx, music), unlock(), state, destroy }`.
-      No Node globals; `AudioContext` missing (Node / check.mjs) → fully inert but API-complete (`state.silent = true`).
-- [ ] P1.1 loader: manifest `{ sfx: {id: {file, vol, loop, synth}}, music: {...} }`; `fetch` + `decodeAudioData`; a 404 / decode error → id marked
-      `missing` and `play()` is silent (logs once per id). Files live in `audio/sfx/*.ogg|mp3`, `audio/music/*`.
-- [ ] P1.2 **procedural fallback** (so the jam build is never silent): tiny synth per id from `manifest.synth` (`{type:'blip'|'coin'|'thud'|'whoosh'|'chime'|'buzz', f, dur}`)
-      built with OscillatorNode + GainNode envelopes; used when the file is missing. Music fallback: 4-chord pad loop from `synth.chords`.
-- [ ] P1.3 bus → SFX map for the 15 core events (`eco:sale` coin · `eco:spark` tick · `eco:denied` buzz · `build:*` / `ui:build` hammer · `eco:season` chime ·
-      `eco:loan` · `eco:scam` sting · `eco:scamResult` · `eco:upgrade` · `eco:win` fanfare · `eco:lose` · `story:line` blip · `ui:choice` · `ui:ledger:open` · `ui:title:open`
-      music swap · `game:start` music · `sandbox:ability` whoosh · `ui:touch`/button click) with per-event cooldown (no machine-gun on 10 Hz ticks).
-- [ ] P1.4 `audio/manifest.json` with every id (+ synth fallback params) · `src/core/index.js` export · `index.html` wiring (settings sfx/music from `ui.pause.settings`, `ui:settings`).
-- [ ] P1.5 `check.mjs --audio`: imports Audio.js in Node (inert), loads the manifest (every mapped event id exists), fires the 15 events through a bus → `audio.state.played` counts,
-      cooldown asserted, missing-file path asserted, destroy() → no listeners.
-- [ ] P2 `docs/audio_prompts.md`: ~40 SFX + 6 music prompts for Ludo.ai (id · length · loop · mood · prompt), file names = manifest.
-- [ ] P3 pitch variance per play (`pitchVar` in manifest, ±6 %) · ducking music to 35 % under `ui:dialogue:open` / `ui:ledger:open`, back on close (200 ms ramps).
-- [ ] demo_audio.html: one button per id (plays file or synth, logs id + source), music buttons, volume sliders; `window.game`, stats.
-- [ ] close: HANDOFF final · README row · commit.
+Owned: `src/core/Audio.js` · `audio/manifest.json` · `docs/audio_prompts.md` · `demo_audio.html` · check.mjs `--audio` (additive) ·
+one wiring block in `index.html` · `src/core/index.js` barrel line.
 
 ## Done
-(nothing yet)
+- **P1.0–1.2 `src/core/Audio.js`** `createAudio({bus, settings})` → `{ unlock, load(manifestUrlOrObj), preload, play(id,{vol,pitch}), music(id),
+  stopMusic(fade), setVolume({sfx,music}), duck(on), state, destroy }`. Gain graph sfx / music → duck → destination. AudioContext is created
+  **only** inside `unlock()` (bus `input:first` from index.html's 11B stub, re-uses `window.lumenAudioCtx`). In Node (no AudioContext) every
+  call is inert but still counted in `state.played` → the whole map is testable headless. Lazy `fetch`+`decodeAudioData` per id; 404/decode
+  error → `state.missing`, logged once, synth plays instead. **Procedural fallback**: `synthSfx` 11 sketch types (coin blip tick pop thud whoosh
+  chime buzz fanfare sad default) from `manifest.synth {type,f,dur}`; `synthMusic` = 3-voice triangle pad over `chords` at `bpm` (looping).
+  Music queued before unlock plays on unlock (`pendingMusic`). `fetchFiles:false` in the manifest skips fetching entirely (no 404 console noise
+  while no .ogg exists yet).
+- **P1.3 bus map** `DEFAULT_EVENTS` (39 bus events → 33 sfx ids, 6 music ids), per-event **cooldown** (10 Hz `eco:spark` → ≤ 4 plays/s),
+  `pick(payload)` variants (scamResult accepted→`scam_fell`, ability name→magnet/shield/stomp/flash/shout/sweep, cust react happy/grumble,
+  ui:build action), `music:` swaps (title / island_day / island_endless / victory / fog_lose), `duck:` flags (dialogue / ledger / pause open-close).
+  Manifest `events` block overrides any entry. `ui:settings {key:sfx|music}` → volumes.
+- **P1.4 `audio/manifest.json`** 33 sfx (file + vol + pitchVar + synth) · 6 music (file + loop + synth chords) · `index.html` creates the
+  audio on `game.bus` with 7C `ui.pause.settings` volumes, loads the manifest, queues title music, `?mute`. `window.audio` for QA.
+- **P1.5 `check.mjs --audio`**: manifest ↔ event-map id cross-check (all referenced sfx/music exist, every sfx has a synth) · 15 core events →
+  15 counted plays · variants · cooldown 50 ticks/0.1 s → 1 play · music follows start/lose/title · duck on/off · ui:settings → volume ·
+  unknown id → false + logged once · destroy → 0 listeners. `api._now` = injectable clock.
+- **P2 `docs/audio_prompts.md`**: 33 SFX + 7 optional ambience + 6 music prompts (id · length · loop · mood · prompt, export spec OGG mono
+  44.1 kHz −3 dBFS) + the trigger table (event → id → cooldown).
+- **P3** pitch variance per play (`pitchVar` ±2–15 %) · ducking to 35 % under dialogue / ledger / pause, 200 ms ramps · 80 ms volume ramps.
+- **demo_audio.html**: tap gate → `input:first`; button per sfx (green ring = real file decoded, plain = synth) and music id; 22 bus-event
+  buttons with THROTTLED readout; sliders; duck; stop; keys 1–0 / M; stats line shows ctx state + current music.
+
+## Missing
+- No real audio files yet (by design — the jam build ships on the synth fallback). When Ludo.ai files land: drop into `audio/sfx/`,
+  `audio/music/`, set `"fetchFiles": true`. Optional ambience ids (water_lap, seagull, wind_chime, fog_breath, footsteps) are not in the
+  manifest/map — 13A or a later pass can add `cust:spawn`/hero-step hooks.
+- `ledger` music id exists but is not mapped (ducking the island theme under the ledger reads better than a swap); map it in `events` if wanted.
 
 ## Measured
-(filled at close)
+- demo_audio.html: 23 draw calls, 30 meshes (island only) · `index.html?autoplay` with audio wired: **121–133 dc**, ERRORS none.
+- Audio nodes at rest: 3 GainNodes; per synth sfx 1–4 oscillators ≤ 1.4 s; synth music 3 oscillators + 1 filter + 1 gain, constant.
+- check.mjs full suite incl. `--audio --game`: ALL OK.
 
-## Notes for the integrator
-(filled at close)
+## Suspected
+- `synthMusic` uses `setTimeout` for chord steps → a background tab drifts (fine: the whole game loop also pauses). A real .ogg loop has no timer.
+
+## Notes for the integrator (13A / 14)
+- Nothing to wire: `index.html` already does it. Flutter WebView (14): the unlock is the first `pointerdown/touchend/keydown` — a WebView
+  that autoplays without a gesture needs `mediaPlaybackRequiresUserGesture=false`, otherwise music simply starts at the first tap.
+- Add a sound to a new event: one line in `DEFAULT_EVENTS` (or `manifest.events`) + an id in `manifest.sfx` with a `synth` sketch.
