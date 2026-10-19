@@ -7,6 +7,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1d2a3a">
 <title>Lumen Ledger — Make FinLit Fun</title>
+<!-- 11B P3: favicon = inline SVG (a gold Spark coin), no extra file / request -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%23FFD54F' stroke='%23263238' stroke-width='5'/%3E%3Ccircle cx='32' cy='32' r='17' fill='none' stroke='%23F9A825' stroke-width='4'/%3E%3Cpath d='M32 18l4 10 10 4-10 4-4 10-4-10-10-4 10-4z' fill='%23263238'/%3E%3C/svg%3E">
 <!-- 10C: THE game page. Foundation Game (renderer/loop/input) + mountUI (7A/7B/7C) + createLumenGame (state machine over 10B's sandbox + 8B's story).
      No build step, no CDN: vanilla ES modules + vendor/three.module.js. Serve game/ statically and open this file. -->
 <link rel="stylesheet" href="ui/base.css">
@@ -23,6 +25,13 @@
   /* the Foundation HUD/help/touch markup is replaced by the 7A/7B/7C panels; only a tiny debug readout stays (hidden on phones) */
   #debug-stats { position: fixed; left: max(8px, env(safe-area-inset-left)); bottom: max(4px, env(safe-area-inset-bottom)); z-index: 5; max-width: 46vw; opacity: .8; font: 600 10px/1.2 ui-monospace, Menlo, monospace; color: rgba(255,255,255,.55); pointer-events: none; display: none; }
   body.show-debug #debug-stats { display: block; }
+  /* 11B P3: CSS-only loading screen — shown until game.start() (module loaded, story.json fetched); fades out 320 ms */
+  #boot-loading { position: fixed; inset: 0; z-index: 98; display: grid; place-items: center; background: linear-gradient(#bfe8ff, #7ED957 140%); font: 900 22px/1.2 "Baloo 2", "Arial Rounded MT Bold", Nunito, Arial, sans-serif; color: #263238; letter-spacing: 1px; transition: opacity .32s ease-out; }
+  #boot-loading.gone { opacity: 0; pointer-events: none; }
+  #boot-loading .coin { width: 64px; height: 64px; border-radius: 50%; background: #FFD54F; border: 5px solid #263238; box-shadow: 0 5px 0 #263238; margin: 0 auto 14px; animation: boot-spin 1.1s ease-in-out infinite; }
+  #boot-loading small { display: block; font-weight: 700; font-size: 12px; opacity: .7; margin-top: 6px; }
+  @keyframes boot-spin { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(.15); } }
+  @media (prefers-reduced-motion: reduce) { #boot-loading .coin { animation: none; } }
   #boot-error { position: fixed; inset: auto 12px 12px 12px; z-index: 99; background: #fff3f3; border: 3px solid #b3261e; border-radius: 12px; padding: 10px 12px; font: 600 12px/1.4 system-ui, sans-serif; color: #5a1a14; display: none; white-space: pre-wrap; }
 </style>
 </head>
@@ -31,6 +40,7 @@
   <div id="game-container"></div>
   <output id="debug-stats">fps — · calls —</output>
   <section id="boot-error" role="alert"></section>
+  <aside id="boot-loading" aria-busy="true"><div><div class="coin"></div>Lumen Ledger<small>loading the island…</small></div></aside>
 </main>
 <script type="module">
 import * as THREE from './vendor/three.module.js';
@@ -43,7 +53,9 @@ import * as Save from './src/systems/save.js';
 
 const root = document.getElementById('game-root');
 const errEl = document.getElementById('boot-error');
-const showError = (e) => { errEl.style.display = 'block'; errEl.textContent = 'Lumen Ledger could not start:\n' + (e?.stack || e); console.error(e); };
+const loadingEl = document.getElementById('boot-loading');
+const hideLoading = () => { if (!loadingEl) return; loadingEl.classList.add('gone'); loadingEl.removeAttribute('aria-busy'); setTimeout(() => loadingEl.remove(), 400); };
+const showError = (e) => { hideLoading(); errEl.style.display = 'block'; errEl.textContent = 'Lumen Ledger could not start:\n' + (e?.stack || e); console.error(e); };
 window.addEventListener('error', (e) => showError(e.error || e.message));
 window.addEventListener('unhandledrejection', (e) => showError(e.reason));
 
@@ -103,6 +115,7 @@ try {
   // ?autoplay (smoke / trailer): skip the title. ?endless: start in Endless.
   if (params.has('autoplay') || params.has('endless')) setTimeout(() => game.bus.emit('ui:start', { mode: params.has('endless') ? 'endless' : 'story' }), 300);
   game.start();
+  requestAnimationFrame(() => requestAnimationFrame(hideLoading));                      // 11B P3: first real frame is on screen → fade the loading layer
 } catch (e) { showError(e); }
 </script>
 </body>
