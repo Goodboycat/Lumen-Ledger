@@ -33,6 +33,7 @@ import { Easing } from '../anim/Easing.js';
 import { bus as globalBus } from '../core/EventBus.js';
 import { FlowField } from './flowfield.js';
 
+export const POOL_CAP_PER_TYPE = 3;   // 11A: 12 types × 3 = 36 idle roots max (each fused Glimmer owns 3 merged geometries)
 export const CUSTOMER_STATES = ['spawn', 'pickStall', 'walk', 'queue', 'browse', 'pay', 'react', 'leave', 'pooled'];
 export const BROWSE_MS = 1500;
 export const MAX_ACTIVE_DEFAULT = 20;
@@ -87,6 +88,8 @@ export class CustomerSystem {
     this.prices = new Map();                        // stallId (prop id) → price (default: fair)
     this.active = [];                               // customers on the island
     this.pool = new Map();                          // type → [customer]
+    this.poolCap = deps.poolCap ?? POOL_CAP_PER_TYPE;  // 11A: idle roots kept per type; surplus is disposed (merged geometries freed)
+    this.totalsPool = { created: 0, disposed: 0 };
     this.count = 0;
     this.totals = { spawned: 0, paid: 0, sparkEarned: 0, left: 0, angry: 0, gaveUp: 0 };
     this.time = 0;
@@ -162,8 +165,16 @@ export class CustomerSystem {
       vel: { x: 0, z: 0 },
     };
     if (anim) anim._cust = c;
-    this.scene.add(root);
+    this.scene.add(root); this.totalsPool.created++;
     return c;
+  }
+
+  /** 11A: free a surplus pooled root — merged (fused) geometries are per-instance, everything else is shared. */
+  _dispose(c) {
+    c.anim?.dispose?.(); c.anim = null;
+    this.scene.remove(c.root);
+    c.root.traverse((o) => { if (o.isMesh && o.geometry && /^merged_/.test(o.name)) o.geometry.dispose(); });
+    this.totalsPool.disposed++;
   }
 
   _release(c) {
@@ -171,7 +182,8 @@ export class CustomerSystem {
     this._leaveQueue(c);
     const i = this.active.indexOf(c); if (i >= 0) this.active.splice(i, 1);
     this.count = this.active.length;
-    (this.pool.get(c.type) || this.pool.set(c.type, []).get(c.type)).push(c);
+    const list = this.pool.get(c.type) || this.pool.set(c.type, []).get(c.type);
+    if (list.length >= this.poolCap) this._dispose(c); else list.push(c);
   }
 
   clear() {

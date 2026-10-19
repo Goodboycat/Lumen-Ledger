@@ -1544,14 +1544,22 @@ if (doPerf) {
     if (!sb.perf || !sb.perf.shadows) throw new Error('perf glue not installed');
     const dt = 1 / 30; const step = () => { g2.time += dt; g2.sequences.update(dt); g2.tweens.update(dt); for (const s of g2.systems) s.update?.(dt); };
     const run = (sec) => { for (let i = 0; i < sec * 30; i++) step(); };
-    run(25); const geoWarm = PF.countGeometries(scene); const meshWarm = meshCount(scene);
-    sb.eco.state.spark = 999; sb.keys.hire(); run(60);
+    // each fused Glimmer owns 4 per-instance geometries (eyes, body merge, kit merge, kit flat); everything else is shared.
+    // Bound = pool cap (12 types × POOL_CAP_PER_TYPE) + maxActive roots. Before 11A the pool was unbounded: 148 → 220 → 240 … (+1 root per spawn burst).
+    const { POOL_CAP_PER_TYPE } = await import(pathToFileURL(resolve('src/systems/customers.js')).href);
+    run(40); const geoWarm = PF.countGeometries(scene); const meshWarm = meshCount(scene);
+    sb.eco.state.spark = 999; sb.keys.hire(); run(90);
     const geoEnd = PF.countGeometries(scene); const meshEnd = meshCount(scene);
-    if (geoEnd > geoWarm + 2) throw new Error(`geometry grew ${geoWarm} → ${geoEnd} over 60 s`);
+    const bound = geoWarm + 4 * (sb.cust.maxActive + 12 * POOL_CAP_PER_TYPE);
+    if (geoEnd > bound) throw new Error(`geometry ${geoWarm} → ${geoEnd} exceeds pool bound ${bound}`);
+    if (sb.cust.totalsPool.disposed < 1) throw new Error('pool cap never disposed a surplus customer (' + JSON.stringify(sb.cust.totalsPool) + ')');
+    const pooled = [...sb.cust.pool.values()].reduce((a, l) => a + l.length, 0); if (pooled > 12 * POOL_CAP_PER_TYPE) throw new Error('pool over cap ' + pooled);
     if (sb.perf.shadows.mesh.count !== sb.perf.roots.length) throw new Error('shadow pool out of sync ' + sb.perf.shadows.mesh.count + ' vs ' + sb.perf.roots.length);
-    destroySandbox?.(sb) ?? sb.destroy?.();
-    const geoAfter = PF.countGeometries(scene);
-    console.log(`  memory: sandbox S1→S${sb.stats.seasons + 1} headless 85 s · geometries ${geoWarm} warm → ${geoEnd} end (Δ ${geoEnd - geoWarm}) · meshes ${meshWarm} → ${meshEnd} · ${sb.perf.roots.length} pooled shadows · destroy → ${geoAfter} geometries (scene start ${geo0})  OK`);
+    destroySandbox(sb);
+    const geoAfter = PF.countGeometries(scene); const left = meshCount(scene);
+    if (left !== 0 || scene.children.length !== 0) throw new Error(`destroySandbox left ${left} meshes / ${scene.children.length} children in the scene`);
+    if (geoAfter !== 0) throw new Error('geometries still referenced from the scene after destroy: ' + geoAfter);
+    console.log(`  memory: sandbox S1→S${sb.stats.seasons + 1} headless 130 s · geometries ${geoWarm} @40 s → ${geoEnd} @130 s (bound ${bound}; customers created ${sb.cust.totalsPool.created}, disposed ${sb.cust.totalsPool.disposed}, pooled ${pooled} ≤ ${12 * POOL_CAP_PER_TYPE}) · meshes ${meshWarm} → ${meshEnd} · ${sb.perf.roots.length} pooled shadows · destroy → scene empty (${left} meshes, ${geoAfter} geometries)  OK`);
   } catch (err) { bad++; console.log('  perf FAIL →', err.message); }
 }
 console.log(bad ? `\n${bad} FAILURE(S)` : '\nALL OK ✅');

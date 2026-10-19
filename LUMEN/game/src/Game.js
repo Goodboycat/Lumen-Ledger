@@ -16,7 +16,7 @@ import { HeroController } from './entities/HeroController.js';
 import { attachMoves } from './anim/heroAnims.js';
 import { attachAbilities, ABILITY_NAMES, FINLIT } from './anim/heroAbilities.js';
 import { PROP_CATALOG, makeProp, STALL_TYPES, JAR_IDS, swayAll, swayDecor, updateLandmarks, makeFlowerField, makeGrassTufts } from './assets/props.js';
-import { bakeStatic, bakeShells } from './assets/props/bake.js';
+import { bakeStatic, bakeShells, disposeBatch } from './assets/props/bake.js';
 import { BlobShadows, CreatureLOD, PixelRatioGovernor } from './systems/perf.js';   // 11A
 import { G } from './assets/geo.js';
 import { PALETTE as P, flatMat } from './core/Toon.js';
@@ -410,22 +410,30 @@ function installMenu(lg) {
 // endless: keep the 10B scheduler's events, drop the Too-Good Deal (scams are a story beat).
 function wrapNoScam(sb) { const inner = sb.updateScheduler; return () => { inner?.(); if (sb.eco.pendingOffer) sb.eco.refuseOffer(); }; }
 // remove the sandbox from the scene + loop and release its bus listeners (createSandbox has no destroy — 10B owns it, so this is glue).
-function destroySandbox(sb) {
+/** 11A P3: per-run GPU memory is freed here — baked batches (per-run vertex-colored geometry), fused/merged creature geometry
+ *  (hero kit, helpers, pooled + active customers), instanced fields, tip-coin mesh. Shared catalogue geometry stays (module-level caches). */
+export function destroySandbox(sb) {
   const { game } = sb;
   for (const f of sb._offs || []) f(); sb._offs = [];
   if (sb._onKey && typeof window !== 'undefined') window.removeEventListener('keydown', sb._onKey);
   sb.build?.exit?.(true);
   game.systems = game.systems.filter((s) => s !== sb._system && s !== sb.vfx);
-  if (sb.island?.group) game.scene.remove(sb.island.group);
-  if (sb.hero?.root) game.scene.remove(sb.hero.root);
-  for (const p of Object.values(sb.hero?.props || {})) if (p?.parent === game.scene) game.scene.remove(p);   // 3A coin + 3B magnetCoins/rings/arc live in world space
-  if (sb.coinMesh) game.scene.remove(sb.coinMesh);
   sb.perf?.dispose?.();
-  for (const h of sb.helpers || []) game.scene.remove(h.g);
-  for (const c of sb.cust?.active || []) if (c.root) game.scene.remove(c.root);
-  for (const list of sb.cust?.pool?.values?.() || []) for (const c of list) if (c.root?.parent) c.root.parent.remove(c.root);   // pooled (hidden) Glimmers too
-  for (const e of sb.build?.placed?.values?.() || []) if (e.group?.parent) e.group.parent.remove(e.group);
+  const freeMerged = (root) => root && root.traverse((o) => { if (o.isMesh && o.geometry && /^merged_/.test(o.name)) o.geometry.dispose(); });
+  if (sb.hero?.root) { freeMerged(sb.hero.root); game.scene.remove(sb.hero.root); }
+  for (const p of Object.values(sb.hero?.props || {})) if (p?.parent === game.scene) game.scene.remove(p);   // 3A coin + 3B magnetCoins/rings/arc live in world space
+  if (sb.coinMesh) { game.scene.remove(sb.coinMesh); sb.coinMesh.geometry?.dispose?.(); }
+  for (const h of sb.helpers || []) { h.anim?.dispose?.(); freeMerged(h.g); game.scene.remove(h.g); }
+  for (const v of sb.villains || []) { const g = v.g || v.root || v; freeMerged(g); g.removeFromParent?.(); }
+  // customers: active roots are released into the pool first (keeps their state machine consistent), then every pooled root is freed
+  for (const c of sb.cust?.active?.slice?.() || []) sb.cust._release(c);
+  for (const list of sb.cust?.pool?.values?.() || []) { for (const c of list) sb.cust._dispose(c); list.length = 0; }
+  sb.cust?.dispose?.();
+  for (const e of sb.build?.placed?.values?.() || []) if (e.group?.parent) { e.group.parent.remove(e.group); e.group.userData.dispose?.(); }
+  for (const b of sb.world?.baked || []) disposeBatch(b);
+  if (sb.island?.group) { sb.island.group.traverse((o) => { if (o.isInstancedMesh) o.geometry?.dispose?.(); }); game.scene.remove(sb.island.group); }
   game.followTarget = null;
+  sb.destroyed = true;
 }
 // Per-run wires (released on teardown): UI → systems. 7A build tray → BuildSystem (5) · 7A jars APPLY → eco.allocate from the pouch ·
 // hero ability keys (3B FINLIT keys) → sb.ability · 7C touch 'build' button → tray · tap in demolish mode → build.demolish.
