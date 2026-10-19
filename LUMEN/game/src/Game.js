@@ -336,9 +336,10 @@ export function createLumenGame(game, opts = {}) {
   on('ui:title:open', () => lg.pause('title', true)); on('ui:title:close', () => lg.pause('title', false));
   if (ui?.title?.isOpen) lg.pause('title', true);
 
-  // ---- state machine (filled in by the following commits: start / season loop / story / ending) ------------------------
+  // ---- state machine ------------------------------------------------------------------------------------------------------
   installStart(lg);
   installSeasonLoop(lg);
+  installMenu(lg);
 
   // ---- loop: UI clock + story clock + HUD day bar -------------------------------------------------------------------------
   lg.update = (dt, _g, dtReal) => {
@@ -382,6 +383,19 @@ function installStart(lg) {
     lg.pauseBy.clear(); lg.pause('none', false);
   };
   lg._offs.push(bus.on('ui:start', (p) => { if (lg.state !== 'title') return; lg.start(p?.mode === 'continue' ? 'story' : p?.mode); }));
+}
+// P3 — pause menu + settings (7C): ui:restart → same mode from season 1 (10D will restart from its save point) · ui:title → teardown →
+// title · ui:settings quality → game.setQuality?.() / pixel ratio (11A owns presets; outline is already wired by 7C's onOutline).
+function installMenu(lg) {
+  const { bus, game, ui } = lg, on = (n, f) => lg._offs.push(bus.on(n, f));
+  on('ui:restart', () => { if (!lg.sb) return; const mode = lg.mode; lg.teardown(); lg.setState('title'); lg.start(mode); bus.emit('game:restart', { mode }); });
+  on('ui:title', () => { if (lg.state !== 'title') lg.toTitle('menu'); });
+  on('ui:settings', (p) => {
+    if (!p) return; lg.settings = p.settings || lg.settings;
+    if (p.key === 'quality') { if (typeof game.setQuality === 'function') game.setQuality(p.value); else if (game.renderer?.setPixelRatio && typeof devicePixelRatio !== 'undefined') game.renderer.setPixelRatio(Math.min(devicePixelRatio, { low: 1, medium: 1.5, high: 2 }[p.value] || 1.5)); }
+    if (p.key === 'reduceMotion' && lg.sb) lg.sb.reduceMotion = !!p.value;
+  });
+  lg.sb && (lg.sb.reduceMotion = !!ui?.pause?.settings?.reduceMotion);
 }
 // endless: keep the 10B scheduler's events, drop the Too-Good Deal (scams are a story beat).
 function wrapNoScam(sb) { const inner = sb.updateScheduler; return () => { inner?.(); if (sb.eco.pendingOffer) sb.eco.refuseOffer(); }; }
