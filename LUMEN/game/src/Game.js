@@ -20,7 +20,7 @@ import { bakeStatic } from './assets/props/bake.js';
 import { G } from './assets/geo.js';
 import { PALETTE as P, flatMat } from './core/Toon.js';
 import { makeGlimmerAny, CreatureAnimator, HelperAnimator, makeHelper, HELPER_TYPES, registerVariants } from './assets/creatures/index.js';
-import { makeEconomy, UPGRADES } from './systems/economyData.js';
+import { makeEconomy, UPGRADES, pickEvent } from './systems/economyData.js';
 import { BuildSystem } from './systems/build.js';
 import { CustomerSystem } from './systems/customers.js';
 
@@ -84,6 +84,7 @@ export function createSandbox(game, opts = {}) {
     sb.build.update(dt);
     sb.cust.update(dt);
     sb.eco.tick(dt);
+    sb.updateScheduler?.();
     for (const h of sb.helpers) h.anim.update(dt);
     updateCoins(sb, dt);
   };
@@ -161,6 +162,26 @@ function wireEconomy(sb) {
   off.push(bus.on('eco:lose', () => { vfx.fog?.setCoverage?.(1); vfx.debtPulse?.(1); }));
   off.push(bus.on('eco:upgrade', (p) => { const u = p?.upgrade; if (u?.kind === 'zone') { const z = island.zones[u.effect.zone]; if (z && !z.unlocked) island.unlockZone(z.index, { game: sb.game, vfx }); } }));
   sb.cust.spawnWave(eco.state.season);                                                             // first wave at start (6A note)
+  installScheduler(sb);
+}
+// Sandbox season scheduler (no story/UI here — 10C's StorySystem will own the real pacing on the same bus events):
+//   day01 ≥ 0.45 → one random event (4B pickEvent) — absorbed if bubbleShield is armed (eco:absorbed, Protect jar untouched)
+//   day01 ≥ 0.70 on odd seasons → Baron Gilt offers a Too-Good Deal (eco.offerScam) → player ledgerFlashes (refuse) or it is auto-refused at
+//   season end (sandbox never auto-accepts). sb.nextEvent is pre-rolled so bubbleShield can name it.
+function installScheduler(sb) {
+  const { eco } = sb, bus = sb.game.bus; const S = sb.sched = { season: 0, event: false, scam: false };
+  sb.nextEvent = pickEvent(eco, Math.max(1, eco.state.season));
+  sb.updateScheduler = () => {
+    const s = eco.state; if (s.ended) return;
+    if (S.season !== s.season) { S.season = s.season; S.event = false; S.scam = false; sb.nextEvent = pickEvent(eco, s.season); }
+    if (!S.event && s.day01 >= 0.45 && sb.nextEvent) {
+      S.event = true; const id = sb.nextEvent;
+      if (sb.game.time < sb.shield.until) { sb.shield.until = -1; sb.stats.absorbed = (sb.stats.absorbed || 0) + 1; bus.emit('eco:absorbed', { id, event: eco.events[id] }); sb.log.push(`S${s.season} ${id} ABSORBED by Bubble Shield`); }
+      else { eco.applyEvent(id); sb.log.push(`S${s.season} event ${id}`); }
+    }
+    if (!S.scam && s.day01 >= 0.7 && s.season % 2 === 1) { S.scam = true; if (!eco.pendingOffer) eco.offerScam(); }
+  };
+  sb._offs.push(bus.on('eco:season', () => { if (eco.pendingOffer) { eco.refuseOffer(); sb.log.push('deal expired → refused'); } }));
 }
 // tip coins: spin, bob, walk-over pickup (≤ 0.7 u) → eco.earn; one instanced mesh refresh per frame
 function updateCoins(sb, dt) {
