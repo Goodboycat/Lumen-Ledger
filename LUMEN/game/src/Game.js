@@ -17,6 +17,7 @@ import { attachMoves } from './anim/heroAnims.js';
 import { attachAbilities, ABILITY_NAMES, FINLIT } from './anim/heroAbilities.js';
 import { PROP_CATALOG, makeProp, STALL_TYPES, JAR_IDS, swayAll, swayDecor, updateLandmarks, makeFlowerField, makeGrassTufts } from './assets/props.js';
 import { bakeStatic, bakeShells } from './assets/props/bake.js';
+import { BlobShadows, CreatureLOD, PixelRatioGovernor } from './systems/perf.js';   // 11A
 import { G } from './assets/geo.js';
 import { PALETTE as P, flatMat } from './core/Toon.js';
 import { makeGlimmerAny, CreatureAnimator, HelperAnimator, makeHelper, HELPER_TYPES, registerVariants } from './assets/creatures/index.js';
@@ -80,7 +81,7 @@ export function createSandbox(game, opts = {}) {
   installDebugKeys(sb);
 
   // ---- loop ------------------------------------------------------------------------------------------------------
-  sb.update = (dt) => {
+  sb.update = (dt, _g, dtReal) => {
     sb.island.update(dt);
     if (!headless) { swayAll(game.time); swayDecor(game.time); updateLandmarks(dt); }
     sb.hero.update(dt);
@@ -90,8 +91,10 @@ export function createSandbox(game, opts = {}) {
     sb.updateScheduler?.();
     for (const h of sb.helpers) h.anim.update(dt);
     updateCoins(sb, dt);
+    updatePerf(sb, dtReal);
   };
-  sb._system = game.add({ update: (dt) => sb.update(dt) });   // kept so 10C destroySandbox can unregister it
+  installPerf(sb);
+  sb._system = game.add({ update: (dt, g, dtReal) => sb.update(dt, g, dtReal) });   // kept so 10C destroySandbox can unregister it
   bus.emit('sandbox:ready', { version: SANDBOX_VERSION });
   return sb;
 }
@@ -417,6 +420,7 @@ function destroySandbox(sb) {
   if (sb.hero?.root) game.scene.remove(sb.hero.root);
   for (const p of Object.values(sb.hero?.props || {})) if (p?.parent === game.scene) game.scene.remove(p);   // 3A coin + 3B magnetCoins/rings/arc live in world space
   if (sb.coinMesh) game.scene.remove(sb.coinMesh);
+  sb.perf?.dispose?.();
   for (const h of sb.helpers || []) game.scene.remove(h.g);
   for (const c of sb.cust?.active || []) if (c.root) game.scene.remove(c.root);
   for (const list of sb.cust?.pool?.values?.() || []) for (const c of list) if (c.root?.parent) c.root.parent.remove(c.root);   // pooled (hidden) Glimmers too
@@ -596,6 +600,34 @@ function installTutorialGates(lg) {
       if (s.day01 > 0.85) fire('tut:endSeason');
     } else if (s.season === 2 && T.t > 10 && T.upgraded === 0 && s.spark >= 60) fire('tut:upgrade');
   };
+}
+
+// ═══════════════════════════════════════════ 11A perf glue ═══════════════════════════════════════════
+// sb.perf = { shadows: BlobShadows (all creature discs → 1 dc) · lod: CreatureLOD (hulls off far away) · governor: PixelRatioGovernor }
+// opts.perf === false disables all three (demos that measure per-creature numbers). Headless: shadows + lod run (deterministic,
+// asserted by check.mjs --sandbox), the governor needs a renderer so it is skipped.
+export const PERF_VERSION = '11A';
+function installPerf(sb) {
+  if (sb.opts?.perf === false) return;
+  const scene = sb.game.scene, cam = sb.game.camera?.three || sb.game.camera;
+  sb.perf = { shadows: new BlobShadows(scene, 48), lod: cam ? new CreatureLOD(cam, sb.opts?.lod) : null, governor: null, roots: [] };
+  if (!sb.headless && sb.game.renderer) sb.perf.governor = new PixelRatioGovernor(sb.game, sb.opts?.governor);
+  sb.perf.dispose = () => { sb.perf.shadows.dispose(); sb.perf.lod?.dispose?.(); sb.perf.governor?.dispose?.(); };
+}
+function perfRoots(sb) {
+  const r = sb.perf.roots; r.length = 0;
+  if (sb.hero?.root) r.push(sb.hero.root);
+  for (const c of sb.cust.active) if (c.root) r.push(c.root);
+  for (const h of sb.helpers) r.push(h.g);
+  for (const v of sb.villains || []) r.push(v.g || v.root || v);
+  return r;
+}
+function updatePerf(sb, dtReal) {
+  if (!sb.perf) return;
+  const roots = perfRoots(sb);
+  sb.perf.shadows.update(roots);
+  sb.perf.lod?.update?.(roots);
+  sb.perf.governor?.update?.(dtReal ?? 1 / 60);
 }
 
 /** VFX stand-in for Node: every pool call is a no-op counter. */
