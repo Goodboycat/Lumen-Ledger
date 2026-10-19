@@ -66,7 +66,7 @@ in THIS chat, exactly as if you had been launched for it. A chat that closes an 
 Every ID gets its own HANDOFF + row + commit, so if YOU get axed mid-loop the next chat's `next.sh` lands exactly where you stopped.
 The user never reads mid-chat and does nothing manually; nobody is waiting for a report.
 
-## The only 9 rules (+ Rule 0 above: push every commit to GitHub)
+## The only 10 rules (+ Rule 0 above: push every commit to GitHub)
 1. **Read ≤ 8 credits**: this file → `GAME_BIBLE.md` → the API_CONTRACTS sections your task names →
    skim ONLY the Foundation files you import. Do not read other chats' prompt files.
 2. **Write files early and often.** Files on disk are the deliverable. A chat that dies at 95 credits with
@@ -94,6 +94,12 @@ The user never reads mid-chat and does nothing manually; nobody is waiting for a
    "Measured" in your HANDOFF, and hand the target to the owning ID (perf → 11A). Never measure a budget with screenshots;
    `check.mjs` mesh counts are the budget measure (0 credits). **Two identical failed attempts at anything = stop, write it
    under Missing, commit, next item.** The third attempt is the one that gets a chat axed.
+
+10. **CHECKPOINT RULE (added 2026-10-19, user rule — never skip it):** after **every three things you work on** (three files,
+   three items, three fixes — count them), stop and estimate credits used. If you have passed **50 %**, immediately
+   `cd /home/user/webapp && git add -A && git commit -qm "CHECKPOINT <ID>: <what>" && git push -q origin main` (or `bash tools/wip.sh`),
+   then continue coding. Below 50 % you still commit via rule 8; the 50 % checkpoint is the hard, non-optional push to GitHub so an
+   axed chat loses at most a few items. Do not ignore this; treat it as part of the loop, not an afterthought.
 
 ## How to test (cheap — do not reinvent this)
 ```bash

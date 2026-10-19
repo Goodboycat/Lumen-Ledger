@@ -62,6 +62,9 @@ BUG GATE (non-negotiable, ~0 credits):
   (errors = top priority; a demo that throws is NOT done). Look at at most ONE screenshot. No screenshot-tweak loops.
   BROWSER FAILED → skip, write "browser QA skipped" in the HANDOFF.
 
+CHECKPOINT RULE (every chat, mechanical): after every THREE things you work on, check whether credits used passed 50 %. If yes →
+  commit + push to GitHub right away (`bash tools/wip.sh "CHECKPOINT: <what>"`), then keep coding. Never skip it.
+
 AT ~80 CREDITS: stop adding features. Close the current ID if it is closable (check.mjs OK → HANDOFF → row → commit);
 if it is not, still write its HANDOFF with an honest Missing list and commit (no README row). Then post the
 
