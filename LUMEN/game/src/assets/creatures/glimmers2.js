@@ -28,7 +28,7 @@ import { PALETTE as P, toonMat, flatMat } from '../../core/Toon.js';
 import { addOutline } from '../../core/Outline.js';
 import { makeGlimmer } from '../glimmer.js';
 import { mergeGroup } from '../props/merge.js';
-import { GLIMMER_INFO, GLIMMER_TYPES, GLIMMER_VARIANTS_READY, compactGlimmer, makeGlimmerVariant } from './glimmers.js';
+import { GLIMMER_INFO, GLIMMER_TYPES, GLIMMER_VARIANTS_READY, compactGlimmer, makeGlimmerVariant, registerBuilder } from './glimmers.js';
 
 /** The 8 types this file ships (order = demo order). */
 export const GLIMMER_VARIANTS_READY_2 = ['impulse', 'haggler', 'kid', 'elder', 'tourist', 'critic', 'collector', 'newbie'];
@@ -266,7 +266,13 @@ export function registerVariants(target) {
   let n = 0;
   if (target && typeof target === 'object') {
     for (const [type, build] of Object.entries(GLIMMER_VARIANTS_2)) { if (!target[type]) { target[type] = (kit, r) => build(kit, new THREE.Group(), r); n++; } }
+  } else {
+    // 10A: CHANGE_REQUEST [2D] applied — 2A now exports registerBuilder(). Static-only fallback (live group dropped);
+    // makeGlimmerAny() still routes to makeGlimmerVariant2 for the full kit + flourish.
+    for (const [type, build] of Object.entries(GLIMMER_VARIANTS_2)) { if (registerBuilder(type, (kit, r) => build(kit, new THREE.Group(), r))) n++; }
   }
   for (const type of GLIMMER_VARIANTS_READY_2) if (!GLIMMER_TYPES.includes(type)) GLIMMER_TYPES.push(type);
   return n;
 }
+// Register at import time so plain makeGlimmerVariant('kid') from any module gets the 2D kit (CHANGE_REQUEST [2D] closed).
+export const GLIMMER_BUILDERS_REGISTERED = registerVariants();

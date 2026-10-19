@@ -87,8 +87,16 @@ if (doProps) {
   } catch (e) { bad++; console.log('  decor.js FAIL →', e.message.split('\n')[0]); }
 }
 if (doCreatures) {
-  const { makeGlimmerVariant, GLIMMER_TYPES, measureCreature, CreatureAnimator, CREATURE_ANIMS } = await import(pathToFileURL(resolve('src/assets/creatures/index.js')).href);
+  const { makeGlimmerVariant, GLIMMER_TYPES, measureCreature, CreatureAnimator, CREATURE_ANIMS, hasBuilder, GLIMMER_BUILDERS_REGISTERED } = await import(pathToFileURL(resolve('src/assets/creatures/index.js')).href);
   console.log('\nGLIMMER_TYPES:', GLIMMER_TYPES.length);
+  // 10A: CHANGE_REQUEST [2D] applied — 2A's registerBuilder() + glimmers2 auto-registration → makeGlimmerVariant('kid') ≠ regular kit
+  try {
+    const all12 = GLIMMER_TYPES.filter((t) => hasBuilder(t)).length;
+    const kid = makeGlimmerVariant('kid', { seed: 3 }), reg = makeGlimmerVariant('regular', { seed: 3 });
+    const tri = (g) => { let n = 0; g.userData.parts.kit.traverse((o) => { if (o.isMesh && o.geometry) n += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; }); return n; };
+    if (GLIMMER_BUILDERS_REGISTERED !== 8 || all12 !== 12 || tri(kid) === tri(reg)) throw new Error(`registered=${GLIMMER_BUILDERS_REGISTERED} builders=${all12} kidTris=${tri(kid)} regTris=${tri(reg)}`);
+    console.log(`  registerBuilder (CR [2D] applied 10A): 8 registered · ${all12}/12 types have a builder · kid kit ${tri(kid)} tris ≠ regular ${tri(reg)}  OK`);
+  } catch (err) { bad++; console.log('  registerBuilder FAIL →', err.message.split('\n')[0]); }
   for (const t of GLIMMER_TYPES) {
     try { const g = makeGlimmerVariant(t, { seed: 3 }); const m = measureCreature(g);
       const a = new CreatureAnimator(g); for (const n of CREATURE_ANIMS) { a.play(n); for (let i = 0; i < 90; i++) a.update(1 / 60); }

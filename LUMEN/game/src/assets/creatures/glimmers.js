@@ -78,6 +78,20 @@ const BUILD = {
 };
 
 /**
+ * CHANGE_REQUEST [2D] (applied by 10A, additive): let another module supply the accessory builder for a type, so
+ * `makeGlimmerVariant('kid')` builds the 2D kit instead of the regular fallback. Signature of fn: (kit, r) → void.
+ * Returns true if registered (existing 2A builders are never overwritten unless `force`).
+ */
+export function registerBuilder(type, fn, force = false) {
+  if (typeof fn !== 'function' || !type) return false;
+  if (BUILD[type] && !force) return false;
+  BUILD[type] = fn;
+  if (!GLIMMER_TYPES.includes(type)) GLIMMER_TYPES.push(type);
+  return true;
+}
+export function hasBuilder(type) { return !!BUILD[type]; }
+
+/**
  * Build a Glimmer customer of `type` (∈ GLIMMER_TYPES). Returns a Group with Foundation part names plus
  * `userData.parts.kit` (merged accessory mesh group), `userData.type`, `userData.info`.
  * @param {string} type
@@ -90,8 +104,8 @@ export function makeGlimmerVariant(type = 'regular', opts = {}) {
   root.name = 'glimmer_' + type;
   const body = root.userData.parts.body;
   if (opts.compact !== false) compactGlimmer(root);   // 13 dc → 6 dc for the bare body
-  const build = BUILD[type] || BUILD.regular;    // 2D replaces the fallback for its 8 types
-  const raw = new THREE.Group(); raw.name = 'kit_raw';
+  const build = BUILD[type] || BUILD.regular;    // 2D registers its 8 builders via registerBuilder() (CHANGE_REQUEST [2D], applied 10A)
+  const raw = new THREE.Group(); raw.name = 'kit_raw'; raw.userData.color = opts.color ?? info.color;
   build(raw, r);
   body.add(raw);                                  // merge in body space so it rides squash/stretch
   const kit = mergeGroup(raw); kit.name = 'kit';
