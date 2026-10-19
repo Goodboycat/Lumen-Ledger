@@ -5,31 +5,75 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Lumen Ledger — Foundation Demo</title>
+<meta name="theme-color" content="#1d2a3a">
+<title>Lumen Ledger — Make FinLit Fun</title>
+<!-- 10C: THE game page. Foundation Game (renderer/loop/input) + mountUI (7A/7B/7C) + createLumenGame (state machine over 10B's sandbox + 8B's story).
+     No build step, no CDN: vanilla ES modules + vendor/three.module.js. Serve game/ statically and open this file. -->
 <link rel="stylesheet" href="ui/base.css">
+<link rel="stylesheet" href="ui/hud.css">
+<link rel="stylesheet" href="ui/jars.css">
+<link rel="stylesheet" href="ui/build.css">
+<link rel="stylesheet" href="ui/ledger.css">
+<link rel="stylesheet" href="ui/dialogue.css">
+<link rel="stylesheet" href="ui/toast.css">
+<link rel="stylesheet" href="ui/title.css">
+<link rel="stylesheet" href="ui/pause.css">
+<link rel="stylesheet" href="ui/touch.css">
+<style>
+  /* the Foundation HUD/help/touch markup is replaced by the 7A/7B/7C panels; only a tiny debug readout stays (hidden on phones) */
+  #debug-stats { position: fixed; right: 8px; bottom: 6px; z-index: 5; font: 600 10px/1.2 ui-monospace, Menlo, monospace; color: rgba(255,255,255,.55); pointer-events: none; display: none; }
+  body.show-debug #debug-stats { display: block; }
+  #boot-error { position: fixed; inset: auto 12px 12px 12px; z-index: 99; background: #fff3f3; border: 3px solid #b3261e; border-radius: 12px; padding: 10px 12px; font: 600 12px/1.4 system-ui, sans-serif; color: #5a1a14; display: none; white-space: pre-wrap; }
+</style>
 </head>
 <body>
-<div id="game-root">
+<main id="game-root">
   <div id="game-container"></div>
+  <output id="debug-stats">fps — · calls —</output>
+  <section id="boot-error" role="alert"></section>
+</main>
+<script type="module">
+import * as THREE from './vendor/three.module.js';
+import { Game } from './src/core/Game.js';
+import { setOutlineThickness } from './src/core/Outline.js';
+import { PROP_CATALOG } from './src/assets/props.js';
+import { mountUI } from './ui/index.js';
+import { createLumenGame, GAME_VERSION } from './src/Game.js';
 
-  <header id="hud" class="hud">
-    <div class="ribbon">
-      <span class="ribbon-title">LUMEN LEDGER</span>
-      <span class="ribbon-sub">Foundation · Chat 0</span>
-    </div>
-    <div id="stats" class="stats">fps — · calls —</div>
-  </header>
+const root = document.getElementById('game-root');
+const errEl = document.getElementById('boot-error');
+const showError = (e) => { errEl.style.display = 'block'; errEl.textContent = 'Lumen Ledger could not start:\n' + (e?.stack || e); console.error(e); };
+window.addEventListener('error', (e) => showError(e.error || e.message));
+window.addEventListener('unhandledrejection', (e) => showError(e.reason));
 
-  <aside id="help" class="help">
-    <b>Move</b> WASD / Arrows / drag left half &nbsp;·&nbsp; <b>Attack</b> Space / J / tap right half
-    &nbsp;·&nbsp; <b>Zoom</b> wheel &nbsp;·&nbsp; <b>1/2/3</b> outline thin/med/thick &nbsp;·&nbsp; <b>T</b> slow-mo
-  </aside>
+try {
+  const game = new Game(document.getElementById('game-container'));
+  window.game = game;                                                                     // smoke.mjs reads game.stats / game.paused
+  const params = new URLSearchParams(location.search);
+  const seasonSeconds = +params.get('season') || undefined;                               // ?season=30 → fast seasons (QA); default = BALANCE 150 s
+  const storyData = await fetch('./data/story.json').then((r) => { if (!r.ok) throw new Error('data/story.json ' + r.status); return r.json(); });
 
-  <nav id="touch-ui" class="touch-ui">
-    <div id="joy-base" class="joy-base"><div id="joy-knob" class="joy-knob"></div></div>
-    <button id="btn-attack" class="btn-action" aria-label="Attack">⚔</button>
-  </nav>
-</div>
-<script type="module" src="src/main.js"></script>
+  // UI first (title owns the screen and pauses the game), then the state machine over it.
+  const ui = mountUI(root, {
+    bus: game.bus, stats: () => game.stats, input: game.input, catalog: PROP_CATALOG, seasonsToWin: 10,
+    hasSave: false,                                                                       // 10D wires the save slot → CONTINUE
+    onOutline: setOutlineThickness, touch: true, version: `jam build · ${GAME_VERSION}`,
+  });
+  const lg = createLumenGame(game, { ui, storyData, seasonSeconds, seed: +params.get('seed') || undefined, debugKeys: params.has('debug') });
+  window.ui = ui; window.lg = lg; window.sb = () => lg.sb; window.eco = () => lg.sb?.eco;
+
+  // camera zoom on wheel (Foundation input) · touch class for the 7C pad · quality readout (F3 toggles the tiny debug line)
+  game.input.onWheel = (dir) => { game.camera.zoom = THREE.MathUtils.clamp(game.camera.zoom + dir * 0.1, 0.5, 2.2); };
+  if (game.input.isTouch) document.body.classList.add('is-touch');
+  if (params.has('debug')) document.body.classList.add('show-debug');
+  window.addEventListener('keydown', (e) => { if (e.code === 'F3') { e.preventDefault(); document.body.classList.toggle('show-debug'); } });
+  const dbg = document.getElementById('debug-stats'); let acc = 0;
+  game.add({ update: (_dt, g, dtReal) => { acc += dtReal; if (acc < 0.5) return; acc = 0; const s = g.stats, e = lg.sb?.eco.state; dbg.textContent = `fps ${s.fps} · calls ${s.drawCalls} · tris ${(s.triangles / 1000).toFixed(0)}k · ${lg.state}${e ? ` · S${e.season} ${(e.day01 * 100).toFixed(0)}% · spark ${e.spark} · fog ${(e.fog01 * 100).toFixed(0)}%` : ''}`; } });
+
+  // ?autoplay (smoke / trailer): skip the title. ?endless: start in Endless.
+  if (params.has('autoplay') || params.has('endless')) setTimeout(() => game.bus.emit('ui:start', { mode: params.has('endless') ? 'endless' : 'story' }), 300);
+  game.start();
+} catch (e) { showError(e); }
+</script>
 </body>
 </html>
