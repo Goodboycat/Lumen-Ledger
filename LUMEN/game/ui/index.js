@@ -37,7 +37,14 @@ export function mountUI(root, opts = {}) {
   add('ledger', mountLedger(root, { bus, seasonsToWin, autoOpen: false, selfDrive: false }));
   add('dialogue', mountDialogue(root, { bus, pauseGame: opts.pauseGame !== false, selfDrive: false, cps: opts.cps }));
   add('toast', mountToast(root, { bus, max: 3 }));
-  add('pause', mountPause(root, { bus, onOutline: opts.onOutline, canOpen: () => !(ui.title?.isOpen) && !(ui.ledger?.isOpen), storageKey: opts.storageKey }));
+  // Esc is shared: 7A's tray closes / cancels placing on it and 7C's pause toggles on it, and both listen on window. A capture-phase
+  // listener marks the keypress as "owned by the tray" when the tray is open (or placing) so the pause menu skips that one press.
+  let escOwned = false;
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    const onEscCapture = (e) => { if (e.key === 'Escape' && (ui.build?.isOpen || ui.build?.state?.placing)) { escOwned = true; setTimeout(() => { escOwned = false; }, 0); } };
+    window.addEventListener('keydown', onEscCapture, true); ui._offEsc = () => window.removeEventListener('keydown', onEscCapture, true);
+  }
+  add('pause', mountPause(root, { bus, onOutline: opts.onOutline, canOpen: () => !escOwned && !(ui.title?.isOpen) && !(ui.ledger?.isOpen), storageKey: opts.storageKey }));
   if (opts.touch !== false && opts.input) add('touch', mountTouch(root, opts.input, { bus, force: opts.forceTouch }));
 
   /** One clock for every panel (count-ups, typewriter, fps readout). */
@@ -53,7 +60,7 @@ export function mountUI(root, opts = {}) {
     };
     window.addEventListener('keydown', onKey); offKey = () => window.removeEventListener('keydown', onKey);
   }
-  ui.destroy = () => { offKey?.(); offKey = null; for (const p of ui.panels.slice().reverse()) { try { p.destroy?.(); } catch (_) { /* a panel without a parent is fine */ } } ui.panels.length = 0; };
+  ui.destroy = () => { offKey?.(); offKey = null; ui._offEsc?.(); ui._offEsc = null; for (const p of ui.panels.slice().reverse()) { try { p.destroy?.(); } catch (_) { /* a panel without a parent is fine */ } } ui.panels.length = 0; };
   return ui;
 }
 
