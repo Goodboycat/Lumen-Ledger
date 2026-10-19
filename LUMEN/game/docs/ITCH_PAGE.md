@@ -89,3 +89,42 @@ Design · code · art · writing: **[team name]** — built with the LUMEN chat 
 Thanks to the National Financial Wellbeing initiative for the theme, and to every Glimmer who overpaid for a lantern.
 
 ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+
+## 3. Theme statement (for the jam submission form "How does your game fit the theme?")
+> *Make FinLit Fun* means the lesson has to be the toy. In Lumen Ledger money is never a number in a corner: Spark is a coin that flies to you, a budget is four jars you fill with your hands, debt is a purple fog you can watch creep across the grass, and a scam is a smiling blob with an asterisk. Each of the ten seasons teaches exactly one idea — budgeting, needs vs wants, emergency fund, good vs bad interest, scams, compound growth, insurance, diversification, delayed gratification, planning for a goal — through a mechanic the player feels first and reads about second, in two sentences, on a Ledger Review that scores behaviour instead of quiz answers.
+
+## 4. Dev‑log / devlog post seed (optional, itch "Devlog")
+Title: *"The spreadsheet is the island"* — 300 words on why debt is a fog, how the 4‑jar slider was tuned so a *sensible* player wins at season 10 (17/20 seeds) and a *borrow‑everything* player loses by season 3–5 (`docs/balance.md`), and the 150‑draw‑call phone budget (`docs/PERF.md`).
+
+## 5. Screenshot shot list (6 × 1280 × 720 PNG) — also the storyboard anchor for 13B
+Camera is the game's own ¾ follow camera (offset 0,13,10 · fov 38). "Zoom" = `game.camera.zoom` (0.6 close … 1.6 far); set in the console via `window.game.camera.zoom = …` or use the `?debug` overlay. Use `index.html?autoplay&season=30` for fast seasons; `?endless` for a fully built island. Hide the debug stats before shooting (no `?debug`). Shots go to `LUMEN/screenshots/13A_itch/`.
+
+| # | File | Where / when | Camera | Must be visible | Caption (itch) |
+|---|---|---|---|---|---|
+| 1 | `01_pier_arrival.png` | Season 1, first boat of Glimmers at the **pier** (Pip standing on the pier end, −z edge of zone 0) | zoom 0.8, Pip lower‑third | Pip, pier, boat, 4–6 Glimmers walking up, HUD ribbon (Spark · Season 1 · fog bar 40 %), Debt Fog purple on the far shore | *Glimmers arrive by boat. Every one of them has Spark to spend — if you have something they need.* |
+| 2 | `02_build_ghost.png` | Build menu open, Bakery ghost snapped green on a free tile next to the Fruit Stand | zoom 0.7 | Build tray (cards w/ cost + footprint), green ghost + grid, hammer in Pip's hand | *Build with the hammer. Needs‑stalls first: bread sells while the Toy Box idles.* |
+| 3 | `03_jars_apply.png` | Jar panel open mid‑season, sliders set Spend 30 / Save 40 / Invest 15 / Protect 15, APPLY highlighted | zoom 1.0, jars panel left | 4 jar sliders summing to 100 %, physical jars on the island filling (1D decor), coin flying to Pip | *Four jars. One hundred percent. Decide before the Spark lands.* |
+| 4 | `04_debt_fog.png` | Season 3–4 with debt > 0, fog 0.55+ — the fog ring over the East Shore edge, Baron Gilt strutting at the fog line, red vignette pulse just fired (`eco:fog` tick) | zoom 1.2, tilt toward the fog | Fog blobs covering grass + a stall half‑swallowed, Baron, debt chip in HUD, "20 %/season" toast | *This is what 20 % compounding looks like. The Baron would like a word.* |
+| 5 | `05_too_good_deal.png` | Scam pitch: Fog Collector's "Zero‑Interest\* Loan" dialogue with ACCEPT / REFUSE choices, Ledger Flash (R) "TRUE COST:" pop in frame | zoom 0.9 | Dialogue box w/ Collector portrait, asterisk in the title, two choice buttons, TRUE COST reveal | *Every Too‑Good Deal has a tell. Hurry, secrecy, "guaranteed" — and that asterisk.* |
+| 6 | `06_ledger_lighthouse.png` | Season 10 win: Ledger Review ★★★ "Planning for a Goal" card over the island as the **Lighthouse** beam sweeps and the fog recedes (`fogRecede` Sequence, confetti) | zoom 1.4, lighthouse upper‑left | 3 stars, lesson card, lighthouse beam, confetti, fog ring shrinking, Baron handed a Save jar | *Ten seasons. Ten lessons. One lighthouse. Then: Endless.* |
+
+Cover image = shot 1 re‑framed to 630 × 500 with the title logo (`ui/title.css` logo element) composited top‑left. GIF for the page (optional, ≤ 3 MB): 4 s loop of shot 3's coin flying into a jar.
+
+## 6. Building the itch upload (`lumen-ledger-web.zip`)
+```bash
+cd /home/user/webapp/LUMEN/game
+node tools/check.mjs --props --creatures --hero --abilities --economy --build --customers --ui --story --vfx --world --sandbox --game --save --audio   # ALL OK first
+cd /home/user/webapp/LUMEN && rm -f lumen-ledger-web.zip && \
+  zip -qr lumen-ledger-web.zip game -x 'game/tools/*' 'game/tests/*' 'game/docs/*' 'game/demo_*.html' '*/.DS_Store' && \
+  python3 - <<'PY'
+import zipfile,shutil,os
+# itch wants index.html at the ZIP ROOT → re-root "game/" to "/"
+src=zipfile.ZipFile('lumen-ledger-web.zip'); dst=zipfile.ZipFile('lumen-ledger-web.rooted.zip','w',zipfile.ZIP_DEFLATED)
+for i in src.infolist():
+    if i.filename.startswith('game/') and not i.is_dir(): dst.writestr(i.filename[5:], src.read(i))
+src.close(); dst.close(); shutil.move('lumen-ledger-web.rooted.zip','lumen-ledger-web.zip')
+print('ok', os.path.getsize('lumen-ledger-web.zip')//1024, 'KB')
+PY
+unzip -l lumen-ledger-web.zip | head -5   # first entries must be index.html, src/, ui/, vendor/, data/, audio/
+```
+Size budget: itch allows 1 GB per file but browser games load everything up front — the build is **~0.54 MB zipped / ~1.9 MB unzipped** (vendor/three.module.js is 1.3 MB of that, 72 files — verified 2026-10-19 with the recipe above). No `tools/`, `tests/`, `docs/` or demos in the upload. Everything is relative‑path (11B audit), so the itch CDN sub‑path works unchanged. After upload: open the itch page in an incognito window on a phone, tap once (audio unlock), play one season, check the console is clean.
