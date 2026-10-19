@@ -17,6 +17,8 @@ import { attachMoves } from './anim/heroAnims.js';
 import { attachAbilities, ABILITY_NAMES, FINLIT } from './anim/heroAbilities.js';
 import { PROP_CATALOG, makeProp, STALL_TYPES, JAR_IDS, swayAll, swayDecor, updateLandmarks, makeFlowerField, makeGrassTufts } from './assets/props.js';
 import { bakeStatic } from './assets/props/bake.js';
+import { G } from './assets/geo.js';
+import { PALETTE as P, flatMat } from './core/Toon.js';
 import { makeGlimmerAny, CreatureAnimator, HelperAnimator, makeHelper, HELPER_TYPES, registerVariants } from './assets/creatures/index.js';
 import { makeEconomy, UPGRADES } from './systems/economyData.js';
 import { BuildSystem } from './systems/build.js';
@@ -83,6 +85,7 @@ export function createSandbox(game, opts = {}) {
     sb.cust.update(dt);
     sb.eco.tick(dt);
     for (const h of sb.helpers) h.anim.update(dt);
+    updateCoins(sb, dt);
   };
   game.add({ update: (dt) => sb.update(dt) });
   bus.emit('sandbox:ready', { version: SANDBOX_VERSION });
@@ -159,8 +162,62 @@ function wireEconomy(sb) {
   off.push(bus.on('eco:upgrade', (p) => { const u = p?.upgrade; if (u?.kind === 'zone') { const z = island.zones[u.effect.zone]; if (z && !z.unlocked) island.unlockZone(z.index, { game: sb.game, vfx }); } }));
   sb.cust.spawnWave(eco.state.season);                                                             // first wave at start (6A note)
 }
+// tip coins: spin, bob, walk-over pickup (≤ 0.7 u) → eco.earn; one instanced mesh refresh per frame
+function updateCoins(sb, dt) {
+  if (!sb.coins.length) { if (sb.coinMesh.count) sb.syncCoins(); return; }
+  const hp = sb.hero.root.position;
+  for (let i = sb.coins.length - 1; i >= 0; i--) { const c = sb.coins[i]; c.t += dt; c.position.y = 0.12 + Math.sin(c.t * 4) * 0.04; if (Math.hypot(c.position.x - hp.x, c.position.z - hp.z) <= 0.7) sb.collectCoin(c, 'walk'); }
+  sb.syncCoins();
+}
 function countStalls(sb) { let n = 0; for (const e of sb.build.placed.values()) if (e.id.startsWith('stall_')) n++; return n; }
-function wireAbilities(sb) {}
+// P2: hero abilities (3B) touch the economy through ctx callbacks + the bus. Nothing in 3B/4A/6A is edited; the glue is:
+//   tips     every cust:paid drops a TIP coin (20 % of the sale, min 1) on the ground next to the stall. It is NOT income until Pip
+//            collects it (walk over ≤ 0.7 u, or coinMagnetDash ≤ 2.2 u → onCollect → eco.earn). Max COIN_MAX coins; the oldest is lost.
+//   sell()   eco.sell is wrapped: per-stall haggle charges (price ×1.1 — still "happy", baseMul ×1.3) and a growth pulse (baseMul ×(1+pct))
+//   shield   bubbleShield arms sb.shield (SHIELD_S seconds) → the next scheduled event is absorbed (see scheduler) instead of applied
+//   fog      fogSweep ctx.fog.push → eco.pushFog(strength) (−5 % fog per strength)
+//   ledger   ledgerFlash reveals the pending Too-Good Deal (true cost = amount·(1+rate)³ or cost with payout 0) → eco.refuseOffer()
+export const COIN_MAX = 32, TIP_PCT = 0.2, SHIELD_S = 30, COOLDOWN_S = 5, GROWTH_S = 12;
+function wireAbilities(sb) {
+  const { eco, hero, cust, vfx } = sb, bus = sb.game.bus, game = sb.game;
+  // ---- tip coins: ONE InstancedMesh (1 dc), each coin = { position: Vector3, value, t } so 3B's targetPos(coin) works unchanged
+  const im = new THREE.InstancedMesh(G.cyl(0.16, 0.16, 0.05, 10), flatMat(P.sparkGold), COIN_MAX);
+  im.name = 'tipCoins'; im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.frustumCulled = false; im.userData.noOutline = true; im.count = 0;
+  game.scene.add(im); sb.coinMesh = im; sb.coins = [];
+  const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(1, 1, 1), _e = new THREE.Euler();
+  sb.syncCoins = () => { im.count = sb.coins.length; sb.coins.forEach((c, i) => { _q.setFromEuler(_e.set(Math.PI / 2, 0, c.t * 2.5)); _m.compose(c.position, _q, _s); im.setMatrixAt(i, _m); }); im.instanceMatrix.needsUpdate = true; };
+  sb.dropTip = (x, z, value) => { const c = { position: new THREE.Vector3(x, 0.12, z), value: Math.max(1, Math.round(value)), t: 0 }; sb.coins.push(c); if (sb.coins.length > COIN_MAX) { const lost = sb.coins.shift(); sb.stats.tipsLost = (sb.stats.tipsLost || 0) + lost.value; } return c; };
+  sb.collectCoin = (c, how = 'walk') => { const i = sb.coins.indexOf(c); if (i < 0) return 0; sb.coins.splice(i, 1); eco.earn(c.value, 'tip:' + how); sb.stats.tipsCollected = (sb.stats.tipsCollected || 0) + c.value;
+    vfx.pop?.show?.(c.position.clone().setY(0.9), `+${c.value}`, { color: '#FFD54F', dur: 0.6, size: 0.8 }); bus.emit('sandbox:tip', { value: c.value, how }); return c.value; };
+  sb._offs.push(bus.on('cust:paid', (p) => { if (p?.paid > 0 && p.at) { const a = Math.random() * Math.PI * 2; sb.dropTip(p.at.x + Math.cos(a) * 0.5, p.at.z + Math.sin(a) * 0.5, p.paid * TIP_PCT); } }));
+  // ---- sell wrapper (haggle charges per stall + growth pulse)
+  sb.haggle = new Map(); sb.growth = { mul: 1, until: -1 }; sb.shield = { until: -1 }; sb.cooldown = {};
+  const baseSell = eco.sell.bind(eco);
+  eco.sell = (stallId, type, price, opts = {}) => {
+    const key = String(stallId).replace(/^stall_/, ''); let baseMul = opts.baseMul || 1;
+    const h = sb.haggle.get(key); if (h && h.n > 0) { h.n--; if (price == null) price = eco.stallInfo(key)?.fair ?? 5; price = Math.round(price * 1.1 * 100) / 100; baseMul *= 1.3; sb.stats.haggled = (sb.stats.haggled || 0) + 1; }
+    if (game.time < sb.growth.until) baseMul *= sb.growth.mul;
+    return baseSell(stallId, type, price, { ...opts, baseMul });
+  };
+  // ---- dispatcher: sb.ability(name) → hero.playMove(name, ctx). Returns the Sequence or null (busy / cooling down).
+  const near = (r) => cust.active.filter((c) => (c.state === 'walk' || c.state === 'queue' || c.state === 'browse') && c.stall && Math.hypot(c.root.position.x - hero.root.position.x, c.root.position.z - hero.root.position.z) <= r);
+  const done = (name, effect) => { bus.emit('sandbox:ability', { name, effect }); sb.log.push(`${name}: ${effect}`); };
+  const CTX = {
+    coinMagnetDash: () => ({ coins: sb.coins.slice(), radius: 2.2, onCollect: (c) => sb.collectCoin(c, 'magnet') }),
+    haggleShout: () => { let t = near(4.5); if (!t.length) t = near(99).sort((a, b) => a.root.position.distanceToSquared(hero.root.position) - b.root.position.distanceToSquared(hero.root.position)).slice(0, 3); return { targets: t, text: t.length ? '+10%!' : 'DEAL?', onShout: (tg) => { if (!tg?.stall) return; const k = String(tg.stall.id).replace(/^stall_/, ''); const h = sb.haggle.get(k) || { n: 0 }; h.n++; sb.haggle.set(k, h); done('haggleShout', `${k} next sale price ×1.1, demand ×1.3 (${h.n} charged)`); } }; },
+    growthStomp: () => ({ onPulse: (i, r, pct) => { sb.growth = { mul: 1 + pct / 100, until: game.time + GROWTH_S }; if (i === 2) done('growthStomp', `all stalls demand ×${(1 + pct / 100).toFixed(2)} for ${GROWTH_S} s`); } }),
+    bubbleShield: () => ({ event: sb.nextEvent ? (eco.events[sb.nextEvent]?.title || sb.nextEvent) : 'next event', onAbsorb: () => { sb.shield.until = game.time + SHIELD_S; done('bubbleShield', `shield armed ${SHIELD_S} s — next event absorbed`); } }),
+    fogSweep: () => ({ fog: { push: (o, d, s) => { const before = eco.state.fog01; eco.pushFog(s); done('fogSweep', `fog ${(before * 100) | 0}% → ${(eco.state.fog01 * 100) | 0}%`); } } }),
+    ledgerFlash: () => { const o = eco.pendingOffer; if (!o) return { cost: 0, trueCost: 0, text: 'no deal on the table', onReveal: () => done('ledgerFlash', 'nothing to reveal') };
+      const cost = o.cost || o.amount || 0, trueCost = o.amount ? Math.round(o.amount * Math.pow(1 + (o.trueRate || 0), 3)) : cost;
+      return { cost, trueCost, text: o.payout === 0 ? `TRUE COST: ${cost} → you get 0` : undefined, onReveal: () => { eco.refuseOffer(o); done('ledgerFlash', `${o.title} revealed (true cost ${trueCost}) → refused`); } }; },
+  };
+  sb.ability = (name) => {
+    if (!CTX[name] || !ABILITY_NAMES().includes(name)) return null;
+    if ((sb.cooldown[name] || -1) > game.time) { bus.emit('sandbox:denied', { name, why: 'cooldown' }); return null; }
+    const seq = hero.playMove(name, CTX[name]()); if (seq) sb.cooldown[name] = game.time + COOLDOWN_S; return seq;
+  };
+}
 // Debug keys (prompt P1): B build mode for the current pick · 1–9 pick a stall type · E end season (LedgerReport → console)
 // · H hire next helper (P3) · Z unlock next zone (buys the zone upgrade when affordable, else free in sandbox) · X demolish nearest
 // · U upgrade nearest · R rotate ghost · Esc exit build. Every key is a method on sb.keys so check.mjs can drive it without a DOM.
@@ -176,6 +233,7 @@ function installDebugKeys(sb) {
     upgrade() { const e = sb.build.nearest(sb.hero.root.position.x, sb.hero.root.position.z, 2.5); return e && !e.scenery ? sb.build.upgrade(e) : false; },
     unlock() { const z = sb.island.nextLockedZone(); if (!z) return null; const up = Object.values(UPGRADES).find((u) => u.kind === 'zone' && u.effect.zone === z.index); if (up && sb.eco.canAfford(up.cost)) return sb.eco.buyUpgrade(up.id); return sb.island.unlockZone(z.index, { game: sb.game, vfx: sb.vfx }); },
     hire() { return hireHelper(sb); },
+    ability(name) { return sb.ability(name); },
   };
   if (sb.headless || typeof window === 'undefined' || !window.addEventListener) return;
   sb._onKey = (e) => {
@@ -216,7 +274,7 @@ function hireHelper(sb) {
 /** VFX stand-in for Node: every pool call is a no-op counter. */
 export function mockVfx() {
   const n = { calls: 0 }; const noop = () => { n.calls++; };
-  const pool = { burst: noop, ring: noop, show: noop, emit: noop, stream: noop, hide: noop, push: noop, setCoverage: noop, coverage: 0 };
+  const pool = { burst: noop, ring: noop, show: noop, emit: noop, stream: noop, hide: noop, push: noop, pulse: noop, flash: noop, setCoverage: noop, coverage: 0 };
   return new Proxy({ _counts: n, fog: pool, coinFly: noop, debtPulse: noop, pop: pool, dust: pool, sparks: pool }, { get: (t, k) => (k in t ? t[k] : (k === 'then' ? undefined : pool)) });
 }
 
