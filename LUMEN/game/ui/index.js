@@ -32,7 +32,8 @@ export function mountUI(root, opts = {}) {
   if (opts.title !== false) add('title', mountTitle(root, { bus, hasSave: opts.hasSave || false, version: opts.version || 'jam build', autoShow: opts.autoShowTitle !== false, showOnLose: false }));   // 10C shows the title itself after the lose ledger (TRY AGAIN)
   add('hud', mountHUD(root, { bus, stats: opts.stats || null, seasonsToWin, selfDrive: false }));
   add('jars', mountJars(root, { bus, pct: opts.jarPct }));
-  add('build', mountBuildMenu(root, { bus, catalog: opts.catalog || {}, spark: opts.spark || 0, categories: opts.categories || ['stall', 'decor', 'nature'], noHotkey: !!opts.noBuildHotkey }));
+  // 7A's own B hotkey is not modal-aware (it would open the tray under the title / dialogue / pause) → it is off and re-owned below, gated by ui.isModal().
+  add('build', mountBuildMenu(root, { bus, catalog: opts.catalog || {}, spark: opts.spark || 0, categories: opts.categories || ['stall', 'decor', 'nature'], noHotkey: true }));
   add('ledger', mountLedger(root, { bus, seasonsToWin, autoOpen: false, selfDrive: false }));
   add('dialogue', mountDialogue(root, { bus, pauseGame: opts.pauseGame !== false, selfDrive: false, cps: opts.cps }));
   add('toast', mountToast(root, { bus, max: 3 }));
@@ -43,7 +44,16 @@ export function mountUI(root, opts = {}) {
   ui.update = (dt) => { ui.hud.update(dt); ui.ledger.update(dt); ui.dialogue.update(dt); };
   /** True when any modal owns the screen (title / ledger / dialogue / pause) → the game loop should be paused. */
   ui.isModal = () => !!(ui.title?.isOpen || ui.ledger?.isOpen || ui.dialogue?.isOpen || ui.pause?.isOpen);
-  ui.destroy = () => { for (const p of ui.panels.slice().reverse()) { try { p.destroy?.(); } catch (_) { /* a panel without a parent is fine */ } } ui.panels.length = 0; };
+  // B = build tray toggle, only when no modal owns the screen and not while placing (Esc cancels placing — 7A handles that one itself).
+  let offKey = null;
+  if (!opts.noBuildHotkey && typeof window !== 'undefined' && window.addEventListener) {
+    const onKey = (e) => {
+      if (e.repeat || (e.target && /INPUT|TEXTAREA/.test(e.target.tagName))) return;
+      if ((e.key === 'b' || e.key === 'B') && !ui.isModal() && !ui.build.state?.placing) ui.build.toggle();
+    };
+    window.addEventListener('keydown', onKey); offKey = () => window.removeEventListener('keydown', onKey);
+  }
+  ui.destroy = () => { offKey?.(); offKey = null; for (const p of ui.panels.slice().reverse()) { try { p.destroy?.(); } catch (_) { /* a panel without a parent is fine */ } } ui.panels.length = 0; };
   return ui;
 }
 
