@@ -60,4 +60,32 @@ No spreadsheets. The spreadsheet is the island.
 
 **Six abilities, six money ideas:** Coin‑Magnet Dash (Q) *collect income promptly* · Bubble Shield (W) *emergency fund* · Growth Stomp (E) *compound growth* · Ledger Flash (R) *see a deal's true cost* · Haggle Shout (F) *prices are negotiable* · Fog Sweep (G) *repay the highest‑interest loan first*.
 
+### What you learn (one lesson per season)
+| Season | Lesson | …and how the island teaches it |
+|---|---|---|
+| 1 | **Budgeting** | Four jars that always sum to 100 % — a plan for money before it is spent |
+| 2 | **Needs vs Wants** | Glimmers queue for bread while the Toy Box idles |
+| 3 | **Emergency Fund** | Save ≥ 200 is the line that pushes the fog back; a Leaky Roof tests it |
+| 4 | **Good vs Bad Interest** | your Save jar earns 5 %; the Baron's loan costs 20 % — watch which grows faster |
+| 5 | **Too‑Good Deals (scams)** | six pitches with tells: hurry · secrecy · "guaranteed" · an asterisk |
+| 6 | **Compound Growth** | the Invest line on your Ledger curves upward |
+| 7 | **Insurance** | a Spark Storm with Protect vs without |
+| 8 | **Diversification** | events hit one zone or one stall type — three kinds beat three of the same |
+| 9 | **Delayed Gratification** | the Festival is tempting; the Lighthouse is waiting |
+| 10 | **Planning for a Goal** | fog left ÷ seasons left = this season's target |
+
+Stars come from what you *did*, not from a quiz. The Ledger Review is the assessment; the lesson card restates the idea you just lived.
+
+### Good to know
+- **Saves** automatically at every season bell (browser localStorage). CONTINUE on the title screen resumes.
+- **Sound** starts after your first tap/click (browser rule). Music and SFX sliders are in ⏸ Settings; `?mute` in the URL silences everything.
+- **Accessibility** — reduce‑motion, outline thickness and quality presets in Settings; every jar and state uses colour **and** icon **and** text; no flashing above 3 Hz; dialogue waits for you.
+- **Phone?** Yes — landscape or portrait, all buttons ≥ 44 px. Tested at 360 × 800. An Android APK (Flutter WebView) ships alongside the web build.
+- **Content** — family‑friendly: no gambling, no loot boxes, no magic, no dark‑fantasy creatures. The villain is a fog with a top hat.
+
+### Credits
+Made for the **Zoud GameLab** jam, theme *"Make FinLit Fun"* (Oct 15 – Nov 15 2026).
+Design · code · art · writing: **[team name]** — built with the LUMEN chat pipeline (Genspark). Engine: **Three.js r160** (MIT). All 3D is procedural (no external models or textures). Audio: procedural synth fallback in‑engine; optional Ludo.ai SFX/music (see `docs/audio_prompts.md`). Fonts: system stack.
+Thanks to the National Financial Wellbeing initiative for the theme, and to every Glimmer who overpaid for a lantern.
+
 ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
