@@ -1378,7 +1378,8 @@ if (doWorld) {
   const CR = await import(pathToFileURL(resolve('src/assets/creatures/index.js')).href);
   const { SequencePlayer: Sequencer } = await import(pathToFileURL(resolve('src/anim/Sequencer.js')).href);
   CR.registerVariants?.();
-  const meshCount = (g) => { let n = 0; g.traverse((o) => { if (o.isMesh && o.visible) n++; }); return n; };
+  // 11A: count like the renderer — traverseVisible skips whole invisible subtrees (helper `held` crates, hidden lamps), traverse() did not.
+  const meshCount = (g) => { let n = 0; g.traverseVisible((o) => { if (o.isMesh) n++; }); return n; };
   const noNaN = (g, what) => g.traverse((o) => { if (!isFinite(o.position.x) || !isFinite(o.position.y) || !isFinite(o.scale.x) || !isFinite(o.scale.y) || !isFinite(o.rotation.y)) throw new Error('NaN pose in ' + what + ' ' + o.name); });
   // 1. bakeStatic
   try {
