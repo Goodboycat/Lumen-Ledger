@@ -39,6 +39,7 @@ const doSandbox = args.includes('--sandbox');      // 10B integrated systems san
 const doGame = args.includes('--game');            // 10C the whole game headless: real UI (domshim) + real story + real sandbox driven by createLumenGame's state machine
 const doSave = args.includes('--save');            // 10D save/load + tutorial: play to S2 → autosave → fresh lg → CONTINUE → same season/spark/stalls/toasts; export/import text; lose clears
 const doPerf = args.includes('--perf');            // 11A src/systems/perf.js: BlobShadows (N discs → 1 InstancedMesh), CreatureLOD tiers + hysteresis, PixelRatioGovernor steps, countGeometries
+const doAudio = args.includes('--audio');          // 12 src/core/Audio.js headless (no AudioContext → inert): manifest ids ↔ DEFAULT_EVENTS, bus walk counts, cooldown, duck, unknown id, destroy
 const doWorld = args.includes('--world');          // 10A integrated world: bakeStatic batches + Island v2 + every content pack placed headless (mirrors demo_world.html), counts meshes ≤ budget              // 9A/9B VFX packs: installPack1/installPack2 on a mock VFX+scene, fire every effect, step headless, check pools drain, 0 NaN, draw calls
 let files = args.filter((a) => !a.startsWith('--'));
 if (!files.length) { files = []; (function walk(d) { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (p.endsWith('.js') && !p.endsWith('main.js')) files.push(p); } })('src'); }  // main.js is the DOM entry; skipped
@@ -1561,6 +1562,63 @@ if (doPerf) {
     if (geoAfter !== 0) throw new Error('geometries still referenced from the scene after destroy: ' + geoAfter);
     console.log(`  memory: sandbox S1→S${sb.stats.seasons + 1} headless 130 s · geometries ${geoWarm} @40 s → ${geoEnd} @130 s (bound ${bound}; customers created ${sb.cust.totalsPool.created}, disposed ${sb.cust.totalsPool.disposed}, pooled ${pooled} ≤ ${12 * POOL_CAP_PER_TYPE}) · meshes ${meshWarm} → ${meshEnd} · ${sb.perf.roots.length} pooled shadows · destroy → scene empty (${left} meshes, ${geoAfter} geometries)  OK`);
   } catch (err) { bad++; console.log('  perf FAIL →', err.message); }
+}
+if (doAudio) {
+  // 12: Node has no AudioContext → createAudio is inert but API-complete; every play() is still counted in state.played, so the
+  // bus → SFX map, cooldowns, payload variants, ducking flags and destroy() are all testable without a browser.
+  console.log('\nAUDIO (12):');
+  try {
+    const { createAudio, DEFAULT_EVENTS, synthSfx, synthMusic } = await import(pathToFileURL(resolve('src/core/Audio.js')).href);
+    const { EventBus } = await import(pathToFileURL(resolve('src/core/EventBus.js')).href);
+    const { readFileSync } = await import('node:fs'); const manifest = JSON.parse(readFileSync('audio/manifest.json', 'utf8'));
+    const sfxIds = Object.keys(manifest.sfx || {}), musicIds = Object.keys(manifest.music || {});
+    // (1) every id referenced by the event map (sfx / music / pick variants) exists in the manifest; every sfx has a synth fallback
+    const probe = [{}, { action: 'denied' }, { action: 'select' }, { accepted: true }, { accepted: false }, { state: 'react', reaction: 'happy' }, { state: 'react', reaction: 'sad' }];
+    const abilities = ['coinMagnetDash', 'bubbleShield', 'growthStomp', 'ledgerFlash', 'haggleShout', 'fogSweep', 'unknown'];
+    const refs = new Set();
+    for (const [ev, r] of Object.entries(DEFAULT_EVENTS)) {
+      if (r.sfx) refs.add(r.sfx); if (r.music) { if (!musicIds.includes(r.music)) throw new Error(`${ev} → music '${r.music}' not in manifest`); }
+      if (typeof r.pick === 'function') for (const p of [...probe, ...abilities.map((name) => ({ name }))]) { const v = r.pick(p); if (v && v.sfx) refs.add(v.sfx); }
+    }
+    for (const id of refs) if (!sfxIds.includes(id)) throw new Error(`event map references sfx '${id}' missing from manifest`);
+    for (const id of sfxIds) { const d = manifest.sfx[id]; if (!d.synth || !d.synth.type) throw new Error(`sfx '${id}' has no synth fallback`); if (!d.file) throw new Error(`sfx '${id}' has no file`); }
+    for (const id of musicIds) { const d = manifest.music[id]; if (!d.synth?.chords?.length) throw new Error(`music '${id}' has no synth chords`); }
+    const unused = sfxIds.filter((id) => !refs.has(id));
+    // (2) bus walk: the 15 core events each fire exactly one counted play; variants pick the right id
+    const bus = new EventBus(); const audio = createAudio({ bus, settings: { sfx: 0.7, music: 0.5 } });
+    if (!audio.state.silent) throw new Error('expected silent (no AudioContext in Node)');
+    await audio.load(manifest);
+    if (audio.state.wired < 15) throw new Error('wired only ' + audio.state.wired + ' events');
+    const core = ['eco:sale', 'eco:spark', 'eco:denied', 'build:placed', 'eco:season', 'eco:loan', 'eco:scam', 'eco:scamResult', 'eco:upgrade', 'eco:win', 'eco:lose', 'story:line', 'ui:choice', 'ui:ledger:open', 'game:start'];
+    let t = 0; audio._now = () => t;                                                           // cooldown clock under test control
+    for (const ev of core) { t += 5; bus.emit(ev, {}); }
+    const total = Object.values(audio.state.played).reduce((a, b) => a + b, 0);
+    if (total !== core.length) throw new Error(`15 core events → ${total} plays (expected ${core.length}): ${JSON.stringify(audio.state.played)}`);
+    if (!audio.state.played.coin || !audio.state.played.fanfare || !audio.state.played.lose_sting || !audio.state.played.scam_refuse) throw new Error('core ids not played: ' + JSON.stringify(audio.state.played));
+    t += 5; bus.emit('eco:scamResult', { accepted: true }); if (!audio.state.played.scam_fell) throw new Error('scamResult accepted → scam_fell variant not picked');
+    t += 5; bus.emit('sandbox:ability', { name: 'fogSweep' }); if (!audio.state.played.sweep) throw new Error('ability variant sweep not picked');
+    t += 5; bus.emit('cust:state', { state: 'walk' }); if (audio.state.played.cust_happy) throw new Error('cust:state walk should be silent');
+    bus.emit('cust:state', { state: 'react', reaction: 'happy' }); if (audio.state.played.cust_happy !== 1) throw new Error('cust happy not played');
+    // (3) cooldown: 50 eco:spark ticks inside 0.1 s → exactly one more play
+    const before = audio.state.played.spark_tick || 0; t += 5; for (let i = 0; i < 50; i++) { t += 0.002; bus.emit('eco:spark', {}); }
+    if ((audio.state.played.spark_tick || 0) - before !== 1) throw new Error('cooldown failed: spark_tick ' + (audio.state.played.spark_tick - before) + ' plays in 0.1 s');
+    if (!audio.state.throttled) throw new Error('throttled counter not incremented');
+    // (4) music + duck flags follow the bus; volumes follow ui:settings; unknown id is logged once, never throws
+    if (audio.state.currentMusic !== 'island_day') throw new Error('music after game:start = ' + audio.state.currentMusic);
+    t += 5; bus.emit('eco:lose', {}); if (audio.state.currentMusic !== 'fog_lose') throw new Error('music after eco:lose = ' + audio.state.currentMusic);
+    bus.emit('ui:title:open', {}); if (audio.state.currentMusic !== 'title') throw new Error('title music not selected');
+    bus.emit('ui:dialogue:open', {}); if (!audio.state.ducked) throw new Error('dialogue open → not ducked'); bus.emit('ui:dialogue:close', {}); if (audio.state.ducked) throw new Error('dialogue close → still ducked');
+    bus.emit('ui:settings', { key: 'sfx', value: 0.25 }); if (audio.state.volumes.sfx !== 0.25) throw new Error('ui:settings sfx not applied');
+    if (audio.play('nope') !== false || audio.play('nope') !== false || audio.state.log.filter((l) => l.includes('unknown sfx nope')).length !== 1) throw new Error('unknown id handling');
+    if (audio.music('nope') !== false) throw new Error('unknown music should return false');
+    // (5) destroy → no listeners left on the bus → emits are silent
+    const sum = () => Object.values(audio.state.played).reduce((a, b) => a + b, 0);
+    const after = sum(); audio.destroy(); t += 5; bus.emit('eco:sale', {}); bus.emit('eco:win', {});
+    if (sum() !== after) throw new Error('listeners survived destroy()');
+    if (typeof synthSfx !== 'function' || typeof synthMusic !== 'function') throw new Error('synth exports missing');
+    console.log(`  manifest: ${sfxIds.length} sfx (all with file + synth) · ${musicIds.length} music · event map ${Object.keys(DEFAULT_EVENTS).length} bus events → ${refs.size} sfx ids referenced${unused.length ? ` (unreferenced: ${unused.join(', ')})` : ''}`);
+    console.log(`  bus walk: 15 core events → 15 plays · variants scam_fell/sweep/cust_happy · cooldown 50 ticks/0.1 s → 1 play (${audio.state.throttled} throttled) · music lose→fog_lose, title · duck on/off · ui:settings → vol · unknown id logged once · destroy → 0 listeners  OK`);
+  } catch (err) { bad++; console.log('  audio FAIL →', err.message); }
 }
 console.log(bad ? `\n${bad} FAILURE(S)` : '\nALL OK ✅');
 process.exit(bad ? 1 : 0);

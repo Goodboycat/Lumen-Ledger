@@ -69,7 +69,8 @@ export function createAudio(opts = {}) {
   const offs = [];
   let sfxGain = null, musicGain = null, musicDuck = null;
 
-  const now = () => (state.ctx ? state.ctx.currentTime : (typeof performance !== 'undefined' ? performance.now() / 1000 : Date.now() / 1000));
+  // seconds clock for cooldowns: AudioContext time when live, wall clock when inert; `api._now` can override it (check.mjs drives cooldowns deterministically)
+  const now = () => (api._now ? api._now() : state.ctx ? state.ctx.currentTime : (typeof performance !== 'undefined' ? performance.now() / 1000 : Date.now() / 1000));
   const def = (kind, id) => state.manifest?.[kind]?.[id] || null;
 
   function ensureGraph() {
@@ -102,7 +103,8 @@ export function createAudio(opts = {}) {
       return api;
     },
     duck(on) { state.ducked = !!on; if (musicDuck) ramp(musicDuck.gain, on ? 0.35 : 1, 0.2); return api; },
-    destroy() { for (const off of offs) off(); offs.length = 0; stopMusic(0); if (state.ctx && state.ctx !== window.lumenAudioCtx) state.ctx.close?.(); },
+    destroy() { for (const off of offs) off(); offs.length = 0; stopMusic(0); if (state.ctx && typeof window !== 'undefined' && state.ctx !== window.lumenAudioCtx) state.ctx.close?.(); },
+    _now: null,
   };
 
   // ---- P1.1 loader: decode a file on first use (lazy — the jam build has few/no files, synth covers the rest) ----
