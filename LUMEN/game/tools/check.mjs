@@ -8,6 +8,8 @@
 //                                              + 8B src/systems/story.js: runs tests/story.test.mjs (58 asserts, real 4B economy) + a bus-driven 10-season walk here
 //   node tools/check.mjs --vfx                → 9A src/vfx/pack1.js (+ 9B pack2.js if present): installs on a mock VFX/scene, fires every effect, steps 3 s headless, every pool drains, no NaN, ≤ 1 dc per pool
 //   node tools/check.mjs --ui                 → 7A/7B/7C DOM UI: mounts ui/*.js on tools/domshim.mjs, fires bus events, clicks, reads text (7A hud/jars/build · 7B ledger/dialogue/toast)
+//   node tools/check.mjs --sandbox            → 10B src/Game.js createSandbox headless (mock game, mock renderer): 3 starter stalls + 1 built, wave, 2 seasons
+//                                              accelerated (seasonSeconds 30) → 2 LedgerReports no NaN, 6 abilities touch the economy, H hires a helper, event + scam scheduled
 //   node tools/check.mjs src/assets/foo.js    → import just these files
 // Works with no Playwright, no Chromium, no GPU. Three.js r160 runs in Node for geometry/materials.
 // Use this after EVERY file you write. Use tools/smoke.mjs (browser) only once at the end.
@@ -32,6 +34,7 @@ const doCustomers = args.includes('--customers');  // 6A customer AI (headless: 
 const doStory = args.includes('--story');          // 8A story.json data (pure JSON, cross-checked against 4A/4B ids + 7B speakers/moods)
 const doUI = args.includes('--ui');                // 7A/7B/7C DOM UI on a tiny DOM shim (tools/domshim.mjs)
 const doVFX = args.includes('--vfx');
+const doSandbox = args.includes('--sandbox');      // 10B integrated systems sandbox (headless createSandbox: economy + build + customers + abilities + helpers, 2 seasons)
 const doWorld = args.includes('--world');          // 10A integrated world: bakeStatic batches + Island v2 + every content pack placed headless (mirrors demo_world.html), counts meshes ≤ budget              // 9A/9B VFX packs: installPack1/installPack2 on a mock VFX+scene, fire every effect, step headless, check pools drain, 0 NaN, draw calls
 let files = args.filter((a) => !a.startsWith('--'));
 if (!files.length) { files = []; (function walk(d) { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (p.endsWith('.js') && !p.endsWith('main.js')) files.push(p); } })('src'); }  // main.js is the DOM entry; skipped
@@ -1113,6 +1116,64 @@ if (doUI) {
   } catch (err) { bad++; console.log('  pause FAIL →', err.message); }
 }
 
+if (doSandbox) {
+  // 10B sandbox: real Island v2 + Economy (4B) + BuildSystem (5) + CustomerSystem (6A) + HeroController with moves/abilities (3A/3B)
+  // + helpers (2B) wired by src/Game.js createSandbox() on a mock Game. Runs 2 accelerated seasons (30 s each) at 30 Hz.
+  try {
+    const THREE = await import(pathToFileURL(resolve('vendor/three.module.js')).href);
+    const { SequencePlayer, HitStop } = await import(pathToFileURL(resolve('src/anim/Sequencer.js')).href);
+    const { EventBus } = await import(pathToFileURL(resolve('src/core/EventBus.js')).href);
+    const { tweens } = await import(pathToFileURL(resolve('src/anim/Tween.js')).href);
+    const { createSandbox, STALL_PICKS, COIN_MAX } = await import(pathToFileURL(resolve('src/Game.js')).href);
+    const { ABILITY_NAMES } = await import(pathToFileURL(resolve('src/anim/heroAbilities.js')).href);
+    console.log('\nSANDBOX (10B):');
+    const bus = new EventBus(); const ev = {}; const count = (n) => bus.on(n, (p) => { (ev[n] ??= []).push(p); });
+    for (const n of ['sandbox:ready', 'build:placed', 'cust:paid', 'eco:season', 'eco:event', 'eco:scam', 'eco:absorbed', 'eco:scamResult', 'sandbox:ability', 'sandbox:tip', 'sandbox:hired']) count(n);
+    const game = { scene: new THREE.Scene(), bus, sequences: new SequencePlayer(), tweens, hitStop: new HitStop(), input: { pointerWorld: new THREE.Vector3(), hasPointerWorld: false, move: new THREE.Vector2(), actions: {}, pressed: () => false }, camera: { zoom: 1, shake() {} }, time: 0, timeScale: 1, followTarget: null, systems: [], add(s) { this.systems.push(s); return s; }, hitstop() {} };
+    const t0 = performance.now();
+    const sb = createSandbox(game, { headless: true, seasonSeconds: 30, seed: 3 });
+    const dt = 1 / 30; let frames = 0;
+    const noNaN = (what) => { const p = sb.hero.root.position; if (!isFinite(p.x) || !isFinite(p.z)) throw new Error('hero NaN ' + what); for (const c of sb.cust.active) { if (!isFinite(c.root.position.x) || !isFinite(c.root.scale.y)) throw new Error('customer NaN ' + what); } const s = sb.eco.state; for (const k of ['spark', 'debt', 'fog01', 'reputation', 'day01']) if (!isFinite(s[k])) throw new Error(`eco.${k} NaN ${what}`); };
+    const step = () => { game.time += dt; game.sequences.update(dt); game.tweens.update(dt); for (const s of game.systems) s.update?.(dt); frames++; };
+    const run = (sec) => { for (let i = 0; i < sec * 30; i++) step(); noNaN('t=' + game.time.toFixed(1)); };
+    // 1. construction
+    if (!ev['sandbox:ready'] || sb.eco.state.stalls !== 3 || sb.build.placed.size < 3) throw new Error(`construction: stalls ${sb.eco.state.stalls} placed ${sb.build.placed.size}`);
+    if (sb.cust.count + sb.cust.pendingSpawns.length < 1) throw new Error('no first wave queued');
+    let meshes = 0; game.scene.traverse((o) => { if (o.isMesh || o.isInstancedMesh) meshes++; });
+    // 2. debug keys: pick + build + confirm (charged), demolish/upgrade on nearest, rotate
+    sb.eco.state.spark = 400; const spark0 = sb.eco.state.spark;
+    const id = sb.keys.pick(1); if (id !== 'stall_' + STALL_PICKS[1]) throw new Error('pick');
+    if (!sb.keys.build() || sb.build.mode !== 'place') throw new Error('build enter'); sb.keys.rotate(); sb.build.moveTo(1, 1);
+    if (!sb.keys.confirm() || sb.build.placed.size !== 4 || sb.eco.state.spark >= spark0) throw new Error('confirm/charge');
+    if (sb.eco.state.stalls !== 4) throw new Error('eco.stalls not synced ' + sb.eco.state.stalls);
+    sb.keys.exit(); if (sb.build.mode === 'place') throw new Error('exit');
+    // 3. two seasons (auto end) + E (manual end) → 3 reports
+    run(65); if (sb.stats.seasons !== 2 || sb.stats.reports.length !== 2) throw new Error('seasons ' + sb.stats.seasons);
+    const r = sb.keys.endSeason(); if (!r || sb.stats.reports.length !== 3 || r.season !== 3) throw new Error('E end season');
+    for (const rep of sb.stats.reports) for (const k of ['income', 'expenses', 'debt', 'fog01', 'stars', 'netWorth']) if (!isFinite(rep[k])) throw new Error(`report S${rep.season}.${k} NaN`);
+    if (!ev['cust:paid'] || ev['cust:paid'].length < 5) throw new Error('too few sales ' + (ev['cust:paid'] || []).length);
+    if (!ev['eco:event'] || ev['eco:event'].length < 2) throw new Error('scheduler: events ' + (ev['eco:event'] || []).length);
+    if (!ev['eco:scam'] || !ev['eco:scamResult']) throw new Error('scheduler: scam offered/expired');
+    // 4. abilities → economy (P2)
+    run(8); const coins0 = sb.coins.length; if (coins0 < 1 || coins0 > COIN_MAX || sb.coinMesh.count !== coins0) throw new Error('tip coins ' + coins0);
+    const names = ABILITY_NAMES(); if (names.length !== 6) throw new Error('abilities ' + names.length);
+    let spark1 = sb.eco.state.spark; if (!sb.ability('coinMagnetDash')) throw new Error('magnet refused'); if (sb.ability('coinMagnetDash') !== null) throw new Error('cooldown'); run(2);
+    if (!(sb.coins.length < coins0) || !(sb.eco.state.spark > spark1) || !ev['sandbox:tip']) throw new Error('magnet collected nothing');
+    run(5); if (!sb.ability('haggleShout')) throw new Error('haggle refused'); run(2); if (![...sb.haggle.values()].some((h) => h.n > 0)) throw new Error('haggle charges');
+    run(5); if (!sb.ability('growthStomp')) throw new Error('growth refused'); run(2); if (!(sb.growth.mul > 1) || !(sb.growth.until > game.time)) throw new Error('growth pulse');
+    run(5); const fog0 = sb.eco.state.fog01; if (!sb.ability('fogSweep')) throw new Error('fog refused'); run(2); if (!(sb.eco.state.fog01 < fog0)) throw new Error('fogSweep no push');
+    run(5); if (!sb.ability('bubbleShield')) throw new Error('shield refused'); run(3); if (!(sb.shield.until > game.time)) throw new Error('shield not armed');
+    run(5); sb.eco.offerScam('zeroInterestLoan'); if (!sb.ability('ledgerFlash')) throw new Error('ledger refused'); run(3); if (sb.eco.pendingOffer) throw new Error('ledgerFlash did not refuse');
+    // shield absorbs the next scheduled event: force the next event tick
+    sb.sched.event = false; sb.eco.state.day01 = Math.max(sb.eco.state.day01, 0.5); sb.shield.until = game.time + 30; const evN = ev['eco:event'].length; step();
+    if (!ev['eco:absorbed'] || ev['eco:event'].length !== evN) throw new Error('shield did not absorb');
+    // 5. helper (P3)
+    sb.eco.state.spark = 999; const h = sb.keys.hire(); if (!h || sb.helpers.length !== 1 || !ev['sandbox:hired']) throw new Error('hire'); run(2);
+    if (!isFinite(h.g.position.x) || !isFinite(h.g.scale.y)) throw new Error('helper NaN');
+    const ms = performance.now() - t0;
+    console.log(`  createSandbox: 4 zones · 3 starter + 1 built stalls (B/1-9/R/confirm/Esc) · ${meshes} meshes at start · 2 auto seasons + E → 3 reports no NaN · ${ev['cust:paid'].length} sales · events ${ev['eco:event'].map((e) => e.id).join('/')} · scam offered+expired · 6 abilities: magnet +tips, haggle ${[...sb.haggle.values()].reduce((a, h) => a + h.n, 0)} charges, growth ×${sb.growth.mul.toFixed(2)}, fog −${((fog0 - sb.eco.state.fog01) * 100).toFixed(1)}%, shield absorbed ${ev['eco:absorbed'][0].id}, ledgerFlash refused · H hired ${h.type} · ${frames} frames in ${ms.toFixed(0)} ms  OK`);
+  } catch (err) { bad++; console.log('  sandbox FAIL →', err.message); }
+}
 if (doWorld) {
   // 10A integrated world: real Three in Node. (1) src/assets/props/bake.js: bakeStatic merges N placed props into ≤ 4 meshes
   // (toon + flat + 2 hulls), keeps vertex colors of already-merged props, bakes in the parent's space (zone group offset),
