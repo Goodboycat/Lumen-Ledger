@@ -53,6 +53,42 @@ export class BlobShadows {
     im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     return im;
   }
+  _grow(n) {
+    const next = this._make(Math.max(n + 1, this.max * 2));
+    for (let i = 0; i < n; i++) { this.mesh.getMatrixAt(i, _m); next.setMatrixAt(i, _m); }   // keep what this frame already wrote
+    this.scene.remove(this.mesh); this.mesh.dispose?.(); this.mesh = next; this.max = next.instanceMatrix.count; this.scene.add(next);
+  }
+  /**
+   * Write one instance per visible creature root. Reads the creature's own disc (radius from its geometry, scale.x/z
+   * from the animator's squash) so the look is identical to the per-creature disc, then hides the disc.
+   * @param {Iterable<THREE.Object3D>} roots  hero root, cust.active[].root, helpers[].g, villains[].g …
+   */
+  update(roots) {
+    let n = 0; const seen = this.hidden;
+    for (const root of roots) {
+      if (!root || !root.visible) continue;
+      const disc = findShadow(root); if (!disc) continue;
+      if (disc.visible) { disc.visible = false; disc.userData.pooledShadow = true; seen.add(disc); }
+      if (n >= this.max) this._grow(n);
+      // radius: the disc's cylinder radius (unit discs from this file have 1) × its animated scale
+      const r = (disc.geometry.parameters && disc.geometry.parameters.radiusTop) || 1;
+      root.updateMatrixWorld(false);
+      _p.setFromMatrixPosition(root.matrixWorld);
+      _p.y += 0.012;
+      _s.set(r * disc.scale.x, 1, r * disc.scale.z);
+      _m.makeScale(_s.x, _s.y, _s.z); _m.setPosition(_p);
+      this.mesh.setMatrixAt(n++, _m);
+    }
+    this.mesh.count = n; this.count = n;
+    this.mesh.instanceMatrix.needsUpdate = true;
+    return n;
+  }
+  /** Give every creature its own disc back and remove the instanced mesh. */
+  dispose() {
+    for (const d of this.hidden) { d.visible = true; delete d.userData.pooledShadow; }
+    this.hidden.clear();
+    this.scene.remove(this.mesh); this.mesh.dispose?.(); this.mesh.geometry.dispose();
+  }
 }
 
 // ═══════════════════════════════════════════ CreatureLOD ═══════════════════════════════════════════
