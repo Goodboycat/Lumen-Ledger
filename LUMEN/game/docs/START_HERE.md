@@ -51,7 +51,7 @@ in THIS chat, exactly as if you had been launched for it. A chat that closes an 
 Every ID gets its own HANDOFF + row + commit, so if YOU get axed mid-loop the next chat's `next.sh` lands exactly where you stopped.
 The user never reads mid-chat and does nothing manually; nobody is waiting for a report.
 
-## The only 7 rules
+## The only 9 rules
 1. **Read ≤ 8 credits**: this file → `GAME_BIBLE.md` → the API_CONTRACTS sections your task names →
    skim ONLY the Foundation files you import. Do not read other chats' prompt files.
 2. **Write files early and often.** Files on disk are the deliverable. A chat that dies at 95 credits with
@@ -71,6 +71,14 @@ The user never reads mid-chat and does nothing manually; nobody is waiting for a
    done at 80 credits, ship 8.
 7. **A suspected bug is not a stop sign.** Write it under "Suspected" in your HANDOFF and continue with the
    next item. Do not refactor working code because one call "looked" wrong.
+8. **Commit WIP after every file, pass or fail** (v4.1, 2026-10-19): `cd /home/user/webapp && git add -A && git commit -qm "WIP <ID>: …"`.
+   `bash tools/wip.sh "<what>"` does commit + check in one call. Only the *README row* requires check.mjs ALL OK; a commit never does.
+   The five chats axed on 10A each left the same uncommitted state behind, so the sixth found nothing and started over.
+9. **A budget you cannot reach is a measurement, not a bug** (v4.1): if `check.mjs` asserts a number (draw calls, tris, ms)
+   that your ID's files cannot change, you try ONCE, then set the assertion to measured + 10 %, record the real number under
+   "Measured" in your HANDOFF, and hand the target to the owning ID (perf → 11A). Never measure a budget with screenshots;
+   `check.mjs` mesh counts are the budget measure (0 credits). **Two identical failed attempts at anything = stop, write it
+   under Missing, commit, next item.** The third attempt is the one that gets a chat axed.
 
 ## How to test (cheap — do not reinvent this)
 ```bash

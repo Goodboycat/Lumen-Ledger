@@ -49,6 +49,11 @@ Phase fns set the pose ABSOLUTELY from values snapshotted in `onEnter` so it is 
   so it can be tested headless in Node.
 - Performance budget: 60 fps on a 2018 Android phone → ≤ 100 draw calls, `InstancedMesh` for grass/
   flowers/Glimmer crowds/coins, shadow map ≤ 1024, pixelRatio ≤ 1.5 (already capped in `core/Game.js`).
+  **Who owns the global budget (added 2026-10-19):** only **11A (perf)**. Content and integration IDs own *per-item*
+  budgets (prop ≤ 10 m, creature ≤ 15 m incl. outline) and must *record* the global total, never chase it.
+  Measured 10A reality: 22 creatures = 251 meshes, whole world 434 worst-case (`check.mjs --world`). 11A levers, in
+  payoff order: one outline hull per creature · bake eyes/accessories into kit · LOD outlines off > 18 u · lantern/jar
+  bodies baked. A `check.mjs` assertion on a global number that an ID cannot move is a bug in the assertion, not the ID.
 - Portrait AND landscape must work (Game.resize already zooms out in portrait).
 - Audio: do NOT generate audio. `core/Audio.js` (Chat 12) loads files from `game/audio/`.
 

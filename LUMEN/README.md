@@ -6,7 +6,7 @@
 LUMEN/
   game/          THE game (open game/index.html via any static server; demos: game/demo_*.html)
     docs/        START_HERE.md · GAME_BIBLE.md · API_CONTRACTS.md · MASTER_PLAN.md · prompts/<ID>_*.md · HANDOFF_<ID>.md
-    tools/       check.mjs (headless test) · next.sh (prints the ID to do now) · smoke.mjs (browser test, optional) · pack.sh master (tar.gz for the next chat)
+    tools/       check.mjs (headless test) · next.sh (prints the ID to do now + WIP trail) · wip.sh (commit+check after every file) · smoke.mjs (browser test, optional) · pack.sh master (tar.gz for the next chat)
   screenshots/   reference/ (XP Hero + jam page) · 0_foundation/ · 1A_stalls/ · 1B_nature/ · 1C_landmarks/ · 1D_decor/ · 2C_villains/ · 3A_heromoves/ · 3B_abilities/ · 6A_customers/ · 9B_vfx_fog/ · *_raw/ (QA shots)
   archive/       the old tar.gz / zip uploads (history only — nothing in here is needed anymore)
   README.md      this file
@@ -24,6 +24,16 @@ LUMEN/
    close it (check.mjs → HANDOFF → row → commit) → `bash tools/next.sh` → next ID, same chat. The "Done" table below is the only
    truth: no row = not done, even if files and a HANDOFF exist. The final message ends with
    `FINISHED: <IDs> · IN PROGRESS: <ID or none> (missing: …) · NEXT: <ID>`.
+
+## CHAIN RULE v4.1 (2026-10-19) — why 10A killed five chats, and the three mechanical fixes
+Autopsy: 10A's prompt said "≤ 150 draw calls"; `check.mjs --world` asserted it; reality after integrating every pack is 434
+(22 creatures alone = 251, each already inside its own budget). The rules said "never move on with a FAIL, never commit a FAIL",
+so every chat (1) chased a perf target that belongs to 11A, (2) measured it with 3–6-credit screenshots instead of the 0-credit
+headless count, (3) committed nothing because the gate failed, so (4) the next chat found the identical state and repeated.
+Fixes, all in the folder: **`tools/wip.sh "<what>" [flags]`** = commit pass-or-fail + check in one call (use after every file);
+**`next.sh` prints the TRAIL** of WIP commits for the ID so an axed chat's progress is visible; **START_HERE rules 8–9** (commit
+WIP always · an unreachable budget is a measurement → record, loosen to measured+10 %, hand to 11A · two identical failures = stop);
+`check.mjs --world` now asserts the *integration* budget (480) and 11A's prompt inherits the ≤ 150 target with the lever list.
 
 ## Done
 | Chat | Deliverable | Files | Status |
@@ -51,12 +61,13 @@ LUMEN/
 | 8B | Story system (pure JS): StorySystem on the bus (openings/mid/ledger-by-stars/events/scam pitch→ui:choice→acceptOffer·refuseOffer→result lines/win·lose finales/10 tutorial toasts once), story:line/lesson/review/end/finale/toast, serialize · tests/story.test.mjs 58 asserts w/ real 4B economy · check.mjs STORY SYSTEM (8B) 10-season bus walk · **GDD.md** (jam doc: pitch, loop, FinLit mapping table, controls, art, scope, credits) | src/systems/story.js, tests/story.test.mjs, docs/GDD.md, check.mjs --story | ✅ |
 | 9A | VFX pack 1: coinFly (arc + squash + onArrive) · coinBurst · confetti (120 quads, flutter) · levelRing · sparkTrail (.emit/.stream) · savingSparkle — 5 InstancedMesh = 5 dc, 334 instances, 0 alloc; fns + .burst/.show/.emit aliases so 3A/3B/6A hooks fire; fixed axed chat's dead-pool bug | src/vfx/pack1.js, demo_vfx1.html, check.mjs --vfx | ✅ |
 | 9B | VFX pack 2 — Debt Fog: `vfx.fog` ring of 48 translucent toon blobs (1 InstancedMesh = 1 dc) · setCoverage(fog01) outCubic 600 ms · push() (3B fogSweep hook, alias vfx.fogShader) · debtPulse red DOM vignette (80/520 ms) · vignette follows fog · coinRain (reuses pack1 coins, own pool fallback) · lighthouseBeam additive sweep · fogRecede WIN Sequence 1900 ms · fixed missing game.start() in demo_vfx1 | src/vfx/pack2.js, demo_vfx2.html, check.mjs VFX PACK 2 (9B) section | ✅ |
+| 10A | World integration: `demo_world.html` — Island v2 + 6 stalls + 7 landmarks + 20 decor + nature scatter + 8 instanced fields + 12 Glimmers + 6 helpers + 4 villains + hero moves/abilities on keys + fog/night/slow/camera · **`bake.js` `bakeStatic()`** (69 static props → 4 batches = 11 m) · `check.mjs --world` (bake unit test + whole world 2 s headless + zone unlock) · measured 434 m worst-case → **≤ 150 dc re-budgeted to 11A** (see HANDOFF_10A "Why 5 chats died") | src/assets/props/bake.js, demo_world.html, docs/HANDOFF_10A.md, check.mjs WORLD (10A) | ✅ |
 
 ## Next (sequential from here)
-10A → 10B → 10C → 10D integration · 11A perf · 11B mobile QA · 12 audio · 13A jam package · 13B trailer · 14 Flutter APK.
+10B → 10C → 10D integration · 11A perf · 11B mobile QA · 12 audio · 13A jam package · 13B trailer · 14 Flutter APK.
 
 ## Test
 ```bash
-cd LUMEN/game && node tools/check.mjs --props --creatures --hero --abilities --economy --build --customers --ui --story --vfx   # no browser, ~5 s (--story now also runs the 8B system tests)
+cd LUMEN/game && node tools/check.mjs --props --creatures --hero --abilities --economy --build --customers --ui --story --vfx --world   # no browser, ~5 s (--story now also runs the 8B system tests)
 python3 -m http.server 3000   # then open http://localhost:3000/demo_glimmers.html
 ```

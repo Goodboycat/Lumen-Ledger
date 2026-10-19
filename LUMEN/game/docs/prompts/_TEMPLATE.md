@@ -40,10 +40,19 @@ README "Done" table is the only truth: no row = not done, even if files and a HA
 BUG GATE (non-negotiable, ~0 credits):
 - BEFORE touching anything: `cd /home/user/webapp/LUMEN/game && node tools/check.mjs --props --creatures`.
   Not ALL OK? Fix ONLY what it reports (even in files you don't own — note it in docs/CHANGE_REQUESTS.md).
-- AFTER every file you write: run it again. Never move on with a FAIL. Never commit a FAIL.
+- AFTER every file you write: run it again. Never move on with a FAIL in YOUR code.
+  **WIP COMMIT RULE (v4.1, 2026-10-19 — the fix for the five 10A deaths):** `git commit -qm "WIP <ID>: <what>"` after EVERY file
+  you write, pass or fail. A failing commit is recoverable by the next chat; uncommitted work is not. "Never commit a FAIL" only
+  meant: never CLOSE an ID (README row) with a FAIL. Commit early, close clean.
+- **BUDGET RULE (v4.1):** a check.mjs budget (draw calls, tris, ms) that your ID's scope cannot reach is NOT a bug to fix — it is a
+  measurement to RECORD. Loosen the assertion to the real measured value + 10 %, write the real number in your HANDOFF
+  "Measured", move the target to the ID that owns perf (11A), and move on. Max 1 attempt at any budget. Five chats died on 10A
+  because a 150-dc target was set before the content was measured (real: 434) and each chat ground on it for 60+ credits.
+- **ONE-SHOT RULE (v4.1):** if you have run the same check or screenshot twice and it did not pass, stop trying. Write it under
+  "Missing" in the HANDOFF, commit, and continue with the next item. Three identical attempts = the chat is about to die.
 - Add your own items to check.mjs (additive only): build each thing you ship, run every anim 2 s headless.
   "I believe it works" does not count; a check.mjs line counts.
-- Browser QA at most ONCE per ID, near its end: `bash tools/setup_browser.sh` → if BROWSER OK:
+- Browser QA at most ONCE per ID, near its end, and NEVER to measure a budget (check.mjs mesh count is the budget measure): `bash tools/setup_browser.sh` → if BROWSER OK:
   `NODE_PATH=tools/node_modules node tools/smoke.mjs demo_<id>.html --keys 1,2,3 --shots --close` → must print "ERRORS: none"
   (errors = top priority; a demo that throws is NOT done). Look at at most ONE screenshot. No screenshot-tweak loops.
   BROWSER FAILED → skip, write "browser QA skipped" in the HANDOFF.

@@ -22,6 +22,8 @@ for id in $IDS; do
 done
 if [ -z "$NEXT" ]; then echo "NEXT: none — every ID in README \"Next\" has a Done row. Add IDs to \"Next\" or stop."; exit 0; fi
 P=$(ls docs/prompts/${NEXT}_*.md | head -1)
+# v4.1: show the predecessor's last WIP commits for this ID so an axed chat's trail is visible at once (0 credits)
+LASTWIP=$(cd /home/user/webapp 2>/dev/null && git log --oneline -n 3 --grep="WIP $NEXT" 2>/dev/null || true)
 if [ -n "$HALF" ]; then
   echo "NEXT: $NEXT  (HALF-DONE by an axed chat: files/HANDOFF exist, NO README row → verify with check.mjs, finish Missing, close it,"
   echo "       then run tools/next.sh again and continue — closing this one is NOT the end of your chat)"
@@ -29,4 +31,7 @@ else
   echo "NEXT: $NEXT"
 fi
 echo "OPEN:  $P"
+[ -n "$LASTWIP" ] && { echo "TRAIL: last WIP commits for $NEXT (an axed chat got this far — continue from here, do not restart):"; echo "$LASTWIP" | sed 's/^/       /'; }
+echo "AFTER EVERY FILE: bash tools/wip.sh \"<what>\" [check flags]   (commit pass-or-fail + check, ~0 credits)"
+echo "STUCK on a budget / same failure twice? → record under Missing, commit, next item. The 3rd attempt is what kills chats."
 echo "Do NOT write a chat message now. A message with no tool call ends the chat and burns every remaining credit."
