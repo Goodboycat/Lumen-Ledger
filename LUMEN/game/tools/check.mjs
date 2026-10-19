@@ -1372,7 +1372,7 @@ if (doWorld) {
   // total visible meshes (≈ worst-case draw calls, everything in view) ≤ 150 · no NaN · zone unlock Sequence finishes.
   console.log('\nWORLD (10A):');
   const THREE = await import(pathToFileURL(resolve('vendor/three.module.js')).href);
-  const { bakeStatic, disposeBatch } = await import(pathToFileURL(resolve('src/assets/props/bake.js')).href);
+  const { bakeStatic, bakeShells, disposeBatch } = await import(pathToFileURL(resolve('src/assets/props/bake.js')).href);
   const PR = await import(pathToFileURL(resolve('src/assets/props.js')).href);
   const { Island } = await import(pathToFileURL(resolve('src/world/Island.js')).href);
   const CR = await import(pathToFileURL(resolve('src/assets/creatures/index.js')).href);
@@ -1449,7 +1449,12 @@ if (doWorld) {
     const batches = [];
     for (const z of island.zones) { const list = [...nature, ...stat].filter((g) => g.parent === z.group); if (list.length) batches.push(bakeStatic(list, { parent: z.group, name: 'batch_' + z.id })); }
     if (batches.length !== 4) throw new Error('batches ' + batches.length);
-    const bakedDc = batches.reduce((a, b) => a + meshCount(b), 0); if (bakedDc > 16) throw new Error('baked dc ' + bakedDc);
+    // 11A Lever 2: shells of the live props → one more batch per zone (prop groups stay, only glass/glow/lamp/swing/flags live)
+    const liveBefore = live.reduce((a, g) => a + meshCount(g), 0);
+    const shells = []; for (const z of island.zones) { const list = live.filter((g) => g.parent === z.group); const b = list.length && bakeShells(list, { parent: z.group, name: 'shells_' + z.id }); if (b) shells.push(b); }
+    const shellDc = shells.reduce((a, b) => a + meshCount(b), 0);
+    const lamp = live[0]; lamp.userData.setLit?.(true); const lantern = live.find((g) => g.userData.kind === 'lantern_post'); lantern.userData.setLit(true); if (!lantern.getObjectByName('glass').visible) throw new Error('bakeShells hid the lantern glass');
+    const bakedDc = batches.reduce((a, b) => a + meshCount(b), 0) + shellDc; if (bakedDc > 24) throw new Error('baked dc ' + bakedDc);
     for (const z of island.zones) { const fl = PR.makeFlowerField(z.index === 0 ? 160 : 70, () => true, { seed: 11 + z.index, radius: z.radius + 1 }); z.group.add(fl); const tu = PR.makeGrassTufts(z.index === 0 ? 120 : 60, () => true, { seed: 21 + z.index, radius: z.radius + 1 }); z.group.add(tu); }
     // creatures
     const seqs = new Sequencer(); const mockGame = { scene, sequences: seqs, hitstop() {}, time: 0, timeScale: 1, camera: { zoom: 1, shake() {} }, tweens: { update() {} } };
@@ -1468,6 +1473,7 @@ if (doWorld) {
     if (!z1.unlocked || !island.isLand(z1.center.x, z1.center.z) || Math.abs(z1.group.position.y) > 0.02) throw new Error(`unlock: unlocked=${z1.unlocked} y=${z1.group.position.y}`);
     noNaN(scene, 'after unlock');
     const total = meshCount(scene);
+    const liveAfter = live.reduce((a, g) => a + meshCount(g), 0);
     const per = { island: island.zones.reduce((a, z) => a + meshCount(z.ground) + (z.foam ? meshCount(z.foam) : 0) + 2, 0), stalls: stalls.reduce((a, g) => a + meshCount(g), 0), landmarksDecor: live.reduce((a, g) => a + meshCount(g), 0), baked: bakedDc, glimmers: glims.reduce((a, c) => a + meshCount(c.g), 0), helpers: helpers.reduce((a, h) => a + meshCount(h.g), 0), villains: villains.reduce((a, v) => a + meshCount(v.g), 0) };
     // 10A budget = INTEGRATION budget (2026-10-19): the 150-dc target belongs to 11A (perf pass). 10A only guarantees that
     // integration adds nothing on top of what the content packs already cost: every pack is within its own Bible budget
@@ -1479,7 +1485,7 @@ if (doWorld) {
     const worst = (arr) => Math.max(...arr.map((g) => meshCount(g)));
     if (worst(glims.map((c) => c.g)) > 15 || worst(helpers.map((h) => h.g)) > 15 || worst(villains.map((v) => v.g)) > 18) throw new Error('a creature exceeds its per-creature budget');
     if (worst(stalls) > 12) throw new Error('a stall exceeds 12 meshes (1A: lantern/sparkExchange L3 = 12)');
-    console.log(`  world: 4 zones · 6 stalls ${per.stalls} m · live landmarks+decor ×${live.length} ${per.landmarksDecor} m · ${nature.length + stat.length} static props ${unbaked} m → 4 batches ${bakedDc} m · 8 fields · 12 glimmers ${per.glimmers} m · 6 helpers ${per.helpers} m · 4 villains ${per.villains} m · 2 s headless no NaN · unlock zone ${z1.id} ✓ · TOTAL ${total} visible meshes (integration budget ${WORLD_BUDGET}; the ≤ 150 dc target is 11A's — see HANDOFF_10A)  OK`);
+    console.log(`  world: 4 zones · 6 stalls ${per.stalls} m · live landmarks+decor ×${live.length} ${liveBefore} → ${liveAfter} m (shells → ${shells.length} batches ${shellDc} m) · ${nature.length + stat.length} static props ${unbaked} m → 4 batches ${bakedDc - shellDc} m · 8 fields · 12 glimmers ${per.glimmers} m · 6 helpers ${per.helpers} m · 4 villains ${per.villains} m · 2 s headless no NaN · unlock zone ${z1.id} ✓ · TOTAL ${total} visible meshes (integration budget ${WORLD_BUDGET}; the ≤ 150 dc target is 11A's — see HANDOFF_10A)  OK`);
   } catch (err) { bad++; console.log('  world FAIL →', err.message); }
 }
 console.log(bad ? `\n${bad} FAILURE(S)` : '\nALL OK ✅');

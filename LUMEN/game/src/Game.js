@@ -16,7 +16,7 @@ import { HeroController } from './entities/HeroController.js';
 import { attachMoves } from './anim/heroAnims.js';
 import { attachAbilities, ABILITY_NAMES, FINLIT } from './anim/heroAbilities.js';
 import { PROP_CATALOG, makeProp, STALL_TYPES, JAR_IDS, swayAll, swayDecor, updateLandmarks, makeFlowerField, makeGrassTufts } from './assets/props.js';
-import { bakeStatic } from './assets/props/bake.js';
+import { bakeStatic, bakeShells } from './assets/props/bake.js';
 import { G } from './assets/geo.js';
 import { PALETTE as P, flatMat } from './core/Toon.js';
 import { makeGlimmerAny, CreatureAnimator, HelperAnimator, makeHelper, HELPER_TYPES, registerVariants } from './assets/creatures/index.js';
@@ -132,6 +132,9 @@ function buildScenery(sb, rnd) {
   scatter(start, 8, TREES, 7); scatter(start, 4, ROCKS, 7); scatter(start, 4, BUSHES, 6.5);
   for (const z of [far, west, east]) { scatter(z, 5, TREES, 2.5); scatter(z, 3, ROCKS, 2); scatter(z, 3, BUSHES, 1.5); }
   for (const z of island.zones) { const list = stat.filter((g) => g.parent === z.group); if (list.length) W.baked.push(bakeStatic(list, { parent: z.group, name: 'batch_' + z.id })); }
+  // 11A Lever 2: the static shells of the LIVE props (lantern posts, jar bodies, lighthouse tower, cottage walls, pier planks,
+  // sign posts…) go into one more batch per zone; only glass / glow / lamp / swing / flags / live parts stay as own meshes (−20 m).
+  if (sb.opts?.bakeShells !== false) for (const z of island.zones) { const list = W.live.filter((g) => g.parent === z.group); const b = list.length && bakeShells(list, { parent: z.group, name: 'shells_' + z.id }); if (b) W.baked.push(b); }
   if (!headless) for (const z of island.zones) { // instanced flower/tuft fields on free land (1 dc each)
     const area = (x, y) => island.allTiles.get(key(x, y)) === z.index && !island.pathCells.has(key(x, y)) && !occupied.has(key(x, y));
     const fl = makeFlowerField(z.index === 0 ? 140 : 60, area, { seed: 11 + z.index, radius: z.radius + 1 }); fl.position.set(z.center.x, 0, z.center.z); z.group.add(fl);
