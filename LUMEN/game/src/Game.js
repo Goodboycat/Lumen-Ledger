@@ -610,7 +610,8 @@ export const PERF_VERSION = '11A';
 function installPerf(sb) {
   if (sb.opts?.perf === false) return;
   const scene = sb.game.scene, cam = sb.game.camera?.three || sb.game.camera;
-  sb.perf = { shadows: new BlobShadows(scene, 48), lod: cam ? new CreatureLOD(cam, sb.opts?.lod) : null, governor: null, roots: [] };
+  const hasCam = !!(cam && cam.position && cam.position.isVector3);   // mock cameras in check.mjs have no position → LOD skipped
+  sb.perf = { shadows: new BlobShadows(scene, 48), lod: hasCam ? new CreatureLOD(cam, sb.opts?.lod) : null, governor: null, roots: [] };
   if (!sb.headless && sb.game.renderer) sb.perf.governor = new PixelRatioGovernor(sb.game, sb.opts?.governor);
   sb.perf.dispose = () => { sb.perf.shadows.dispose(); sb.perf.lod?.dispose?.(); sb.perf.governor?.dispose?.(); };
 }

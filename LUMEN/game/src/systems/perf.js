@@ -166,7 +166,8 @@ export class PixelRatioGovernor {
     this.high = opts.high ?? 58; this.highS = opts.highS ?? 10;
     this.enabled = opts.enabled !== false;
     this.lowT = 0; this.highT = 0; this.changes = 0;
-    const cap = Math.min(game.quality?.pixelRatio ?? 1.5, (typeof window !== 'undefined' && window.devicePixelRatio) || 1.5);
+    const dpr = opts.dpr ?? ((typeof window !== 'undefined' && window.devicePixelRatio) || 1.5);   // opts.dpr: tests / Flutter WebView override
+    const cap = Math.min(game.quality?.pixelRatio ?? 1.5, dpr);
     this.cap = cap;
     this.index = Math.max(0, this.steps.findIndex((s) => s <= cap + 1e-6));   // start at the quality cap (or the first step below it)
     if (this.index < 0) this.index = this.steps.length - 1;

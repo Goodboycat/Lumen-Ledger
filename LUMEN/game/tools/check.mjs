@@ -1505,5 +1505,54 @@ if (doWorld) {
     console.log(`  world: 4 zones · 6 stalls ${per.stalls} m · live landmarks+decor ×${live.length} ${liveBefore} → ${liveAfter} m (shells → ${shells.length} batches ${shellDc} m) · ${nature.length + stat.length} static props ${unbaked} m → 4 batches ${bakedDc - shellDc} m · 8 fields · 12 glimmers ${per.glimmers} m · 6 helpers ${per.helpers} m · 4 villains ${per.villains} m · 2 s headless no NaN · unlock zone ${z1.id} ✓ · TOTAL ${total} visible meshes (integration budget ${WORLD_BUDGET}; the ≤ 150 dc target is 11A's — see HANDOFF_10A)  OK`);
   } catch (err) { bad++; console.log('  world FAIL →', err.message); }
 }
+if (doPerf) {
+  // 11A: (1) PixelRatioGovernor on a mock renderer — drop after 3 s < 45 fps, never below the last step, raise after 10 s > 58 fps,
+  // never above the quality cap, bus event each change, dispose resets. (2) P3 memory: createSandbox (headless, perf on) runs
+  // ~4 accelerated seasons; unique geometry count after warm-up must not grow (pools, not allocs) and destroySandbox restores the scene.
+  console.log('\nPERF (11A):');
+  try {
+    const THREE = await import(pathToFileURL(resolve('vendor/three.module.js')).href);
+    const PF = await import(pathToFileURL(resolve('src/systems/perf.js')).href);
+    const meshCount = (g) => { let n = 0; g.traverseVisible((o) => { if (o.isMesh) n++; }); return n; };
+    // 1. governor
+    const ratios = [], evs = [];
+    const game = { quality: { pixelRatio: 1.5 }, stats: { fps: 60 }, renderer: { setPixelRatio: (r) => ratios.push(r) }, resize() {}, bus: { emit: (n, p) => evs.push(p) } };
+    const gov = new PF.PixelRatioGovernor(game, { dpr: 2 });
+    if (gov.ratio !== 1.5) throw new Error('start ratio ' + gov.ratio);
+    const feed = (fps, sec) => { for (let i = 0; i < sec * 60; i++) gov.update(1 / 60, fps); };
+    feed(30, 2.9); if (gov.ratio !== 1.5) throw new Error('dropped too early');
+    feed(30, 0.2); if (gov.ratio !== 1.25 || evs.at(-1)?.why !== 'drop') throw new Error('no drop at 3 s ' + gov.ratio);
+    feed(50, 20); if (gov.ratio !== 1.25) throw new Error('45–58 band must hold');
+    feed(30, 3.1); feed(30, 3.1); feed(30, 3.1); if (gov.ratio !== 0.85) throw new Error('floor ' + gov.ratio);
+    feed(30, 10); if (gov.ratio !== 0.85) throw new Error('went below the last step');
+    feed(60, 9.9); if (gov.ratio !== 0.85) throw new Error('raised too early');
+    feed(60, 0.2); if (gov.ratio !== 1.0 || evs.at(-1)?.why !== 'raise') throw new Error('no raise at 10 s');
+    feed(60, 40); if (gov.ratio !== 1.5) throw new Error('did not climb back to cap ' + gov.ratio);
+    const gov2 = new PF.PixelRatioGovernor({ ...game, quality: { pixelRatio: 1.0 } }, { dpr: 2 }); if (gov2.ratio !== 1.0) throw new Error('cap start ' + gov2.ratio);
+    for (let i = 0; i < 60 * 30; i++) gov2.update(1 / 60, 60); if (gov2.ratio !== 1.0) throw new Error('rose above quality cap ' + gov2.ratio);
+    for (let i = 0; i < 60 * 4; i++) gov.update(1 / 60, 20); gov.dispose(); if (gov.ratio !== 1.5 || evs.at(-1)?.why !== 'reset') throw new Error('dispose reset');
+    console.log(`  governor: 1.5 → drop @3 s <45 fps → 1.25 → … → floor 0.85 · band 45–58 holds · raise @10 s >58 fps → … → cap 1.5 · cap 1.0 respected · ${evs.length} perf:pixelRatio events · dispose → ${gov.ratio}  OK`);
+    // 2. memory probe on the real sandbox
+    const { SequencePlayer, HitStop } = await import(pathToFileURL(resolve('src/anim/Sequencer.js')).href);
+    const { EventBus } = await import(pathToFileURL(resolve('src/core/EventBus.js')).href);
+    const { tweens } = await import(pathToFileURL(resolve('src/anim/Tween.js')).href);
+    const { createSandbox, destroySandbox } = await import(pathToFileURL(resolve('src/Game.js')).href);
+    const scene = new THREE.Scene(); const bus = new EventBus();
+    const g2 = { scene, bus, sequences: new SequencePlayer(), tweens, hitStop: new HitStop(), input: { pointerWorld: new THREE.Vector3(), hasPointerWorld: false, move: new THREE.Vector2(), actions: {}, pressed: () => false }, camera: { zoom: 1, shake() {} }, time: 0, timeScale: 1, followTarget: null, systems: [], add(s) { this.systems.push(s); return s; }, hitstop() {} };
+    const geo0 = PF.countGeometries(scene);
+    const sb = createSandbox(g2, { headless: true, seasonSeconds: 20, seed: 5 });
+    if (!sb.perf || !sb.perf.shadows) throw new Error('perf glue not installed');
+    const dt = 1 / 30; const step = () => { g2.time += dt; g2.sequences.update(dt); g2.tweens.update(dt); for (const s of g2.systems) s.update?.(dt); };
+    const run = (sec) => { for (let i = 0; i < sec * 30; i++) step(); };
+    run(25); const geoWarm = PF.countGeometries(scene); const meshWarm = meshCount(scene);
+    sb.eco.state.spark = 999; sb.keys.hire(); run(60);
+    const geoEnd = PF.countGeometries(scene); const meshEnd = meshCount(scene);
+    if (geoEnd > geoWarm + 2) throw new Error(`geometry grew ${geoWarm} → ${geoEnd} over 60 s`);
+    if (sb.perf.shadows.mesh.count !== sb.perf.roots.length) throw new Error('shadow pool out of sync ' + sb.perf.shadows.mesh.count + ' vs ' + sb.perf.roots.length);
+    destroySandbox?.(sb) ?? sb.destroy?.();
+    const geoAfter = PF.countGeometries(scene);
+    console.log(`  memory: sandbox S1→S${sb.stats.seasons + 1} headless 85 s · geometries ${geoWarm} warm → ${geoEnd} end (Δ ${geoEnd - geoWarm}) · meshes ${meshWarm} → ${meshEnd} · ${sb.perf.roots.length} pooled shadows · destroy → ${geoAfter} geometries (scene start ${geo0})  OK`);
+  } catch (err) { bad++; console.log('  perf FAIL →', err.message); }
+}
 console.log(bad ? `\n${bad} FAILURE(S)` : '\nALL OK ✅');
 process.exit(bad ? 1 : 0);
