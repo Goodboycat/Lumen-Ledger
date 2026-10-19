@@ -7,7 +7,7 @@ LUMEN/
   game/          THE game (open game/index.html via any static server; demos: game/demo_*.html)
     docs/        START_HERE.md · GAME_BIBLE.md · API_CONTRACTS.md · MASTER_PLAN.md · prompts/<ID>_*.md · HANDOFF_<ID>.md
     tools/       check.mjs (headless test) · next.sh (prints the ID to do now + WIP trail) · wip.sh (commit+check after every file) · smoke.mjs (browser test, optional) · pack.sh master (tar.gz for the next chat)
-  screenshots/   reference/ (XP Hero + jam page) · 0_foundation/ · 1A_stalls/ · 1B_nature/ · 1C_landmarks/ · 1D_decor/ · 2C_villains/ · 3A_heromoves/ · 3B_abilities/ · 6A_customers/ · 9B_vfx_fog/ · *_raw/ (QA shots)
+  screenshots/   reference/ (XP Hero + jam page) · 0_foundation/ · 1A_stalls/ · 1B_nature/ · 1C_landmarks/ · 1D_decor/ · 2C_villains/ · 3A_heromoves/ · 3B_abilities/ · 6A_customers/ · 9B_vfx_fog/ · 10B_sandbox/ · *_raw/ (QA shots)
   archive/       the old tar.gz / zip uploads (history only — nothing in here is needed anymore)
   README.md      this file
 ```
@@ -67,12 +67,13 @@ WIP always · an unreachable budget is a measurement → record, loosen to measu
 | 9A | VFX pack 1: coinFly (arc + squash + onArrive) · coinBurst · confetti (120 quads, flutter) · levelRing · sparkTrail (.emit/.stream) · savingSparkle — 5 InstancedMesh = 5 dc, 334 instances, 0 alloc; fns + .burst/.show/.emit aliases so 3A/3B/6A hooks fire; fixed axed chat's dead-pool bug | src/vfx/pack1.js, demo_vfx1.html, check.mjs --vfx | ✅ |
 | 9B | VFX pack 2 — Debt Fog: `vfx.fog` ring of 48 translucent toon blobs (1 InstancedMesh = 1 dc) · setCoverage(fog01) outCubic 600 ms · push() (3B fogSweep hook, alias vfx.fogShader) · debtPulse red DOM vignette (80/520 ms) · vignette follows fog · coinRain (reuses pack1 coins, own pool fallback) · lighthouseBeam additive sweep · fogRecede WIN Sequence 1900 ms · fixed missing game.start() in demo_vfx1 | src/vfx/pack2.js, demo_vfx2.html, check.mjs VFX PACK 2 (9B) section | ✅ |
 | 10A | World integration: `demo_world.html` — Island v2 + 6 stalls + 7 landmarks + 20 decor + nature scatter + 8 instanced fields + 12 Glimmers + 6 helpers + 4 villains + hero moves/abilities on keys + fog/night/slow/camera · **`bake.js` `bakeStatic()`** (69 static props → 4 batches = 11 m) · `check.mjs --world` (bake unit test + whole world 2 s headless + zone unlock) · measured 434 m worst-case → **≤ 150 dc re-budgeted to 11A** (see HANDOFF_10A "Why 5 chats died") · P1 smoke of all 19 pages: ERRORS none · CR [2D] applied: `registerBuilder()` in glimmers.js, glimmers2 auto-registers 8 | src/assets/props/bake.js, demo_world.html, docs/HANDOFF_10A.md, check.mjs WORLD (10A), glimmers.js/glimmers2.js (CR) | ✅ |
+| 10B | Systems integration: `src/Game.js` `createSandbox(game, opts)` = Island v2 + scenery (baked) + Economy 4B + Build 5 + Customers 6A + hero moves/abilities on one loop · P1 debug keys as DOM-free `sb.keys` (B build · 1–9 pick · R/confirm/Esc · X demolish · U upgrade · E end season → LedgerReport console · Z zone · H hire) + 3 starter stalls · season scheduler (event @45 %, Too-Good Deal @70 % odd seasons, auto-refuse) · P2 `sb.ability(name)`: magnet collects tip coins (1 InstancedMesh) → earn, haggle ×1.1 price/×1.3 demand, growth pulse, shield absorbs next event, fogSweep → pushFog, ledgerFlash → refuseOffer · P3 hire → HelperAnimator work loop · `check.mjs --sandbox` (2 seasons headless, 6 abilities asserted) · smoke ERRORS none, 169–253 dc (target → 11A) | src/Game.js, demo_sandbox.html, check.mjs SANDBOX (10B), docs/HANDOFF_10B.md, screenshots/10B_sandbox/ | ✅ |
 
 ## Next (sequential from here)
-10B → 10C → 10D integration · 11A perf · 11B mobile QA · 12 audio · 13A jam package · 13B trailer · 14 Flutter APK.
+10C → 10D integration · 11A perf · 11B mobile QA · 12 audio · 13A jam package · 13B trailer · 14 Flutter APK.
 
 ## Test
 ```bash
-cd LUMEN/game && node tools/check.mjs --props --creatures --hero --abilities --economy --build --customers --ui --story --vfx --world   # no browser, ~5 s (--story now also runs the 8B system tests)
+cd LUMEN/game && node tools/check.mjs --props --creatures --hero --abilities --economy --build --customers --ui --story --vfx --world --sandbox   # no browser, ~5 s (--story now also runs the 8B system tests)
 python3 -m http.server 3000   # then open http://localhost:3000/demo_glimmers.html
 ```
