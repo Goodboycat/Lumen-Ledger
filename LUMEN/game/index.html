@@ -87,6 +87,19 @@ try {
   // 11B P2.1: iOS Safari fires gesturestart for pinch even with user-scalable=no; Android double-tap zoom is killed by touch-action in base.css
   document.addEventListener('gesturestart', (e) => e.preventDefault());
 
+  // 11B P2.2: Android back button / WebView back — instead of leaving the page it behaves like Esc (closes the tray / placing, else
+  // toggles the pause menu, via the same window keydown chain 7A/7C already own). A sentinel history entry is kept so there is
+  // always something to pop; the page itself is never left while the game is running (the title screen's back = real back).
+  if (!params.has('nohistory')) {
+    const push = () => history.pushState({ lumen: 1 }, '', location.href);
+    push();
+    window.addEventListener('popstate', () => {
+      if (ui.title?.isOpen) { history.back(); return; }                                   // on the title: let the back button leave normally
+      push();                                                                             // re-arm the sentinel
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }));
+    });
+  }
+
   // ?autoplay (smoke / trailer): skip the title. ?endless: start in Endless.
   if (params.has('autoplay') || params.has('endless')) setTimeout(() => game.bus.emit('ui:start', { mode: params.has('endless') ? 'endless' : 'story' }), 300);
   game.start();
