@@ -115,6 +115,7 @@ export function makeGlimmerVariant(type = 'regular', opts = {}) {
   root.userData.parts.kit = kit;
   root.userData.type = type;
   root.userData.info = info;
+  if (opts.fuse !== false && opts.compact !== false) fuseGlimmer(root, opts);   // 11A: 8 → 6 meshes
   return root;
 }
 
@@ -139,6 +140,32 @@ export function compactGlimmer(root) {
     const eyes = fm.children.find((m) => m.name === 'merged_flat'); if (eyes) { eyes.name = 'eyes'; eyes.userData.noOutline = true; eyes.castShadow = eyes.receiveShadow = false; face.add(eyes); p.eyes = eyes; }
   }
   if (bodyMesh) addOutline(bodyMesh);
+  return root;
+}
+
+/**
+ * 11A perf (Lever 1): fuse everything static under `body` — the compacted body mesh, the merged accessory kit and
+ * the glow core — into ONE toon mesh (+ ONE outline hull) and ONE flat mesh. `face` (blink/mouth) and `live`
+ * (2D flourish pivot) stay separate because the animator moves them. After this a bare variant is 6 meshes
+ * (toon, hull, flat, eyes, mouth, shadow) instead of 8–11. parts.kit → the fused group (still has 'merged_toon'),
+ * parts.shell → fused toon mesh (vertex-colored, tint via material.color multiply), parts.core → fused flat mesh.
+ */
+export function fuseGlimmer(root, opts = {}) {
+  const p = root.userData.parts; const body = p && p.body;
+  if (!body || body.userData.fused) return root;
+  const movers = new Set([p.face, p.live].filter(Boolean));
+  const tmp = new THREE.Group(); tmp.name = 'fuse_raw'; body.add(tmp);
+  for (const c of body.children.slice()) {
+    if (c === tmp || movers.has(c)) continue;
+    if (c.isMesh || c.name === 'kit') { removeOutline(c); tmp.add(c); }
+  }
+  const fused = mergeGroup(tmp); body.remove(tmp); fused.name = 'kit'; body.add(fused);
+  for (const m of fused.children) if (m.name === 'merged_flat') { m.userData.noOutline = true; m.castShadow = m.receiveShadow = false; }
+  if (opts.outline !== false) addOutline(fused);
+  body.userData.fused = true;
+  p.kit = fused;
+  p.shell = fused.children.find((m) => m.name === 'merged_toon') || p.shell;
+  p.core = fused.children.find((m) => m.name === 'merged_flat') || null;
   return root;
 }
 

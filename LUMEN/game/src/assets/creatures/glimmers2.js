@@ -28,7 +28,7 @@ import { PALETTE as P, toonMat, flatMat } from '../../core/Toon.js';
 import { addOutline } from '../../core/Outline.js';
 import { makeGlimmer } from '../glimmer.js';
 import { mergeGroup } from '../props/merge.js';
-import { GLIMMER_INFO, GLIMMER_TYPES, GLIMMER_VARIANTS_READY, compactGlimmer, makeGlimmerVariant, registerBuilder } from './glimmers.js';
+import { GLIMMER_INFO, GLIMMER_TYPES, GLIMMER_VARIANTS_READY, compactGlimmer, fuseGlimmer, makeGlimmerVariant, registerBuilder } from './glimmers.js';
 
 /** The 8 types this file ships (order = demo order). */
 export const GLIMMER_VARIANTS_READY_2 = ['impulse', 'haggler', 'kid', 'elder', 'tourist', 'critic', 'collector', 'newbie'];
@@ -243,6 +243,7 @@ export function makeGlimmerVariant2(type = 'newbie', opts = {}) {
   root.userData.parts.live = live;
   root.userData.type = type;
   root.userData.info = info;
+  if (opts.fuse !== false && opts.compact !== false) fuseGlimmer(root, opts);   // 11A: body+kit+core → 1 toon + 1 hull + 1 flat
   const fl = FLOURISH[type];
   let t = r() * 10;
   root.userData.update = fl ? (dt) => { t += dt; fl(root, t, dt); } : () => {};
