@@ -39,6 +39,7 @@ import { setOutlineThickness } from './src/core/Outline.js';
 import { PROP_CATALOG } from './src/assets/props.js';
 import { mountUI } from './ui/index.js';
 import { createLumenGame, GAME_VERSION } from './src/Game.js';
+import * as Save from './src/systems/save.js';
 
 const root = document.getElementById('game-root');
 const errEl = document.getElementById('boot-error');
@@ -56,11 +57,14 @@ try {
   // UI first (title owns the screen and pauses the game), then the state machine over it.
   const ui = mountUI(root, {
     bus: game.bus, stats: () => game.stats, input: game.input, catalog: PROP_CATALOG, seasonsToWin: 10,
-    hasSave: false,                                                                       // 10D wires the save slot → CONTINUE
+    hasSave: () => Save.hasSave(),                                                        // 10D: localStorage slot → CONTINUE on the title (reload resumes)
     onOutline: setOutlineThickness, touch: true, version: `jam build · ${GAME_VERSION}`,
   });
   const lg = createLumenGame(game, { ui, storyData, seasonSeconds, seed: +params.get('seed') || undefined, debugKeys: params.has('debug') });
   window.ui = ui; window.lg = lg; window.sb = () => lg.sb; window.eco = () => lg.sb?.eco;
+  // 10D: save slot for the Flutter WebView (14) — copy the text out before storage is cleared, paste it back in: LUMEN1:<base64>
+  window.lumenSave = { export: () => lg.save.exportText(), import: (t) => lg.save.importText(t), clear: () => lg.save.clear(), has: () => lg.save.has(), describe: () => lg.save.describe() };
+  if (params.has('import')) lg.save.importText(decodeURIComponent(params.get('import')));   // ?import=LUMEN1:… (WebView hand-off)
 
   // camera zoom on wheel (Foundation input) · touch class for the 7C pad · quality readout (F3 toggles the tiny debug line)
   game.input.onWheel = (dir) => { game.camera.zoom = THREE.MathUtils.clamp(game.camera.zoom + dir * 0.1, 0.5, 2.2); };
