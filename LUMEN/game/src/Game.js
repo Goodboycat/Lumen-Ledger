@@ -161,7 +161,57 @@ function wireEconomy(sb) {
 }
 function countStalls(sb) { let n = 0; for (const e of sb.build.placed.values()) if (e.id.startsWith('stall_')) n++; return n; }
 function wireAbilities(sb) {}
-function installDebugKeys(sb) {}
+// Debug keys (prompt P1): B build mode for the current pick · 1–9 pick a stall type · E end season (LedgerReport → console)
+// · H hire next helper (P3) · Z unlock next zone (buys the zone upgrade when affordable, else free in sandbox) · X demolish nearest
+// · U upgrade nearest · R rotate ghost · Esc exit build. Every key is a method on sb.keys so check.mjs can drive it without a DOM.
+function installDebugKeys(sb) {
+  const K = sb.keys = {
+    pick(i) { sb.pick = Math.max(0, Math.min(STALL_PICKS.length - 1, i | 0)); const id = 'stall_' + STALL_PICKS[sb.pick]; sb.game.bus.emit('sandbox:pick', { id, cost: sb.build.cost(id) }); if (sb.build.mode === 'place') sb.build.enter(id); return id; },
+    build() { const id = 'stall_' + STALL_PICKS[sb.pick]; if (sb.build.mode === 'place') { sb.build.exit(); return false; } return sb.build.enter(id); },
+    confirm() { return sb.build.mode === 'place' ? sb.build.confirm() : false; },
+    rotate() { return sb.build.rotate(); },
+    exit() { sb.build.exit(); },
+    endSeason() { const r = sb.eco.endSeason(); if (r) printLedger(r); return r; },
+    demolish() { const e = sb.build.nearest(sb.hero.root.position.x, sb.hero.root.position.z, 2.5); return e && !e.scenery ? sb.build.demolish(e) : false; },
+    upgrade() { const e = sb.build.nearest(sb.hero.root.position.x, sb.hero.root.position.z, 2.5); return e && !e.scenery ? sb.build.upgrade(e) : false; },
+    unlock() { const z = sb.island.nextLockedZone(); if (!z) return null; const up = Object.values(UPGRADES).find((u) => u.kind === 'zone' && u.effect.zone === z.index); if (up && sb.eco.canAfford(up.cost)) return sb.eco.buyUpgrade(up.id); return sb.island.unlockZone(z.index, { game: sb.game, vfx: sb.vfx }); },
+    hire() { return hireHelper(sb); },
+  };
+  if (sb.headless || typeof window === 'undefined' || !window.addEventListener) return;
+  sb._onKey = (e) => {
+    if (e.repeat) return; const c = e.code;
+    if (c.startsWith('Digit')) { const d = +c.slice(5); if (d >= 1 && d <= 9) K.pick(d - 1); }
+    else if (c === 'KeyB') K.build(); else if (c === 'KeyE') K.endSeason(); else if (c === 'KeyH') K.hire(); else if (c === 'KeyZ') K.unlock();
+    else if (c === 'KeyX') K.demolish(); else if (c === 'KeyU') K.upgrade(); else if (c === 'KeyR' && sb.build.mode === 'place') K.rotate(); else if (c === 'Escape') K.exit();
+  };
+  window.addEventListener('keydown', sb._onKey);
+  const prevTap = sb.game.input.onTap;
+  sb.game.input.onTap = (world, ev) => {
+    if (sb.build.mode === 'place') { sb.build.moveTo(world.x, world.z); sb.build.confirm(); return; }
+    if (prevTap) prevTap(world, ev);
+  };
+}
+function printLedger(r) {
+  const row = (k, v) => `  ${k.padEnd(14)} ${String(v).padStart(8)}`;
+  console.log(`LedgerReport — Season ${r.season}  ★${r.stars}  lesson: ${r.lessonId}\n` + [row('income', r.income), row('expenses', r.expenses), row('interestEarned', r.interestEarned), row('interestPaid', r.interestPaid), row('investReturn', `${r.investReturn} (${(r.investRate * 100).toFixed(1)}%)`), row('upkeep', r.upkeep), row('sales/units', `${r.sales}/${r.units}`), row('saved', r.saved), row('debt', `${r.debtBefore} → ${r.debt}`), row('fog', `${(r.fog01 * 100).toFixed(0)}% (${r.fogDelta >= 0 ? '+' : ''}${(r.fogDelta * 100).toFixed(1)})`), row('spark', r.spark), row('netWorth', r.netWorth), row('events', r.events.join(', ') || '—')].join('\n'));
+}
+// P3: hire the next un-hired helper (eco.buyUpgrade helper_<type>) and give it a work loop at an owned stall.
+function hireHelper(sb) {
+  const owned = new Set(sb.helpers.map((h) => h.type));
+  const type = HELPER_TYPES.find((t) => !owned.has(t)); if (!type) return null;
+  const u = sb.eco.buyUpgrade('helper_' + type); if (!u) { sb.game.bus.emit('eco:denied', { why: 'cannot afford', id: 'helper_' + type }); return null; }
+  const stalls = [...sb.build.placed.values()].filter((e) => e.id.startsWith('stall_'));
+  const stall = stalls[sb.helpers.length % Math.max(1, stalls.length)] || null;
+  const g = makeHelper(type, { seed: sb.helpers.length + 1 });
+  const at = stall ? stall.group.position : sb.hero.root.position;
+  const back = new THREE.Vector3(0, 0, -0.9).applyAxisAngle(new THREE.Vector3(0, 1, 0), stall ? stall.group.rotation.y : 0);
+  g.position.set(at.x + back.x, 0, at.z + back.z); sb.game.scene.add(g);
+  const anim = new HelperAnimator(g, type, { vfx: sb.vfx });
+  anim.faceToNow(new THREE.Vector3(at.x - back.x * 3, 0, at.z - back.z * 3)); anim.play('work');
+  const h = { g, anim, type, stall, upgrade: u }; sb.helpers.push(h);
+  sb.game.bus.emit('sandbox:hired', { type, stall: stall?.id || null, cost: u.cost });
+  return h;
+}
 
 /** VFX stand-in for Node: every pool call is a no-op counter. */
 export function mockVfx() {
