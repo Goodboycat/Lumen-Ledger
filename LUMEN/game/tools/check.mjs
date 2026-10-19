@@ -38,6 +38,7 @@ const doVFX = args.includes('--vfx');
 const doSandbox = args.includes('--sandbox');      // 10B integrated systems sandbox (headless createSandbox: economy + build + customers + abilities + helpers, 2 seasons)
 const doGame = args.includes('--game');            // 10C the whole game headless: real UI (domshim) + real story + real sandbox driven by createLumenGame's state machine
 const doSave = args.includes('--save');            // 10D save/load + tutorial: play to S2 → autosave → fresh lg → CONTINUE → same season/spark/stalls/toasts; export/import text; lose clears
+const doPerf = args.includes('--perf');            // 11A src/systems/perf.js: BlobShadows (N discs → 1 InstancedMesh), CreatureLOD tiers + hysteresis, PixelRatioGovernor steps, countGeometries
 const doWorld = args.includes('--world');          // 10A integrated world: bakeStatic batches + Island v2 + every content pack placed headless (mirrors demo_world.html), counts meshes ≤ budget              // 9A/9B VFX packs: installPack1/installPack2 on a mock VFX+scene, fire every effect, step headless, check pools drain, 0 NaN, draw calls
 let files = args.filter((a) => !a.startsWith('--'));
 if (!files.length) { files = []; (function walk(d) { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (p.endsWith('.js') && !p.endsWith('main.js')) files.push(p); } })('src'); }  // main.js is the DOM entry; skipped
@@ -1479,9 +1480,25 @@ if (doWorld) {
     // integration adds nothing on top of what the content packs already cost: every pack is within its own Bible budget
     // (creature ≤ 15 m, stall ≤ 10 m, batch ≤ 4 m) and the static props are baked. The measured TOTAL is recorded in
     // docs/HANDOFF_10A.md for 11A. Do NOT tighten this back to 150 inside 10A — five chats died doing exactly that.
-    const WORLD_BUDGET = 480;
+    const WORLD_BUDGET = 320;   // 11A: 434 (10D) → 353 (count fix) → 316 (fuseGlimmer) → 292 (bakeShells); content-only, before perf.js
     if (total > WORLD_BUDGET) throw new Error(`total visible meshes ${total} > ${WORLD_BUDGET} — integration regressed (${JSON.stringify(per)})`);
     if (bakedDc > 24) throw new Error('baked dc ' + bakedDc);
+    // 11A perf.js on top of the content: shared blob shadows (22 discs → 1) + LOD with the camera where index.html puts it.
+    const PF = await import(pathToFileURL(resolve('src/systems/perf.js')).href);
+    const roots = [...glims.map((c) => c.g), ...helpers.map((h) => h.g), ...villains.map((v) => v.g)];
+    const shadows = new PF.BlobShadows(scene, 8); shadows.update(roots); if (shadows.count !== roots.length || shadows.mesh.count !== 22) throw new Error('BlobShadows ' + shadows.count);
+    const totalShadows = meshCount(scene);
+    const cam = new THREE.PerspectiveCamera(); cam.position.set(0, 13, 10); scene.updateMatrixWorld(true);
+    const lod = new PF.CreatureLOD(cam); lod.update(roots); const totalNear = meshCount(scene);
+    cam.position.set(40, 13, 10); lod.update(roots); const totalFar = meshCount(scene); if (lod.stats.far !== roots.length) throw new Error('LOD far ' + JSON.stringify(lod.stats));
+    cam.position.set(0, 13, 10); lod.update(roots); const afterOne = lod.stats.near;   // one tier per update: nothing may jump 2 → 0 in one frame
+    if (afterOne !== 0) throw new Error('LOD popped 2 → 0 in one update ' + JSON.stringify(lod.stats));
+    lod.update(roots); lod.update(roots); const totalBack = meshCount(scene);
+    if (totalBack < totalFar || totalBack > totalNear || lod.stats.near === 0) throw new Error(`LOD did not come back (${totalFar} ≤ ${totalBack} ≤ ${totalNear}) ` + JSON.stringify(lod.stats));
+    const PERF_BUDGET = 300;    // 11A measured 270 with shadows pooled (camera near): +10 %
+    if (totalShadows > PERF_BUDGET) throw new Error(`with perf.js ${totalShadows} > ${PERF_BUDGET}`);
+    lod.dispose(); shadows.dispose(); if (meshCount(scene) !== total) throw new Error('perf dispose did not restore ' + meshCount(scene) + ' vs ' + total);
+    console.log(`  perf (11A): + BlobShadows → ${totalShadows} m (−${total - totalShadows}) · + LOD near ${totalNear} / far ${totalFar} m · dispose restores ${total}  OK`);
     const worst = (arr) => Math.max(...arr.map((g) => meshCount(g)));
     if (worst(glims.map((c) => c.g)) > 15 || worst(helpers.map((h) => h.g)) > 15 || worst(villains.map((v) => v.g)) > 18) throw new Error('a creature exceeds its per-creature budget');
     if (worst(stalls) > 12) throw new Error('a stall exceeds 12 meshes (1A: lantern/sparkExchange L3 = 12)');

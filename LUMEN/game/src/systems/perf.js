@@ -142,12 +142,12 @@ export class CreatureLOD {
       if (!this.enabled) { this._apply(lod, 0); st.near++; continue; }
       _p.setFromMatrixPosition(root.matrixWorld);
       const d = _p.distanceTo(cp);
-      // hysteresis: to go UP a tier you must pass the threshold; to come back DOWN you must be `hyst` closer
+      // hysteresis: hiding more (tier up) is immediate; showing more (tier down) happens ONE tier per update and only
+      // once the creature is `hyst` closer than the threshold it crossed — so a camera jump never pops 2 → 0 in one frame.
+      const target = d > this.far ? 2 : d > this.near ? 1 : 0;
       let tier = lod.tier;
-      if (tier === 0 && d > this.near) tier = 1;
-      if (tier === 1 && d > this.far) tier = 2;
-      if (tier === 2 && d < this.far - this.hyst) tier = 1;
-      if (tier === 1 && d < this.near - this.hyst) tier = 0;
+      if (target > tier) tier = target;
+      else if (target < tier && d < (tier === 2 ? this.far : this.near) - this.hyst) tier -= 1;
       this._apply(lod, tier);
       if (tier === 0) st.near++; else if (tier === 1) st.mid++; else st.far++;
     }
