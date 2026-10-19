@@ -72,7 +72,10 @@ try {
   if (params.has('debug')) document.body.classList.add('show-debug');
   window.addEventListener('keydown', (e) => { if (e.code === 'F3') { e.preventDefault(); document.body.classList.toggle('show-debug'); } });
   const dbg = document.getElementById('debug-stats'); let acc = 0;
-  game.add({ update: (_dt, g, dtReal) => { acc += dtReal; if (acc < 0.5) return; acc = 0; const s = g.stats, e = lg.sb?.eco.state; dbg.textContent = `fps ${s.fps} · calls ${s.drawCalls} · tris ${(s.triangles / 1000).toFixed(0)}k · ${lg.state}${e ? ` · S${e.season} ${(e.day01 * 100).toFixed(0)}% · spark ${e.spark} · fog ${(e.fog01 * 100).toFixed(0)}%` : ''}`; } });
+  // 11A: also shows the perf state — dpr (PixelRatioGovernor) · shadows (BlobShadows instances) · lod (CreatureLOD near/far counts)
+  game.add({ update: (_dt, g, dtReal) => { acc += dtReal; if (acc < 0.5) return; acc = 0; const s = g.stats, e = lg.sb?.eco.state, pf = lg.sb?.perf;
+    const perf = pf ? ` · dpr ${(pf.governor?.ratio ?? g.renderer?.getPixelRatio?.() ?? 1).toFixed(2)} · shadows ${pf.shadows?.count ?? pf.shadows?.mesh?.count ?? '—'}${pf.lod?.stats ? ` · lod ${pf.lod.stats.near}/${pf.lod.stats.mid}/${pf.lod.stats.far}` : ''}` : '';
+    dbg.textContent = `fps ${s.fps} · calls ${s.drawCalls} · tris ${(s.triangles / 1000).toFixed(0)}k · ${lg.state}${e ? ` · S${e.season} ${(e.day01 * 100).toFixed(0)}% · spark ${e.spark} · fog ${(e.fog01 * 100).toFixed(0)}%` : ''}${perf}`; } });
 
   // ?autoplay (smoke / trailer): skip the title. ?endless: start in Endless.
   if (params.has('autoplay') || params.has('endless')) setTimeout(() => game.bus.emit('ui:start', { mode: params.has('endless') ? 'endless' : 'story' }), 300);
