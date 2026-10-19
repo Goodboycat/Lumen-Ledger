@@ -14,6 +14,51 @@ const AC = typeof window !== 'undefined' ? (window.AudioContext || window.webkit
 
 export const DEFAULT_VOLUMES = { sfx: 0.8, music: 0.6 };
 
+// The 15 core events (+ a few UI ones) → SFX ids in audio/manifest.json. The manifest "events" block can override any entry.
+// `pick(payload)` returns a variant rule for payload-dependent sounds. Cooldowns stop 10 Hz ticks from machine-gunning.
+export const DEFAULT_EVENTS = {
+  'eco:sale':          { sfx: 'coin',        cooldown: 0.08 },
+  'eco:spark':         { sfx: 'spark_tick',  cooldown: 0.25, vol: 0.5 },
+  'eco:denied':        { sfx: 'deny',        cooldown: 0.3 },
+  'build:denied':      { sfx: 'deny',        cooldown: 0.3 },
+  'sandbox:denied':    { sfx: 'deny',        cooldown: 0.3 },
+  'ui:build':          { sfx: 'click',       cooldown: 0.1, vol: 0.5, pick: (p) => p?.action === 'denied' ? { sfx: 'deny' } : p?.action === 'select' ? { sfx: 'click' } : { sfx: null } },
+  'build:enter':       { sfx: 'pick_up',     cooldown: 0.2 },
+  'build:placed':      { sfx: 'hammer',      cooldown: 0.12 },
+  'build:removed':     { sfx: 'crumble',     cooldown: 0.2 },
+  'build:upgraded':    { sfx: 'level_up',    cooldown: 0.3 },
+  'ui:build:open':     { sfx: 'tray_open',   cooldown: 0.2 },
+  'ui:build:close':    { sfx: 'tray_close',  cooldown: 0.2 },
+  'eco:season':        { sfx: 'season_bell', cooldown: 1 },
+  'eco:loan':          { sfx: 'loan_stamp',  cooldown: 0.3 },
+  'eco:jar':           { sfx: 'jar_fill',    cooldown: 0.15 },
+  'ui:jar:apply':      { sfx: 'jar_apply',   cooldown: 0.3 },
+  'eco:scam':          { sfx: 'scam_sting',  cooldown: 1 },
+  'eco:scamResult':    { sfx: 'scam_refuse', cooldown: 1, pick: (p) => p?.accepted ? { sfx: 'scam_fell' } : null },
+  'eco:upgrade':       { sfx: 'level_up',    cooldown: 0.3 },
+  'eco:win':           { sfx: 'fanfare',     cooldown: 2, music: 'victory' },
+  'eco:lose':          { sfx: 'lose_sting',  cooldown: 2, music: 'fog_lose' },
+  'story:line':        { sfx: 'dlg_blip',    cooldown: 0.12, vol: 0.6 },
+  'story:toast':       { sfx: 'toast',       cooldown: 0.4, vol: 0.6 },
+  'ui:choice':         { sfx: 'click',       cooldown: 0.1 },
+  'ui:continue':       { sfx: 'click',       cooldown: 0.1 },
+  'ui:ledger:open':    { sfx: 'ledger_open', cooldown: 0.5, duck: true },
+  'ui:ledger:close':   { duck: false },
+  'ui:dialogue:open':  { duck: true },
+  'ui:dialogue:close': { duck: false },
+  'ui:pause:open':     { sfx: 'tray_open',   cooldown: 0.2, duck: true },
+  'ui:pause:close':    { sfx: 'tray_close',  cooldown: 0.2, duck: false },
+  'ui:title:open':     { music: 'title' },
+  'game:start':        { sfx: 'start',       cooldown: 1, music: 'island_day' },
+  'game:endless':      { music: 'island_endless' },
+  'sandbox:ability':   { sfx: 'ability',     cooldown: 0.2, pick: (p) => ({ sfx: ABILITY_SFX[p?.name] || 'ability' }) },
+  'sandbox:hired':     { sfx: 'hire',        cooldown: 0.5 },
+  'sandbox:tip':       { sfx: 'coin',        cooldown: 0.1, vol: 0.5, pitch: 1.3 },
+  'cust:state':        { sfx: 'cust_happy',  cooldown: 0.25, vol: 0.5, pick: (p) => p?.state !== 'react' ? { sfx: null } : p?.reaction === 'happy' ? { sfx: 'cust_happy' } : { sfx: 'cust_grumble' } },
+  'ui:touch':          { sfx: 'click',       cooldown: 0.08, vol: 0.4 },
+};
+const ABILITY_SFX = { coinMagnetDash: 'magnet', bubbleShield: 'shield', growthStomp: 'stomp', ledgerFlash: 'flash', haggleShout: 'shout', fogSweep: 'sweep' };
+
 export function createAudio(opts = {}) {
   const bus = opts.bus;
   const state = {
@@ -104,7 +149,28 @@ export function createAudio(opts = {}) {
     const n = state.musicNode; state.musicNode = null; state.currentMusic = state.currentMusic && fade === 0 ? null : state.currentMusic;
     if (!n) return; if (fade > 0 && n.gain) { ramp(n.gain.gain, 0, fade); setTimeout(() => n.stop(), fade * 1000 + 50); } else n.stop();
   }
-  function wireBus() { /* P1.3 */ }
+  // ---- P1.3 bus → SFX map. Manifest "events": { "<bus event>": { sfx | music | duck | fn, cooldown, vol, when: "<payload key>" } } merged over DEFAULT_EVENTS ----
+  function wireBus() {
+    for (const off of offs) off(); offs.length = 0;
+    const events = { ...DEFAULT_EVENTS, ...(state.manifest?.events || {}) };
+    offs.push(bus.on('input:first', () => api.unlock()));
+    offs.push(bus.on('ui:settings', (p) => { if (p?.key === 'sfx' || p?.key === 'music') api.setVolume({ [p.key]: p.value }); }));
+    for (const [ev, rule] of Object.entries(events)) {
+      if (!rule) continue;
+      offs.push(bus.on(ev, (payload) => {
+        const r = typeof rule.pick === 'function' ? rule.pick(payload) || rule : rule;        // per-payload variant (e.g. win vs lose ledger)
+        if (r.duck !== undefined) api.duck(!!r.duck);
+        if (r.music !== undefined) { if (r.music) api.music(r.music); else api.stopMusic(); }
+        if (!r.sfx) return;
+        const cd = r.cooldown ?? 0.05, last = state.lastFire[ev] ?? -1e9, t = now();
+        if (t - last < cd) { state.throttled = (state.throttled || 0) + 1; return; }
+        state.lastFire[ev] = t; state.fired[ev] = (state.fired[ev] || 0) + 1;
+        api.play(r.sfx, { vol: r.vol, pitch: r.pitch });
+      }));
+    }
+    state.wired = Object.keys(events).length;
+  }
+  state.lastFire = {}; state.fired = {};
 
   return api;
 }
