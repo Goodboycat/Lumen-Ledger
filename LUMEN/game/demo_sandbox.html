@@ -75,7 +75,7 @@ game.bus.on('cust:paid', (p) => log(`+${p.paid} ${p.type} @ ${p.stallId} (${p.re
 game.bus.on('cust:angry', (p) => log(`angry ${p.type}: ${p.why || p.reason || ''}`));
 game.bus.on('build:placed', (p) => log(`built ${p.id} −${p.cost}`));
 game.bus.on('build:denied', (p) => log(`denied: ${p.why}`));
-game.bus.on('eco:denied', (p) => log(`denied: ${p.why} ${p.id || ''}`));
+game.bus.on('eco:denied', (p) => log(`denied: ${p.why || p.reason || ''} ${p.id || ''}${p.cost != null ? ` (cost ${p.cost}, have ${p.spark})` : ''}`));
 game.bus.on('eco:season', (r) => log(`SEASON ${r.season} ★${r.stars} income ${r.income} exp ${r.expenses} debt ${r.debt}`));
 game.bus.on('eco:event', (p) => log(`event: ${p.id || p.eventId || ''}`));
 game.bus.on('sandbox:hired', (p) => log(`hired ${p.type} −${p.cost}`));
