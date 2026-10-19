@@ -10,6 +10,16 @@
 - `check.mjs --world`: bakeStatic unit test + whole world built & stepped 2 s headless with every animator, zone unlock, no NaN.
 - CHANGE_REQUESTS applied by workaround: `starterProps:false` (1C), `makeGlimmerAny` for all 12 (2D). 2A compact-sphere note → 11A.
 - `node tools/check.mjs --props --creatures --hero --abilities --economy --build --customers --ui --story --vfx --world` → ALL OK.
+- **P1 smoke of every page (2026-10-19, follow-up chat):** `tools/smoke.mjs` on index.html + all 18 demo_*.html with keys 1,2 →
+  **ERRORS: none on all 19**. Draw calls (final frame): index 162 · abilities 148 · build 111 · customers 124 · decor 117 · glimmers 135 ·
+  glimmers2 224 · helpers 160 · heromoves 141 · landmarks 26 · nature 267 · stalls 172 · ui_hud 0 · ui_ledger 0 · ui_title 161 · vfx1 110 ·
+  vfx2 132 · villains 146 · **world 424**. No failures to fix.
+- **P3 CHANGE_REQUESTS applied (follow-up chat):** [2D] → `glimmers.js` now exports `registerBuilder(type, fn)` / `hasBuilder(type)`
+  (additive, 2A builders never overwritten); `glimmers2.js` registers its 8 builders at import (`GLIMMER_BUILDERS_REGISTERED === 8`), so a
+  plain `makeGlimmerVariant('kid')` builds the kid kit (static part) instead of the regular scarf. `makeGlimmerAny` is still the full
+  path (live part + flourish). check.mjs `--creatures` asserts it. [1C] `starterProps:false` confirmed applied. [2A] sphere tris → 11A.
+- **Rule 0 / GitHub (follow-up chat):** repo https://github.com/Goodboycat/Lumen-Ledger is the master; `tools/github.sh <token>` sets it
+  up, `tools/wip.sh` now pushes every WIP commit. Documented in START_HERE (Rule 0), _TEMPLATE, README.
 
 ## Measured (headless mesh count = worst-case draw calls, everything in view; browser smoke showed `calls 430` at zoom 1.25)
 | item | count | meshes |
@@ -29,7 +39,7 @@
   before any creature was measured; it is unreachable by integration alone. 11A levers, in order of payoff:
   1. one outline hull per creature (merge body+kit hulls) → −~80; 2. share eye/accessory meshes into the kit bake → −~60;
   3. lantern/jar bodies baked, only bulb/fill live → −~40; 4. LOD: drop outlines/accessories beyond 18 u → −~60 at game zoom.
-- Browser smoke of every other demo_*.html was not re-run here (check.mjs imports all of them; each has its own earlier smoke).
+- (resolved in follow-up chat) browser smoke of every page: see Done.
 
 ## Suspected
 - `game.stats.drawCalls` in a headless first frame reads fps 0 — not a bug, just frame 0.
