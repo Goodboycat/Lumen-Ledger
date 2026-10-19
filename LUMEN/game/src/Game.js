@@ -266,7 +266,7 @@ function installDebugKeys(sb) {
     hire() { return hireHelper(sb); },
     ability(name) { return sb.ability(name); },
   };
-  if (sb.headless || typeof window === 'undefined' || !window.addEventListener) return;
+  if (sb.headless || sb.opts.debugKeys === false || typeof window === 'undefined' || !window.addEventListener) return;   // 10C passes debugKeys:false (E/R/1–9 are ability + dialogue keys there)
   sb._onKey = (e) => {
     if (e.repeat) return; const c = e.code;
     if (c.startsWith('Digit')) { const d = +c.slice(5); if (d >= 1 && d <= 9) K.pick(d - 1); }
@@ -363,7 +363,7 @@ function installStart(lg) {
     lg.teardown?.();
     lg.mode = mode === 'endless' ? 'endless' : 'story';
     const balance = lg.mode === 'endless' ? { ...(opts.balance || {}), winRequiresSeasons: false } : opts.balance;
-    const sb = lg.sb = createSandbox(game, { headless: !!opts.headless, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive });
+    const sb = lg.sb = createSandbox(game, { headless: !!opts.headless, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys });
     if (lg.mode === 'endless') sb.updateScheduler = wrapNoScam(sb);                      // endless: events yes, Baron's deals no
     lg.story = (lg.mode === 'story' && opts.storyData) ? new StorySystem(sb.eco, { data: opts.storyData, bus, ledgerLinesBeforeReview: true, autoAdvance: !!opts.autoAdvance, lineGap: opts.lineGap }) : null;
     installRunWires(lg);
@@ -400,7 +400,43 @@ function destroySandbox(sb) {
   for (const e of sb.build?.placed?.values?.() || []) if (e.group?.parent) e.group.parent.remove(e.group);
   game.followTarget = null;
 }
-function installRunWires(lg) { /* next commit */ }
+// Per-run wires (released on teardown): UI → systems. 7A build tray → BuildSystem (5) · 7A jars APPLY → eco.allocate from the pouch ·
+// hero ability keys (3B FINLIT keys) → sb.ability · 7C touch 'build' button → tray · tap in demolish mode → build.demolish.
+function installRunWires(lg) {
+  const { bus, ui, sb } = lg, offs = lg._runOffs = [], on = (n, f) => offs.push(bus.on(n, f));
+  const { build, eco, hero } = sb;
+  lg.demolishMode = false;
+  on('ui:build', (p) => {
+    const a = p?.action;
+    if (a === 'select') { lg.demolishMode = false; build.enter(p.id); }
+    else if (a === 'cancel') { lg.demolishMode = false; build.exit(); }
+    else if (a === 'rotate') { if (build.mode === 'place') build.rotate(); }
+    else if (a === 'confirm') { if (build.mode === 'place') build.confirm(); }
+    else if (a === 'demolish') { build.exit(); lg.demolishMode = true; }
+    else if (a === 'upgrade') { const e = build.nearest(hero.root.position.x, hero.root.position.z, 2.5); if (e && !e.scenery) build.upgrade(e); else bus.emit('build:denied', { why: 'stand next to a stall to upgrade it' }); }
+  });
+  on('ui:build:close', () => { lg.demolishMode = false; });
+  // jars APPLY {pct}: move the whole pouch into the 4 jars by pct (spend stays as pouch → its share is the amount NOT moved)
+  lg.applyJars = (pct = {}) => {
+    const spark = eco.state.spark; if (spark <= 0) { bus.emit('eco:denied', { reason: 'nothing to allocate', cost: 0, spark }); return false; }
+    const d = {}; let moved = 0;
+    for (const k of ['save', 'invest', 'protect']) { const v = Math.max(0, Math.floor(spark * ((+pct[k] || 0) / 100))); if (v > 0) { d[k] = v; moved += v; } }
+    if (!moved) return false;
+    const ok = eco.allocate(d); if (ok) bus.emit('game:allocated', { moved, deltas: d, spark: eco.state.spark }); return ok;
+  };
+  on('ui:jar:apply', (p) => lg.applyJars(p?.pct));
+  // ability keys — only while playing/endless and no modal owns the screen (dialogue keys 1–4, ledger Enter, pause Esc)
+  lg.ability = (name) => { if (!lg.sb || (lg.state !== 'playing' && lg.state !== 'endless') || lg.game.paused) return null; return sb.ability(name); };
+  on('ui:touch', (p) => { if (p?.action === 'build' && !lg.game.paused) ui?.build?.toggle?.(); });
+  // tap on the island while in demolish mode → demolish what is there (10B's onTap handles place mode)
+  const prevTap = lg.game.input?.onTap;
+  if (lg.game.input) lg.game.input.onTap = (world, ev) => { if (lg.demolishMode && build.mode !== 'place') { const e = build.nearest(world.x, world.z, 1.2); if (e && !e.scenery) build.demolish(e); return; } prevTap?.(world, ev); };
+  offs.push(() => { if (lg.game.input) lg.game.input.onTap = prevTap; });
+  if (typeof window !== 'undefined' && window.addEventListener && !lg.opts.headless) {
+    const onKey = (e) => { if (e.repeat) return; const name = ABILITY_KEYS[e.code]; if (name && !ui?.isModal?.()) lg.ability(name); };
+    window.addEventListener('keydown', onKey); offs.push(() => window.removeEventListener('keydown', onKey));
+  }
+}
 // Season loop on the bus (listeners live for the whole lg, they check lg.sb):
 //   eco:season report → 'review' (economy clock keeps running at 0 because the ledger/dialogue pause the game).
 //     story mode: 8B plays the ledger lines, then emits story:review → ui.ledger.show(report). No story → ledger.show at once.
