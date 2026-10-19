@@ -2,7 +2,8 @@
 
 Every id below is an entry in `audio/manifest.json`. Generate each sound (Ludo.ai / ElevenLabs SFX / any generator), export
 **OGG Vorbis, mono, 44.1 kHz, −3 dBFS peak**, trim silence, name it exactly `audio/sfx/<id>.ogg` or `audio/music/<id>.ogg` and
-drop it in. Nothing else changes: `src/core/Audio.js` picks up a file the first time the id plays; until the file exists the
+drop it in, then set `"fetchFiles": true` in the manifest (it is `false` while no file exists, so the console stays free of 404s).
+Nothing else changes: `src/core/Audio.js` picks up a file the first time the id plays; until the file exists the
 manifest's `synth` sketch plays instead, so the game is never silent and no id is ever "missing".
 
 **House style:** cozy toon island at golden hour · wooden + glass + brass · Nintendo-bright, never harsh · every cue ends inside its

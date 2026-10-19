@@ -109,8 +109,10 @@ export function createAudio(opts = {}) {
 
   // ---- P1.1 loader: decode a file on first use (lazy — the jam build has few/no files, synth covers the rest) ----
   const base = () => (state.manifest?.base ?? './audio/');
+  // manifest.fetchFiles === false → never fetch (no 404 console noise while the Ludo.ai files do not exist yet); synth only.
+  const fetchOK = () => state.manifest?.fetchFiles !== false;
   async function buffer(kind, id) {
-    const d = def(kind, id); if (!d || !d.file || !state.ctx || state.missing.has(id)) return null;
+    const d = def(kind, id); if (!d || !d.file || !state.ctx || state.missing.has(id) || !fetchOK()) return null;
     if (state.buffers.has(id)) return state.buffers.get(id);
     const p = (async () => {
       try { const r = await fetch(base() + d.file); if (!r.ok) throw new Error('HTTP ' + r.status); return await state.ctx.decodeAudioData(await r.arrayBuffer()); }
@@ -130,7 +132,7 @@ export function createAudio(opts = {}) {
     const pv = d.pitchVar ?? 0; const pitch = (o.pitch ?? 1) * (pv ? 1 + (Math.random() * 2 - 1) * pv : 1);
     const b = state.buffers.get(id);
     if (b && !(b instanceof Promise)) { const s = state.ctx.createBufferSource(); s.buffer = b; s.playbackRate.value = pitch; const g = state.ctx.createGain(); g.gain.value = vol; s.connect(g); g.connect(sfxGain); s.start(); return true; }
-    if (d.file && !state.missing.has(id) && !b) buffer('sfx', id);                                // kick off decode for next time; synth now
+    if (d.file && !state.missing.has(id) && !b && fetchOK()) buffer('sfx', id);                   // kick off decode for next time; synth now
     if (d.synth) synthSfx(state.ctx, sfxGain, d.synth, vol, pitch);
     return true;
   }
