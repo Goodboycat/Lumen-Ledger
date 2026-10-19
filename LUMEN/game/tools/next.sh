@@ -32,6 +32,7 @@ else
 fi
 echo "OPEN:  $P"
 [ -n "$LASTWIP" ] && { echo "TRAIL: last WIP commits for $NEXT (an axed chat got this far — continue from here, do not restart):"; echo "$LASTWIP" | sed 's/^/       /'; }
-echo "AFTER EVERY FILE: bash tools/wip.sh \"<what>\" [check flags]   (commit pass-or-fail + check, ~0 credits)"
+echo "AFTER EVERY FILE: bash tools/wip.sh \"<what>\" [check flags]   (commit pass-or-fail + push to GitHub + check, ~0 credits)"
+( cd /home/user/webapp 2>/dev/null && git remote get-url origin >/dev/null 2>&1 ) || echo "RULE 0: no GitHub origin yet → bash tools/github.sh <token> FIRST (token is in the user's paste block)"
 echo "STUCK on a budget / same failure twice? → record under Missing, commit, next item. The 3rd attempt is what kills chats."
 echo "Do NOT write a chat message now. A message with no tool call ends the chat and burns every remaining credit."

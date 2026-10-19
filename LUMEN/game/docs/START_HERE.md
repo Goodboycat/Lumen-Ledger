@@ -4,6 +4,21 @@ You are one of ~40 Genspark chats building ONE browser game, **Lumen Ledger**, f
 jam (theme "Make FinLit Fun", deadline Nov 15 2026). You have **100 credits** and ONE deliverable.
 Your chat ID is in the user's message. Your task file is `docs/prompts/<ID>_*.md`.
 
+## RULE 0 — GITHUB IS THE BACKUP (added 2026-10-19, read before anything else)
+The whole `/home/user/webapp` repo is mirrored at **https://github.com/Goodboycat/Lumen-Ledger** (branch `main`). An axed chat loses
+its sandbox; it does NOT lose what it pushed. So **every commit is pushed, immediately, pass or fail**. Nothing is "ready enough" to push —
+push WIP. The user's paste block contains the token; this file never does (a token in a public repo is auto-revoked by GitHub).
+```bash
+# FIRST tool call of every chat (≈0 credits). Token and repo come from the user's paste block.
+bash /home/user/webapp/LUMEN/game/tools/github.sh <TOKEN>     # configures credentials + origin, pulls origin/main, prints the git log
+# After that: tools/wip.sh and the close step push for you. Manual form if you ever need it:
+cd /home/user/webapp && git add -A && git commit -qm "WIP <ID>: <what>" ; git push -q origin main
+```
+- If the attached tar.gz is OLDER than origin/main (github.sh prints the warning), **origin/main wins**: work on it, not the tar.
+- `git push` failing is never a reason to stop — commit locally, retry the push on the next wip.sh call, note it in the HANDOFF.
+- Commit after EVERY file (rule 8). A chat that wrote 400 lines and got axed before its first commit delivered nothing; one that
+  committed + pushed after every file delivered 400 lines.
+
 ## DELIVERY POLICY (changed 2026-10-17 — zips and upload links are GONE)
 Zipping + uploading cost 3–6 credits each and killed several chats before they could write a final message.
 **Nobody zips. Nobody uploads. Nobody asks for a download link.**
@@ -51,7 +66,7 @@ in THIS chat, exactly as if you had been launched for it. A chat that closes an 
 Every ID gets its own HANDOFF + row + commit, so if YOU get axed mid-loop the next chat's `next.sh` lands exactly where you stopped.
 The user never reads mid-chat and does nothing manually; nobody is waiting for a report.
 
-## The only 9 rules
+## The only 9 rules (+ Rule 0 above: push every commit to GitHub)
 1. **Read ≤ 8 credits**: this file → `GAME_BIBLE.md` → the API_CONTRACTS sections your task names →
    skim ONLY the Foundation files you import. Do not read other chats' prompt files.
 2. **Write files early and often.** Files on disk are the deliverable. A chat that dies at 95 credits with
@@ -71,8 +86,8 @@ The user never reads mid-chat and does nothing manually; nobody is waiting for a
    done at 80 credits, ship 8.
 7. **A suspected bug is not a stop sign.** Write it under "Suspected" in your HANDOFF and continue with the
    next item. Do not refactor working code because one call "looked" wrong.
-8. **Commit WIP after every file, pass or fail** (v4.1, 2026-10-19): `cd /home/user/webapp && git add -A && git commit -qm "WIP <ID>: …"`.
-   `bash tools/wip.sh "<what>"` does commit + check in one call. Only the *README row* requires check.mjs ALL OK; a commit never does.
+8. **Commit WIP after every file, pass or fail, and push** (v4.1, 2026-10-19): `cd /home/user/webapp && git add -A && git commit -qm "WIP <ID>: …" && git push -q origin main`.
+   `bash tools/wip.sh "<what>"` does commit + push + check in one call. Only the *README row* requires check.mjs ALL OK; a commit never does.
    The five chats axed on 10A each left the same uncommitted state behind, so the sixth found nothing and started over.
 9. **A budget you cannot reach is a measurement, not a bug** (v4.1): if `check.mjs` asserts a number (draw calls, tris, ms)
    that your ID's files cannot change, you try ONCE, then set the assertion to measured + 10 %, record the real number under

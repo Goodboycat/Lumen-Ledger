@@ -12,6 +12,11 @@ LUMEN/
   README.md      this file
 ```
 
+## GitHub (added 2026-10-19 — read first)
+**https://github.com/Goodboycat/Lumen-Ledger** (branch `main`) mirrors `/home/user/webapp` and is the real master. Every chat runs
+`bash game/tools/github.sh <token>` as its FIRST tool call (token is in the paste block, never in the repo), then every commit is pushed
+automatically by `tools/wip.sh` / the close step. If the attached tar.gz is older than origin/main, origin wins. An axed chat keeps what it pushed.
+
 ## How to run a chat
 1. Make the attachment: download this folder, or in a sandbox run `bash game/tools/pack.sh master` → `/home/user/webapp/LUMEN_master_<date>.tar.gz`.
 2. Paste the block from `game/docs/prompts/_TEMPLATE.md`, attach the tar.gz. **No chat ID needed** — the chat runs

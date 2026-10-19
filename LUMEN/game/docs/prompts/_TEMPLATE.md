@@ -12,7 +12,12 @@
 ------------------------------------------------------------------------------------------
 Attached: LUMEN_master_<date>.tar.gz — one browser game built by many 100-credit chats.
 
-Extract: `mkdir -p /home/user/webapp && tar -xzf <file> -C /home/user/webapp` (game lands at /home/user/webapp/LUMEN/game/).
+GITHUB (do this FIRST, before reading anything): the repo https://github.com/Goodboycat/Lumen-Ledger (branch main) is the real master.
+  Token: <PASTE_GITHUB_TOKEN_HERE>
+  Extract: `mkdir -p /home/user/webapp && tar -xzf <file> -C /home/user/webapp` (game lands at /home/user/webapp/LUMEN/game/), then
+  `bash /home/user/webapp/LUMEN/game/tools/github.sh <token>` — it sets credentials + origin, pulls origin/main (origin wins if newer
+  than the tar), and prints the log. From then on EVERY commit is pushed (tools/wip.sh does it). Commit+push after every file, pass or
+  fail — an axed chat keeps only what it pushed. Never write the token into any file in the repo.
 Read, in this order and nothing else: 1) game/docs/START_HERE.md  2) game/docs/GAME_BIBLE.md  3) the prompt file that
 `cd /home/user/webapp/LUMEN/game && bash tools/next.sh` prints (it names the API_CONTRACTS sections and the files you own).
 
@@ -28,7 +33,7 @@ THE LOOP (run it literally):
            (+ check.mjs additive, + index.js barrel line)
     close: node tools/check.mjs --props --creatures … → ALL OK  →  docs/HANDOFF_<ID>.md (Done/Missing/Measured/Suspected/Notes)
            →  row in the "Done" table of /home/user/webapp/LUMEN/README.md (+ remove the ID from "Next")
-           →  cd /home/user/webapp && git add -A && git commit -qm "LUMEN <ID>: <one line>"
+           →  cd /home/user/webapp && git add -A && git commit -qm "LUMEN <ID>: <one line>" && git push -q origin main
     # no message here — the very next thing you do is `bash tools/next.sh` again
   final message (the only one) — see FINAL MESSAGE below.
 
@@ -41,8 +46,8 @@ BUG GATE (non-negotiable, ~0 credits):
 - BEFORE touching anything: `cd /home/user/webapp/LUMEN/game && node tools/check.mjs --props --creatures`.
   Not ALL OK? Fix ONLY what it reports (even in files you don't own — note it in docs/CHANGE_REQUESTS.md).
 - AFTER every file you write: run it again. Never move on with a FAIL in YOUR code.
-  **WIP COMMIT RULE (v4.1, 2026-10-19 — the fix for the five 10A deaths):** `git commit -qm "WIP <ID>: <what>"` after EVERY file
-  you write, pass or fail. A failing commit is recoverable by the next chat; uncommitted work is not. "Never commit a FAIL" only
+  **WIP COMMIT RULE (v4.1, 2026-10-19 — the fix for the five 10A deaths):** `git commit -qm "WIP <ID>: <what>" && git push -q origin main`
+  after EVERY file you write, pass or fail (`bash tools/wip.sh "<what>"` does all of it). A failing commit is recoverable by the next chat; uncommitted work is not. "Never commit a FAIL" only
   meant: never CLOSE an ID (README row) with a FAIL. Commit early, close clean.
 - **BUDGET RULE (v4.1):** a check.mjs budget (draw calls, tris, ms) that your ID's scope cannot reach is NOT a bug to fix — it is a
   measurement to RECORD. Loosen the assertion to the real measured value + 10 %, write the real number in your HANDOFF
