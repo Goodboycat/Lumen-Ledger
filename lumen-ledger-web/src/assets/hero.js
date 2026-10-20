@@ -34,7 +34,10 @@ export function makeHero(opts = {}) {
   // arms (shoulder pivots at y=0.6 of torso)
   const armL = armPart(C, -1), armR = armPart(C, 1);
   armL.name = 'armL'; armR.name = 'armR';
-  armL.position.set(-0.38, 0.58, 0); armR.position.set(0.38, 0.58, 0);
+  // BUGFIX (arms/sword inside the stomach): shoulders were at ±0.38 (capsule r 0.11 → overlapped the 0.31 half-width chest) and every
+  // pose rotates the arms ±0.35 rad INWARD, which pushed the hands + sword ~0.08 u deep into the belly. Shoulders now sit just outside
+  // the chest, and armPart() adds a fixed outward splay (see ARM_SPLAY) under the animated pivot, so all existing poses stay valid.
+  armL.position.set(-ARM_SHOULDER_X, 0.58, 0); armR.position.set(ARM_SHOULDER_X, 0.58, 0);
   torso.add(armL, armR);
 
   // head: neck pivot
@@ -83,10 +86,15 @@ function legPart(C, x) {
   const boot = mesh(G.rbox(0.26, 0.2, 0.34, 0.07), C.boots, 0, -0.45, 0.04); g.add(boot);
   return g;
 }
+// Shoulder offset from the spine + outward splay (rad) baked under the animated pivot. Rest pose z = ∓0.35 (inward) + splay → arm
+// hangs ~0.13 rad outward, hand surface clears the chest side (0.31) with a small gap. Rotations are about z only → they just add.
+export const ARM_SHOULDER_X = 0.43;
+export const ARM_SPLAY = 0.48;
 function armPart(C, side) {
-  const g = new THREE.Group();
-  const upper = mesh(G.capsule(0.11, 0.3, 2, 7), C.shirt, 0, -0.2, 0); g.add(upper);
-  const hand = mesh(G.sphere(0.14, 8, 6), C.skin, 0, -0.44, 0); hand.name = 'hand'; g.add(hand);
+  const g = new THREE.Group();                                        // animated pivot (poses write g.rotation)
+  const splay = new THREE.Group(); splay.name = 'armSplay'; splay.rotation.z = side * ARM_SPLAY; g.add(splay);
+  const upper = mesh(G.capsule(0.11, 0.3, 2, 7), C.shirt, 0, -0.2, 0); splay.add(upper);
+  const hand = mesh(G.sphere(0.14, 8, 6), C.skin, 0, -0.44, 0); hand.name = 'hand'; splay.add(hand);
   const slot = new THREE.Group(); slot.name = 'weaponSlot'; slot.position.set(0, -0.02, 0.06); hand.add(slot);
   return g;
 }

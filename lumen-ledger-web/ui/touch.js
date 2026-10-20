@@ -14,6 +14,7 @@
 //     attack every 220 ms while held — `opts.repeat`); each also sets `input.actions[name]` true while held (released on up/cancel).
 //   • Portrait + landscape layouts, safe-area insets, buttons ≥ 64 px, nothing under the thumb zones of HUD / build tray.
 //   • Auto-shows when `input.isTouch` (or opts.force / `?touch=1` in the URL); hidden on desktop. `show()/hide()` override.
+//   • Multi-touch: joystick + any number of buttons at once (each control owns its own pointerId; tools/qa_touch.mjs verifies it).
 //   • Emits `ui:touch { action }` for every button press (12 maps sounds) — otherwise emits nothing.
 //
 // Motion table: base fade-in 120 ms · knob spring back 180 ms outBack (CSS transition, only when released) · button press: translateY(4px) +
@@ -105,7 +106,10 @@ export function mountTouch(root, input, opts = {}) {
   const up = (n) => { const b = buttons[n]; if (!b || !b.held) return; b.held = false; b.pointerId = -1; b.el.classList.remove('down'); clearInterval(b.timer); b.timer = 0; if (input && input.actions && n in input.actions) input.actions[n] = false; };
   for (const n of names) {
     const b = buttons[n].el;
-    b.addEventListener('pointerdown', (e) => down(n, e)); b.addEventListener('pointerup', () => up(n)); b.addEventListener('pointercancel', () => up(n)); b.addEventListener('pointerleave', () => up(n));
+    // multi-touch: each button tracks its own pointerId → a release from ANOTHER finger (joystick thumb, other button) never lets go of it
+    const mine = (e) => { const bb = buttons[n]; return !e || e.pointerId == null || bb.pointerId === -1 || e.pointerId === bb.pointerId; };
+    b.addEventListener('pointerdown', (e) => down(n, e));
+    for (const t of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(t, (e) => { if (mine(e)) up(n); });
     b.addEventListener('contextmenu', (e) => e.preventDefault && e.preventDefault());
   }
   const onBlur = () => { for (const n of names) up(n); if (st.joy.active) joyEnd({ pointerId: st.joy.id }); };
