@@ -9,6 +9,15 @@ manifest's `synth` sketch plays instead, so the game is never silent and no id i
 **House style:** cozy toon island at golden hour · wooden + glass + brass · Nintendo-bright, never harsh · every cue ends inside its
 length (no tails that outlive the animation it marks) · one-shots are **mono**, music **stereo** · no voices/words anywhere.
 
+## Status (2026-10-20) — files delivered
+**In:** 38 files in `audio/sfx/` + `audio/music/` (OGG Vorbis 44.1 kHz, peak −3 dBFS; one-shots mono + leading/trailing silence trimmed; music stereo, untrimmed for clean loops). `fetchFiles` is now `true`.
+- SFX (27/33): coin spark_tick deny click pick_up hammer crumble level_up loan_stamp jar_fill scam_sting scam_fell fanfare lose_sting dlg_blip toast ledger_open start hire cust_happy cust_grumble ability magnet stomp flash shout sweep
+- Extras (6/7, added to the manifest, not yet wired to bus events): ui_hover footstep_grass footstep_wood footstep_wood_2 water_lap fog_breath
+- Music (5/6): title island_day island_endless victory fog_lose
+
+**Still missing** (synth fallback plays; one 404 on first use): sfx `tray_open` `tray_close` `season_bell` `jar_apply` `scam_refuse` `shield` · extra `seagull` `wind_chime` · music `ledger`.
+**Note:** generated one-shots run 0.3–1.8 s, longer than the target lengths above (e.g. spark_tick has ~1.6 s of audible tail vs 0.05 s target) — regenerate or hard-trim if they feel long in play.
+
 ## SFX (33 ids + 7 optional extras)
 
 | id | length | loop | mood | prompt |
