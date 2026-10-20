@@ -465,7 +465,15 @@ function installRunWires(lg) {
   on('ui:touch', (p) => { if (p?.action === 'build' && !lg.game.paused) ui?.build?.toggle?.(); });
   // tap on the island while in demolish mode → demolish what is there (10B's onTap handles place mode)
   const prevTap = lg.game.input?.onTap;
-  if (lg.game.input) lg.game.input.onTap = (world, ev) => { if (lg.demolishMode && build.mode !== 'place') { const e = build.nearest(world.x, world.z, 1.2); if (e && !e.scenery) build.demolish(e); return; } prevTap?.(world, ev); };
+  // BUGFIX (mobile): with debugKeys off (the real game) nothing handled a tap while PLACING → the ghost never moved on phones.
+  //   touch: tap = move the ghost there (confirm with ✓ place / 🔨) · mouse: the ghost already follows the cursor → click places it.
+  build.followTarget = () => { const h = hero.root.position, a = hero.facing || 0; return { x: h.x + Math.sin(a) * 2, z: h.z + Math.cos(a) * 2 }; };
+  if (lg.game.input) lg.game.input.onTap = (world, ev) => {
+    if (build.mode === 'place') { if (ui?.isModal?.()) return; build.moveTo(world.x, world.z); if (ev?.pointerType === 'mouse') build.confirm(); return; }
+    if (lg.demolishMode) { const e = build.nearest(world.x, world.z, 1.2); if (e && !e.scenery) build.demolish(e); return; }
+    if (lg.selectTap?.(world)) return;
+    prevTap?.(world, ev);
+  };
   offs.push(() => { if (lg.game.input) lg.game.input.onTap = prevTap; });
   if (typeof window !== 'undefined' && window.addEventListener && !lg.opts.headless) {
     const onKey = (e) => { if (e.repeat) return; const name = ABILITY_KEYS[e.code]; if (name && !ui?.isModal?.()) lg.ability(name); };

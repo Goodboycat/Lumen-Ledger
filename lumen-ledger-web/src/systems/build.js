@@ -148,7 +148,9 @@ export class BuildSystem {
     this._makeGhost();
     if (this.game && this.game.input && !this._bound) { const prev = this.game.input.onAction; this.game.input.onAction = (n) => { if (prev) prev(n); this._onAction(n); }; this._bound = true; }
     this.bus.emit('build:enter', { id: propId, cost: this.cost(propId), rot: this.rot });
-    this._placeGhost(this.lastPointer.x, this.lastPointer.z);
+    const f = this.followTarget && this.game && this.game.input && this.game.input.isTouch ? this.followTarget() : null;   // touch: spawn in front of Pip
+    if (f) this.lastPointer.set(f.x, 0, f.z);
+    this._placeGhost(this.lastPointer.x, this.lastPointer.z, true);
     return true;
   }
   exit(silent = false) {
@@ -325,6 +327,15 @@ export class BuildSystem {
     if (this.mode === 'place' && input && input.hasPointerWorld && !input.isTouch) {
       this.lastPointer.copy(input.pointerWorld);
       this._placeGhost(this.lastPointer.x, this.lastPointer.z);
+    } else if (this.mode === 'place' && input && input.isTouch) {
+      // BUGFIX (mobile): on touch the ghost used to stay where it spawned (map centre) — only rotate worked.
+      //  • a finger dragging on the island (not the joystick) drags the ghost under it
+      //  • walking Pip with the joystick carries the ghost 2 cells in front of him (so you can "walk it" to the spot)
+      //  • a tap on the ground jumps it there (Game.js onTap → moveTo); ✓ place / 🔨 confirms
+      if (input.pointerDrag >= 0 && input.pointerDown && input.hasPointerWorld) { this.lastPointer.copy(input.pointerWorld); this._placeGhost(this.lastPointer.x, this.lastPointer.z); }
+      else if (this.followTarget && input.move && input.move.lengthSq() > 0.04) {
+        const f = this.followTarget(); if (f) { this.lastPointer.set(f.x, 0, f.z); this._placeGhost(f.x, f.z); }
+      }
     }
     if (this.ghost) { // gentle hover so the ghost reads as "not yet real"
       const t = (this.game && this.game.time) || 0;

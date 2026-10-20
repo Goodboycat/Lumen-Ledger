@@ -110,7 +110,7 @@ export function mountBuildMenu(root, opts = {}) {
       if (st.locked.has(id)) { if (card) retrigger(card, 'denied'); footTxt.textContent = 'locked — finish the lesson first'; return api; }
       if (!affordable(e.cost)) { if (card) retrigger(card, 'denied'); footTxt.textContent = `need ${e.cost} ✦ (have ${st.spark})`; bus.emit('ui:build', { id, cost: e.cost || 0, action: 'denied', why: 'cannot afford' }); return api; }
       st.selected = id; st.demolish = false; demolishBtn.classList.remove('on'); refreshCards();
-      footTxt.textContent = `${e.name}: tap the ground to place · R rotate · Esc cancel`;
+      footTxt.textContent = (document.body?.classList?.contains('is-touch') ? `${e.name}: tap / drag on the ground (or walk Pip) to move it · ✓ place` : `${e.name}: click the ground to place · R rotate · Esc cancel`);
       bus.emit('ui:build', { id, cost: e.cost || 0, action: 'select', footprint: e.footprint });
       return api;
     },

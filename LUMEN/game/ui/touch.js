@@ -74,13 +74,14 @@ export function mountTouch(root, input, opts = {}) {
   };
   const joyStart = (e) => {
     if (st.joy.active) return;
-    st.joy.active = true; st.joy.id = e.pointerId ?? 0; st.joy.ox = e.clientX; st.joy.oy = e.clientY; st.joy.x = st.joy.y = st.joy.nx = st.joy.ny = st.joy.mag = 0;
+    st.joy.active = true; st.joy.id = e.pointerId ?? 0; st.joy.ox = e.clientX; st.joy.oy = e.clientY; st.joy.t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now()); st.joy.maxD = 0; st.joy.x = st.joy.y = st.joy.nx = st.joy.ny = st.joy.mag = 0;
     base.style.left = e.clientX + 'px'; base.style.top = e.clientY + 'px'; base.classList.add('on'); knob.classList.remove('release'); knob.style.transform = 'translate(-50%, -50%)'; ring.style.opacity = '0';
     zone.classList.add('used'); zone.setPointerCapture && e.pointerId != null && zone.setPointerCapture(e.pointerId);
     feed(true, 0, 0); e.preventDefault && e.preventDefault();
   };
   const joyMove = (e) => {
     if (!st.joy.active || (e.pointerId ?? 0) !== st.joy.id) return;
+    st.joy.maxD = Math.max(st.joy.maxD || 0, Math.hypot(e.clientX - st.joy.ox, e.clientY - st.joy.oy));
     const v = joyVector(e.clientX - st.joy.ox, e.clientY - st.joy.oy, radius, deadzone);
     st.joy.x = v.x; st.joy.y = v.y; st.joy.nx = v.nx; st.joy.ny = v.ny; st.joy.mag = v.mag;
     knob.style.transform = `translate(calc(-50% + ${v.x.toFixed(1)}px), calc(-50% + ${v.y.toFixed(1)}px))`; ring.style.opacity = String(v.mag * 0.6);
@@ -91,6 +92,10 @@ export function mountTouch(root, input, opts = {}) {
     st.joy.active = false; st.joy.id = -1; st.joy.x = st.joy.y = st.joy.nx = st.joy.ny = st.joy.mag = 0;
     knob.classList.add('release'); knob.style.transform = 'translate(-50%, -50%)'; base.classList.remove('on'); ring.style.opacity = '0';
     feed(false, 0, 0);
+    // BUGFIX (mobile): the joystick zone covers the left half of the island, so a TAP there never reached the canvas → you could not
+    // move a build ghost / pick a stall to demolish on that side. A short, still touch (< 280 ms, < 12 px) is forwarded as a ground tap.
+    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    if (e.type === 'pointerup' && e.clientX != null && now - (st.joy.t0 || 0) < 280 && (st.joy.maxD || 0) < 12 && input && typeof input.tapAt === 'function') input.tapAt(e.clientX, e.clientY, e);
   };
   zone.addEventListener('pointerdown', joyStart); zone.addEventListener('pointermove', joyMove);
   zone.addEventListener('pointerup', joyEnd); zone.addEventListener('pointercancel', joyEnd); zone.addEventListener('lostpointercapture', joyEnd);

@@ -21,6 +21,7 @@ export class Input {
     this.joystick = { active: false, id: -1, origin: new THREE.Vector2(), vec: new THREE.Vector2(), radius: 56 };
     this.onTap = null;       // (worldPos) => {}  fired on short tap/click without drag
     this.onAction = null;    // (name) => {}
+    this.pointerDrag = -1;   // pointerId of a touch finger dragging on the canvas (not the joystick) — build ghost follows it
     this._bind();
   }
 
@@ -41,12 +42,12 @@ export class Input {
     };
     let downAt = 0, downX = 0, downY = 0;
     d.addEventListener('pointerdown', (e) => {
-      pos(e); this.pointerDown = true; downAt = performance.now(); downX = e.clientX; downY = e.clientY;
+      pos(e); this.pointerDown = true; this.pointerDrag = e.pointerType === 'touch' ? e.pointerId : -1; downAt = performance.now(); downX = e.clientX; downY = e.clientY;
       // Touch left half → joystick; right half → tap/attack
       if (e.pointerType === 'touch') {
         const r = d.getBoundingClientRect();
         if (e.clientX - r.left < r.width * 0.5 && !this.joystick.active) {
-          this.joystick.active = true; this.joystick.id = e.pointerId;
+          this.joystick.active = true; this.joystick.id = e.pointerId; this.pointerDrag = -1;
           this.joystick.origin.set(e.clientX, e.clientY); this.joystick.vec.set(0, 0);
           if (this.onJoystick) this.onJoystick(true, e.clientX, e.clientY, 0, 0);
           return;
@@ -70,7 +71,7 @@ export class Input {
         if (this.onJoystick) this.onJoystick(false);
         return;
       }
-      this.pointerDown = false;
+      this.pointerDown = false; if (e.pointerId === this.pointerDrag) this.pointerDrag = -1;
       const dt = performance.now() - downAt, dist = Math.hypot(e.clientX - downX, e.clientY - downY);
       if (dt < 300 && dist < 12) {
         pos(e); this._project();
@@ -86,6 +87,15 @@ export class Input {
     this._ray.setFromCamera(this.pointer, this.camera);
     this.hasPointerWorld = !!this._ray.ray.intersectPlane(this._plane, this.pointerWorld);
   }
+
+  /** Project a screen point (client px) onto the ground plane → Vector3 | null. Used by the touch overlay, which sits above the canvas. */
+  worldAt(clientX, clientY) {
+    const r = this.dom.getBoundingClientRect();
+    this.pointer.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
+    this._project(); return this.hasPointerWorld ? this.pointerWorld.clone() : null;
+  }
+  /** A short tap that landed on an overlay (e.g. the joystick zone) instead of the canvas → same onTap as a canvas tap. */
+  tapAt(clientX, clientY, ev) { const w = this.worldAt(clientX, clientY); if (w && this.onTap) this.onTap(w, ev || { clientX, clientY, pointerType: 'touch' }); return w; }
 
   /** Call once per frame before systems read input. */
   update() {
