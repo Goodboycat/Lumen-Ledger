@@ -19,7 +19,9 @@
 .ll-joy-knob.release { transition: transform .18s cubic-bezier(.34,1.56,.64,1); }
 
 /* Button pad: right / bottom cluster */
-.ll-touch-pad { position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: max(22px, calc(env(safe-area-inset-bottom) + 22px)); display: grid; grid-template-columns: 72px 72px; grid-template-rows: 72px 72px; gap: 12px; z-index: 25; pointer-events: auto; touch-action: none; }
+.ll-touch-pad { position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: max(22px, calc(env(safe-area-inset-bottom) + 22px)); display: grid; grid-template-columns: 72px 72px; grid-template-rows: 72px 72px; gap: 12px; z-index: 25; pointer-events: none; touch-action: none; }
+/* BUGFIX (mobile): the pad box (grid gaps + the empty 4th cell) is click-through; only the round buttons themselves catch touches */
+.ll-touch-pad > .ll-touch-btn { pointer-events: auto; }
 .ll-touch-btn { position: relative; width: 72px; height: 72px; min-width: 64px; min-height: 64px; border-radius: 50%; border: 4px solid var(--ink); background: var(--orange); color: var(--ink); box-shadow: 0 6px 0 var(--ink); font: inherit; font-weight: 900; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; line-height: 1; padding: 0; cursor: pointer; touch-action: none; -webkit-user-select: none; user-select: none; transition: transform .14s cubic-bezier(.34,1.56,.64,1), box-shadow .14s cubic-bezier(.34,1.56,.64,1), opacity .2s; }
 .ll-touch-btn.attack   { background: var(--orange); grid-column: 2; grid-row: 2; width: 84px; height: 84px; margin: -6px 0 0 -12px; }
 .ll-touch-btn.interact { background: var(--blue);   grid-column: 1; grid-row: 2; }
@@ -50,5 +52,10 @@
   .ll-touch-ico { font-size: 24px; } .ll-touch-lab { display: none; }
   .ll-joy-zone { top: 70px; }
 }
+/* BUGFIX (mobile): the FinLit Jars panel (top-right) used to run down UNDER the button pad, so its lower sliders / APPLY could not be
+   touched. While the touch pad is shown, the panel stops above the pad (pad height + bottom offset + 12 px) and scrolls inside. */
+body.is-touch .ll-jars { max-height: calc(100vh - max(10px, env(safe-area-inset-top)) - 64px - 190px); max-height: calc(100dvh - max(10px, env(safe-area-inset-top)) - 64px - 190px); overflow-y: auto; overscroll-behavior: contain; }
+@media (orientation: portrait) { body.is-touch .ll-jars { max-height: calc(100dvh - max(10px, env(safe-area-inset-top)) - 64px - 176px); } }
+@media (orientation: landscape) and (max-height: 420px) { body.is-touch .ll-jars { max-height: calc(100dvh - max(10px, env(safe-area-inset-top)) - 64px - 152px); } }
 /* hide Foundation's inline help line while touch controls are shown */
 body.is-touch .help { display: none; }
