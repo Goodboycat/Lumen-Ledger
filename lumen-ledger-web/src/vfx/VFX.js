@@ -66,36 +66,42 @@ export class DustPool {
 // ---------- Slash trail (one additive crescent quad) ----------
 export class SlashTrail {
   constructor(scene) {
-    // crescent: ring sector geometry
-    this.geo = new THREE.RingGeometry(0.55, 1.75, 18, 1, 0, Math.PI * 0.95);
+    // crescent: ring sector geometry. BUGFIX (mobile QA): the old arc was yawed +90° off the strike direction and its sweep rotated
+    // it further round, so on screen the slash appeared on the OPPOSITE side of Pip (behind him). Now the crescent lives in a pivot:
+    // the mesh is laid flat with its arc spanning the hero's FRONT half (angles 0.12π..0.88π → +Z), the pivot is yawed to the strike
+    // direction and only the pivot sweeps (right → left, same way the sword swings). Every vertex stays in front of the hero.
+    this.geo = new THREE.RingGeometry(0.55, 1.75, 18, 1, Math.PI * 0.12, Math.PI * 0.76);
     this.mat = new THREE.MeshBasicMaterial({ color: 0xfff6c8, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false, toneMapped: false });
     this.mesh = new THREE.Mesh(this.geo, this.mat);
-    this.mesh.visible = false; this.mesh.userData.noOutline = true; this.mesh.frustumCulled = false;
-    scene.add(this.mesh);
-    this.life = 0; this.dur = 0.12; this.fadeInEnd = 0.35;
+    this.mesh.rotation.x = Math.PI / 2;                       // ring XY-plane → ground plane, arc toward local +Z (= forward)
+    this.mesh.userData.noOutline = true; this.mesh.frustumCulled = false;
+    this.pivot = new THREE.Group(); this.pivot.name = 'slashTrail'; this.pivot.rotation.order = 'YXZ';
+    this.pivot.add(this.mesh); this.pivot.visible = false; this.pivot.userData.noOutline = true;
+    scene.add(this.pivot);
+    this.life = 0; this.dur = 0.12; this.fadeInEnd = 0.35; this.yaw = 0; this.baseScale = 1;
   }
-  /** Show at pos facing dir (the strike direction), lying roughly horizontal with slight tilt. */
+  /** Show at pos facing dir (the strike direction): a crescent in front of the hero, slightly tilted (diagonal slash). */
   fire(pos, dir, { dur = 0.12, scale = 1, color = null } = {}) {
-    this.mesh.position.copy(pos); this.mesh.position.y += 0.9;
-    const yaw = Math.atan2(dir.x, dir.z);
-    this.mesh.rotation.set(-Math.PI / 2 + 0.35, 0, 0);
-    this.mesh.rotation.order = 'YXZ'; this.mesh.rotation.y = yaw + Math.PI * 0.5 + 0.2;
-    this.mesh.scale.setScalar(scale);
+    this.pivot.position.copy(pos); this.pivot.position.y += 0.9;
+    this.yaw = Math.atan2(dir.x, dir.z);
+    this.pivot.rotation.set(0, this.yaw + SLASH_SWEEP, -0.28);
+    this.baseScale = scale; this.pivot.scale.setScalar(scale);
     if (color) this.mat.color.set(color); else this.mat.color.set(0xfff6c8);
-    this.life = this.dur = dur; this.mesh.visible = true; this.mat.opacity = 0;
+    this.life = this.dur = dur; this.pivot.visible = true; this.mat.opacity = 0;
   }
   update(dt) {
     if (this.life <= 0) return;
     this.life -= dt;
-    const t = 1 - this.life / this.dur;
+    const t = Math.min(1, 1 - this.life / this.dur);
     // fade in fast, then out
     this.mat.opacity = t < 0.3 ? Easing.outQuad(t / 0.3) * 0.95 : (1 - Easing.inQuad((t - 0.3) / 0.7)) * 0.95;
-    // sweep: rotate arc through its own angle as it fades
-    this.mesh.rotation.z = Easing.outCubic(t) * -0.8;
-    this.mesh.scale.setScalar(this.mesh.scale.x * (1 + dt * 1.2));
-    if (this.life <= 0) { this.mesh.visible = false; this.mat.opacity = 0; }
+    // sweep across the hero's front: +SWEEP → −SWEEP around the strike direction (never behind him)
+    this.pivot.rotation.y = this.yaw + SLASH_SWEEP * (1 - 2 * Easing.outCubic(t));
+    this.pivot.scale.setScalar(this.baseScale * (1 + 0.25 * t));
+    if (this.life <= 0) { this.pivot.visible = false; this.mat.opacity = 0; }
   }
 }
+const SLASH_SWEEP = 0.35;   // rad each side of the strike direction
 
 // ---------- Hit spark: star burst (instanced flat tris) ----------
 export class HitSparkPool {
