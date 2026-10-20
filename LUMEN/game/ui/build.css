@@ -52,3 +52,18 @@
 
 @media (max-width: 640px) { .ll-build-grid { grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); max-height: 128px; } .ll-card-icon { font-size: 20px; } .ll-card-name { font-size: 9px; min-height: 18px; } }
 body.is-touch .ll-build { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 4px); left: 12px; transform: none; width: min(420px, calc(100vw - 140px)); align-items: flex-start; }
+
+/* mobile bugfix: select first → detail bar with Deploy / Upgrade (tapping a card no longer deploys it) */
+.ll-build-detail { display: none; align-items: center; gap: 6px; margin-top: 6px; background: #fffbe8; border: 3px solid var(--ink); border-radius: 10px; padding: 4px 6px; }
+.ll-build.has-detail .ll-build-detail { display: flex; animation: ll-card-in .25s cubic-bezier(.34,1.56,.64,1) both; }
+.ll-det-icon { font-size: 22px; line-height: 1; }
+.ll-det-info { display: flex; flex-direction: column; line-height: 1.1; font-size: 11px; margin-right: auto; min-width: 0; }
+.ll-det-info small { font-size: 9px; font-weight: 700; color: #555; }
+.ll-build-detail .ll-btn { background: #fff; border: 3px solid var(--ink); border-radius: 9px; padding: 5px 9px; font: inherit; font-weight: 900; font-size: 11px; box-shadow: 0 3px 0 var(--ink); cursor: pointer; color: var(--ink); white-space: nowrap; min-height: 34px; }
+.ll-build-detail .ll-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.ll-build-detail .ll-btn.deploy { background: var(--grass); }
+.ll-build-detail .ll-btn.up { background: var(--gold); }
+.ll-build-detail .ll-btn[disabled] { opacity: .5; cursor: not-allowed; }
+.ll-build-detail .ll-btn.poor { background: #ffcdd2; }
+.ll-build-detail .ll-btn.close { padding: 5px 8px; }
+body.is-touch .ll-build.has-detail .ll-build-grid { max-height: 92px; }

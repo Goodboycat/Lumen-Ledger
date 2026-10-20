@@ -39,7 +39,7 @@ export function mountBuildMenu(root, opts = {}) {
   const sparkFn = typeof opts.spark === 'function' ? opts.spark : null;
   const iconFn = opts.icon || ((id) => ICONS[id] || '▪️');
   const cats = opts.categories || ['stall', 'decor', 'nature'];
-  const st = { open: false, placing: null, selected: null, spark: sparkFn ? sparkFn() : (opts.spark ?? 0), cat: cats[0], locked: new Set(opts.locked || []), counts: {}, demolish: false };
+  const st = { open: false, placing: null, selected: null, placedById: new Map(), spark: sparkFn ? sparkFn() : (opts.spark ?? 0), cat: cats[0], locked: new Set(opts.locked || []), counts: {}, demolish: false };
 
   const wrap = el('section', 'll-build'); wrap.id = 'll-build';
   const toggle = el('button', 'll-build-toggle', '🔨 BUILD <span class="ll-key">B</span>');
@@ -56,7 +56,14 @@ export function mountBuildMenu(root, opts = {}) {
   const demolishBtn = el('button', 'll-btn warn', '💥 demolish');
   const upgradeBtn = el('button', 'll-btn', '⬆ upgrade');
   foot.append(footTxt, upgradeBtn, demolishBtn);
-  tray.append(tabs, grid, foot);
+  // BUGFIX (mobile): tapping a card used to DEPLOY it at once (ghost + placing banner), so there was no way to pick a stall type to
+  // UPGRADE. Now a tap only SELECTS the card and opens this detail bar: 🚀 Deploy (place a new one) · ⬆ Upgrade (your placed one).
+  const detail = el('div', 'll-build-detail');
+  const detIcon = el('span', 'll-det-icon'); const detInfo = el('span', 'll-det-info');
+  const deployBtn = el('button', 'll-btn deploy', '🚀 Deploy'); const upBtn = el('button', 'll-btn up', '⬆ Upgrade'); const detClose = el('button', 'll-btn close', '✕');
+  deployBtn.type = upBtn.type = detClose.type = 'button';
+  detail.append(detIcon, detInfo, deployBtn, upBtn, detClose);
+  tray.append(tabs, grid, detail, foot);
   wrap.append(placing, tray, toggle);
   root.appendChild(wrap);
 
@@ -93,6 +100,31 @@ export function mountBuildMenu(root, opts = {}) {
       card.classList.toggle('selected', st.selected === id);
       const n = st.counts[id] || 0; card.classList.toggle('has-count', n > 0); card.lastChild.textContent = n;
     }
+    refreshDetail();
+  }
+  // placed entries per id (fed by build:placed / upgraded / removed) → the Upgrade button knows levels without touching BuildSystem
+  const placedOf = (id) => (typeof api.placedInfo === 'function' ? api.placedInfo(id) : [...(st.placedById.get(id)?.values() || [])]);
+  function upgradeInfo(id) {
+    const list = placedOf(id); if (!list.length) return { can: false, why: 'none placed yet' };
+    const low = list.filter((e) => (e.level || 1) < 3); if (!low.length) return { can: false, why: 'all at max level' };
+    const lvl = Math.min(...low.map((e) => e.level || 1)); const cost = typeof api.upgradeCost === 'function' ? api.upgradeCost(lvl + 1) : null;
+    return { can: true, lvl, to: lvl + 1, cost, poor: cost != null && cost > st.spark };
+  }
+  function refreshDetail() {
+    const id = st.selected, e = id && catalog[id];
+    wrap.classList.toggle('has-detail', !!e); if (!e) return;
+    const cost = e.cost || 0, n = typeof api.placedInfo === 'function' ? placedOf(id).length : (st.counts[id] || 0);
+    detIcon.textContent = iconFn(id, e);
+    detInfo.innerHTML = `<b>${e.name || id}</b><small>${cost ? cost + ' ✦' : 'free'} · ${(e.footprint || [1, 1]).join('×')}${n ? ` · ${n} placed` : ''}</small>`;
+    const poor = !affordable(cost);
+    deployBtn.disabled = poor; deployBtn.classList.toggle('poor', poor); deployBtn.innerHTML = poor ? `🚀 need ${cost} ✦` : '🚀 Deploy';
+    const isStall = e.category === 'stall';
+    upBtn.style.display = isStall ? '' : 'none';
+    if (isStall) {
+      const u = upgradeInfo(id);
+      upBtn.disabled = !u.can || u.poor; upBtn.classList.toggle('poor', !!u.poor);
+      upBtn.innerHTML = u.can ? `⬆ Upgrade L${u.lvl}→${u.to}${u.cost != null ? ` · ${u.cost} ✦` : ''}` : `⬆ ${u.why}`;
+    }
   }
 
   const api = {
@@ -108,12 +140,29 @@ export function mountBuildMenu(root, opts = {}) {
       const e = catalog[id]; if (!e) return api;
       const card = cards.get(id);
       if (st.locked.has(id)) { if (card) retrigger(card, 'denied'); footTxt.textContent = 'locked — finish the lesson first'; return api; }
+      if (st.selected === id && opts.tapAgainDeploys) return api.deploy(id);
+      st.selected = id; st.demolish = false; demolishBtn.classList.remove('on'); refreshCards();
+      footTxt.textContent = e.category === 'stall' ? `${e.name}: 🚀 deploy a new one or ⬆ upgrade yours` : `${e.name}: 🚀 deploy to place it`;
+      bus.emit('ui:build', { id, cost: e.cost || 0, action: 'pick', footprint: e.footprint });
+      return api;
+    },
+    /** Deploy = enter place mode for `id` (the old one-tap behaviour). Emits ui:build {action:'select'} → integrator calls build.enter(id). */
+    deploy(id = st.selected) {
+      const e = catalog[id]; if (!e) return api;
+      const card = cards.get(id);
+      if (st.locked.has(id)) { if (card) retrigger(card, 'denied'); footTxt.textContent = 'locked — finish the lesson first'; return api; }
       if (!affordable(e.cost)) { if (card) retrigger(card, 'denied'); footTxt.textContent = `need ${e.cost} ✦ (have ${st.spark})`; bus.emit('ui:build', { id, cost: e.cost || 0, action: 'denied', why: 'cannot afford' }); return api; }
       st.selected = id; st.demolish = false; demolishBtn.classList.remove('on'); refreshCards();
       footTxt.textContent = (document.body?.classList?.contains('is-touch') ? `${e.name}: tap / drag on the ground (or walk Pip) to move it · ✓ place` : `${e.name}: click the ground to place · R rotate · Esc cancel`);
       bus.emit('ui:build', { id, cost: e.cost || 0, action: 'select', footprint: e.footprint });
       return api;
     },
+    /** Upgrade your placed `id` stall (integrator picks which: the lowest level, nearest Pip). Emits ui:build {action:'upgrade', id}. */
+    upgradeSelected(id = st.selected) { if (!id) return api; bus.emit('ui:build', { action: 'upgrade', id }); return api; },
+    deselect() { st.selected = null; refreshCards(); footTxt.textContent = 'pick a card'; return api; },
+    upgradeCost: opts.upgradeCost || null,   // (level) => cost   · set by the integrator (Game.js)
+    placedInfo: opts.placedInfo || null,     // (id) => [{ level }] · set by the integrator so silently-loaded starter stalls count too
+    refresh() { refreshCards(); return api; },
     cancel() { st.selected = null; st.demolish = false; demolishBtn.classList.remove('on'); api.setPlacing(null); refreshCards(); bus.emit('ui:build', { action: 'cancel' }); return api; },
     setPlacing(id) {
       st.placing = id; wrap.classList.toggle('placing', !!id);
@@ -131,6 +180,9 @@ export function mountBuildMenu(root, opts = {}) {
   };
 
   toggle.addEventListener('click', () => api.toggle());
+  deployBtn.addEventListener('click', () => api.deploy());
+  upBtn.addEventListener('click', () => api.upgradeSelected());
+  detClose.addEventListener('click', () => api.deselect());
   rotBtn.addEventListener('click', () => bus.emit('ui:build', { action: 'rotate' }));
   okBtn.addEventListener('click', () => bus.emit('ui:build', { action: 'confirm' }));
   noBtn.addEventListener('click', () => api.cancel());
@@ -150,11 +202,18 @@ export function mountBuildMenu(root, opts = {}) {
     bus.on('build:enter', (p) => { api.setPlacing(p && p.id); }),
     bus.on('build:exit', () => { api.setPlacing(null); }),
     bus.on('build:ghost', (p) => { api.setGhostOk(p && p.ok); }),
-    bus.on('build:placed', (p) => { if (p && p.id) { st.counts[p.id] = (st.counts[p.id] || 0) + 1; } api.setPlacing(null); st.selected = null; refreshCards(); }),
-    bus.on('build:removed', (p) => { if (p && p.id) st.counts[p.id] = Math.max(0, (st.counts[p.id] || 0) - 1); refreshCards(); }),
+    bus.on('build:placed', (p) => { if (p && p.id) { st.counts[p.id] = (st.counts[p.id] || 0) + 1; track(p, true); } api.setPlacing(null); refreshCards(); }),
+    bus.on('build:removed', (p) => { if (p && p.id) { st.counts[p.id] = Math.max(0, (st.counts[p.id] || 0) - 1); track(p, false); } refreshCards(); }),
+    bus.on('build:upgraded', (p) => { if (p && p.id) track(p, true); footTxt.textContent = p && p.level ? `⬆ upgraded to L${p.level}!` : footTxt.textContent; refreshCards(); }),
     bus.on('build:denied', (p) => { const id = (p && p.id) || st.selected || st.placing; const c = id && cards.get(id); if (c) retrigger(c, 'denied'); footTxt.textContent = 'denied: ' + ((p && p.why) || '?'); }),
     bus.on('ui:unlock', (p) => { if (p && p.ids) api.setUnlocked(p.ids); }),
+    bus.on('build:loaded', () => refreshCards()),
   ];
+  function track(p, on) {
+    const ent = p.entry || p; const k = ent.uid ?? `${p.cx},${p.cz}`;
+    let m = st.placedById.get(p.id); if (!m) st.placedById.set(p.id, (m = new Map()));
+    if (on) m.set(k, { level: ent.level || p.level || 1 }); else m.delete(k);
+  }
   renderGrid();
   return api;
 }

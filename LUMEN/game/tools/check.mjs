@@ -926,11 +926,16 @@ if (doUI) {
     const stalls = Object.values(PROP_CATALOG).filter((e) => e.category === 'stall').length;
     if (menu.cards.size !== stalls) throw new Error(`stall cards ${menu.cards.size} ≠ ${stalls}`);
     pressKey('b'); if (!menu.isOpen || !ev['ui:build:open']) throw new Error('hotkey B');
-    menu.select('stall_fruit'); const sel = ev['ui:build'].find((p) => p.action === 'select'); if (!sel || sel.id !== 'stall_fruit' || sel.cost !== 40) throw new Error('select ' + JSON.stringify(sel));
+    // mobile bugfix: select() only PICKS (detail bar with Deploy / Upgrade) — deploy() is what enters place mode
+    menu.select('stall_fruit'); if (ev['ui:build'].some((p) => p.action === 'select')) throw new Error('select must not deploy');
+    if (!menu.el.classList.contains('has-detail') || !menu.el.querySelector('.ll-build-detail .deploy')) throw new Error('detail bar');
+    menu.el.querySelector('.ll-build-detail .deploy').click?.() ?? menu.deploy();
+    if (!ev['ui:build'].some((p) => p.action === 'select')) menu.deploy();
+    const sel = ev['ui:build'].find((p) => p.action === 'select'); if (!sel || sel.id !== 'stall_fruit' || sel.cost !== 40) throw new Error('deploy ' + JSON.stringify(sel));
     if (!menu.cards.get('stall_fruit').classList.contains('selected')) throw new Error('selected class');
-    const n0 = ev['ui:build'].length; menu.select('stall_sparkExchange'); // 150 > 100 → denied
+    const n0 = ev['ui:build'].length; menu.select('stall_sparkExchange'); menu.deploy(); // 150 > 100 → denied
     if (!menu.cards.get('stall_sparkExchange').classList.contains('poor') || !menu.cards.get('stall_sparkExchange').classList.contains('denied') || ev['ui:build'][ev['ui:build'].length - 1].action !== 'denied') throw new Error('poor card not denied');
-    menu.setLocked('stall_bread', true); menu.select('stall_bread'); if (!menu.cards.get('stall_bread').classList.contains('locked') || ev['ui:build'].length !== n0 + 1) throw new Error('locked card emitted');
+    menu.setLocked('stall_bread', true); menu.select('stall_bread'); if (!menu.cards.get('stall_bread').classList.contains('locked') || ev['ui:build'].length !== n0 + 2) throw new Error('locked card emitted');
     bus.emit('build:enter', { id: 'stall_fruit', cost: 40 }); if (!menu.el.classList.contains('placing') || !/Fruit Stand/.test(menu.el.querySelector('.ll-build-placing').textContent)) throw new Error('placing banner');
     bus.emit('build:ghost', { ok: false }); if (!/blocked/.test(menu.el.querySelector('.ll-build-placing .ll-btn.no').textContent)) throw new Error('ghost red');
     bus.emit('build:placed', { id: 'stall_fruit' }); bus.emit('build:placed', { id: 'stall_fruit' }); if (menu.el.classList.contains('placing') || menu.state.counts.stall_fruit !== 2 || menu.cards.get('stall_fruit').lastChild.textContent !== '2') throw new Error('counts');

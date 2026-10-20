@@ -448,9 +448,18 @@ function installRunWires(lg) {
     else if (a === 'rotate') { if (build.mode === 'place') build.rotate(); }
     else if (a === 'confirm') { if (build.mode === 'place') build.confirm(); }
     else if (a === 'demolish') { build.exit(); lg.demolishMode = true; }
-    else if (a === 'upgrade') { const e = build.nearest(hero.root.position.x, hero.root.position.z, 2.5); if (e && !e.scenery) build.upgrade(e); else bus.emit('build:denied', { why: 'stand next to a stall to upgrade it' }); }
+    else if (a === 'upgrade') {
+      // mobile bugfix: the build tray's ⬆ Upgrade for a SELECTED stall type upgrades your lowest-level one of that type (nearest Pip on ties),
+      // no need to walk to it. Without an id (old ⬆ foot button / U key) it is still "the stall next to Pip".
+      let e = null;
+      if (p.id) { const hp = hero.root.position; e = [...build.placed.values()].filter((x) => x.id === p.id && x.level < 3).sort((x, y) => (x.level - y.level) || (x.group.position.distanceToSquared(hp) - y.group.position.distanceToSquared(hp)))[0] || null; }
+      else e = build.nearest(hero.root.position.x, hero.root.position.z, 2.5);
+      if (e && !e.scenery) build.upgrade(e); else bus.emit('build:denied', { id: p.id, why: p.id ? 'no stall of that type to upgrade' : 'stand next to a stall to upgrade it' });
+    }
   });
   on('ui:build:close', () => { lg.demolishMode = false; });
+  if (ui?.build) { ui.build.upgradeCost = (lvl) => build.upgradeCost(lvl); ui.build.placedInfo = (id) => [...build.placed.values()].filter((x) => x.id === id).map((x) => ({ level: x.level })); ui.build.refresh?.(); }
+  offs.push(() => { if (ui?.build) { ui.build.upgradeCost = null; ui.build.placedInfo = null; } });
   // jars APPLY {pct}: move the whole pouch into the 4 jars by pct (spend stays as pouch → its share is the amount NOT moved)
   lg.applyJars = (pct = {}) => {
     const spark = eco.state.spark; if (spark <= 0) { bus.emit('eco:denied', { reason: 'nothing to allocate', cost: 0, spark }); return false; }
