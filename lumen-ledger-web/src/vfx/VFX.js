@@ -102,6 +102,7 @@ export class SlashTrail {
   }
 }
 const SLASH_SWEEP = 0.35;   // rad each side of the strike direction
+export const POP_SLOW = 2.2, POP_MIN = 1.6;   // floating text: duration multiplier + minimum seconds (mobile readability)
 
 // ---------- Hit spark: star burst (instanced flat tris) ----------
 export class HitSparkPool {
@@ -157,7 +158,9 @@ export class PopTextPool {
     }
   }
   show(pos, text, { color = '#FFD54F', dur = 0.8, size = 1 } = {}) {
-    const it = this.items.find((i) => i.life <= 0) || this.items[0];
+    // mobile QA: floating texts vanished before they could be read on a phone → every pop lives POP_SLOW× longer (min POP_MIN s)
+    dur = Math.max(POP_MIN, dur * POP_SLOW);
+    const it = this.items.find((i) => i.life <= 0) || this.items.reduce((a, b) => (b.life < a.life ? b : a));   // reuse the OLDEST, not always #0
     const c = it.ctx; c.clearRect(0, 0, 256, 96);
     c.font = 'bold 56px "Baloo 2", "Arial Rounded MT Bold", Arial, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
     c.lineWidth = 12; c.strokeStyle = '#263238'; c.lineJoin = 'round'; c.strokeText(text, 128, 50);
@@ -170,10 +173,10 @@ export class PopTextPool {
     for (const it of this.items) {
       if (it.life <= 0) continue;
       it.life -= dt; const t = 1 - it.life / it.dur;
-      const pop = t < 0.2 ? Easing.outBack(t / 0.2) : 1;
+      const pop = t < 0.12 ? Easing.outBack(t / 0.12) : 1;
       it.sp.scale.set(1.6 * pop * it.size, 0.6 * pop * it.size, 1);
-      it.sp.position.y = it.base + Easing.outCubic(t) * 0.8;
-      it.sp.material.opacity = t > 0.6 ? 1 - (t - 0.6) / 0.4 : 1;
+      it.sp.position.y = it.base + Easing.outCubic(t) * 0.9;
+      it.sp.material.opacity = t > 0.75 ? 1 - (t - 0.75) / 0.25 : 1;                // fully readable for 75 % of its life
       if (it.life <= 0) it.sp.visible = false;
     }
   }

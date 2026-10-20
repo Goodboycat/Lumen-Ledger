@@ -22,7 +22,10 @@ const ICON = { ok: '✔', info: 'ℹ', warn: '⚠', bad: '✖', gold: '✦' };
 export function mountToast(root, opts = {}) {
   const bus = opts.bus || defaultBus;
   const max = opts.max || 3;
-  const defDur = opts.duration || 2800;
+  const defDur = opts.duration || 5000;
+  // mobile QA: toasts disappeared too fast → longer defaults + reading time: ≥ 1.4 s + 75 ms per character (a 100-char tip ≈ 9 s).
+  // Touching / hovering a toast holds it; tap still dismisses.
+  const readMs = (text) => 1400 + String(text).length * 75;
 
   const wrap = el('div', 'll-toasts'); wrap.id = 'll-toasts'; wrap.setAttribute('aria-live', 'polite');
   root.appendChild(wrap);
@@ -40,7 +43,9 @@ export function mountToast(root, opts = {}) {
     push(text, o = {}) {
       if (text && typeof text === 'object') { o = text; text = o.text; }
       text = String(text ?? ''); if (!text) return null;
-      const kind = o.kind || 'info'; const duration = o.duration ?? defDur; const id = o.id || null;
+      const kind = o.kind || 'info'; const id = o.id || null;
+      const want = o.duration ?? defDur;
+      const duration = (want <= 0 || want < 200 || (opts.duration != null && opts.duration < 200)) ? want : Math.max(want, readMs(text));   // < 200 ms = tests / explicit
       // coalesce: same id (or same text) still visible → bump counter + restart timer
       const same = live.find((t) => (id && t.id === id) || t.text === text);
       if (same) { same.count++; same.badge.textContent = '×' + same.count; same.badge.style.display = ''; restart(same, duration); same.el.classList.remove('bump'); void same.el.offsetWidth; same.el.classList.add('bump'); return same.handle; }
@@ -51,6 +56,9 @@ export function mountToast(root, opts = {}) {
       const bar = el('i', 'll-toast-bar'); bar.style.animationDuration = duration + 'ms';
       node.append(icon, txt, badge, bar);
       node.addEventListener('click', () => remove(t));
+      const hold = () => { clearTimeout(t.timer); t.bar.style.animationPlayState = 'paused'; };
+      const release = () => { if (live.includes(t)) { t.bar.style.animationPlayState = ''; restart(t, Math.max(2000, duration * 0.5)); } };
+      node.addEventListener('pointerenter', hold); node.addEventListener('pointerleave', release);
       const t = { el: node, id, text, timer: 0, count: 1, badge, bar, handle: null };
       t.handle = { el: node, close: () => remove(t) };
       wrap.prepend(node); live.unshift(t);
@@ -70,16 +78,16 @@ export function mountToast(root, opts = {}) {
   if (opts.listen !== false) {
     const on = (n, f) => offs.push(bus.on(n, f));
     on('ui:toast', (p) => p && api.push(p));
-    on('story:toast', (p) => p && api.push({ kind: 'info', icon: '🦉', ...(typeof p === 'string' ? { text: p } : p) }));
-    on('eco:event', (p) => { const e = (p && p.event) || p || {}; if (e.title || e.text) api.push({ text: e.title ? `${e.title}: ${e.text || ''}`.trim() : e.text, kind: 'warn', icon: '📜', duration: 4200, id: 'event' }); });
-    on('eco:scam', (o) => o && api.push({ text: `Baron's deal: ${o.title || 'too good to be true'}…`, kind: 'bad', icon: '🎩', duration: 4200, id: 'scam' }));
+    on('story:toast', (p) => p && api.push({ kind: 'info', icon: '🦉', ...(typeof p === 'string' ? { text: p } : p), duration: Math.max(7000, (p && p.duration) || 0) }));   // tutorial tips: ≥ 7 s
+    on('eco:event', (p) => { const e = (p && p.event) || p || {}; if (e.title || e.text) api.push({ text: e.title ? `${e.title}: ${e.text || ''}`.trim() : e.text, kind: 'warn', icon: '📜', duration: 7000, id: 'event' }); });
+    on('eco:scam', (o) => o && api.push({ text: `Baron's deal: ${o.title || 'too good to be true'}…`, kind: 'bad', icon: '🎩', duration: 7000, id: 'scam' }));
     on('build:placed', (p) => p && api.push({ text: `${nice(p.id)} built`, kind: 'ok', icon: '🔨', id: 'placed' }));
     on('build:upgraded', (p) => p && api.push({ text: `${nice(p.id)} → level ${p.level}`, kind: 'gold', icon: '⬆', id: 'upgraded' }));
-    on('build:denied', (p) => api.push({ text: 'Cannot build: ' + ((p && p.why) || 'blocked'), kind: 'bad', id: 'denied', duration: 1800 }));
-    on('eco:denied', (p) => api.push({ text: `Not enough Spark${p && p.cost ? ` (need ${p.cost})` : ''}`, kind: 'bad', id: 'denied', duration: 1800 }));
+    on('build:denied', (p) => api.push({ text: 'Cannot build: ' + ((p && p.why) || 'blocked'), kind: 'bad', id: 'denied', duration: 3200 }));
+    on('eco:denied', (p) => api.push({ text: `Not enough Spark${p && p.cost ? ` (need ${p.cost})` : ''}`, kind: 'bad', id: 'denied', duration: 3200 }));
     on('eco:loan', (p) => p && api.push(p.kind === 'repay' ? { text: `Repaid ${p.delta} — debt ${p.debt}`, kind: 'ok', icon: '💸', id: 'loan' } : { text: `Loan +${p.delta} — the Baron smiles. Debt ${p.debt}`, kind: 'bad', icon: '🎩', id: 'loan' }));
-    on('cust:angry', (p) => api.push({ text: 'A Glimmer left angry' + (p && p.reason ? ` (${p.reason})` : ''), kind: 'warn', icon: '😠', id: 'angry', duration: 2000 }));
-    on('island:unlock', (p) => api.push({ text: `New zone unlocked${p && p.zone ? ': ' + nice(p.zone) : ''}!`, kind: 'gold', icon: '🗺', duration: 3500 }));
+    on('cust:angry', (p) => api.push({ text: 'A Glimmer left angry' + (p && p.reason ? ` (${p.reason})` : ''), kind: 'warn', icon: '😠', id: 'angry', duration: 3500 }));
+    on('island:unlock', (p) => api.push({ text: `New zone unlocked${p && p.zone ? ': ' + nice(p.zone) : ''}!`, kind: 'gold', icon: '🗺', duration: 5000 }));
     on('eco:win', () => api.push({ text: 'The Lighthouse is lit! ✦', kind: 'gold', duration: 5000 }));
     on('eco:lose', () => api.push({ text: 'The Debt Fog took the island…', kind: 'bad', duration: 5000 }));
   }
