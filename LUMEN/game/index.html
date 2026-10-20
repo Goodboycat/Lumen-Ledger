@@ -21,6 +21,7 @@
 <link rel="stylesheet" href="ui/title.css">
 <link rel="stylesheet" href="ui/pause.css">
 <link rel="stylesheet" href="ui/touch.css">
+<link rel="stylesheet" href="ui/seasons.css">
 <style>
   /* the Foundation HUD/help/touch markup is replaced by the 7A/7B/7C panels; only a tiny debug readout stays (hidden on phones) */
   #debug-stats { position: fixed; left: max(8px, env(safe-area-inset-left)); bottom: max(4px, env(safe-area-inset-bottom)); z-index: 5; max-width: 46vw; opacity: .8; font: 600 10px/1.2 ui-monospace, Menlo, monospace; color: rgba(255,255,255,.55); pointer-events: none; display: none; }
@@ -71,7 +72,7 @@ try {
   const ui = mountUI(root, {
     bus: game.bus, stats: () => game.stats, input: game.input, catalog: PROP_CATALOG, seasonsToWin: 10,
     hasSave: () => Save.hasSave(),                                                        // 10D: localStorage slot → CONTINUE on the title (reload resumes)
-    onOutline: setOutlineThickness, touch: true, version: `jam build · ${GAME_VERSION}`,
+    onOutline: setOutlineThickness, touch: true, storyData, version: `jam build · ${GAME_VERSION}`,
   });
   const lg = createLumenGame(game, { ui, storyData, seasonSeconds, seed: +params.get('seed') || undefined, debugKeys: params.has('debug') });
   window.ui = ui; window.lg = lg; window.sb = () => lg.sb; window.eco = () => lg.sb?.eco;

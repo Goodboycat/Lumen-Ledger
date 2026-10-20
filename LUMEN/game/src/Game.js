@@ -382,7 +382,7 @@ function installStart(lg) {
     lg.stats.starts++;
     ui?.title?.hide?.(); lg.pause('title', false);
     lg.setState('playing');
-    bus.emit('game:start', { mode: lg.mode, seasonsToWin: sb.eco.config.seasonsToWin });
+    bus.emit('game:start', { mode: lg.mode, seasonsToWin: sb.eco.config.seasonsToWin, seasonSeconds: sb.eco.config.seasonSeconds });
     return sb;
   };
   lg.teardown = () => {
