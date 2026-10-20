@@ -2,7 +2,7 @@
   "_": "Chat 12 — Lumen Ledger audio manifest. `file` is relative to `base`; a missing file (404/decode error) silently falls back to `synth`. Ludo.ai prompts for every id: docs/audio_prompts.md. `events` overrides src/core/Audio.js DEFAULT_EVENTS.",
   "base": "./audio/",
   "fetchFiles": true,
-  "_fetchFiles": "true since the Ludo.ai files landed (2026-10-20). Still missing (404 once on first play → synth fallback): sfx tray_open, tray_close, season_bell, jar_apply, scam_refuse, shield · music ledger.",
+  "_fetchFiles": "true since the Ludo.ai files landed (2026-10-20). All 47 files present (41 sfx = 33 core + 8 extras, 6 music) — no more 404s.",
   "sfx": {
     "coin": {
       "file": "sfx/coin.ogg",
@@ -394,6 +394,26 @@
         "type": "whoosh",
         "f": 120,
         "dur": 1.6
+      }
+    },
+    "seagull": {
+      "file": "sfx/seagull.ogg",
+      "vol": 0.35,
+      "pitchVar": 0.08,
+      "synth": {
+        "type": "blip",
+        "f": 1250,
+        "dur": 0.3
+      }
+    },
+    "wind_chime": {
+      "file": "sfx/wind_chime.ogg",
+      "vol": 0.35,
+      "pitchVar": 0.05,
+      "synth": {
+        "type": "chime",
+        "f": 1568,
+        "dur": 1.2
       }
     }
   },

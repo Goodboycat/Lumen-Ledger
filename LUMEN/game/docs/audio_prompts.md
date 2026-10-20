@@ -9,14 +9,13 @@ manifest's `synth` sketch plays instead, so the game is never silent and no id i
 **House style:** cozy toon island at golden hour · wooden + glass + brass · Nintendo-bright, never harsh · every cue ends inside its
 length (no tails that outlive the animation it marks) · one-shots are **mono**, music **stereo** · no voices/words anywhere.
 
-## Status (2026-10-20) — files delivered
-**In:** 38 files in `audio/sfx/` + `audio/music/` (OGG Vorbis 44.1 kHz, peak −3 dBFS; one-shots mono + leading/trailing silence trimmed; music stereo, untrimmed for clean loops). `fetchFiles` is now `true`.
-- SFX (27/33): coin spark_tick deny click pick_up hammer crumble level_up loan_stamp jar_fill scam_sting scam_fell fanfare lose_sting dlg_blip toast ledger_open start hire cust_happy cust_grumble ability magnet stomp flash shout sweep
-- Extras (6/7, added to the manifest, not yet wired to bus events): ui_hover footstep_grass footstep_wood footstep_wood_2 water_lap fog_breath
-- Music (5/6): title island_day island_endless victory fog_lose
+## Status (2026-10-20) — ALL files delivered ✅
+**In:** 47 files in `audio/sfx/` + `audio/music/` (OGG Vorbis 44.1 kHz, peak −3 dBFS; one-shots mono + leading/trailing silence trimmed; music stereo, untrimmed for clean loops). `fetchFiles` is `true`. No id falls back to synth any more, and there are no 404s.
+- SFX (33/33): coin spark_tick deny click pick_up hammer crumble level_up tray_open tray_close season_bell loan_stamp jar_fill jar_apply scam_sting scam_refuse scam_fell fanfare lose_sting dlg_blip toast ledger_open start hire cust_happy cust_grumble shield ability magnet stomp flash shout sweep
+- Extras (8, in the manifest but **not yet wired to bus events**): ui_hover footstep_grass footstep_wood footstep_wood_2 water_lap fog_breath seagull wind_chime
+- Music (6/6): title island_day island_endless victory fog_lose ledger
 
-**Still missing** (synth fallback plays; one 404 on first use): sfx `tray_open` `tray_close` `season_bell` `jar_apply` `scam_refuse` `shield` · extra `seagull` `wind_chime` · music `ledger`.
-**Note:** generated one-shots run 0.3–1.8 s, longer than the target lengths above (e.g. spark_tick has ~1.6 s of audible tail vs 0.05 s target) — regenerate or hard-trim if they feel long in play.
+**Still to do:** (1) wire the 8 extras into gameplay (ambience timer for seagull/wind_chime/water_lap, fog_breath loop on high Debt Fog, footsteps on Pip's walk cycle, ui_hover on pointer-over). (2) Generated one-shots run 0.3–1.9 s, longer than the target lengths in the table below (e.g. tray_open/tray_close ≈0.9 s vs 0.10 s, spark_tick ≈1.6 s tail vs 0.05 s) — regenerate or hard-trim if they feel long in play. (3) Optional: the `ledger` loop is 48 s (target 60 s), so check the loop seam.
 
 ## SFX (33 ids + 7 optional extras)
 
