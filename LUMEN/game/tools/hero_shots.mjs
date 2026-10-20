@@ -22,7 +22,9 @@ await p.evaluate(() => {
   window.__setCam = (ax, ay, az, ty) => { g.camera.update = () => { const h = window.hero.root.position; g.camera.cam.position.set(h.x + ax, h.y + ay, h.z + az); g.camera.cam.lookAt(h.x, h.y + ty, h.z); }; };
   document.querySelectorAll('.panel,.hud,.help').forEach((e) => e.style.display = 'none');
 });
-const views = { front: [0, 1.4, 4.2, 1.0], side: [4.2, 1.4, 0, 1.0], back: [0, 1.4, -4.2, 1.0], top: [0, 5, 0.01, 0.8], iso: [3, 3.2, 3, 0.9] };
+const views = { front: [0, 1.4, 4.2, 1.0], side: [4.2, 1.4, 0, 1.0], back: [0, 1.4, -4.2, 1.0], top: [0, 5, 0.01, 0.8], iso: [3, 3.2, 3, 0.9],
+  // close-ups of the sword arm (right) / left arm, framed on the torso — used to check the arms + sword clear the stomach
+  armR_close: [1.5, 0.95, 2.2, 0.85], armL_close: [-1.5, 0.95, 2.2, 0.85], belly_low: [0.2, 0.55, 2.4, 0.8] };
 const tag = process.argv.includes('--attack') ? 'attack' : 'rest';
 for (const [n, v] of Object.entries(views)) {
   await p.evaluate((v) => window.__setCam(...v), v);

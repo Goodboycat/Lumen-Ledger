@@ -9,6 +9,46 @@ import { makeHero, makeSword } from '../assets/hero.js';
 
 const _dir = new THREE.Vector3(), _tmp = new THREE.Vector3();
 
+// ---------------- arm ↔ chest clearance ----------------
+// Chest = G.rbox(0.62, 0.62, 0.46) (hero.js) → half extents below, + a small skin gap. Test spheres per arm (arm-local, under the
+// 'armSplay' group): elbow-ish point of the capsule and the hand. Sword: grip, guard and 4 points along the blade (sword-local).
+const CHEST_HALF = new THREE.Vector3(0.31 + 0.015, 0.31 + 0.015, 0.23 + 0.015);
+const ARM_PTS = [[new THREE.Vector3(0, -0.22, 0), 0.1], [new THREE.Vector3(0, -0.44, 0), 0.13]];
+const SWORD_PTS = [[0, 0, 0.05], [0, 0.18, 0.05]];                                       // grip + guard (x, y, r)
+for (const y of [0.23, 0.4, 0.6, 0.8, 1.0, 1.17]) for (const x of [-0.07, 0.07]) SWORD_PTS.push([x, y, 0.025]);   // blade edges
+for (const q of SWORD_PTS) q.splice(0, 3, new THREE.Vector3(q[0], q[1], 0), q[2]);
+const _inv = new THREE.Matrix4(), _p = new THREE.Vector3();
+function boxDepth(obj, local, r) {          // penetration of a sphere (obj-local point, radius) into the chest box, chest-local; 0 = clear
+  _p.copy(local).applyMatrix4(obj.matrixWorld).applyMatrix4(_inv);
+  const dx = CHEST_HALF.x + r - Math.abs(_p.x), dy = CHEST_HALF.y + r - Math.abs(_p.y), dz = CHEST_HALF.z + r - Math.abs(_p.z);
+  return dx > 0 && dy > 0 && dz > 0 ? Math.min(dx, dy, dz) : 0;
+}
+function armDepth(arm, sword) {
+  arm.updateMatrixWorld(true);
+  const seg = arm.children[0] || arm; let d = 0;
+  for (const [pt, r] of ARM_PTS) d = Math.max(d, boxDepth(seg, pt, r));
+  if (sword && sword.visible) for (const [pt, r] of SWORD_PTS) d = Math.max(d, boxDepth(sword, pt, r));
+  return d;
+}
+/** Push arms (outward / forward) and tilt the sword out of the chest. Cheap: ≤ 24 tiny steps per arm, only while penetrating. */
+export function solveArmClearance(hero) {
+  const p = hero.p; if (!p || !p.chest) return;
+  p.torso.updateMatrixWorld(true); _inv.copy(p.chest.matrixWorld).invert();
+  const STEP = 0.05, EPS = 0.004;
+  for (const [arm, side, sword] of [[p.armL, -1, null], [p.armR, 1, hero.sword]]) {
+    let d = armDepth(arm, sword); if (d < EPS) continue;
+    for (let i = 0; i < 24 && d >= EPS; i++) {
+      // candidates: splay the arm out (z), swing it forward (x), tilt the blade forward / back (sword only). Keep the best.
+      const tries = [[arm.rotation, 'z', side * STEP], [arm.rotation, 'x', -STEP]];
+      if (sword && sword.visible) tries.push([sword.rotation, 'x', STEP], [sword.rotation, 'x', -STEP]);
+      let best = null, bestD = d;
+      for (const t of tries) { t[0][t[1]] += t[2]; const dd = armDepth(arm, sword); t[0][t[1]] -= t[2]; if (dd < bestD - 1e-5) { bestD = dd; best = t; } }
+      if (!best) { arm.rotation.z += side * STEP; d = armDepth(arm, sword); continue; }   // stuck → just splay out
+      best[0][best[1]] += best[2]; d = bestD;
+    }
+  }
+}
+
 export class HeroController {
   /**
    * @param {import('../core/Game.js').Game} game
@@ -20,6 +60,10 @@ export class HeroController {
     this.sword = makeSword(); this.p.weaponSlot.add(this.sword);
     this.sword.rotation.set(0, 0, 0); // blade up by default (idle pose adjusts)
     game.scene.add(this.root);
+    // BUGFIX (arms + sword inside the stomach): every animation (attack, build, celebrate, abilities…) writes arm/sword rotations
+    // absolutely; this runs AFTER all of them (lateUpdate = after Sequences/Tweens) and nudges each arm (and the sword tilt) the
+    // minimum needed so hands, forearms and blade stay outside the chest box. Poses that are already clear are untouched.
+    game.add({ lateUpdate: () => { if (this.root.visible !== false) solveArmClearance(this); } });
 
     this.speed = 5.2;
     this.vel = new THREE.Vector3();
