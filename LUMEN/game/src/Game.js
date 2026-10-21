@@ -300,10 +300,12 @@ function installDebugKeys(sb) {
   };
   window.addEventListener('keydown', sb._onKey);
   const prevTap = sb.game.input.onTap;
-  sb.game.input.onTap = (world, ev) => {
-    if (sb.build.mode === 'place') { sb.build.moveTo(world.x, world.z); sb.build.confirm(); return; }
+  const tap = sb.game.input.onTap = (world, ev) => {
+    if (sb.build?.mode === 'place') { sb.build.moveTo(world.x, world.z); sb.build.confirm(); return; }
     if (prevTap) prevTap(world, ev);
   };
+  // BUGFIX: unwrap on teardown — every PLAY used to add another layer that still closed over the destroyed sandbox
+  (sb._offs ||= []).push(() => { if (sb.game.input && sb.game.input.onTap === tap) sb.game.input.onTap = prevTap; });
 }
 function printLedger(r) {
   const row = (k, v) => `  ${k.padEnd(14)} ${String(v).padStart(8)}`;
