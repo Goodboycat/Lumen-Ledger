@@ -1345,6 +1345,9 @@ if (doSave) {
     if (!A.lg.tut.fired.has('tut:build') || A.lg.tut.built !== 1) throw new Error('A: tut:build (12 s idle in S1) ' + A.lg.tut.fired.has('tut:build') + ' built ' + A.lg.tut.built);
     const toastsA = (A.ev['story:toast'] || []).map((t) => t.id); if (new Set(toastsA).size !== toastsA.length) throw new Error('A: duplicate toasts ' + toastsA.join(','));
     A.lg.save.write();                                                                                   // manual save mid-S2 (what index.html's visibilitychange does)
+    // BUGFIX probe: a decor prop must NOT count as a stall after restore (eco.state.stalls comes from syncStalls, not placed.size)
+    { const cell = A.lg.sb.island.gridCells().find((c) => A.lg.sb.build.canPlace('crate', c.x, c.z, 0)); if (cell) A.lg.sb.build.place('crate', cell.x, cell.z, 0, { animate: false }); }
+    A.lg.save.write();
     const snapA = A.lg.save.read(); const stallsA = A.lg.sb.build.placed.size, sparkA = ecoA.state.spark, seasonA = ecoA.state.season, toastsSaved = snapA.story.state.toastsFired.slice();
     if (seasonA !== 2 || snapA.build.length !== stallsA || snapA.state !== 'playing' || snapA.mode !== 'story') throw new Error('A: snapshot ' + JSON.stringify({ seasonA, b: snapA.build.length, stallsA, st: snapA.state }));
     if (!toastsSaved.includes('tut:move') && !toastsSaved.includes('t_move')) throw new Error('A: toastsFired not saved ' + toastsSaved.join(','));
@@ -1357,6 +1360,7 @@ if (doSave) {
     const ecoB = B.lg.sb?.eco; if (!ecoB || B.lg.state !== 'playing' || (B.ev['game:resumed'] || []).length !== 1) throw new Error('B: resume → ' + B.lg.state);
     if (ecoB.state.season !== seasonA || ecoB.state.spark !== sparkA || B.lg.sb.build.placed.size !== stallsA) throw new Error(`B: season ${ecoB.state.season}/${seasonA} spark ${ecoB.state.spark}/${sparkA} stalls ${B.lg.sb.build.placed.size}/${stallsA}`);
     if (B.ui.dialogue.isOpen) throw new Error('B: S2 opening replayed on resume');
+    if (ecoB.state.stalls !== ecoA.state.stalls || ecoB.state.stalls >= B.lg.sb.build.placed.size) throw new Error(`B: eco.state.stalls ${ecoB.state.stalls}/${ecoA.state.stalls} (placed ${B.lg.sb.build.placed.size} incl. decor)`);
     if (JSON.stringify(B.lg.story.state.toastsFired) !== JSON.stringify(toastsSaved)) throw new Error('B: toastsFired ' + B.lg.story.state.toastsFired.join(','));
     if (Math.abs(B.lg.sb.hero.root.position.x - snapA.hero.x) > 0.01) throw new Error('B: hero pos ' + B.lg.sb.hero.root.position.x);
     B.run(12); if ((B.ev['story:toast'] || []).some((t) => toastsSaved.includes(t.id))) throw new Error('B: toast replayed ' + B.ev['story:toast'].map((t) => t.id).join(','));
