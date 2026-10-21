@@ -73,11 +73,16 @@ export function createSandbox(game, opts = {}) {
   game.followTarget = sb.hero.root.position;
   if (game.camera?.snapTo) { game.camera.zoom = 1.25; game.camera.snapTo(sb.hero.root.position); }
 
+  // BUGFIX B15/C01: ONE place that derives the economy's stall count + upgrade upkeep from the live BuildSystem (decor never counts)
+  sb.syncStalls = () => { let n = 0, extra = 0; for (const e of sb.build.placed.values()) if (e.id.startsWith('stall_')) { n++; extra += sb.eco.levelUpkeep?.(e.level) || 0; } sb.eco.state.stalls = n; sb.eco.state.stallUpkeepExtra = extra; return n; };
+  // BUGFIX B08: world fog / fog towers / vignette follow the economy immediately (start, resume), not only after the next eco:fog
+  sb.syncWorld = () => { const f = sb.eco.state.fog01; sb.vfx.fog?.setCoverage?.(f, { immediate: true }); sb.world.towers.forEach((t) => t.userData.setActive?.(f > 0.3)); };
   sb.helpers = [];                                               // P3: hired helpers { g, anim, type, stall }
   sb.pick = 0;                                                   // current stall pick index (keys 1–9)
   wireEconomy(sb);
   wireAbilities(sb);
   if (opts.starterStalls !== false) placeStarterStalls(sb);
+  sb.syncWorld();
   installDebugKeys(sb);
 
   // ---- loop ------------------------------------------------------------------------------------------------------
@@ -112,6 +117,8 @@ function buildScenery(sb, rnd) {
   const place = (g, x, z, { rot = 0, w = 1, d = 1, parent = null } = {}) => { g.position.set(x, 0, z); g.rotation.y = rot; (parent || zoneOf(x, z)).add(g); take(x, z, w, d); return g; };
   const W = { occupied, key, free, take, place, live: [], baked: [], towers: [], lanterns: [], jars: [] };
   const [start, far, west, east] = island.zones;
+  // BUGFIX B07: the 3 starter stall footprints are reserved BEFORE any scenery is scattered, so no seed can block them
+  for (const s of STARTER_STALLS) { const fp = PROP_CATALOG[s.id]?.footprint || [1, 1]; const [w, d] = (s.rot & 1) ? [fp[1], fp[0]] : fp; take(s.cx, s.cz, w, d); }
   // landmarks
   W.lighthouse = place(makeProp('lighthouse'), far.center.x, far.center.z - 1, { rot: Math.PI, w: 2, d: 2, parent: far.group }); take(far.center.x - 1, far.center.z - 2, 1, 2);
   W.cottage = place(makeProp('cottage'), -6, 6, { rot: 0.5, w: 2, d: 2 }); W.cottage.userData.setLit?.(true); take(-7, 5, 3, 3);
@@ -146,9 +153,18 @@ function buildScenery(sb, rnd) {
   return W;
 }
 // 3 starter stalls (fruit / bread / tea) via build.load → no Spark charged; counts as owned stalls for upkeep.
+export const STARTER_STALLS = [{ id: 'stall_fruit', cx: -4, cz: -3, rot: 1, level: 1 }, { id: 'stall_bread', cx: 3, cz: -3, rot: 3, level: 1 }, { id: 'stall_tea', cx: -3, cz: -6, rot: 0, level: 1 }];
 function placeStarterStalls(sb) {
-  sb.build.load([{ id: 'stall_fruit', cx: -4, cz: -3, rot: 1, level: 1 }, { id: 'stall_bread', cx: 3, cz: -3, rot: 3, level: 1 }, { id: 'stall_tea', cx: -3, cz: -6, rot: 0, level: 1 }]);
-  sb.eco.state.stalls = sb.build.placed.size;
+  for (const s of STARTER_STALLS) {
+    if (sb.build.load([s])) continue;
+    // BUGFIX B07 fallback: if the anchor is still blocked, try the nearest free spot (ring search) so every run starts with 3 stalls
+    let done = false;
+    for (let r = 1; r <= 3 && !done; r++) for (let dx = -r; dx <= r && !done; dx++) for (let dz = -r; dz <= r && !done; dz++) {
+      if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
+      if (sb.build.canPlace(s.id, s.cx + dx, s.cz + dz, s.rot)) done = !!sb.build.load([{ ...s, cx: s.cx + dx, cz: s.cz + dz }]);
+    }
+  }
+  sb.syncStalls();
   sb.cust.reroute();
 }
 
@@ -156,8 +172,9 @@ function placeStarterStalls(sb) {
 function wireEconomy(sb) {
   const { eco, bus, vfx, world, island } = { ...sb, bus: sb.game.bus };
   const off = []; sb._offs = off;
-  off.push(bus.on('build:placed', (p) => { if (p?.id?.startsWith?.('stall_')) eco.state.stalls = countStalls(sb); }));
-  off.push(bus.on('build:removed', () => { eco.state.stalls = countStalls(sb); }));
+  off.push(bus.on('build:placed', () => sb.syncStalls()));
+  off.push(bus.on('build:removed', () => sb.syncStalls()));
+  off.push(bus.on('build:upgraded', () => sb.syncStalls()));
   off.push(bus.on('eco:fog', (p) => { const f = p?.fog01 ?? eco.state.fog01; vfx.fog?.setCoverage?.(f); world.towers.forEach((t) => t.userData.setActive?.(f > 0.3)); if (f > 0.6) vfx.debtPulse?.(0.4); }));
   off.push(bus.on('eco:jar', () => { const j = eco.state.jars, tot = Math.max(1, j.spend + j.save + j.invest + j.protect); ['spend', 'save', 'invest', 'protect'].forEach((k, i) => world.jars[i]?.userData.setFill?.(Math.min(1, j[k] / tot))); }));
   off.push(bus.on('eco:season', (r) => {
@@ -419,6 +436,7 @@ export function destroySandbox(sb) {
   sb.build?.exit?.(true);
   game.systems = game.systems.filter((s) => s !== sb._system && s !== sb.vfx && s !== sb.hero?._lateSystem);   // BUGFIX B05
   sb.perf?.dispose?.();
+  disposeVfx(sb.vfx, game.scene);                                                     // BUGFIX B03/B04: run-owned fog, vignette, pulses, pools
   const freeMerged = (root) => root && root.traverse((o) => { if (o.isMesh && o.geometry && /^merged_/.test(o.name)) o.geometry.dispose(); });
   if (sb.hero?.root) { freeMerged(sb.hero.root); game.scene.remove(sb.hero.root); }
   for (const p of Object.values(sb.hero?.props || {})) if (p?.parent === game.scene) game.scene.remove(p);   // 3A coin + 3B magnetCoins/rings/arc live in world space
@@ -434,6 +452,19 @@ export function destroySandbox(sb) {
   if (sb.island?.group) { sb.island.group.traverse((o) => { if (o.isInstancedMesh) o.geometry?.dispose?.(); }); game.scene.remove(sb.island.group); }
   game.followTarget = null;
   sb.destroyed = true;
+}
+/** BUGFIX B03/B04: everything the run's VFX put into the scene / DOM goes away with the run (was +26 scene children per restart,
+ *  and the purple debt vignette of the old run stayed on screen forever). Packs first (they restore vfx.update), then the base pools. */
+export function disposeVfx(vfx, scene) {
+  if (!vfx || vfx._counts) return;                                                    // headless mockVfx
+  try { vfx.pack2?.dispose?.(); } catch (_) { /* already gone */ }
+  try { vfx.pack1?.dispose?.(); } catch (_) { /* already gone */ }
+  const rm = (o) => { if (!o) return; o.parent?.remove(o); o.traverse?.((m) => { if (m.isMesh || m.isSprite || m.isInstancedMesh) { m.geometry?.dispose?.(); const ms = Array.isArray(m.material) ? m.material : [m.material]; for (const x of ms) { x?.map?.dispose?.(); x?.dispose?.(); } } }); };
+  rm(vfx.dust?.mesh); rm(vfx.slash?.pivot); rm(vfx.sparks?.mesh);
+  for (const it of vfx.pop?.items || []) rm(it.sp);
+  vfx.flash?.el?.remove?.();
+  for (const p of Object.values(vfx.pools || {})) { try { p.dispose?.(); } catch (_) { /* pool without dispose */ } }
+  if (scene) for (const o of scene.children.slice()) if (o.userData?.vfxOwner === vfx) scene.remove(o);
 }
 // Per-run wires (released on teardown): UI → systems. 7A build tray → BuildSystem (5) · 7A jars APPLY → eco.allocate from the pouch ·
 // hero ability keys (3B FINLIT keys) → sb.ability · 7C touch 'build' button → tray · tap in demolish mode → build.demolish.
@@ -457,9 +488,12 @@ function installRunWires(lg) {
       if (e && !e.scenery) build.upgrade(e); else bus.emit('build:denied', { id: p.id, why: p.id ? 'no stall of that type to upgrade' : 'stand next to a stall to upgrade it' });
     }
   });
-  on('ui:build:close', () => { lg.demolishMode = false; });
-  if (ui?.build) { ui.build.upgradeCost = (lvl) => build.upgradeCost(lvl); ui.build.placedInfo = (id) => [...build.placed.values()].filter((x) => x.id === id).map((x) => ({ level: x.level })); ui.build.refresh?.(); }
-  offs.push(() => { if (ui?.build) { ui.build.upgradeCost = null; ui.build.placedInfo = null; } });
+  on('ui:build:close', () => { lg.demolishMode = false; if (build.mode === 'place') build.exit(); });   // BUGFIX B13: closing the tray never leaves a live ghost
+  // BUGFIX B13: a placed STALL ends placement in both layers (no accidental second purchase on the next click); cheap decor/nature stay
+  // armed for quick fences/paths and Esc / ✕ cancel them. build.exit() emits build:exit → the tray leaves placing.
+  on('build:placed', (p) => { if (!p?.silent && build.mode === 'place' && String(p?.id).startsWith('stall_')) build.exit(); });
+  if (ui?.build) { ui.build.reset?.(); ui.build.costOf = (id) => build.cost(id); ui.build.upgradeCost = (lvl) => build.upgradeCost(lvl); ui.build.placedInfo = (id) => [...build.placed.values()].filter((x) => x.id === id).map((x) => ({ level: x.level })); ui.build.refresh?.(); }
+  offs.push(() => { if (ui?.build) { ui.build.upgradeCost = null; ui.build.placedInfo = null; ui.build.costOf = null; ui.build.reset?.(); } });
   // jars APPLY {pct}: move the whole pouch into the 4 jars by pct (spend stays as pouch → its share is the amount NOT moved)
   lg.applyJars = (pct = {}) => {
     const spark = eco.state.spark; if (spark <= 0) { bus.emit('eco:denied', { reason: 'nothing to allocate', cost: 0, spark }); return false; }
