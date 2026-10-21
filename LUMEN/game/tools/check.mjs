@@ -1349,6 +1349,9 @@ if (doSave) {
     { const cell = A.lg.sb.island.gridCells().find((c) => A.lg.sb.build.canPlace('crate', c.x, c.z, 0)); if (cell) A.lg.sb.build.place('crate', cell.x, cell.z, 0, { animate: false }); }
     { const sp = ecoA.state.spark; ecoA.state.spark = 999; A.lg.sb.keys.hire(); ecoA.state.spark = sp; if (A.lg.sb.helpers.length !== 1) throw new Error('A: hire helper'); }
     const helperTypeA = A.lg.sb.helpers[0].type;
+    // B14 probe: unlock zone 1 (zone_west granted, as the season:3 gate would refuse a buy in S2) and build a stall ON it → both must survive CONTINUE
+    { ecoA.grantUpgrade('zone_west'); A.lg.sb.island.unlockInstant(1); const z1 = A.lg.sb.island.zones[1]; const cell = z1.cells.find((c) => A.lg.sb.build.canPlace('stall_flower', c.x, c.z, 0)); if (!cell || !A.lg.sb.build.place('stall_flower', cell.x, cell.z, 0, { animate: false, pay: false })) throw new Error('A: stall on zone 1'); }
+    const stallsOnZonesA = A.lg.sb.build.serialize().length, ecoStallsA0 = ecoA.state.stalls;
     { const ok = A.lg.save.write(); if (!ok) { let e2 = ''; try { JSON.stringify(Save.snapshot(A.lg)); } catch (e) { e2 = e.message; } throw new Error('A: save.write failed ' + e2 + ' snap=' + !!Save.snapshot(A.lg) + ' st=' + A.lg.state); } }
     const snapA = A.lg.save.read(); if (!snapA) { const raw = storage.getItem(Save.SAVE_KEY); throw new Error('A: read null, raw=' + (raw ? raw.slice(0, 200) : raw) + ' key=' + Save.SAVE_KEY + ' mem=' + [...mem.keys()]); } if (!snapA.helpers || snapA.helpers.length !== 1) throw new Error('A: snapshot helpers ' + JSON.stringify(snapA.helpers)); const stallsA = A.lg.sb.build.placed.size, sparkA = ecoA.state.spark, seasonA = ecoA.state.season, toastsSaved = snapA.story.state.toastsFired.slice();
     if (seasonA !== 2 || snapA.build.length !== stallsA || snapA.state !== 'playing' || snapA.mode !== 'story') throw new Error('A: snapshot ' + JSON.stringify({ seasonA, b: snapA.build.length, stallsA, st: snapA.state }));
@@ -1362,6 +1365,7 @@ if (doSave) {
     const ecoB = B.lg.sb?.eco; if (!ecoB || B.lg.state !== 'playing' || (B.ev['game:resumed'] || []).length !== 1) throw new Error('B: resume → ' + B.lg.state);
     if (ecoB.state.season !== seasonA || ecoB.state.spark !== sparkA || B.lg.sb.build.placed.size !== stallsA) throw new Error(`B: season ${ecoB.state.season}/${seasonA} spark ${ecoB.state.spark}/${sparkA} stalls ${B.lg.sb.build.placed.size}/${stallsA}`);
     if (B.ui.dialogue.isOpen) throw new Error('B: S2 opening replayed on resume');
+    if (!B.lg.sb.island.zones[1].unlocked || B.lg.sb.island.zones[2].unlocked || B.lg.sb.build.placed.size !== stallsOnZonesA || ecoB.state.stalls !== ecoStallsA0) throw new Error(`B: zones ${B.lg.sb.island.zones.map((z) => +z.unlocked)} placed ${B.lg.sb.build.placed.size}/${stallsOnZonesA} stalls ${ecoB.state.stalls}/${ecoStallsA0}`);
     if (B.lg.sb.helpers.length !== 1 || B.lg.sb.helpers[0].type !== helperTypeA || !ecoB.owns('helper_' + B.lg.sb.helpers[0].type)) throw new Error(`B: helpers restored ${B.lg.sb.helpers.length} (${B.lg.sb.helpers.map((h) => h.type)}) vs A ${helperTypeA}`);
     if (ecoB.state.stalls !== ecoA.state.stalls || ecoB.state.stalls >= B.lg.sb.build.placed.size) throw new Error(`B: eco.state.stalls ${ecoB.state.stalls}/${ecoA.state.stalls} (placed ${B.lg.sb.build.placed.size} incl. decor)`);
     if (JSON.stringify(B.lg.story.state.toastsFired) !== JSON.stringify(toastsSaved)) throw new Error('B: toastsFired ' + B.lg.story.state.toastsFired.join(','));

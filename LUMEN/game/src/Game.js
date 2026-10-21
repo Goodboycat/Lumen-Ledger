@@ -625,6 +625,9 @@ function applySnapshot(lg, sb, snap) {
     eco.state = { ...eco.state, ...e2.state, day01: 0, ended: null }; eco.ledger = e2.ledger; eco.history = e2.history; eco.pendingOffer = null;
     if (lg.mode === 'endless') { eco.config.winRequiresSeasons = false; eco.config.endless = true; }
   }
+  // BUGFIX B14: unlocked zones come back from the owned zone_* upgrades BEFORE the buildings are re-placed (locked zones are water → placements rejected)
+  for (const id of eco.state.owned || []) { const u = eco.upgrades?.[id]; if (u?.kind === 'zone' && Number.isInteger(u.effect?.zone)) { if (sb.island.unlockInstant?.(u.effect.zone)) lg.stats.zonesRestored = (lg.stats.zonesRestored || 0) + 1; } }
+  if (lg.stats.zonesRestored) sb.cust?.reroute?.();
   if (Array.isArray(snap.build) && snap.build.length) { build.load(snap.build); sb.syncStalls?.(); sb.cust?.reroute?.(); }   // BUGFIX: syncStalls is authoritative (skips decor/nature, adds L2/L3 upkeep)
   for (const id of snap.helpers || []) { const type = String(id).replace(/^helper_/, ''); if (HELPER_TYPES.includes(type) && !sb.helpers.some((h) => h.type === type)) hireHelper(sb, type, { free: true }); }
   if (snap.hero && sb.hero?.root) { sb.hero.root.position.set(snap.hero.x, 0, snap.hero.z); lg.game.camera?.snapTo?.(sb.hero.root.position); }

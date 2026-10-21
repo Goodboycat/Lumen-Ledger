@@ -212,6 +212,8 @@ export class Island {
     for (const c of z.bridgeCells) { this.tiles.set(key(c.x, c.z), 0); this.allTiles.set(key(c.x, c.z), i); }
   }
   _syncVisibility() { for (const z of this.zones) { z.group.visible = z.unlocked || z.group.userData.rising === true; } }
+  /** Save restore: unlock zone i instantly (no rise animation, no sound). Returns true if it was locked. */
+  unlockInstant(i) { const z = this.zones[i]; if (!z || z.unlocked) return false; this._applyUnlock(i); z.group.position.y = 0; this._syncVisibility(); return true; }
   unlockAll() { for (let i = 0; i < this.zones.length; i++) this._applyUnlock(i); for (const z of this.zones) z.group.position.y = 0; this._syncVisibility(); }
 
   /**
