@@ -85,7 +85,14 @@ export function mountToast(root, opts = {}) {
     on('build:placed', (p) => p && api.push({ text: `${nice(p.id)} built`, kind: 'ok', icon: '🔨', id: 'placed' }));
     on('build:upgraded', (p) => p && api.push({ text: `${nice(p.id)} → level ${p.level}`, kind: 'gold', icon: '⬆', id: 'upgraded' }));
     on('build:denied', (p) => api.push({ text: 'Cannot build: ' + ((p && p.why) || 'blocked'), kind: 'bad', id: 'denied', duration: 3200 }));
-    on('eco:denied', (p) => api.push({ text: `Not enough Spark${p && p.cost ? ` (need ${p.cost})` : ''}`, kind: 'bad', id: 'denied', duration: 3200 }));
+    // BUGFIX: every refusal used to read "Not enough Spark" — also for 'owned', 'needs zone_west', 'jar save is empty', 'no debt to repay',
+    // 'loan refused'. Only cost refusals say that now; the others show the economy's own reason (prefixes stripped).
+    on('eco:denied', (p) => {
+      const why = (p && (p.why || p.reason)) || '';
+      const isCost = !why || why === 'cost' || why === 'cannot afford' || /^not enough/i.test(why) || /^(spend|build:|upgrade:)/.test(why);
+      const text = isCost ? `Not enough Spark${p && p.cost ? ` (need ${p.cost})` : ''}` : (why === 'owned' ? 'Already owned' : String(why).replace(/^needs (zone_|helper_)/, 'needs ').replace(/^jar /, '').replace(/^\w/, (c) => c.toUpperCase()));
+      api.push({ text, kind: 'bad', id: 'denied', duration: 3200 });
+    });
     on('eco:loan', (p) => p && api.push(p.kind === 'repay' ? { text: `Repaid ${p.delta} — debt ${p.debt}`, kind: 'ok', icon: '💸', id: 'loan' } : { text: `Loan +${p.delta} — the Baron smiles. Debt ${p.debt}`, kind: 'bad', icon: '🎩', id: 'loan' }));
     on('cust:angry', (p) => api.push({ text: 'A Glimmer left angry' + (p && p.reason ? ` (${p.reason})` : ''), kind: 'warn', icon: '😠', id: 'angry', duration: 3500 }));
     on('island:unlock', (p) => api.push({ text: `New zone unlocked${p && p.zone ? ': ' + nice(p.zone) : ''}!`, kind: 'gold', icon: '🗺', duration: 5000 }));
