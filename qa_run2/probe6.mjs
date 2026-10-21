@@ -1,0 +1,21 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch({args:['--no-sandbox','--use-gl=swiftshader','--enable-unsafe-swiftshader']});
+const p = await b.newPage({viewport:{width:1280,height:720}});
+await p.goto('http://localhost:3000/game/?mute&notutorial&season=20&seed=2026',{timeout:120000});
+await p.waitForFunction(()=>window.lg); await p.waitForTimeout(800);
+await p.evaluate(()=>{window.__r=game.renderer.render; game.renderer.render=()=>{}; localStorage.clear();});
+const play=async()=>{ await p.locator('.ll-title-btn.play').click(); await p.waitForTimeout(400); await p.evaluate(()=>{ for(let i=0;i<60&&ui.dialogue.isOpen;i++){ui.dialogue.skip();const cs=ui.dialogue.line?.choices; if(cs?.length) ui.dialogue.choose(cs.length-1); else ui.dialogue.advance();} }); };
+const fog=()=>p.evaluate(()=>({debtFogMeshes:game.scene.children.filter(o=>o.name==='vfx.debtFog').map(o=>o.visible), vign:[...document.querySelectorAll('.vfx-vignette')].map(e=>e.style.opacity), eco:lg.sb?.eco.state.fog01, cov:lg.sb?.vfx.fog.coverage}));
+await play();
+await p.evaluate(()=>{ lg.sb.eco._setFog(0.85,'qa'); });
+await p.waitForTimeout(4000);
+console.log('run1 fog 85%', JSON.stringify(await fog()));
+await p.evaluate(()=>{game.renderer.render=window.__r;}); await p.waitForTimeout(2500); await p.screenshot({path:'/home/user/webapp/qa_run2/evidence/t14-run1-fog85.png'}); await p.evaluate(()=>{game.renderer.render=()=>{};});
+await p.evaluate(()=>{ const e=lg.sb.eco; e.state.debt=1300; e.endSeason(); });
+for (let k=0;k<60;k++){ await p.evaluate(()=>{ if(ui.dialogue.isOpen){ui.dialogue.skip();ui.dialogue.advance();} }); if(await p.evaluate(()=>ui.ledger.isOpen)) break; await p.waitForTimeout(150);}
+await p.waitForTimeout(1500); await p.locator('.ll-ledger-continue').click(); await p.waitForTimeout(800);
+console.log('title', JSON.stringify(await fog()));
+await play(); await p.waitForTimeout(1500);
+console.log('run2 start', JSON.stringify(await fog()));
+await p.evaluate(()=>{game.renderer.render=window.__r;}); await p.waitForTimeout(3000); await p.screenshot({path:'/home/user/webapp/qa_run2/evidence/t14-run2-start-old-fog.png'});
+await b.close();

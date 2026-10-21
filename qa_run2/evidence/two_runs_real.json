@@ -794,6 +794,67 @@
             "stallUpkeepExtra": 0,
             "owned": []
           }
+        },
+        {
+          "ledger": "season",
+          "text": "Season 2 Ledger 8 seasons to the Lighthouse Sales income 40 Save interest +5 % 0 Invest return 0 Expenses & upkeep 0 Loan interest 20 % 0 Net this season 0 Fog 32 % (+7) Debt 374 Net worth −238 No stars — the Fog is winning. Save first, spend second. FINLIT LESSON Needs vs Wants Needs keep the market standing: upkeep, repairs, the roof. Wants are lovely, and they can wait one season without anyone",
+          "eco": {
+            "spark": 136,
+            "debt": 374,
+            "fog01": 0.32,
+            "season": 3,
+            "stalls": 4,
+            "jars": {
+              "spend": 0,
+              "save": 0,
+              "invest": 0,
+              "protect": 0
+            },
+            "ended": null,
+            "stallUpkeepExtra": 0,
+            "owned": []
+          }
+        },
+        "CHOICE [\"Quick, one ticket!\",\"Open the box first.\"] -> Open the box first.",
+        {
+          "ledger": "season",
+          "text": "Season 3 Ledger 7 seasons to the Lighthouse Sales income 39 Save interest +5 % 0 Invest return 0 Expenses & upkeep 0 Loan interest 20 % 0 Net this season 0 Fog 22 % (+7) Debt 449 Net worth −255 No stars — the Fog is winning. Save first, spend second. FINLIT LESSON Emergency Fund Storms do not send invitations. Spark parked in Protect turns a disaster into a bill — and a bill into a shrug. Tip: Aim",
+          "eco": {
+            "spark": 194,
+            "debt": 449,
+            "fog01": 0.22,
+            "season": 4,
+            "stalls": 4,
+            "jars": {
+              "spend": 0,
+              "save": 0,
+              "invest": 0,
+              "protect": 0
+            },
+            "ended": null,
+            "stallUpkeepExtra": 0,
+            "owned": []
+          }
+        },
+        {
+          "ledger": "season",
+          "text": "Season 4 Ledger 6 seasons to the Lighthouse Sales income 103 Save interest +5 % 0 Invest return 0 Expenses & upkeep −132 Loan interest 20 % −90 Net this season −119 Fog 9 % (+7) Debt 539 Net worth −284 No stars — the Fog is winning. Save first, spend second. FINLIT LESSON Good vs Bad Interest Save pays YOU 5 % every season. The Baron charges 20 %, and his interest grows interest of its own. Same w",
+          "eco": {
+            "spark": 255,
+            "debt": 539,
+            "fog01": 0.09,
+            "season": 5,
+            "stalls": 4,
+            "jars": {
+              "spend": 0,
+              "save": 0,
+              "invest": 0,
+              "protect": 0
+            },
+            "ended": null,
+            "stallUpkeepExtra": 0,
+            "owned": []
+          }
         }
       ],
       "seasons": [
@@ -831,6 +892,60 @@
           "vign": [
             "0.001",
             "0.145"
+          ]
+        },
+        {
+          "season": 3,
+          "spark": 136,
+          "debt": 374,
+          "fog": 0.32,
+          "stalls": 4,
+          "jars": {
+            "spend": 0,
+            "save": 0,
+            "invest": 0,
+            "protect": 0
+          },
+          "cov": 0.25,
+          "vign": [
+            "0.001",
+            "0.081"
+          ]
+        },
+        {
+          "season": 4,
+          "spark": 194,
+          "debt": 449,
+          "fog": 0.22,
+          "stalls": 4,
+          "jars": {
+            "spend": 0,
+            "save": 0,
+            "invest": 0,
+            "protect": 0
+          },
+          "cov": 0.15,
+          "vign": [
+            "0.001",
+            "0.002"
+          ]
+        },
+        {
+          "season": 5,
+          "spark": 255,
+          "debt": 539,
+          "fog": 0.09,
+          "stalls": 4,
+          "jars": {
+            "spend": 0,
+            "save": 0,
+            "invest": 0,
+            "protect": 0
+          },
+          "cov": 0.02,
+          "vign": [
+            "0.001",
+            "0"
           ]
         }
       ],
