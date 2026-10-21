@@ -84,7 +84,7 @@ export function mountJars(root, opts = {}) {
     const pctEl = el('div', 'll-jar-pct', `<span>${st.pct[k]}%</span>`);
     row.append(icon, name, input, pctEl);
     if (k !== 'spend') { // B11: withdraw half of a jar back into the pouch (Spend IS the pouch, nothing to withdraw)
-      const wd = el('button', 'll-jar-wd'); wd.textContent = '↩'; wd.type = 'button'; wd.title = 'Take half of this jar back into your pouch'; wd.setAttribute('aria-label', 'Withdraw half of ' + JAR_INFO[k].name);
+      const wd = el('button', 'll-jar-wd'); wd.innerHTML = iconize('↩'); wd.type = 'button'; wd.title = 'Take half of this jar back into your pouch'; wd.setAttribute('aria-label', 'Withdraw half of ' + JAR_INFO[k].name);
       wd.addEventListener('click', (e) => { e.stopPropagation(); api.withdraw(k); });
       row.append(wd); row.classList.add('has-wd');
     }

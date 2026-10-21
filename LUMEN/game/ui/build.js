@@ -122,7 +122,7 @@ export function mountBuildMenu(root, opts = {}) {
     const id = st.selected, e = id && catalog[id];
     wrap.classList.toggle('has-detail', !!e); if (!e) return;
     const cost = costOf(id), n = countOf(id);
-    detIcon.textContent = iconFn(id, e);
+    detIcon.innerHTML = iconize(iconFn(id, e));
     detInfo.innerHTML = iconize(`<b>${e.name || id}</b><small>${cost ? cost + ' ✦' : 'free'} · ${(e.footprint || [1, 1]).join('×')}${n ? ` · ${n} placed` : ''}</small>`);
     const poor = !affordable(cost);
     deployBtn.disabled = poor; deployBtn.classList.toggle('poor', poor); deployBtn.innerHTML = iconize(poor ? `🚀 need ${cost} ✦` : '🚀 Deploy');

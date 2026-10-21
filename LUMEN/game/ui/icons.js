@@ -84,6 +84,7 @@ def('cross', () => L('M15 15L49 49M49 15L15 49', 13) + L('M15 15L49 49M49 15L15 
 def('play', () => P('M18 10Q16 8 18 8L52 30Q54 32 52 34L18 56Q16 56 16 54V10Z', C.grass) + hi(24, 22, 3, 7, 0.5));
 def('pause', () => R(14, 10, 13, 44, 4, C.blue) + R(37, 10, 13, 44, 4, C.blue) + hi(20, 20, 2.5, 6) + hi(43, 20, 2.5, 6));
 def('rotate', () => L('M50 30A18 18 0 1 1 40 15', 9) + L('M50 30A18 18 0 1 1 40 15', 4, C.blue) + P('M34 5L48 14L35 24Z', C.blue));
+def('undo', () => L('M20 26H42A10 10 0 0 1 42 46H28', 10) + L('M20 26H42A10 10 0 0 1 42 46H28', 4.5, C.gold) + P('M22 14L8 26L22 38Z', C.gold));
 def('home', () => P('M8 32L32 10L56 32H50V54H14V32Z', C.cream) + P('M5 32L32 7L59 32', 'none') + R(26, 38, 12, 16, 2, C.wood) + P('M44 12H51V24L44 18Z', C.redD));
 def('gear', () => { let d = ''; const n = 8; for (let i = 0; i < n * 4; i++) { const a = (i / (n * 4)) * Math.PI * 2 - 0.2, r = (i % 4 < 2) ? 27 : 20; d += (i ? 'L' : 'M') + f(32 + Math.cos(a) * r) + ',' + f(32 + Math.sin(a) * r); } return P(d + 'Z', C.stone) + O(32, 32, 8, C.paper) + hi(24, 20, 6, 3, 0.4); });
 def('info', () => O(32, 32, 26, C.blue) + On(32, 19, 4, '#fff') + L('M32 28V47', 7, '#fff'));
@@ -187,7 +188,7 @@ export const EMOJI = {
   '🌳': 'treeRound', '🌲': 'treeCone', '🌴': 'treePalm', '🌸': 'treeBlossom', '🎐': 'chime', '🪨': 'rock', '⛰️': 'mountain', '⛰': 'mountain', '🗻': 'spire',
   '💎': 'gem', '🌉': 'bridge', '🧱': 'wall', '🌿': 'bush', '🫐': 'berries', '💐': 'bouquet', '🌾': 'wheat', '🏠': 'house', '⚓': 'anchor', '🏯': 'pagoda',
   '💧': 'droplet', '🪵': 'log', '🚪': 'door', '📦': 'crate', '🛢️': 'barrel', '🛢': 'barrel', '➡️': 'signArrow', '🪧': 'signBoard', '🪑': 'bench', '🟫': 'pathDirt',
-  '⬜': 'pathStone', '🎏': 'banner', '🪴': 'pot', '🛁': 'trough', '▪️': 'square', '▪': 'square',
+  '⬜': 'pathStone', '🎏': 'banner', '🪴': 'pot', '🛁': 'trough', '▪️': 'square', '▪': 'square', '↩': 'undo', '↩️': 'undo',
 };
 
 const cache = new Map();
