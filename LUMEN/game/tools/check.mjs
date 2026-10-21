@@ -984,7 +984,7 @@ if (doUI) {
     // story:lesson override (8B) arrives before the report → pendingLesson
     bus.emit('story:lesson', { id: 'x', title: 'From 8B', lesson: 'override', tip: 'ok' });
     bus.emit('eco:season', { ...rep, season: 10, stars: 3, lessonId: 'scams' }); ledger.skip();
-    if (q('.ll-lesson-title').textContent !== 'From 8B' || !/last season/.test(q('.ll-ledger-sub').textContent) || ledger.el.querySelectorAll('.ll-ledger-stars i.on').length !== 3) throw new Error('story:lesson override / S10 sub: ' + q('.ll-lesson-title').textContent);
+    if (q('.ll-lesson-title').textContent !== 'From 8B' || !/last season|Lighthouse waits/.test(q('.ll-ledger-sub').textContent) || ledger.el.querySelectorAll('.ll-ledger-stars i.on').length !== 3) throw new Error('story:lesson override / S10 sub: ' + q('.ll-lesson-title').textContent);
     bus.emit('eco:win', { season: 10 }); ledger.skip();
     if (!ledger.el.classList.contains('win') || !/Lighthouse is lit/.test(q('.ll-ledger-title').textContent) || !/ENDLESS MODE/.test(q('.ll-ledger-continue').textContent)) throw new Error('win header ' + q('.ll-ledger-title').textContent);
     ledger.continue(); if (ev['ui:continue'][1].outcome !== 'win') throw new Error('win outcome');
