@@ -389,7 +389,7 @@ function installStart(lg) {
   lg.start = (mode = 'story') => {
     lg.teardown?.();
     lg.mode = mode === 'endless' ? 'endless' : 'story';
-    const balance = lg.mode === 'endless' ? { ...(opts.balance || {}), winRequiresSeasons: false } : opts.balance;
+    const balance = lg.mode === 'endless' ? { ...(opts.balance || {}), winRequiresSeasons: false, endless: true } : opts.balance;
     const sb = lg.sb = createSandbox(game, { headless: !!opts.headless, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, starterStalls: lg._resuming ? false : undefined });
     if (lg.mode === 'endless') sb.updateScheduler = wrapNoScam(sb);                      // endless: events yes, Baron's deals no
     lg.story = (lg.mode === 'story' && opts.storyData) ? new StorySystem(sb.eco, { data: opts.storyData, bus, ledgerLinesBeforeReview: true, autoAdvance: !!opts.autoAdvance, lineGap: opts.lineGap }) : null;
@@ -523,8 +523,19 @@ function installRunWires(lg) {
   };
   offs.push(() => { if (lg.game.input) lg.game.input.onTap = prevTap; });
   if (typeof window !== 'undefined' && window.addEventListener && !lg.opts.headless) {
-    const onKey = (e) => { if (e.repeat) return; const name = ABILITY_KEYS[e.code]; if (name && !ui?.isModal?.()) lg.ability(name); };
-    window.addEventListener('keydown', onKey); offs.push(() => window.removeEventListener('keydown', onKey));
+    // BUGFIX B20: W is also "walk forward" (Input KEY_MOVE). A HELD W walks; a TAP of W (released within 220 ms, no other
+    //   WASD/arrow key down) fires Bubble Shield. BUGFIX B21: R rotates the ghost while placing, so Ledger Flash is skipped then.
+    let wDown = 0;
+    const MOVE_KEYS = ['KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+    const onKey = (e) => {
+      if (e.repeat) return; const name = ABILITY_KEYS[e.code]; if (!name || ui?.isModal?.()) return;
+      if (e.code === 'KeyW') { const k = lg.game.input?.keys; wDown = (k && MOVE_KEYS.some((c) => k.has(c))) ? 0 : (performance.now?.() || Date.now()); return; }
+      if (e.code === 'KeyR' && lg.sb?.build?.mode === 'place') return;
+      lg.ability(name);
+    };
+    const onKeyUp = (e) => { if (e.code !== 'KeyW' || !wDown) return; const dt = (performance.now?.() || Date.now()) - wDown; wDown = 0; if (dt <= 220 && !ui?.isModal?.()) lg.ability('bubbleShield'); };
+    window.addEventListener('keydown', onKey); window.addEventListener('keyup', onKeyUp);
+    offs.push(() => { window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKeyUp); });
   }
 }
 // Season loop on the bus (listeners live for the whole lg, they check lg.sb):
@@ -556,7 +567,7 @@ function installSeasonLoop(lg) {
   // win → keep the island, drop the win gate, scams off, no more story (8B goes quiet after the finale), state 'endless'
   lg.goEndless = () => {
     const sb = lg.sb; if (!sb) return lg.setState('title');
-    lg.mode = 'endless'; sb.eco.config.winRequiresSeasons = false; sb.eco.state.ended = null; sb.eco.state.day01 = 0;
+    lg.mode = 'endless'; sb.eco.config.winRequiresSeasons = false; sb.eco.config.endless = true; sb.eco.state.ended = null; sb.eco.state.day01 = 0;
     sb.updateScheduler = wrapNoScam(sb); lg.stats.finales++;
     ui?.hud?.setSeason?.(sb.eco.state.season, 0);
     lg.setState('endless'); bus.emit('game:endless', { season: sb.eco.state.season });
@@ -607,7 +618,7 @@ function applySnapshot(lg, sb, snap) {
   if (snap.eco) {
     const e2 = Economy.deserialize(snap.eco, eco.config, { bus: null, events: eco.events, scams: eco.scams, upgrades: eco.upgrades });
     eco.state = { ...eco.state, ...e2.state, day01: 0, ended: null }; eco.ledger = e2.ledger; eco.history = e2.history; eco.pendingOffer = null;
-    if (lg.mode === 'endless') eco.config.winRequiresSeasons = false;
+    if (lg.mode === 'endless') { eco.config.winRequiresSeasons = false; eco.config.endless = true; }
   }
   if (Array.isArray(snap.build) && snap.build.length) { build.load(snap.build); eco.state.stalls = build.placed.size; sb.cust?.reroute?.(); }
   for (const id of snap.helpers || []) { const type = String(id).replace(/^helper_/, ''); if (HELPER_TYPES.includes(type) && !sb.helpers.some((h) => h.type === type)) { const paid = eco.spend; eco.spend = () => true; try { hireHelper(sb); } finally { eco.spend = paid; } } }

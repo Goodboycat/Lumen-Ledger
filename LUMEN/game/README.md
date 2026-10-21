@@ -14,7 +14,7 @@ Dev material (demos, tests, tools, screenshots, handoffs) lives in `../../LUMEN_
 
 Useful URL flags: `?autoplay` skip the title · `?endless` start in Endless · `?season=30` 30‑second seasons (QA) · `?debug` fps / draw calls / dpr overlay · `?mute` · `?nohistory` (disable the Android back‑button sentinel).
 
-**Controls** — WASD/arrows move · Space/J/Enter hammer/confirm · E/F interact · **B** build menu · Q W E R F G abilities · Esc/P pause · Enter/click advances dialogue, 1–4 picks a choice. Touch: left virtual joystick, A / B / 🔨 buttons, ⏸ in the HUD. Full table in `docs/GDD.md §6`.
+**Controls** — WASD/arrows move · Space/J/Enter hammer/confirm · E/F interact · **B** build menu · Q W E R F G abilities (**tap** W = Bubble Shield, **hold** W = walk; R rotates the ghost while placing) · jars panel: ↩ withdraws half a jar, **PAY BARON** repays debt from the pouch · Esc/P pause · Enter/click advances dialogue, 1–4 picks a choice. Touch: left virtual joystick, A / B / 🔨 buttons, ⏸ in the HUD. Full table in `docs/GDD.md §6`.
 
 ## What's in the box
 ```
