@@ -63,7 +63,8 @@ export class HeroController {
     // BUGFIX (arms + sword inside the stomach): every animation (attack, build, celebrate, abilities…) writes arm/sword rotations
     // absolutely; this runs AFTER all of them (lateUpdate = after Sequences/Tweens) and nudges each arm (and the sword tilt) the
     // minimum needed so hands, forearms and blade stay outside the chest box. Poses that are already clear are untouched.
-    game.add({ lateUpdate: () => { if (this.root.visible !== false) solveArmClearance(this); } });
+    // BUGFIX B05: keep a handle so destroySandbox can unregister it (it used to leak one system + the whole hero per run)
+    this._lateSystem = game.add({ lateUpdate: () => { if (this.root.visible !== false) solveArmClearance(this); } });
 
     this.speed = 5.2;
     this.vel = new THREE.Vector3();

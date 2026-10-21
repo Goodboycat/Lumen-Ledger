@@ -417,7 +417,7 @@ export function destroySandbox(sb) {
   for (const f of sb._offs || []) f(); sb._offs = [];
   if (sb._onKey && typeof window !== 'undefined') window.removeEventListener('keydown', sb._onKey);
   sb.build?.exit?.(true);
-  game.systems = game.systems.filter((s) => s !== sb._system && s !== sb.vfx);
+  game.systems = game.systems.filter((s) => s !== sb._system && s !== sb.vfx && s !== sb.hero?._lateSystem);   // BUGFIX B05
   sb.perf?.dispose?.();
   const freeMerged = (root) => root && root.traverse((o) => { if (o.isMesh && o.geometry && /^merged_/.test(o.name)) o.geometry.dispose(); });
   if (sb.hero?.root) { freeMerged(sb.hero.root); game.scene.remove(sb.hero.root); }
