@@ -58,6 +58,16 @@ export function parseSnapshot(raw) {
   if (typeof raw === 'string') { try { d = JSON.parse(raw); } catch (_) { return null; } }
   if (!d || typeof d !== 'object' || Math.floor(+d.v || 0) !== SAVE_VERSION) return null;
   if (!d.eco) return null;
+  // BUGFIX B18: validate the nested payloads here, so a corrupt slot never advertises CONTINUE and then throws inside resume.
+  let eco = d.eco; if (typeof eco === 'string') { try { eco = JSON.parse(eco); } catch (_) { return null; } }
+  if (!eco || typeof eco !== 'object' || !eco.state || typeof eco.state !== 'object') return null;
+  const st = eco.state; if (!Number.isFinite(+st.season) || +st.season < 1 || !Number.isFinite(+st.spark) || !st.jars || typeof st.jars !== 'object') return null;
+  if (d.build != null && !Array.isArray(d.build)) return null;
+  if (Array.isArray(d.build) && d.build.some((e) => !e || typeof e.id !== 'string' || !Number.isFinite(+e.cx) || !Number.isFinite(+e.cz))) return null;
+  if (d.helpers != null && !Array.isArray(d.helpers)) return null;
+  if (d.story != null && (typeof d.story !== 'object' || (d.story.state != null && typeof d.story.state !== 'object'))) return null;
+  if (d.jars != null && typeof d.jars !== 'object') return null;
+  if (d.hero != null && (typeof d.hero !== 'object' || !Number.isFinite(+d.hero.x) || !Number.isFinite(+d.hero.z))) return null;
   return d;
 }
 

@@ -603,7 +603,9 @@ function installSave(lg) {
     lg._resuming = snap;
     try { lg.start(snap.mode === 'endless' ? 'endless' : 'story'); } finally { lg._resuming = null; }
     const sb = lg.sb; if (!sb) return false;
-    applySnapshot(lg, sb, snap);
+    // BUGFIX B18: a slot that passed parseSnapshot but still breaks during restore → drop it, fall back to a fresh run (never a dead title)
+    try { applySnapshot(lg, sb, snap); }
+    catch (err) { console.warn('[save] corrupt slot dropped:', err?.message || err); lg.save.clear(); lg.stats.corruptSaves = (lg.stats.corruptSaves || 0) + 1; bus.emit('game:saveCorrupt', { error: String(err?.message || err) }); lg.start(lg.mode); return true; }
     bus.emit('game:resumed', { season: sb.eco.state.season, mode: lg.mode });
     return true;
   };

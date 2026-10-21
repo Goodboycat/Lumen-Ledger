@@ -1379,6 +1379,10 @@ if (doSave) {
     B.lg.save.clear(); if (Save.hasSave(storage) || B.ui.title.buttons.continue.style.display !== 'none') throw new Error('clear left a save');
     if (B.lg.save.importText('not a save') || B.lg.save.importText('LUMEN1:@@@@')) throw new Error('bad import accepted');
     if (!B.lg.save.importText('  ' + txt + '\n') || !Save.hasSave(storage) || Save.load(storage).build.length !== stallsA) throw new Error('import roundtrip');
+    // B18: a corrupt-but-versioned slot is refused up front (no CONTINUE), the previous valid slot is kept
+    { const keep = storage.getItem(Save.SAVE_KEY); const bad = [{ v: Save.SAVE_VERSION, eco: 'not json' }, { v: Save.SAVE_VERSION, eco: { state: { season: 'x' } } }, { v: Save.SAVE_VERSION, eco: { state: { season: 2, spark: 5, jars: {} } }, build: 'nope' }];
+      for (const b of bad) { if (Save.parseSnapshot(JSON.stringify(b)) !== null) throw new Error('B18: accepted ' + JSON.stringify(b).slice(0, 60)); if (B.lg.save.importText(Save.exportText(b))) throw new Error('B18: import accepted corrupt'); }
+      if (storage.getItem(Save.SAVE_KEY) !== keep) throw new Error('B18: valid slot lost'); }
     console.log(`  3. exportText ${txt.length} chars (LUMEN1: base64) → clear → bad text refused ×2 → importText → save back, ${Save.load(storage).build.length} stalls  OK`);
     // 4. lose clears
     ecoB.state.fog01 = 1; ecoB.state.day01 = 0.99; ecoB.endSeason(); if (ecoB.state.ended !== 'lose' || B.lg.state !== 'ending') throw new Error('forced lose → ' + ecoB.state.ended + ' ' + B.lg.state);
