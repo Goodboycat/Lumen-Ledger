@@ -16,9 +16,10 @@ import { mountTitle } from './title.js';
 import { mountPause } from './pause.js';
 import { mountTouch } from './touch.js';
 import { mountSeasonInfo } from './seasons.js';
+import { mountTutorial } from './tutorial.js';
 
 export const UI_VERSION = '10C';
-export const UI_CSS = ['ui/base.css', 'ui/hud.css', 'ui/jars.css', 'ui/build.css', 'ui/ledger.css', 'ui/dialogue.css', 'ui/toast.css', 'ui/title.css', 'ui/pause.css', 'ui/touch.css', 'ui/seasons.css'];
+export const UI_CSS = ['ui/base.css', 'ui/hud.css', 'ui/jars.css', 'ui/build.css', 'ui/ledger.css', 'ui/dialogue.css', 'ui/toast.css', 'ui/title.css', 'ui/pause.css', 'ui/touch.css', 'ui/seasons.css', 'ui/tutorial.css'];
 
 /**
  * @param {HTMLElement} root  overlay root (#game-root). Panels append themselves; the canvas stays underneath.
@@ -45,14 +46,16 @@ export function mountUI(root, opts = {}) {
     const onEscCapture = (e) => { if (e.key === 'Escape' && (ui.build?.isOpen || ui.build?.state?.placing)) { escOwned = true; setTimeout(() => { escOwned = false; }, 0); } };
     window.addEventListener('keydown', onEscCapture, true); ui._offEsc = () => window.removeEventListener('keydown', onEscCapture, true);
   }
-  add('pause', mountPause(root, { bus, onOutline: opts.onOutline, canOpen: () => !escOwned && !(ui.title?.isOpen) && !(ui.ledger?.isOpen), storageKey: opts.storageKey }));
+  add('pause', mountPause(root, { bus, onOutline: opts.onOutline, canOpen: () => !escOwned && !(ui.title?.isOpen) && !(ui.ledger?.isOpen) && !(ui.tutorial?.isOpen), storageKey: opts.storageKey }));
   // mobile bugfix: season info (HUD lesson tag + tap-the-pill card + new-season banner) — explains what a season is and what it teaches
   add('seasons', mountSeasonInfo(root, { bus, seasonsToWin, lessons: opts.storyData?.lessons, seasons: opts.storyData?.seasons, isModal: () => !!(ui.title?.isOpen || ui.ledger?.isOpen || ui.dialogue?.isOpen || ui.pause?.isOpen || ui.tutorial?.isOpen) }));
   if (opts.touch !== false && opts.input) add('touch', mountTouch(root, opts.input, { bus, force: opts.forceTouch }));
+  // guided tutorial: hand pointer + input lock, opens on the first PLAY (opts.autoTutorial — index.html turns it on; headless checks leave it off) and from the pause menu's 📖 TUTORIAL (mounted last = on top)
+  if (opts.tutorial !== false) add('tutorial', mountTutorial(root, { bus, ui, auto: !!opts.autoTutorial, storageKey: opts.tutorialKey }));
 
   /** One clock for every panel (count-ups, typewriter, fps readout). */
-  ui.update = (dt) => { ui.hud.update(dt); ui.ledger.update(dt); ui.dialogue.update(dt); };
-  /** True when any modal owns the screen (title / ledger / dialogue / pause) → the game loop should be paused. */
+  ui.update = (dt) => { ui.hud.update(dt); ui.ledger.update(dt); ui.dialogue.update(dt); ui.tutorial?.update?.(dt); };
+  /** True when any modal owns the screen (title / ledger / dialogue / pause / season card / tutorial) → the game loop should be paused. */
   ui.isModal = () => !!(ui.title?.isOpen || ui.ledger?.isOpen || ui.dialogue?.isOpen || ui.pause?.isOpen || ui.seasons?.isOpen || ui.tutorial?.isOpen);
   // B = build tray toggle, only when no modal owns the screen and not while placing (Esc cancels placing — 7A handles that one itself).
   let offKey = null;
