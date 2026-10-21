@@ -1,85 +1,21 @@
-# LUMEN — the single master folder for *Lumen Ledger* (Zoud GameLab jam, "Make FinLit Fun", due 2026-11-15)
+# LUMEN — Lumen Ledger (Zoud GameLab jam, "Make FinLit Fun", due 2026-11-15)
 
-**Download this whole folder from the File Explorer. It is the only deliverable. No zips, no upload links.**
+This folder holds **only the game and the jam documents**.
+Dev material (screenshots, QA shots, demos, tests, tools, chat prompts, handoffs, plans) was moved to `../LUMEN_extras/`
+(same relative paths, e.g. `LUMEN_extras/game/tools/check.mjs`, so it can be copied back if you need it).
 
 ```
 LUMEN/
-  game/          THE game (open game/index.html via any static server; demos: game/demo_*.html)
-    docs/        START_HERE.md · GAME_BIBLE.md · API_CONTRACTS.md · MASTER_PLAN.md · prompts/<ID>_*.md · HANDOFF_<ID>.md
-    tools/       check.mjs (headless test) · next.sh (prints the ID to do now + WIP trail) · wip.sh (commit+check after every file) · smoke.mjs (browser test, optional) · pack.sh master (tar.gz for the next chat)
-  screenshots/   reference/ (XP Hero + jam page) · 0_foundation/ · 1A_stalls/ · 1B_nature/ · 1C_landmarks/ · 1D_decor/ · 2C_villains/ · 3A_heromoves/ · 3B_abilities/ · 6A_customers/ · 9B_vfx_fog/ · 10B_sandbox/ · *_raw/ (QA shots)
-  archive/       the old tar.gz / zip uploads (history only — nothing in here is needed anymore)
-  README.md      this file
+  game/
+    index.html        THE game — serve statically: cd game && python3 -m http.server 3000 → http://localhost:3000/
+    src/ ui/ data/ audio/ vendor/   game code, UI (incl. ui/tutorial.js), story, sounds, Three.js r160 (MIT)
+    docs/             GDD.md (concept doc) · BUDGET.md (game budget) · ITCH_PAGE.md · SUBMISSION_CHECKLIST.md
+                      GAME_BIBLE.md · balance.md · story_outline.md
+    README.md         how to play, controls, URL flags
 ```
 
-## GitHub (added 2026-10-19 — read first)
-**https://github.com/Goodboycat/Lumen-Ledger** (branch `main`) mirrors `/home/user/webapp` and is the real master. Every chat runs
-`bash game/tools/github.sh <token>` as its FIRST tool call (token is in the paste block, never in the repo), then every commit is pushed
-automatically by `tools/wip.sh` / the close step. If the attached tar.gz is older than origin/main, origin wins. An axed chat keeps what it pushed.
-
-## How to run a chat
-1. Make the attachment: download this folder, or in a sandbox run `bash game/tools/pack.sh master` → `/home/user/webapp/LUMEN_master_<date>.tar.gz`.
-2. Paste the block from `game/docs/prompts/_TEMPLATE.md`, attach the tar.gz. **No chat ID needed** — the chat runs
-   `bash tools/next.sh`, which prints the ID to do (a half-done axed ID first, else the first ID in "Next" without a "Done" row).
-3. The chat writes into `/home/user/webapp/LUMEN/game/`, closes each ID with `docs/HANDOFF_<ID>.md` + a row below + a commit,
-   then runs `next.sh` again. You download the folder when it finally posts its one message.
-4. **CHAIN RULE v4 (2026-10-18, replaces v3.4–v3.7):** a chat ENDS the moment it posts a chat message with no tool call, and every
-   credit left at that moment is gone (100 → 0). So a chat posts **exactly one message**: the final summary at ~80 credits.
-   Between IDs there is no message of any kind. **Finishing an axed chat's leftover ID is iteration #1 of the loop, never a stop**:
-   close it (check.mjs → HANDOFF → row → commit) → `bash tools/next.sh` → next ID, same chat. The "Done" table below is the only
-   truth: no row = not done, even if files and a HANDOFF exist. The final message ends with
-   `FINISHED: <IDs> · IN PROGRESS: <ID or none> (missing: …) · NEXT: <ID>`.
-
-## CHAIN RULE v4.1 (2026-10-19) — why 10A killed five chats, and the three mechanical fixes
-Autopsy: 10A's prompt said "≤ 150 draw calls"; `check.mjs --world` asserted it; reality after integrating every pack is 434
-(22 creatures alone = 251, each already inside its own budget). The rules said "never move on with a FAIL, never commit a FAIL",
-so every chat (1) chased a perf target that belongs to 11A, (2) measured it with 3–6-credit screenshots instead of the 0-credit
-headless count, (3) committed nothing because the gate failed, so (4) the next chat found the identical state and repeated.
-Fixes, all in the folder: **`tools/wip.sh "<what>" [flags]`** = commit pass-or-fail + check in one call (use after every file);
-**`next.sh` prints the TRAIL** of WIP commits for the ID so an axed chat's progress is visible; **START_HERE rules 8–9** (commit
-WIP always · an unreachable budget is a measurement → record, loosen to measured+10 %, hand to 11A · two identical failures = stop);
-`check.mjs --world` now asserts the *integration* budget (480) and 11A's prompt inherits the ≤ 150 target with the lever list.
-
-## Done
-| Chat | Deliverable | Files | Status |
-|---|---|---|---|
-| 0 | Foundation: Game loop, toon+outline, Sequencer, Pip + sword, VFX, Island v1 | src/core, src/anim, src/assets/{geo,hero,glimmer}.js, src/vfx, src/entities, index.html | ✅ |
-| 0B | Docs, prompts, tools | docs/, tools/ | ✅ |
-| 1A | 12 stalls × 3 levels + level-swap anim | src/assets/props/{stalls,merge}.js, demo_stalls.html | ✅ |
-| 1B | Nature: trees, rocks, bushes, instanced flowers/tufts, wind | src/assets/props/nature.js, demo_nature.html | ✅ |
-| 1C | Landmarks (lighthouse, cottage, pier, bridge, fog tower…) + Island v2 zones | src/assets/props/landmarks.js, src/world/Island.js, demo_landmarks.html | ✅ |
-| 2A | CreatureAnimator (8 clips) + Glimmer variants regular/saver/spender/vip | src/assets/creatures/{animator,glimmers,index}.js, demo_glimmers.html | ✅ |
-| 2B | 6 Helpers (owl, mole, bee, tortoise, fox, snail) + HelperAnimator (idle/work/carry/happy) | src/assets/creatures/helpers.js, demo_helpers.html | ✅ |
-| 2C | Baron Gilt + 3 Fog Collectors + VillainAnimator (strut/taunt/offerDeal/flee/slipOnCoin/fogPuff) + FogPuffPool | src/assets/creatures/villains.js, demo_villains.html | ✅ |
-| 1D | Decor: 4 FinLit Jars (setFill + jarFill Sequence), fences/gate, crate, barrel, 2 lanterns (setLit), 3 signs, bench, 2 path tiles, banner, flower pot, trough (20 props, all ≤ 6 dc) | src/assets/props/decor.js, demo_decor.html, check.mjs DECOR section | ✅ |
-| 2D | 8 more Glimmers (impulse, haggler, kid, elder, tourist, critic, collector, newbie) + idle flourishes + makeGlimmerAny (all 12) | src/assets/creatures/glimmers2.js, demo_glimmers2.html, check.mjs GLIMMERS-2 section | ✅ |
-| 3A | 9 hero moves (hammer, dash, celebrate, build, pickUp→carry, carry loop, throwCoin, sad, stunned) + attachMoves(hero) API + hidden move props (hammer/crate/stars/coin) | src/anim/heroAnims.js, demo_heromoves.html, check.mjs --hero section | ✅ |
-| 3B | 6 FinLit abilities (coinMagnetDash, bubbleShield, growthStomp, ledgerFlash, haggleShout, fogSweep) registered into HERO_MOVES + attachAbilities(hero) API + FINLIT lesson text + hidden ability props (0 dc at rest) | src/anim/heroAbilities.js, demo_abilities.html, check.mjs --abilities section | ✅ |
-| 4A | Economy core (PURE JS): state · tick/150 s seasons · demand-curve sell · jars allocate · loans 20 %/save 5 %/invest 8±4 % · fog rules · Protect absorbs · stars · win/lose · serialize · events/scams/upgrades skeleton | src/systems/economy.js, tests/economy.test.mjs (80 asserts), tests/economy.sim.mjs, check.mjs --economy | ✅ |
-| 4B | Economy content & balance: 10 EVENTS + 6 SCAMS (tells) + 11 UPGRADES (stall/helper/zone) + BALANCE_TUNED (sensible wins S10 17/20 seeds, S11 3/20; borrow & hoarder lose) + `makeEconomy()` / `pickEvent()` / `canBuyUpgrade()` + 3-strategy sim + balance.md | src/systems/economyData.js, docs/balance.md, tests/economy.sim.mjs, check.mjs ECONOMY (4B) section | ✅ |
-| 5 | Build & placement: ghost (green/red, grid snap, isLand+occupancy) · buildPlace 610 ms / buildDemolish 340 ms Sequences · rotate · demolish 50 % refund · upgrade via setLevel · stalls() world slots · serialize/load · debug overlay · touch confirm | src/systems/build.js, demo_build.html, check.mjs --build | ✅ |
-| 6A | Customer AI: FlowField (pure BFS, no corner cut, cached) + CustomerSystem FSM (pier → pickStall by type prefs → flow-field walk + separation → 4-slot queue → browse 1.5 s → economy.sell → happy/sad/angry by price/fair → leave → pool) · give-up timers · season WAVES table · maxActive 20 | src/systems/{customers,flowfield}.js, demo_customers.html, check.mjs --customers | ✅ |
-| 7A | UI: HUD ribbon (Spark count-up, season chip + day bar, Debt Fog bar, rep stars, fps) · 4 FinLit jar sliders summing to 100 % (pure `rebalance`, presets, lock, APPLY → ui:jar:apply) · Build menu tray (tabs, cards w/ cost/footprint/count, poor/locked, placing banner, B/Esc) · tools/domshim.mjs | ui/{hud,jars,build}.{js,css}, demo_ui_hud.html, check.mjs --ui | ✅ |
-| 7B | UI: Ledger Review modal (rows count-up, 0–3 stars, chips, lesson card from LESSONS or story:lesson, CONTINUE → ui:continue, win/lose headers) · Dialogue box (CSS-blob portraits Pip/Baron/Owl, typewriter, queue, choices → ui:choice, ui:pause) · Toast queue (coalesce ×N, max 3, 12 bus listeners) | ui/{ledger,dialogue,toast}.{js,css}, demo_ui_ledger.html, check.mjs --ui UI (7B) section | ✅ |
-| 7C | UI: Touch pad (virtual joystick → input.joystick/move, 3 hold-able buttons → input.press, auto-hide under title/modals) · Title (logo pop, PLAY/CONTINUE/ENDLESS → ui:start, lose re-show) · Pause + Settings (Esc → ui:pause, RESUME/RESTART/TITLE w/ Sure?, quality/outline/SFX/music/reduce-motion → ui:settings + localStorage, pure normalize/load/save) | ui/{title,pause,touch}.{js,css}, demo_ui_title.html, check.mjs UI (7C) section | ✅ |
-| 8A | Story data (pure JSON): 10 seasons × (opening/mid/ledger default·low·high) in BALANCE.lessons order · 10 lesson cards · 6 scam scripts (pitch→accept/refuse, tells = 4B) · 10 event lines · ending win/endless/lose · 10 tutorial toasts w/ bus triggers · 207 lines, speakers/moods = 7B dialogue | data/story.json, docs/story_outline.md, check.mjs --story | ✅ |
-| 8B | Story system (pure JS): StorySystem on the bus (openings/mid/ledger-by-stars/events/scam pitch→ui:choice→acceptOffer·refuseOffer→result lines/win·lose finales/10 tutorial toasts once), story:line/lesson/review/end/finale/toast, serialize · tests/story.test.mjs 58 asserts w/ real 4B economy · check.mjs STORY SYSTEM (8B) 10-season bus walk · **GDD.md** (jam doc: pitch, loop, FinLit mapping table, controls, art, scope, credits) | src/systems/story.js, tests/story.test.mjs, docs/GDD.md, check.mjs --story | ✅ |
-| 9A | VFX pack 1: coinFly (arc + squash + onArrive) · coinBurst · confetti (120 quads, flutter) · levelRing · sparkTrail (.emit/.stream) · savingSparkle — 5 InstancedMesh = 5 dc, 334 instances, 0 alloc; fns + .burst/.show/.emit aliases so 3A/3B/6A hooks fire; fixed axed chat's dead-pool bug | src/vfx/pack1.js, demo_vfx1.html, check.mjs --vfx | ✅ |
-| 9B | VFX pack 2 — Debt Fog: `vfx.fog` ring of 48 translucent toon blobs (1 InstancedMesh = 1 dc) · setCoverage(fog01) outCubic 600 ms · push() (3B fogSweep hook, alias vfx.fogShader) · debtPulse red DOM vignette (80/520 ms) · vignette follows fog · coinRain (reuses pack1 coins, own pool fallback) · lighthouseBeam additive sweep · fogRecede WIN Sequence 1900 ms · fixed missing game.start() in demo_vfx1 | src/vfx/pack2.js, demo_vfx2.html, check.mjs VFX PACK 2 (9B) section | ✅ |
-| 10A | World integration: `demo_world.html` — Island v2 + 6 stalls + 7 landmarks + 20 decor + nature scatter + 8 instanced fields + 12 Glimmers + 6 helpers + 4 villains + hero moves/abilities on keys + fog/night/slow/camera · **`bake.js` `bakeStatic()`** (69 static props → 4 batches = 11 m) · `check.mjs --world` (bake unit test + whole world 2 s headless + zone unlock) · measured 434 m worst-case → **≤ 150 dc re-budgeted to 11A** (see HANDOFF_10A "Why 5 chats died") · P1 smoke of all 19 pages: ERRORS none · CR [2D] applied: `registerBuilder()` in glimmers.js, glimmers2 auto-registers 8 | src/assets/props/bake.js, demo_world.html, docs/HANDOFF_10A.md, check.mjs WORLD (10A), glimmers.js/glimmers2.js (CR) | ✅ |
-| 10B | Systems integration: `src/Game.js` `createSandbox(game, opts)` = Island v2 + scenery (baked) + Economy 4B + Build 5 + Customers 6A + hero moves/abilities on one loop · P1 debug keys as DOM-free `sb.keys` (B build · 1–9 pick · R/confirm/Esc · X demolish · U upgrade · E end season → LedgerReport console · Z zone · H hire) + 3 starter stalls · season scheduler (event @45 %, Too-Good Deal @70 % odd seasons, auto-refuse) · P2 `sb.ability(name)`: magnet collects tip coins (1 InstancedMesh) → earn, haggle ×1.1 price/×1.3 demand, growth pulse, shield absorbs next event, fogSweep → pushFog, ledgerFlash → refuseOffer · P3 hire → HelperAnimator work loop · `check.mjs --sandbox` (2 seasons headless, 6 abilities asserted) · smoke ERRORS none, 169–253 dc (target → 11A) | src/Game.js, demo_sandbox.html, check.mjs SANDBOX (10B), docs/HANDOFF_10B.md, screenshots/10B_sandbox/ | ✅ |
-| 10C | UI + story + state machine: `ui/index.js` `mountUI` (7A+7B+7C on one clock, `isModal()`, modal-gated B/Esc, `destroy`) · `src/Game.js` `createLumenGame` — states title → playing → review → … → ending → endless/title, OR-ed pause reasons → `game.paused`, `eco:tick` 10 Hz · wires `ui:build` → BuildSystem, `ui:jar:apply` → `eco.allocate`, Q/W/E/R/F/G → `sb.ability` · 8B StorySystem on the bus: openings/mid lines in the dialogue box, `story:review` → ledger (CONTINUE), win → ending lines → ENDLESS MODE, lose → TRY AGAIN → title · P3 `ui:restart/ui:title/ui:settings` · **`index.html` = THE game** (window.game, debug stats) · `check.mjs --game` full headless run S1→S3 → win → endless → lose → title, 3070 frames ALL OK | src/Game.js (createLumenGame), ui/index.js, index.html, check.mjs GAME (10C), docs/HANDOFF_10C.md | ✅ |
-| 10D | Save/load + tutorial: `src/systems/save.js` (pure, injected storage, `SAVE_VERSION` 1, snapshot = eco/build/story/jars/helpers/hero, `describe`) · `Game.js installSave` autosave on `eco:season` / review→playing / endless, `ui:start continue` → `lg.resume` → `applySnapshot` (no opening/toast replay), lose → clear · `installTutorialGates` 5 first-action toasts (move/build/jars/endSeason/upgrade) once per run, 13 toasts total no dupes · P3 `exportText/importText` `LUMEN1:<base64>` + `index.html` CONTINUE via `Save.hasSave()`, `window.lumenSave`, `?import=` for the Flutter WebView · `check.mjs --save` 4 sections ALL OK | src/systems/save.js, src/Game.js (10D section), index.html, check.mjs SAVE (10D), docs/HANDOFF_10D.md | ✅ |
-| 11A | Perf pass: `meshCount` renderer-accurate (434→353) · `fuseGlimmer` 1 toon+1 hull+1 flat (→316) · `bakeShells()` static shells of live props per zone (→292, `WORLD_BUDGET` 320) · `src/systems/perf.js` **BlobShadows** (all creature discs → 1 InstancedMesh, −21) · **CreatureLOD** tiers 18/26 u + hysteresis (271 → 259 near / **160** far) · **PixelRatioGovernor** (fps<45/3 s drop 1.5→0.85, >58/10 s raise, `perf:pixelRatio`) · P3 memory: customer pool cap + `destroySandbox` → 0 meshes/0 geometries · `check.mjs --perf` + `--world` perf asserts · `docs/PERF.md` before/after · index.html `?debug` shows dpr/shadows/lod · browser smoke in play **133–135 dc**, ERRORS none · Missing: P1.2 helper/villain part-merge, stall per-level bake (see HANDOFF) | src/systems/perf.js, src/Game.js (installPerf), src/assets/props/bake.js (bakeShells), src/assets/creatures/glimmers.js (fuseGlimmer), src/systems/customers.js (pool cap), tools/check.mjs PERF (11A), docs/PERF.md, docs/HANDOFF_11A.md, screenshots/11A_perf/ | ✅ |
-| 11B | Mobile QA: `tools/qa_mobile.mjs` (Playwright, 360×800 touch · 800×360 touch · 1280×720; overflow/overlap/taps/scroll/errors audit, exit 1 on FAIL) → **3/3 OK, 0 overflow · 0 overlap · 0 scroll, 110–135 dc** · fixes: jars fold under dialogue (`body.ll-dlg-open`), title `display:none` after hide, 44 px tap targets on touch, debug-stats safe-area · P2 iOS `100dvh` + touch-callout/touch-action/overscroll + **audio unlock stub → bus `input:first`** · Android back = Esc via popstate sentinel (`?nohistory` off) · relative-path audit clean · P3 CSS loading screen + inline SVG favicon + itch 1280×720 no-scroll check · `docs/QA_MOBILE.md` | tools/qa_mobile.mjs, docs/QA_MOBILE.md, ui/{base,jars,title}.css, ui/{dialogue,title}.js, index.html, docs/HANDOFF_11B.md, screenshots/11B_mobile/ | ✅ |
-| 12 | Audio: `src/core/Audio.js` `createAudio({bus,settings})` (WebAudio, context created only on bus `input:first`, inert+counted in Node) · lazy loader w/ `state.missing` + **procedural synth fallback** (11 sfx sketch types + 3-voice chord-pad music) so the build is never silent · `DEFAULT_EVENTS` bus→SFX map 39 events → 33 sfx / 6 music, cooldowns, payload variants, music swaps, ducking 35 % under dialogue/ledger/pause, pitchVar · `audio/manifest.json` (33 sfx + 6 music, `fetchFiles:false` until real .ogg land) · `index.html` wiring + 7C volume sliders + `?mute` · `check.mjs --audio` · `docs/audio_prompts.md` 33+7 SFX + 6 music Ludo.ai prompts · demo_audio.html smoke ERRORS none 23 dc, index.html 121–133 dc | src/core/Audio.js, audio/manifest.json, docs/audio_prompts.md, demo_audio.html, index.html, check.mjs AUDIO (12), docs/HANDOFF_12.md, screenshots/12_audio/ | ✅ |
-| 13A | Jam package: `docs/ITCH_PAGE.md` (itch form fields, paste-ready page body: pitch · how to play · controls · 10-lesson table · credits, theme statement, **6-shot screenshot list**, **itch zip recipe dry-run OK 536 KB / index.html at root**) · `docs/BUDGET.md` (jam build ≈ $7.4k imputed vs funded v1.0 ≈ $705k: people, tools, audio, QA + learning study, marketing, 3 tiers, risks) · `game/README.md` rewritten (run / flags / folder map / tests / credits) · `docs/SUBMISSION_CHECKLIST.md` (4 jam deliverables → files, theme rules, itch fields, 10 quality gates, APK rows, submission-day runbook) · Missing: real names in `[brackets]`, screenshots capture (with 13B), PDF exports | game/README.md, docs/ITCH_PAGE.md, docs/BUDGET.md, docs/SUBMISSION_CHECKLIST.md, docs/HANDOFF_13A.md | ✅ |
-
-## Next (sequential from here)
-13B trailer · 14 Flutter APK.
-
-## Test
-```bash
-cd LUMEN/game && node tools/check.mjs --props --creatures --hero --abilities --economy --build --customers --ui --story --vfx --world --sandbox --game --save --audio   # no browser, ~5 s (--story now also runs the 8B system tests)
-python3 -m http.server 3000   # then open http://localhost:3000/demo_glimmers.html
-```
+## Guided tutorial
+Opens on the first PLAY (desktop and mobile). A hand 👆 points at the joystick (WASD on desktop), ⚔ Attack, ✋ Interact, 🔨 Build,
+🚀 Deploy / ⬆ Upgrade, the 4 jars, the Debt Fog bar, the Season pill and ⏸ Pause. While it is open the game is paused and the
+**only** things you can touch are the highlighted spot and the tutorial card. Keys, wheel and focus are locked too. All of it is removed when
+the tutorial closes. You can replay it any time from the pause menu (📖 TUTORIAL). `?notutorial` skips it.

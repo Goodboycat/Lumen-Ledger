@@ -3,6 +3,7 @@
 **A cozy 3D market tycoon where every coin needs a jar — or the Debt Fog rolls in.**
 Entry for the Zoud GameLab jam, theme *"Make FinLit Fun"* (Oct 15 – Nov 15 2026). Plays in any modern browser, nothing to install.
 Source: https://github.com/Goodboycat/Lumen-Ledger · design doc: `docs/GDD.md` · itch page copy: `docs/ITCH_PAGE.md` · budget: `docs/BUDGET.md`.
+Dev material (demos, tests, tools, screenshots, handoffs) lives in `../../LUMEN_extras/`.
 
 ## Play it
 | Where | How |
