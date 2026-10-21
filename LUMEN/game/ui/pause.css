@@ -64,3 +64,8 @@ body.ll-reduce-motion *, body.ll-reduce-motion *::before, body.ll-reduce-motion 
 .ll-pause-fab:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
 .ll-pause-fab.floating { position: absolute; z-index: 21; top: calc(max(10px, env(safe-area-inset-top)) + 4px); right: max(12px, env(safe-area-inset-right)); }
 body.is-touch .ll-pause-fab { width: 44px; height: 44px; }
+/* mobile QA re-run (tutorial chat): the ⏸ button used to stack ON TOP of the HUD's right column (stats + stars) and pushed it 45–50 px
+   down into the jars panel (hud×jars 228×33–37 px). It now sits to the LEFT of the column, so the column stays as tall as before. */
+.ll-right:has(> .ll-pause-fab) { display: grid; grid-template-columns: auto auto; column-gap: 6px; row-gap: 5px; justify-items: end; align-items: start; }
+.ll-right > .ll-pause-fab { grid-column: 1; grid-row: 1 / span 2; }
+.ll-right > :not(.ll-pause-fab) { grid-column: 2; }
