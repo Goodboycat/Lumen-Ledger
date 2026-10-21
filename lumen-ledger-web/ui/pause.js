@@ -58,9 +58,15 @@ export function mountPause(root, opts = {}) {
   const buttons = {
     resume:   mk('resume', 'resume', '▶', 'RESUME', 0),
     settings: mk('settings', 'settings', '⚙', 'SETTINGS', 1),
-    restart:  mk('restart', 'restart', '⟳', 'RESTART SEASON', 2),
-    title:    mk('title', 'title', '⌂', 'TITLE', 3),
+    tutorial: mk('tutorial', 'tutorial', '📖', 'TUTORIAL', 2),
+    restart:  mk('restart', 'restart', '⟳', 'RESTART SEASON', 3),
+    title:    mk('title', 'title', '⌂', 'TITLE', 4),
   };
+  // ⏸ pause button in the HUD (touch players have no Esc key) — it sits in the HUD's right column, falls back to a fixed corner button
+  const fab = el('button', 'll-pause-fab', '⏸'); fab.type = 'button'; fab.setAttribute('aria-label', 'Pause menu'); fab.title = 'Pause (Esc)';
+  fab.addEventListener('click', () => api.open('menu'));
+  const hudRight = root.querySelector && root.querySelector('.ll-right');
+  if (hudRight) hudRight.insertBefore ? hudRight.insertBefore(fab, hudRight.firstChild || null) : hudRight.append(fab); else { fab.classList.add('floating'); root.appendChild(fab); }
 
   // settings panel
   const panel = el('div', 'll-settings'); panel.setAttribute('aria-label', 'Settings');
@@ -112,6 +118,7 @@ export function mountPause(root, opts = {}) {
   const act = {
     resume: () => api.close('menu'),
     settings: () => api.toggleSettings(),
+    tutorial: () => { api.close('menu'); bus.emit('ui:tutorial', { from: 'pause' }); },
     restart: () => dangerous('restart', 'ui:restart'),
     title: () => dangerous('title', 'ui:title'),
   };
@@ -125,7 +132,7 @@ export function mountPause(root, opts = {}) {
   window.addEventListener('keydown', onKey);
 
   const api = {
-    el: wrap, sheet, buttons, panel, settings, state: st,
+    el: wrap, sheet, buttons, panel, settings, state: st, fab,
     get isOpen() { return st.open; },
     get settingsOpen() { return st.settingsOpen; },
     open(by = 'menu') {
@@ -143,7 +150,7 @@ export function mountPause(root, opts = {}) {
     toggleSettings(force) { st.settingsOpen = force === undefined ? !st.settingsOpen : !!force; wrap.classList.toggle('settings', st.settingsOpen); buttons.settings.classList.toggle('on', st.settingsOpen); return api; },
     setSetting: (k, v) => set(k, v),
     getSettings: () => ({ ...settings }),
-    destroy() { window.removeEventListener('keydown', onKey); offs.forEach((f) => f()); clearTimeout(st.confirmT); wrap.remove(); },
+    destroy() { window.removeEventListener('keydown', onKey); offs.forEach((f) => f()); clearTimeout(st.confirmT); wrap.remove(); fab.remove(); },
   };
 
   const offs = [

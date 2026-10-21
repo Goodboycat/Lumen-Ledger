@@ -31,3 +31,6 @@ lerna-debug.log*
 
 # misc
 .DS_Store
+
+# QA browser deps
+LUMEN/game/tools/node_modules/

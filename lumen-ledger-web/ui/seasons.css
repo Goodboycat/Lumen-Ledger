@@ -56,3 +56,9 @@
   .ll-sc-foot { padding: 5px 10px; } .ll-sc-ok { min-height: 34px; padding: 4px 14px; }
 }
 @media (max-width: 480px) { .ll-sc-list { grid-template-columns: 1fr; } }
+/* mobile QA re-run: on landscape / desktop the lesson tag sits on the SAME row as the season pill (was its own row → the HUD middle
+   column grew to 85 px and ran 21 px into the jars panel). Portrait phones keep their own wrapped layout (hud.css). */
+@media (min-width: 641px) {
+  .ll-hud .ll-mid { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; column-gap: 6px; }
+  .ll-hud .ll-mid > .ll-fog { flex-basis: 100%; }
+}
