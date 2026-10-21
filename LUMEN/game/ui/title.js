@@ -40,7 +40,8 @@ export function mountTitle(root, opts = {}) {
   const sea = el('div', 'll-title-sea'); const isle = el('div', 'll-title-isle'); isle.append(el('i', 'll-title-tower'), el('b', 'll-title-beam'));
   sky.append(clouds, sea, isle);
   const card = el('div', 'll-title-card');
-  const lantern = el('div', 'll-title-lantern', '✦');
+  // Icon swap: the lantern glyph is now the official logo image (icon.png); the lettered h1 stays in the DOM for a11y / tests but is visually hidden.
+  const lantern = el('div', 'll-title-lantern'); const lanternImg = el('img', 'll-title-icon'); lanternImg.src = 'icon.png'; lanternImg.alt = 'Lumen Ledger'; lanternImg.decoding = 'async'; lantern.append(lanternImg);
   const logo = el('h1', 'll-title-logo'); logo.setAttribute('aria-label', 'Lumen Ledger');
   const words = ['LUMEN', 'LEDGER']; let li = 0;
   for (const w of words) { const row = el('span', 'll-title-word'); for (const ch of w) { const s = el('span', 'll-title-ch', ch); s.style.animationDelay = (li++ * 60) + 'ms'; row.append(s); } logo.append(row); }
