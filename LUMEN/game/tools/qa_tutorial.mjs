@@ -54,14 +54,19 @@ for (const vp of VIEWPORTS) {
 
   const total = await p.evaluate(() => window.ui.tutorial.steps.length);
   for (let k = 0; opened && k < total; k++) {
-    await p.waitForTimeout(700);                                        // card pop + ring glide (slow swiftshader frames)
+    // wait until the layout has settled (card pop, ring glide, build tray slide-in) — the card's DOM rect must equal the layout target
+    for (let w = 0; w < 30; w++) {
+      await p.waitForTimeout(150);
+      const ok = await p.evaluate(() => { const T = window.ui.tutorial, L = T.state.layout, c = T.card.getBoundingClientRect(); if (!T.step.target) return true; return !!L && Math.abs(c.left - L.card.l) < 1.5 && Math.abs(c.top - L.card.t) < 1.5 && !T.card.getAnimations().length; });
+      if (ok && w >= 2) break;
+    }
     const r = await p.evaluate(() => {
       const T = window.ui.tutorial, s = T.step, W = innerWidth, H = innerHeight;
       const vis = (e) => e && getComputedStyle(e).display !== 'none';
       const box = (e) => { const q = e.getBoundingClientRect(); return { l: q.left, t: q.top, r: q.right, b: q.bottom, w: q.width, h: q.height }; };
       const inter = (a, c) => Math.max(0, Math.min(a.r, c.r) - Math.max(a.l, c.l)) * Math.max(0, Math.min(a.b, c.b) - Math.max(a.t, c.t));
       const card = box(T.card), sr = T.state.rect, ring = sr ? { l: sr.left, t: sr.top, r: Math.min(W, sr.left + sr.width), b: Math.min(H, sr.top + sr.height), w: sr.width, h: sr.height } : null;   // the layout's hole (the ring glides there)
-      const hand = vis(T.hand) ? box(T.hand) : null;
+      const L = T.state.layout, hand = s.target && L && L.hand ? { l: L.hand.x, t: L.hand.y, r: L.hand.x + 52, b: L.hand.y + 52, w: 52, h: 52 } : null;   // layout target (the DOM hand glides there)
       const out = { id: s.id, i: T.index, card, ring, hand, issues: [], probes: 0 };
       if (card.l < -1 || card.t < -1 || card.r > W + 1 || card.b > H + 1) out.issues.push(`card off-screen ${Math.round(card.l)},${Math.round(card.t)}→${Math.round(card.r)},${Math.round(card.b)}`);
       if (s.target && !ring) out.issues.push('no highlight ring for a targeted step');

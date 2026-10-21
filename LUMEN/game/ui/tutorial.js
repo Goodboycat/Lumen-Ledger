@@ -174,7 +174,7 @@ export function mountTutorial(root, opts = {}) {
     const sides = (low ? ['above', 'below'] : ['below', 'above']).concat(cx > W / 2 ? ['left', 'right'] : ['right', 'left']).filter(sideFits);
     if (!sides.length) sides.push(low ? 'above' : 'below');
     const area = (a, b) => Math.max(0, Math.min(a.r, b.r) - Math.max(a.l, b.l)) * Math.max(0, Math.min(a.b, b.b) - Math.max(a.t, b.t));
-    const holeBox = { l: L, t: T, r: R, b: B };
+    const holeBox = { l: L, t: T, r: R, b: B }, holePad = { l: L - 3, t: T - 3, r: R + 3, b: B + 3 };   // 3 px safety (rounding / ring border)
     const full = Math.min(420, W - m * 2);
     const widths = [full, Math.min(full, 340), Math.min(full, 280), Math.min(full, 240)].filter((w, k, a) => a.indexOf(w) === k);
     let best = null;
@@ -191,7 +191,7 @@ export function mountTutorial(root, opts = {}) {
           [clampX(u.r + 8), H - ch - m], [clampX(u.l - cw - 8), H - ch - m]];
         for (const [x, y] of cands) {
           const cb = { l: x, t: y, r: x + cw, b: y + ch };
-          const cost = area(cb, holeBox) * 2 + area(cb, hb);
+          const cost = area(cb, holePad) * 2 + area(cb, hb);
           if (!best || cost < best.cost) best = { cost, x, y, cw, h };
           if (cost === 0) break outer;
         }
