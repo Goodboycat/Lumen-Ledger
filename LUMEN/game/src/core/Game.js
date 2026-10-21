@@ -19,7 +19,8 @@ export class Game {
   /** @param {HTMLElement} container @param {{quality?:'low'|'medium'|'high'}} opts */
   constructor(container, opts = {}) {
     this.container = container;
-    this.quality = QUALITY[opts.quality || autoQuality()];
+    const qName = opts.quality || autoQuality();
+    this.quality = { ...QUALITY[qName], name: qName, antialiasRendered: QUALITY[qName].antialias };
     this.renderer = new THREE.WebGLRenderer({ antialias: this.quality.antialias, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.quality.pixelRatio));
     this.renderer.shadowMap.enabled = this.quality.shadows;
@@ -54,6 +55,26 @@ export class Game {
     this._onResize = () => this.resize();
     window.addEventListener('resize', this._onResize);
     this.resize();
+  }
+
+  /** BUGFIX B22: apply a QUALITY preset at runtime — pixel-ratio cap, shadow map on/off + size. `antialias` is fixed at renderer
+   *  creation (WebGL cannot toggle MSAA on a live context) and is reported as `antialiasPending` so the menu can say "after reload".
+   *  Returns the preset now active. Emits 'game:quality' so the PixelRatioGovernor (11A) can re-cap itself. */
+  setQuality(name) {
+    const q = QUALITY[name]; if (!q) return this.quality;
+    const rendered = this.quality.antialiasRendered ?? this.quality.antialias;   // what the live WebGL context was created with
+    this.quality = { ...q, name, antialiasRendered: rendered, antialiasPending: q.antialias !== rendered };
+    const r = this.renderer;
+    r.setPixelRatio(Math.min(window.devicePixelRatio || 1, q.pixelRatio));
+    if (r.shadowMap.enabled !== q.shadows) { r.shadowMap.enabled = q.shadows; r.shadowMap.needsUpdate = true; this.scene.traverse((o) => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; for (const m of ms) m.needsUpdate = true; } }); }
+    const key = this.lights?.key;
+    if (key) {
+      key.castShadow = q.shadows;
+      if (q.shadows && key.shadow) { if (key.shadow.mapSize.x !== q.shadowSize) { key.shadow.mapSize.set(q.shadowSize, q.shadowSize); if (key.shadow.map) { key.shadow.map.dispose(); key.shadow.map = null; } } }
+    }
+    this.resize();
+    this.bus.emit('game:quality', { name, quality: this.quality });
+    return this.quality;
   }
 
   /** Register a system: { update(dt, game)?, lateUpdate(dt)?, resize(w,h)? } */

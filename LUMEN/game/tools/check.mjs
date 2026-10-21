@@ -1590,6 +1590,24 @@ if (doPerf) {
     for (let i = 0; i < 60 * 30; i++) gov2.update(1 / 60, 60); if (gov2.ratio !== 1.0) throw new Error('rose above quality cap ' + gov2.ratio);
     for (let i = 0; i < 60 * 4; i++) gov.update(1 / 60, 20); gov.dispose(); if (gov.ratio !== 1.5 || evs.at(-1)?.why !== 'reset') throw new Error('dispose reset');
     console.log(`  governor: 1.5 → drop @3 s <45 fps → 1.25 → … → floor 0.85 · band 45–58 holds · raise @10 s >58 fps → … → cap 1.5 · cap 1.0 respected · ${evs.length} perf:pixelRatio events · dispose → ${gov.ratio}  OK`);
+    // 1b. BUGFIX B22: Game.setQuality (run on a stub `this` — no WebGL here) + governor re-cap through game:quality
+    {
+      const { EventBus } = await import(pathToFileURL(resolve('src/core/EventBus.js')).href);
+      const CG = await import(pathToFileURL(resolve('src/core/Game.js')).href);
+      const qbus = new EventBus(); const set = []; const mat = new THREE.MeshBasicMaterial(); const sc = new THREE.Scene(); sc.add(new THREE.Mesh(new THREE.BoxGeometry(), mat)); mat.needsUpdate = false;
+      const key = { castShadow: true, shadow: { mapSize: { x: 2048, y: 2048, set(x, y) { this.x = x; this.y = y; } }, map: { dispose() { set.push('mapDispose'); } } } };
+      const stub = { quality: { ...CG.QUALITY.high, name: 'high', antialiasRendered: true }, renderer: { setPixelRatio: (r) => set.push(r), shadowMap: { enabled: true, needsUpdate: false } }, scene: sc, lights: { key }, bus: qbus, resize() { set.push('resize'); } };
+      const gov3 = new PF.PixelRatioGovernor({ ...stub, stats: { fps: 60 }, renderer: { setPixelRatio: (r) => set.push('gov:' + r) } }, { dpr: 2 });
+      const q = CG.Game.prototype.setQuality.call(stub, 'low');
+      if (q.name !== 'low' || stub.renderer.shadowMap.enabled !== false || key.castShadow !== false || !set.includes(1) || !q.antialiasPending) throw new Error('setQuality low ' + JSON.stringify({ q, set }));
+      if (gov3.cap !== 1.0 || gov3.ratio !== 1.0 || !set.includes('gov:1')) throw new Error('governor did not re-cap to low ' + gov3.cap);
+      for (let i = 0; i < 60 * 30; i++) gov3.update(1 / 60, 60); if (gov3.ratio !== 1.0) throw new Error('governor rose above the new cap ' + gov3.ratio);
+      const q2 = CG.Game.prototype.setQuality.call(stub, 'medium');
+      if (q2.name !== 'medium' || stub.renderer.shadowMap.enabled !== true || key.castShadow !== true || key.shadow.mapSize.x !== 1024 || !set.includes('mapDispose') || q2.antialiasPending || gov3.cap !== 1.25) throw new Error('setQuality medium ' + JSON.stringify({ q2, set, cap: gov3.cap }));
+      if (CG.Game.prototype.setQuality.call(stub, 'ultra').name !== 'medium') throw new Error('unknown preset must be a no-op');
+      gov3.dispose(); CG.Game.prototype.setQuality.call(stub, 'high'); if (gov3.cap !== 1.25) throw new Error('disposed governor still listening');
+      console.log(`  B22 setQuality: high → low (DPR 1, shadows off, antialias pending reload) → medium (shadows on, map 1024, map disposed) · unknown = no-op · governor re-caps via game:quality, unsubscribes on dispose  OK`);
+    }
     // 2. memory probe on the real sandbox
     const { SequencePlayer, HitStop } = await import(pathToFileURL(resolve('src/anim/Sequencer.js')).href);
     const { EventBus } = await import(pathToFileURL(resolve('src/core/EventBus.js')).href);

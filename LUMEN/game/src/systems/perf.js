@@ -171,6 +171,17 @@ export class PixelRatioGovernor {
     this.cap = cap;
     this.index = Math.max(0, this.steps.findIndex((s) => s <= cap + 1e-6));   // start at the quality cap (or the first step below it)
     if (this.index < 0) this.index = this.steps.length - 1;
+    this._dpr = dpr;
+    // BUGFIX B22: a quality change at runtime (Game.setQuality) moves the cap — otherwise the governor would raise DPR back above a new 'low' cap.
+    this._offQ = game.bus?.on?.('game:quality', (p) => this.recap(p?.quality?.pixelRatio));
+  }
+  /** Move the cap to a new quality preset and jump to its step. */
+  recap(pixelRatio) {
+    if (!(pixelRatio > 0)) return;
+    this.cap = Math.min(pixelRatio, this._dpr);
+    this.index = Math.max(0, this.steps.findIndex((s) => s <= this.cap + 1e-6)); if (this.index < 0) this.index = this.steps.length - 1;
+    this.lowT = this.highT = 0;
+    const r = this.game.renderer; if (r?.setPixelRatio) r.setPixelRatio(this.ratio);
   }
   get ratio() { return Math.min(this.cap, this.steps[this.index]); }
   /** Feed real seconds per frame; reads game.stats.fps (Core Game updates it every 0.5 s). */
@@ -187,7 +198,7 @@ export class PixelRatioGovernor {
     this.game.bus?.emit?.('perf:pixelRatio', { ratio: this.ratio, why, fps: this.game.stats?.fps });
   }
   /** Back to the quality cap. */
-  dispose() { this.index = Math.max(0, this.steps.findIndex((s) => s <= this.cap + 1e-6)); if (this.changes) this._apply('reset'); }
+  dispose() { this._offQ?.(); this._offQ = null; this.index = Math.max(0, this.steps.findIndex((s) => s <= this.cap + 1e-6)); if (this.changes) this._apply('reset'); }
 }
 
 /** Unique geometries referenced by visible-or-not meshes under `root` (cheap memory-growth probe for P3). */

@@ -427,10 +427,19 @@ function installMenu(lg) {
   on('ui:title', () => { if (lg.state === 'title') return; if (lg.sb && !lg.sb.eco.state.ended && lg.state !== 'ending') lg.save?.write?.(); lg.toTitle('menu'); });
   on('ui:settings', (p) => {
     if (!p) return; lg.settings = p.settings || lg.settings;
-    if (p.key === 'quality') { if (typeof game.setQuality === 'function') game.setQuality(p.value); else if (game.renderer?.setPixelRatio && typeof devicePixelRatio !== 'undefined') game.renderer.setPixelRatio(Math.min(devicePixelRatio, { low: 1, medium: 1.5, high: 2 }[p.value] || 1.5)); }
+    if (p.key === 'quality') applyQuality(lg, p.value);
     if (p.key === 'reduceMotion') applyReduceMotion(lg, !!p.value);
   });
   applyReduceMotion(lg, !!ui?.pause?.settings?.reduceMotion);
+  // BUGFIX B22: the stored quality setting is applied on boot too (was: only on a menu click, and then only the DPR).
+  if (ui?.pause?.settings?.quality) applyQuality(lg, ui.pause.settings.quality);
+}
+// BUGFIX B22: one quality path — Core Game.setQuality applies DPR cap + shadows + shadow-map size (antialias needs a reload: Game reports
+// quality.antialiasPending). Headless Game stubs without setQuality fall back to the DPR-only cap.
+function applyQuality(lg, value) {
+  const { game } = lg; if (!value) return;
+  if (typeof game.setQuality === 'function') game.setQuality(value);
+  else if (game.renderer?.setPixelRatio && typeof devicePixelRatio !== 'undefined') game.renderer.setPixelRatio(Math.min(devicePixelRatio, { low: 1, medium: 1.25, high: 1.5 }[value] || 1.25));
 }
 // BUGFIX B23: Reduce Motion is applied to the run that is live AND to every later run (installRunWires calls this), and it is consumed:
 // camera trauma shake off, hit-stop off, pulses/beams damped (vfx.reduceMotion read by pack2 where present).

@@ -74,7 +74,10 @@ export function mountPause(root, opts = {}) {
   const row = (label, control, hint) => { const r = el('label', 'll-set-row'); r.append(el('span', 'll-set-lab', label), control); if (hint) r.append(el('span', 'll-set-hint', hint)); panel.append(r); return r; };
   const seg = el('div', 'll-seg'); const segBtns = {};
   for (const q of QUALITY_LEVELS) { const b = el('button', 'll-seg-btn'); b.type = 'button'; b.textContent = q; b.dataset.value = q; b.addEventListener('click', () => set('quality', q)); seg.append(b); segBtns[q] = b; }
-  row('Quality', seg, 'low = no shadows, fewer flowers');
+  const qRow = row('Quality', seg, 'low = no shadows, sharper = more pixels');   // BUGFIX B22: hint says what the preset really does
+  const qHint = qRow.querySelector('.ll-set-hint');
+  // antialias cannot change on a live WebGL context: Core Game reports quality.antialiasPending → tell the player a reload finishes the switch
+  offs.push(bus.on('game:quality', (p) => { if (qHint) qHint.textContent = p?.quality?.antialiasPending ? 'smoothing changes after a reload' : 'low = no shadows, sharper = more pixels'; }));
   const range = (key, min, max, step) => { const r = el('input', 'll-range'); r.type = 'range'; r.min = String(min); r.max = String(max); r.step = String(step); r.value = String(settings[key]); r.dataset.key = key; r.addEventListener('input', () => set(key, parseFloat(r.value))); r.addEventListener('change', () => set(key, parseFloat(r.value))); return r; };
   const rOutline = range('outline', 0.02, 0.06, 0.005), rSfx = range('sfx', 0, 1, 0.05), rMusic = range('music', 0, 1, 0.05);
   const vOutline = el('output', 'll-set-val'), vSfx = el('output', 'll-set-val'), vMusic = el('output', 'll-set-val');
