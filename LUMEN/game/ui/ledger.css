@@ -38,6 +38,8 @@
 .ll-ledger-stars i { font-style: normal; font-size: 40px; line-height: 1; color: #cfd8dc; -webkit-text-stroke: 2px var(--ink); opacity: 0; transform: scale(.3) rotate(-20deg); }
 .ll-ledger-stars i.pop { animation: ll-star-pop .38s cubic-bezier(.34,1.56,.64,1) both; }
 .ll-ledger-stars i.on { color: var(--gold); filter: drop-shadow(0 3px 0 var(--gold-dark)); }
+.ll-ledger-stars i .ll-ico { width: 1em; height: 1em; vertical-align: top; }
+.ll-ledger-stars i:not(.on) .ll-ico { filter: grayscale(1) brightness(1.15); opacity: .55; }
 .ll-ledger-startxt { text-align: center; margin: 2px 0 8px; font-size: 12px; font-weight: 800; opacity: 0; transition: opacity .3s; min-height: 14px; }
 .ll-ledger-startxt.in { opacity: 1; }
 

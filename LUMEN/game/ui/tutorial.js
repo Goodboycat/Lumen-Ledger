@@ -20,9 +20,10 @@
 //     ui.isModal() already treats ui.tutorial.isOpen as a screen-blocking window; seasons.js defers its banner until close).
 // Motion: shade fade 200 ms · hole/ring glide 220 ms outCubic · hand bob 0.9 s loop · card pop 260 ms outBack.
 
+import { iconize, icon } from './icons.js';
 import { bus as defaultBus } from '../src/core/EventBus.js';
 
-const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = iconize(html); return e; };
 const vw = () => (typeof window !== 'undefined' && window.innerWidth) || 1280;
 const vh = () => (typeof window !== 'undefined' && window.innerHeight) || 720;
 const isTouch = () => !!(typeof document !== 'undefined' && document.body?.classList?.contains('is-touch'));
@@ -112,10 +113,10 @@ export function mountTutorial(root, opts = {}) {
     const s = step(); prep(s);
     const keys = usesKeys(s);
     cCount.textContent = `${st.i + 1} / ${steps.length}`;
-    cTitle.innerHTML = s.title;
-    cText.innerHTML = keys && s.keysText ? s.keysText : s.text;
+    cTitle.innerHTML = iconize(s.title);
+    cText.innerHTML = iconize(keys && s.keysText ? s.keysText : s.text);
     bBack.style.visibility = st.i > 0 ? 'visible' : 'hidden';
-    bNext.textContent = st.i === steps.length - 1 ? 'Let\'s go! ✓' : 'Next ▸';
+    bNext.innerHTML = iconize(st.i === steps.length - 1 ? 'Let\'s go! ✓' : 'Next ▸');
     bSkip.style.display = st.i === steps.length - 1 ? 'none' : '';
     chip.innerHTML = keys ? s.keys.split(' ').map((k) => `<kbd>${k}</kbd>`).join('') : '';
     chip.classList.toggle('on', !!keys);

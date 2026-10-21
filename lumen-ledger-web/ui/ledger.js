@@ -16,6 +16,7 @@
 //   number count-up 650 ms outCubic per row, started with the row · stars pop 380 ms outBack, 220 ms apart, after the rows ·
 //   lesson card slide-up 320 ms outBack after stars · CONTINUE button bounce 300 ms outBack when everything is in · hide: shrink 180 ms inQuad.
 
+import { iconize, icon } from './icons.js';
 import { bus as defaultBus } from '../src/core/EventBus.js';
 
 /** Fallback lesson cards keyed by Economy lessonId (8A owns the real text in data/story.json → story:lesson). */
@@ -32,7 +33,7 @@ export const LESSONS = {
   planningForAGoal:     { title: 'Planning for a Goal',   lesson: 'Name the goal, price it, split it into seasons. The Lighthouse is just a plan with a deadline.',    tip: 'Goal ÷ seasons left = this season\'s target.' },
 };
 
-const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = iconize(html); return e; };
 const fmt = (n) => (n < 0 ? '−' : '') + Math.abs(Math.round(n)).toLocaleString('en-US');
 const outCubic = (t) => 1 - Math.pow(1 - t, 3);
 
@@ -115,7 +116,7 @@ export function mountLedger(root, opts = {}) {
       st.outcome = o.outcome || st.outcome || 'season';
       wrap.classList.remove('closing', 'win', 'lose'); wrap.classList.add('open'); st.open = true;
       if (st.outcome !== 'season') wrap.classList.add(st.outcome);
-      title.textContent = st.outcome === 'win' ? '✦ The Lighthouse is lit!' : st.outcome === 'lose' ? 'Fogged out…' : `Season ${season} Ledger`;
+      title.innerHTML = iconize(st.outcome === 'win' ? '✦ The Lighthouse is lit!' : st.outcome === 'lose' ? 'Fogged out…' : `Season ${season} Ledger`);
       sub.textContent = st.outcome === 'win' ? `Debt Fog pushed off the island in ${season} seasons` : st.outcome === 'lose'
         ? (report.reason === 'debt' ? 'the Baron owns the market' : 'the Debt Fog covered the Lighthouse') : season >= seasonsToWin ? 'last season before the Lighthouse' : `${seasonsToWin - season} season${seasonsToWin - season === 1 ? '' : 's'} to the Lighthouse`;
       // rows
@@ -144,7 +145,7 @@ export function mountLedger(root, opts = {}) {
       lesson.classList.remove('in'); later(rowsEnd() + STAR_GAP * 3 + 120, () => lesson.classList.add('in'));
       // button
       btn.classList.remove('in'); btn.disabled = true; later(rowsEnd() + STAR_GAP * 3 + 420, () => { btn.classList.add('in'); btn.disabled = false; });
-      btn.textContent = st.outcome === 'win' ? 'ENDLESS MODE ▸' : st.outcome === 'lose' ? 'TRY AGAIN ▸' : 'CONTINUE ▸';
+      btn.innerHTML = iconize(st.outcome === 'win' ? 'ENDLESS MODE ▸' : st.outcome === 'lose' ? 'TRY AGAIN ▸' : 'CONTINUE ▸');
       bus.emit('ui:ledger:open', { season, stars: starsN });
       return api;
     },

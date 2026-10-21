@@ -14,9 +14,10 @@
 // Listens: eco:tick {day01, season} · eco:season (report) · game:start · ui:continue · game:title · ui:tutorial:open/close
 // Emits:   ui:pause {on, by:'season'} · ui:season:open / ui:season:close
 
+import { iconize, icon } from './icons.js';
 import { bus as defaultBus } from '../src/core/EventBus.js';
 
-const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = iconize(html); return e; };
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 export const LESSON_ORDER = ['budgeting', 'needsVsWants', 'emergencyFund', 'goodVsBadInterest', 'scams', 'compoundGrowth', 'insurance', 'diversification', 'delayedGratification', 'planningForAGoal'];
 const LESSON_ICON = { budgeting: '🫙', needsVsWants: '🤔', emergencyFund: '☂️', goodVsBadInterest: '📈', scams: '🎩', compoundGrowth: '🌱', insurance: '🛡️', diversification: '🧺', delayedGratification: '⏳', planningForAGoal: '🗼' };
@@ -67,7 +68,7 @@ export function mountSeasonInfo(root, opts = {}) {
   function renderCard() {
     const n = st.season, L = lessonFor(n), left = (1 - st.day01) * st.seasonSeconds;
     const list = LESSON_ORDER.map((id, i) => { const x = lessons[id] || {}; const cls = i + 1 < n ? 'done' : (i + 1 === n ? 'now' : ''); return `<li class="${cls}"><b>${i + 1}</b> ${LESSON_ICON[id] || ''} ${esc(x.title || id)}</li>`; }).join('');
-    card.innerHTML = `
+    card.innerHTML = iconize(`
       <header class="ll-sc-head"><span class="ll-sc-big">${L.icon}</span><div><small>${st.endless || n > seasonsToWin ? `Endless · Season ${n}` : `Season ${n} of ${seasonsToWin}`}${L.chapter ? ' · ' + esc(L.chapter) : ''}</small><h2>${esc(L.title)}</h2></div><button class="ll-sc-x" type="button" aria-label="close">✕</button></header>
       <div class="ll-sc-body">
         <p class="ll-sc-lesson">${esc(L.text)}</p>
@@ -85,13 +86,13 @@ export function mountSeasonInfo(root, opts = {}) {
         <h3>The ${seasonsToWin} lessons</h3>
         <ol class="ll-sc-list">${list}</ol>
       </div>
-      <footer class="ll-sc-foot"><button class="ll-sc-ok" type="button">Back to the island ▶</button></footer>`;
+      <footer class="ll-sc-foot"><button class="ll-sc-ok" type="button">Back to the island ▶</button></footer>`);
     card.querySelector('.ll-sc-x').addEventListener('click', () => api.close());
     card.querySelector('.ll-sc-ok').addEventListener('click', () => api.close());
   }
   function renderTag() {
     const L = lessonFor(st.season);
-    tag.innerHTML = `${L.icon} ${esc(L.title)} <span>ⓘ</span>`;
+    tag.innerHTML = iconize(`${L.icon} ${esc(L.title)} <span>ⓘ</span>`);
   }
 
   const api = {
@@ -107,8 +108,8 @@ export function mountSeasonInfo(root, opts = {}) {
       st.season = n; hookPill(); renderTag();
       const L = lessonFor(n);
       bTop.textContent = st.endless || n > seasonsToWin ? `Endless · Season ${n}` : `Season ${n} / ${seasonsToWin}${L.chapter ? ' · ' + L.chapter : ''}`;
-      bTitle.innerHTML = `${L.icon} This season: <b>${esc(L.title)}</b>`;
-      bTip.textContent = L.tip ? '💡 ' + L.tip : L.text;
+      bTitle.innerHTML = iconize(`${L.icon} This season: <b>${esc(L.title)}</b>`);
+      bTip.innerHTML = L.tip ? icon('bulb') + ' ' + esc(L.tip) : esc(L.text);
       banner.classList.remove('on'); void banner.offsetWidth; banner.classList.add('on');
       clearTimeout(st.bannerT); st.bannerT = setTimeout(() => api.hideBanner(), opts.bannerMs ?? 7000);
       return api;

@@ -20,9 +20,10 @@
 // Motion table: base fade-in 120 ms · knob spring back 180 ms outBack (CSS transition, only when released) · button press: translateY(4px) +
 //   shadow 6→2 px instantly, release 140 ms outBack · build button pulse 1.2 s loop when `setBadge('build','!')`.
 
+import { iconize, icon } from './icons.js';
 import { bus as defaultBus } from '../src/core/EventBus.js';
 
-const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = iconize(html); return e; };
 
 export const TOUCH_BUTTONS = {
   attack:   { icon: '⚔', label: 'Attack',   cls: 'attack',   repeat: 220 },

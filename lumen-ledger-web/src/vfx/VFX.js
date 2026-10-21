@@ -6,6 +6,7 @@
 //  - HitSpark: small star burst at impact
 // VFX Pack chat extends this file's patterns (coin burst, confetti, fog shader…).
 import * as THREE from '../../vendor/three.module.js';
+import { drawIconOnCanvas, iconName } from '../../ui/icons.js';
 import { G } from '../assets/geo.js';
 import { flatMat, toonMat, PALETTE as P } from '../core/Toon.js';
 import { Easing } from '../anim/Easing.js';
@@ -163,8 +164,18 @@ export class PopTextPool {
     const it = this.items.find((i) => i.life <= 0) || this.items.reduce((a, b) => (b.life < a.life ? b : a));   // reuse the OLDEST, not always #0
     const c = it.ctx; c.clearRect(0, 0, 256, 96);
     c.font = 'bold 56px "Baloo 2", "Arial Rounded MT Bold", Arial, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.lineWidth = 12; c.strokeStyle = '#263238'; c.lineJoin = 'round'; c.strokeText(text, 128, 50);
-    c.fillStyle = color; c.fillText(text, 128, 50);
+    // procedural icons: ★ ✦ ✓ ✗ inside a pop text are DRAWN (ui/icons.js drawIconOnCanvas), not printed as glyphs
+    const parts = String(text).split(/([★✦✓✗✔✕])/u).filter((x) => x !== '');
+    const ICO = 50, gap = 4; const widths = parts.map((x) => (iconName(x) ? ICO + gap : c.measureText(x).width));
+    const total = widths.reduce((a, b) => a + b, 0); const k = total > 244 ? 244 / total : 1;
+    c.save(); c.translate(128, 0); c.scale(k, 1); c.translate(-128, 0);
+    let x = 128 - total / 2;
+    parts.forEach((t, i) => {
+      if (iconName(t)) drawIconOnCanvas(c, t, x + ICO / 2 + gap / 2, 50, ICO);
+      else { c.textAlign = 'left'; c.lineWidth = 12; c.strokeStyle = '#263238'; c.lineJoin = 'round'; c.strokeText(t, x, 50); c.fillStyle = color; c.fillText(t, x, 50); }
+      x += widths[i];
+    });
+    c.restore();
     it.tex.needsUpdate = true;
     it.sp.position.copy(pos); it.sp.position.y += 1.6; it.base = it.sp.position.y;
     it.sp.visible = true; it.life = it.dur = dur; it.size = size; it.sp.material.opacity = 1;

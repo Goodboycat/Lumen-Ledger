@@ -17,6 +17,7 @@
 //
 // Motion: tray-in 380 ms outBack · card stagger 22 ms × index, 320 ms outBack · denied shake 360 ms · placing banner 300 ms outBack.
 
+import { iconize, icon } from './icons.js';
 import { bus as defaultBus } from '../src/core/EventBus.js';
 
 export const ICONS = {
@@ -31,7 +32,7 @@ export const ICONS = {
 };
 export const CATEGORY_LABELS = { stall: 'Stalls', decor: 'Decor', nature: 'Nature', landmark: 'Landmarks' };
 
-const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = iconize(html); return e; };
 
 export function mountBuildMenu(root, opts = {}) {
   const bus = opts.bus || defaultBus;
@@ -92,7 +93,7 @@ export function mountBuildMenu(root, opts = {}) {
     refreshCards();
   }
   function refreshCards() {
-    sparkEl.textContent = `✦ ${st.spark}`;
+    sparkEl.innerHTML = iconize(`✦ ${st.spark}`);
     for (const [id, card] of cards) {
       const e = catalog[id]; const locked = st.locked.has(id);
       card.classList.toggle('poor', !locked && !affordable(e.cost));
@@ -115,15 +116,15 @@ export function mountBuildMenu(root, opts = {}) {
     wrap.classList.toggle('has-detail', !!e); if (!e) return;
     const cost = e.cost || 0, n = typeof api.placedInfo === 'function' ? placedOf(id).length : (st.counts[id] || 0);
     detIcon.textContent = iconFn(id, e);
-    detInfo.innerHTML = `<b>${e.name || id}</b><small>${cost ? cost + ' ✦' : 'free'} · ${(e.footprint || [1, 1]).join('×')}${n ? ` · ${n} placed` : ''}</small>`;
+    detInfo.innerHTML = iconize(`<b>${e.name || id}</b><small>${cost ? cost + ' ✦' : 'free'} · ${(e.footprint || [1, 1]).join('×')}${n ? ` · ${n} placed` : ''}</small>`);
     const poor = !affordable(cost);
-    deployBtn.disabled = poor; deployBtn.classList.toggle('poor', poor); deployBtn.innerHTML = poor ? `🚀 need ${cost} ✦` : '🚀 Deploy';
+    deployBtn.disabled = poor; deployBtn.classList.toggle('poor', poor); deployBtn.innerHTML = iconize(poor ? `🚀 need ${cost} ✦` : '🚀 Deploy');
     const isStall = e.category === 'stall';
     upBtn.style.display = isStall ? '' : 'none';
     if (isStall) {
       const u = upgradeInfo(id);
       upBtn.disabled = !u.can || u.poor; upBtn.classList.toggle('poor', !!u.poor);
-      upBtn.innerHTML = u.can ? `⬆ Upgrade L${u.lvl}→${u.to}${u.cost != null ? ` · ${u.cost} ✦` : ''}` : `⬆ ${u.why}`;
+      upBtn.innerHTML = iconize(u.can ? `⬆ Upgrade L${u.lvl}→${u.to}${u.cost != null ? ` · ${u.cost} ✦` : ''}` : `⬆ ${u.why}`);
     }
   }
 
@@ -142,7 +143,7 @@ export function mountBuildMenu(root, opts = {}) {
       if (st.locked.has(id)) { if (card) retrigger(card, 'denied'); footTxt.textContent = 'locked — finish the lesson first'; return api; }
       if (st.selected === id && opts.tapAgainDeploys) return api.deploy(id);
       st.selected = id; st.demolish = false; demolishBtn.classList.remove('on'); refreshCards();
-      footTxt.textContent = e.category === 'stall' ? `${e.name}: 🚀 deploy a new one or ⬆ upgrade yours` : `${e.name}: 🚀 deploy to place it`;
+      footTxt.innerHTML = iconize(e.category === 'stall' ? `${e.name}: 🚀 deploy a new one or ⬆ upgrade yours` : `${e.name}: 🚀 deploy to place it`);
       bus.emit('ui:build', { id, cost: e.cost || 0, action: 'pick', footprint: e.footprint });
       return api;
     },
@@ -151,9 +152,9 @@ export function mountBuildMenu(root, opts = {}) {
       const e = catalog[id]; if (!e) return api;
       const card = cards.get(id);
       if (st.locked.has(id)) { if (card) retrigger(card, 'denied'); footTxt.textContent = 'locked — finish the lesson first'; return api; }
-      if (!affordable(e.cost)) { if (card) retrigger(card, 'denied'); footTxt.textContent = `need ${e.cost} ✦ (have ${st.spark})`; bus.emit('ui:build', { id, cost: e.cost || 0, action: 'denied', why: 'cannot afford' }); return api; }
+      if (!affordable(e.cost)) { if (card) retrigger(card, 'denied'); footTxt.innerHTML = iconize(`need ${e.cost} ✦ (have ${st.spark})`); bus.emit('ui:build', { id, cost: e.cost || 0, action: 'denied', why: 'cannot afford' }); return api; }
       st.selected = id; st.demolish = false; demolishBtn.classList.remove('on'); refreshCards();
-      footTxt.textContent = (document.body?.classList?.contains('is-touch') ? `${e.name}: tap / drag on the ground (or walk Pip) to move it · ✓ place` : `${e.name}: click the ground to place · R rotate · Esc cancel`);
+      footTxt.innerHTML = iconize((document.body?.classList?.contains('is-touch') ? `${e.name}: tap / drag on the ground (or walk Pip) to move it · ✓ place` : `${e.name}: click the ground to place · R rotate · Esc cancel`));
       bus.emit('ui:build', { id, cost: e.cost || 0, action: 'select', footprint: e.footprint });
       return api;
     },
@@ -166,10 +167,10 @@ export function mountBuildMenu(root, opts = {}) {
     cancel() { st.selected = null; st.demolish = false; demolishBtn.classList.remove('on'); api.setPlacing(null); refreshCards(); bus.emit('ui:build', { action: 'cancel' }); return api; },
     setPlacing(id) {
       st.placing = id; wrap.classList.toggle('placing', !!id);
-      if (id) { const e = catalog[id] || {}; placingTxt.textContent = `${iconFn(id, e)} ${e.name || id} · ${e.cost || 0} ✦`; }
+      if (id) { const e = catalog[id] || {}; placingTxt.innerHTML = iconize(`${iconFn(id, e)} ${e.name || id} · ${e.cost || 0} ✦`); }
       return api;
     },
-    setGhostOk(ok) { okBtn.classList.toggle('ok', !!ok); okBtn.classList.toggle('no', !ok); okBtn.textContent = ok ? '✓ place' : '✕ blocked'; return api; },
+    setGhostOk(ok) { okBtn.classList.toggle('ok', !!ok); okBtn.classList.toggle('no', !ok); okBtn.innerHTML = iconize(ok ? '✓ place' : '✕ blocked'); return api; },
     setSpark(n) { st.spark = Math.round(+n || 0); refreshCards(); return api; },
     setLocked(id, on = true) { on ? st.locked.add(id) : st.locked.delete(id); refreshCards(); return api; },
     setUnlocked(ids) { for (const id of ids || []) st.locked.delete(id); refreshCards(); return api; },
@@ -204,7 +205,7 @@ export function mountBuildMenu(root, opts = {}) {
     bus.on('build:ghost', (p) => { api.setGhostOk(p && p.ok); }),
     bus.on('build:placed', (p) => { if (p && p.id) { st.counts[p.id] = (st.counts[p.id] || 0) + 1; track(p, true); } api.setPlacing(null); refreshCards(); }),
     bus.on('build:removed', (p) => { if (p && p.id) { st.counts[p.id] = Math.max(0, (st.counts[p.id] || 0) - 1); track(p, false); } refreshCards(); }),
-    bus.on('build:upgraded', (p) => { if (p && p.id) track(p, true); footTxt.textContent = p && p.level ? `⬆ upgraded to L${p.level}!` : footTxt.textContent; refreshCards(); }),
+    bus.on('build:upgraded', (p) => { if (p && p.id) track(p, true); if (p && p.level) footTxt.innerHTML = iconize(`⬆ upgraded to L${p.level}!`); refreshCards(); }),
     bus.on('build:denied', (p) => { const id = (p && p.id) || st.selected || st.placing; const c = id && cards.get(id); if (c) retrigger(c, 'denied'); footTxt.textContent = 'denied: ' + ((p && p.why) || '?'); }),
     bus.on('ui:unlock', (p) => { if (p && p.ids) api.setUnlocked(p.ids); }),
     bus.on('build:loaded', () => refreshCards()),

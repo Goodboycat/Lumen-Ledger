@@ -26,7 +26,7 @@
 .ll-card-fp { position: absolute; top: 3px; right: 4px; font-size: 8px; font-weight: 800; opacity: .55; }
 .ll-card.poor { opacity: .6; } .ll-card.poor .ll-card-cost { background: #ffcdd2; color: #b71c1c; }
 .ll-card.locked { opacity: .5; filter: grayscale(.8); cursor: not-allowed; }
-.ll-card.locked::after { content: '🔒'; position: absolute; left: 4px; top: 2px; font-size: 11px; }
+.ll-card.locked::after { content: var(--ll-ico-lock); line-height: 0; position: absolute; left: 4px; top: 2px; font-size: 11px; }
 .ll-card.locked .ll-card-cost::before { content: ''; }
 .ll-card.denied { animation: ll-shake .36s linear; }
 .ll-card-count { position: absolute; left: 4px; bottom: 4px; font-size: 9px; font-weight: 900; background: var(--blue); border: 2px solid var(--ink); border-radius: 999px; padding: 0 4px; display: none; }

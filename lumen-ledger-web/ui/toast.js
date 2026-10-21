@@ -14,9 +14,10 @@
 //
 // Motion: slide-in from top 320 ms outBack · progress bar = duration linear · exit 200 ms inQuad (shrink + fade) · stack re-layout via CSS transition 220 ms.
 
+import { iconize, icon } from './icons.js';
 import { bus as defaultBus } from '../src/core/EventBus.js';
 
-const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = iconize(html); return e; };
 const ICON = { ok: '✔', info: 'ℹ', warn: '⚠', bad: '✖', gold: '✦' };
 
 export function mountToast(root, opts = {}) {

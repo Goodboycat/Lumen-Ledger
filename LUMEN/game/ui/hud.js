@@ -14,9 +14,10 @@
 // Motion table (CSS keyframes, see hud.css): ribbon bounce-in 500 ms outBack · spark pulse 320 ms outBack on gain ·
 // shake 360 ms on denied/loss · "+N" float 900 ms outQuad · fog bar width 600 ms outExpo · spark count-up: exp damp k=9 (≈ 350 ms to settle).
 
+import { iconize, icon } from './icons.js';
 import { bus as defaultBus } from '../src/core/EventBus.js';
 
-const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = iconize(html); return e; };
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 export function mountHUD(root, opts = {}) {
@@ -28,7 +29,7 @@ export function mountHUD(root, opts = {}) {
   // ---------------------------------------------------------------- DOM
   const hud = el('header', 'll-hud'); hud.id = 'll-hud';
   const spark = el('div', 'll-spark');
-  spark.append(el('div', 'll-spark-coin', '✦'));
+  spark.append(el('div', 'll-spark-coin', icon('glint')));
   const sparkCol = el('div', 'll-spark-col');
   const sparkVal = el('span', 'll-spark-val', '0');
   const sparkSub = el('span', 'll-spark-sub', 'SPARK');
@@ -131,7 +132,7 @@ export function mountHUD(root, opts = {}) {
     bus.on('eco:loan', (p) => { if (p && p.debt != null) api.setDebt(p.debt); }),
     bus.on('eco:denied', () => { retrigger(spark, 'shake'); }),
     bus.on('eco:tick', (p) => { if (p && p.day01 != null) api.setDay(p.day01); if (p && p.season != null && p.season !== st.season) api.setSeason(p.season); }),
-    bus.on('eco:win', () => { api.setFog(0); seasonTxt.textContent = '✦ Lighthouse lit!'; }),
+    bus.on('eco:win', () => { api.setFog(0); seasonTxt.innerHTML = iconize('✦ Lighthouse lit!'); }),
     bus.on('eco:lose', () => { seasonTxt.textContent = 'Fogged out…'; }),
   ];
 

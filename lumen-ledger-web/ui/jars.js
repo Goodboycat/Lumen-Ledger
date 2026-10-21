@@ -13,6 +13,7 @@
 //
 // Motion: slider fill is a CSS gradient var(--pct); jar icon liquid height 350 ms outExpo; slosh 450 ms outBack on change.
 
+import { iconize, icon } from './icons.js';
 import { bus as defaultBus } from '../src/core/EventBus.js';
 
 export const JAR_ORDER = ['spend', 'save', 'invest', 'protect'];
@@ -28,7 +29,7 @@ export const JAR_PRESETS = {
   grower:   { spend: 30, save: 20, invest: 40, protect: 10 },
 };
 
-const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = iconize(html); return e; };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /**
@@ -70,7 +71,7 @@ export function mountJars(root, opts = {}) {
   const total = el('span', 'll-jars-total', '100 %'); const caret = el('span', 'll-caret', '▾');
   head.append(title, total, caret);
   panel.append(head);
-  head.addEventListener('click', () => { panel.classList.toggle('collapsed'); caret.textContent = panel.classList.contains('collapsed') ? '▸' : '▾'; });
+  head.addEventListener('click', () => { panel.classList.toggle('collapsed'); caret.innerHTML = iconize(panel.classList.contains('collapsed') ? '▸' : '▾'); });
 
   const rows = {};
   for (const k of JAR_ORDER) {
@@ -106,7 +107,7 @@ export function mountJars(root, opts = {}) {
       r.input.style.setProperty('--pct', v + '%');
       r.pctEl.textContent = v + '%';
       r.liquid.style.height = (12 + v * 0.86) + '%';
-      r.bal.textContent = (st.balances[k] || 0) + ' ✦';
+      r.bal.innerHTML = iconize((st.balances[k] || 0) + ' ✦');
       r.row.classList.toggle('locked', !!st.locked[k]);
       if (changed === k || changed === '*') retrigger(r.icon, 'pop');
     }
@@ -129,7 +130,7 @@ export function mountJars(root, opts = {}) {
     setBalances(jars) { if (!jars) return api; for (const k of JAR_ORDER) if (jars[k] != null) st.balances[k] = Math.round(jars[k]); render(null); return api; },
     lock(k, on = true) { if (JAR_ORDER.includes(k)) { st.locked[k] = !!on; render(null); } return api; },
     apply() { st.dirty = false; render(null); bus.emit('ui:jar:apply', { pct: { ...st.pct } }); retrigger(panel, 'll-apply'); return api; },
-    setCollapsed(on) { panel.classList.toggle('collapsed', !!on); caret.textContent = on ? '▸' : '▾'; return api; },
+    setCollapsed(on) { panel.classList.toggle('collapsed', !!on); caret.innerHTML = iconize(on ? '▸' : '▾'); return api; },
     destroy() { offs.forEach((f) => f()); panel.remove(); },
   };
   const offs = [

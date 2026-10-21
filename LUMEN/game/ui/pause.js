@@ -17,9 +17,10 @@
 // Motion table (CSS, pause.css): backdrop 180 ms · sheet drop-in 360 ms outBack · buttons stagger 60 ms · settings expand 240 ms outCubic ·
 //   "Sure?" shake 300 ms · close 200 ms inQuad.
 
+import { iconize, icon } from './icons.js';
 import { bus as defaultBus } from '../src/core/EventBus.js';
 
-const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = iconize(html); return e; };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 export const DEFAULT_SETTINGS = { quality: 'medium', outline: 0.035, sfx: 0.8, music: 0.6, reduceMotion: false };

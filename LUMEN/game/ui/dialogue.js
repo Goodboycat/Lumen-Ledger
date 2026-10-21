@@ -17,6 +17,7 @@
 // Motion: box slide-up 320 ms outBack · portrait pop 380 ms outBack · typewriter cps (default 45 chars/s, punctuation pause ×6 for . ! ? and ×3 for ,) ·
 //   portrait bob while typing (talk) · choices stagger 70 ms × i (240 ms outBack) · hide: slide-down 200 ms inQuad.
 
+import { iconize, icon } from './icons.js';
 import { bus as defaultBus } from '../src/core/EventBus.js';
 
 export const SPEAKERS = {
@@ -29,7 +30,7 @@ export const SPEAKERS = {
   narrator: { name: '',           cls: 'narrator', initial: '' },
 };
 
-const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = iconize(html); return e; };
 
 export function mountDialogue(root, opts = {}) {
   const bus = opts.bus || defaultBus;

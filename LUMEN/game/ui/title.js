@@ -18,9 +18,10 @@
 // Motion table (CSS, title.css): panel fade 260 ms · logo letters 420 ms outBack stagger 60 ms · lantern swing 2.4 s loop · buttons slide-up
 //   380 ms outBack stagger 90 ms (after 500 ms) · press: translateY 4px instant, release 140 ms outBack · hide: 320 ms fade + zoom 1.04.
 
+import { iconize, icon } from './icons.js';
 import { bus as defaultBus } from '../src/core/EventBus.js';
 
-const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = iconize(html); return e; };
 
 export const TITLE_MODES = {
   story:    { icon: '▶', label: 'PLAY',     sub: 'New story · 10 seasons', cls: 'play', key: 'Enter' },
