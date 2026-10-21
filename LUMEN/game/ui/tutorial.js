@@ -159,26 +159,50 @@ export function mountTutorial(root, opts = {}) {
     const box = { left: px(L), top: px(T), width: px(R - L), height: px(B - T) };
     Object.assign(ring.style, box, { display: 'block' });
     Object.assign(cover.style, box, { display: wrap.classList.contains('act') ? 'none' : 'block' });
-    // hand: below the target pointing up, or above it pointing down when the target sits low on the screen
-    const cx = (L + R) / 2, low = (T + B) / 2 > H * 0.55;
+    // hand + card placement. The hand sits on one side of the hole (below ↑ / above ↓ / right ← / left →) and the card must cover
+    // NEITHER the hole NOR the hand. Search: hand sides (natural one first) × card widths (full → compact) × card positions; the first
+    // layout with zero overlap wins, otherwise the one with the least overlap. Works on tall portrait phones and short landscape ones.
+    const cx = (L + R) / 2, cy = (T + B) / 2, low = cy > H * 0.55;
+    const HS = 52, m = 8;                                                   // hand box size · screen margin
+    const handAt = (side) => {
+      if (side === 'below') return { side, x: Math.max(HS / 2 + 2, Math.min(W - HS / 2 - 2, cx)) - HS / 2, y: Math.min(H - HS - 2, B + 4) };
+      if (side === 'above') return { side, x: Math.max(HS / 2 + 2, Math.min(W - HS / 2 - 2, cx)) - HS / 2, y: Math.max(2, T - HS - 2) };
+      if (side === 'right') return { side, x: Math.min(W - HS - 2, R + 4), y: Math.max(2, Math.min(H - HS - 2, cy - HS / 2)) };
+      return { side, x: Math.max(2, L - HS - 4), y: Math.max(2, Math.min(H - HS - 2, cy - HS / 2)) };
+    };
+    const sideFits = (s) => (s === 'below' ? B + HS + 4 <= H : s === 'above' ? T - HS - 2 >= 0 : s === 'right' ? R + HS + 4 <= W : L - HS - 4 >= 0);
+    const sides = (low ? ['above', 'below'] : ['below', 'above']).concat(cx > W / 2 ? ['left', 'right'] : ['right', 'left']).filter(sideFits);
+    if (!sides.length) sides.push(low ? 'above' : 'below');
+    const area = (a, b) => Math.max(0, Math.min(a.r, b.r) - Math.max(a.l, b.l)) * Math.max(0, Math.min(a.b, b.b) - Math.max(a.t, b.t));
+    const holeBox = { l: L, t: T, r: R, b: B };
+    const full = Math.min(420, W - m * 2);
+    const widths = [full, Math.min(full, 340), Math.min(full, 280), Math.min(full, 240)].filter((w, k, a) => a.indexOf(w) === k);
+    let best = null;
+    outer: for (const cw of widths) {
+      card.style.width = px(cw); card.classList.toggle('compact', cw < 300);
+      const ch = card.offsetHeight || 170;
+      const clampX = (x) => Math.max(m, Math.min(W - cw - m, x)), clampY = (y) => Math.max(m, Math.min(H - ch - m, y));
+      for (const side of sides) {
+        const h = handAt(side), hb = { l: h.x, t: h.y, r: h.x + HS, b: h.y + HS };
+        const u = { l: Math.min(L, hb.l), t: Math.min(T, hb.t), r: Math.max(R, hb.r), b: Math.max(B, hb.b) };   // hole ∪ hand
+        const cxL = clampX(cx - cw / 2), cyM = clampY(cy - ch / 2);
+        const cands = [[cxL, clampY(u.b + 8)], [cxL, clampY(u.t - ch - 8)], [clampX(u.r + 8), cyM], [clampX(u.l - cw - 8), cyM],
+          [m, m], [W - cw - m, m], [m, H - ch - m], [W - cw - m, H - ch - m], [clampX(u.r + 8), m], [clampX(u.l - cw - 8), m],
+          [clampX(u.r + 8), H - ch - m], [clampX(u.l - cw - 8), H - ch - m]];
+        for (const [x, y] of cands) {
+          const cb = { l: x, t: y, r: x + cw, b: y + ch };
+          const cost = area(cb, holeBox) * 2 + area(cb, hb);
+          if (!best || cost < best.cost) best = { cost, x, y, cw, h };
+          if (cost === 0) break outer;
+        }
+      }
+    }
+    card.style.width = px(best.cw); card.classList.toggle('compact', best.cw < 300);
+    Object.assign(card.style, { left: px(best.x), top: px(best.y), bottom: 'auto', transform: 'none' });
     hand.style.display = 'block';
-    hand.classList.toggle('down', low);
-    const hx = Math.max(24, Math.min(W - 24, cx));
-    if (low) Object.assign(hand.style, { left: px(hx), top: px(Math.max(4, T - 54)) });
-    else Object.assign(hand.style, { left: px(hx), top: px(Math.min(H - 54, B + 4)) });
-    // card: never covers the hole or the hand. Try below/above the target first, then beside it (short landscape phones).
-    const cw = Math.min(420, W * 0.92); card.style.width = px(cw);
-    const ch = card.offsetHeight || 170, gap = 62, m = 8;
-    const hole = { l: L, t: low ? T - gap : T, r: R, b: low ? B : B + gap };          // hole + hand area
-    const hit = (x, y) => !(x + cw <= hole.l || x >= hole.r || y + ch <= hole.t || y >= hole.b);
-    const clampX = (x) => Math.max(m, Math.min(W - cw - m, x)), clampY = (y) => Math.max(m, Math.min(H - ch - m, y));
-    const cands = [];
-    const cxL = clampX(cx - cw / 2);
-    if (low) cands.push([cxL, clampY(T - gap - ch - 6)], [cxL, clampY(B + 10)]); else cands.push([cxL, clampY(B + gap + 6)], [cxL, clampY(T - ch - 10)]);
-    cands.push([clampX(R + 14), clampY((T + B) / 2 - ch / 2)], [clampX(L - cw - 14), clampY((T + B) / 2 - ch / 2)]);
-    cands.push([m, m], [W - cw - m, m], [m, H - ch - m], [W - cw - m, H - ch - m]);
-    const pick = cands.find(([x, y]) => !hit(x, y)) || cands[0];
-    Object.assign(card.style, { left: px(pick[0]), top: px(pick[1]), bottom: 'auto', transform: 'none' });
+    hand.classList.remove('down', 'left', 'right'); hand.classList.add(best.h.side === 'above' ? 'down' : best.h.side === 'right' ? 'left' : best.h.side === 'left' ? 'right' : 'up');
+    Object.assign(hand.style, { left: px(best.h.x + HS / 2), top: px(best.h.y) });
+    st.layout = { card: { l: best.x, t: best.y, w: best.cw }, hand: best.h, hole: holeBox, overlap: best.cost };
   }
 
   // ---------------------------------------------------------------- input lock (keyboard) — pointer lock = the shades
