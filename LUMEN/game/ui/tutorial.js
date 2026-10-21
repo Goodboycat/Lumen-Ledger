@@ -80,7 +80,7 @@ export function mountTutorial(root, opts = {}) {
   bSkip.type = bBack.type = bNext.type = 'button';
   cRow.append(bSkip, bBack, bNext);
   card.append(cTop, cTitle, cText, cRow);
-  wrap.append(ring, chip, cover, hand, card);
+  wrap.append(ring, chip, cover, card, hand);
   root.appendChild(wrap);
 
   // ---------------------------------------------------------------- state
@@ -117,7 +117,7 @@ export function mountTutorial(root, opts = {}) {
     wrap.classList.toggle('act', s.mode === 'act' && !keys);
     wrap.classList.toggle('has-target', !!s.target);
     // action steps (Build) hide Next only while the real control is there to be tapped
-    const actionLock = s.action && !keys && !!findVisible(root, s.target);
+    const actionLock = !!(s.action && !keys && findVisible(root, s.target));
     bNext.style.display = actionLock ? 'none' : '';
     cText.classList.toggle('waiting', actionLock);
     card.classList.remove('pop'); void card.offsetWidth; card.classList.add('pop');
@@ -166,12 +166,19 @@ export function mountTutorial(root, opts = {}) {
     const hx = Math.max(24, Math.min(W - 24, cx));
     if (low) Object.assign(hand.style, { left: px(hx), top: px(Math.max(4, T - 54)) });
     else Object.assign(hand.style, { left: px(hx), top: px(Math.min(H - 54, B + 4)) });
-    // card: opposite half of the screen from the target, never covering the hole
-    const cw = Math.min(420, W * 0.92);
-    const cardLeft = Math.max(8, Math.min(W - cw - 8, cx - cw / 2));
-    if (low) Object.assign(card.style, { left: px(cardLeft), top: px(Math.max(8, Math.min(T - 74 - (card.offsetHeight || 170), H * 0.14))), bottom: 'auto', transform: 'none' });
-    else Object.assign(card.style, { left: px(cardLeft), top: 'auto', bottom: px(Math.max(8, Math.min(H - B - 70 - (card.offsetHeight || 170), H * 0.1))), transform: 'none' });
-    card.style.width = px(cw);
+    // card: never covers the hole or the hand. Try below/above the target first, then beside it (short landscape phones).
+    const cw = Math.min(420, W * 0.92); card.style.width = px(cw);
+    const ch = card.offsetHeight || 170, gap = 62, m = 8;
+    const hole = { l: L, t: low ? T - gap : T, r: R, b: low ? B : B + gap };          // hole + hand area
+    const hit = (x, y) => !(x + cw <= hole.l || x >= hole.r || y + ch <= hole.t || y >= hole.b);
+    const clampX = (x) => Math.max(m, Math.min(W - cw - m, x)), clampY = (y) => Math.max(m, Math.min(H - ch - m, y));
+    const cands = [];
+    const cxL = clampX(cx - cw / 2);
+    if (low) cands.push([cxL, clampY(T - gap - ch - 6)], [cxL, clampY(B + 10)]); else cands.push([cxL, clampY(B + gap + 6)], [cxL, clampY(T - ch - 10)]);
+    cands.push([clampX(R + 14), clampY((T + B) / 2 - ch / 2)], [clampX(L - cw - 14), clampY((T + B) / 2 - ch / 2)]);
+    cands.push([m, m], [W - cw - m, m], [m, H - ch - m], [W - cw - m, H - ch - m]);
+    const pick = cands.find(([x, y]) => !hit(x, y)) || cands[0];
+    Object.assign(card.style, { left: px(pick[0]), top: px(pick[1]), bottom: 'auto', transform: 'none' });
   }
 
   // ---------------------------------------------------------------- input lock (keyboard) — pointer lock = the shades

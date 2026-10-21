@@ -5,7 +5,8 @@
 .ll-tut.open { display: block; }
 
 /* the four shade panels = the input lock: they catch every pointer event outside the highlighted hole */
-.ll-tut-shade { position: fixed; background: rgba(20, 28, 36, .62); pointer-events: auto; touch-action: none; transition: all .22s cubic-bezier(.215,.61,.355,1); animation: ll-tut-fade .2s ease-out both; }
+.ll-tut-shade { position: fixed; left: 0; top: 0; width: 0; height: 0; background: rgba(14, 20, 28, .72); pointer-events: auto; touch-action: none; }
+.ll-tut.open .ll-tut-shades { animation: ll-tut-fade .2s ease-out both; }
 @keyframes ll-tut-fade { from { opacity: 0; } to { opacity: 1; } }
 
 .ll-tut-ring { position: fixed; display: none; border: 4px solid var(--gold); border-radius: 16px; box-shadow: 0 0 0 4px var(--ink), 0 0 24px 6px rgba(255, 213, 79, .65); pointer-events: none; transition: all .22s cubic-bezier(.215,.61,.355,1); animation: ll-tut-glow 1.2s ease-in-out infinite; }
