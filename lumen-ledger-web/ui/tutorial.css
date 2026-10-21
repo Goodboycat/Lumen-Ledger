@@ -1,0 +1,68 @@
+/* LUMEN LEDGER — Guided tutorial (hand pointer + input lock). Extends ui/base.css.
+   z 58: above dialogue (35) / ledger (40) / season card (45) / pause (50), below the title (60).
+   Motion: shade fade 200 ms · hole/ring glide 220 ms outCubic · hand bob 0.9 s loop · card pop 260 ms outBack. */
+.ll-tut { position: absolute; inset: 0; z-index: 58; display: none; pointer-events: none; }
+.ll-tut.open { display: block; }
+
+/* the four shade panels = the input lock: they catch every pointer event outside the highlighted hole */
+.ll-tut-shade { position: fixed; left: 0; top: 0; width: 0; height: 0; background: rgba(14, 20, 28, .72); pointer-events: auto; touch-action: none; }
+.ll-tut.open .ll-tut-shades { animation: ll-tut-fade .2s ease-out both; }
+@keyframes ll-tut-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.ll-tut-ring { position: fixed; display: none; border: 4px solid var(--gold); border-radius: 16px; box-shadow: 0 0 0 4px var(--ink), 0 0 24px 6px rgba(255, 213, 79, .65); pointer-events: none; transition: all .22s cubic-bezier(.215,.61,.355,1); animation: ll-tut-glow 1.2s ease-in-out infinite; }
+@keyframes ll-tut-glow { 0%, 100% { box-shadow: 0 0 0 4px var(--ink), 0 0 16px 4px rgba(255,213,79,.5); } 50% { box-shadow: 0 0 0 4px var(--ink), 0 0 30px 10px rgba(255,213,79,.85); } }
+/* look-only steps: a transparent cover over the hole (tap = Next) so the real control underneath can't fire */
+.ll-tut-cover { position: fixed; display: none; pointer-events: auto; touch-action: none; cursor: pointer; background: transparent; border-radius: 16px; }   /* no transition: the lock must move with the shades in the same frame */
+.ll-tut.act .ll-tut-cover { display: none !important; }
+
+/* the pointing hand */
+.ll-tut-hand { position: fixed; display: none; width: 52px; height: 52px; margin-left: -26px; pointer-events: none; font-size: 44px; line-height: 52px; text-align: center; filter: drop-shadow(0 3px 0 var(--ink)) drop-shadow(0 0 2px #fff); transition: left .22s cubic-bezier(.215,.61,.355,1), top .22s cubic-bezier(.215,.61,.355,1); }
+.ll-tut-hand span { display: inline-block; animation: ll-tut-bob-up .9s ease-in-out infinite; }
+.ll-tut-hand.down span { animation-name: ll-tut-bob-down; }
+.ll-tut-hand.left span { animation-name: ll-tut-bob-left; }     /* hand on the right of the target, pointing ← */
+.ll-tut-hand.right span { animation-name: ll-tut-bob-right; }   /* hand on the left of the target, pointing → */
+@keyframes ll-tut-bob-up { 0%, 100% { transform: translateY(6px); } 50% { transform: translateY(-4px); } }
+@keyframes ll-tut-bob-left { 0%, 100% { transform: rotate(-90deg) translateY(6px); } 50% { transform: rotate(-90deg) translateY(-4px); } }
+@keyframes ll-tut-bob-right { 0%, 100% { transform: rotate(90deg) translateY(6px); } 50% { transform: rotate(90deg) translateY(-4px); } }
+@keyframes ll-tut-bob-down { 0%, 100% { transform: rotate(180deg) translateY(6px); } 50% { transform: rotate(180deg) translateY(-4px); } }
+
+/* desktop fallback target: keycaps for WASD / Space / E / Esc (bottom-left, where the joystick would be) */
+.ll-tut-keys { position: fixed; left: max(28px, env(safe-area-inset-left)); bottom: max(120px, calc(env(safe-area-inset-bottom) + 120px)); display: none; gap: 6px; pointer-events: none; }
+.ll-tut-keys.on { display: flex; }
+.ll-tut-keys kbd { min-width: 46px; height: 46px; padding: 0 10px; display: grid; place-items: center; background: var(--paper); border: 3px solid var(--ink); border-radius: 10px; box-shadow: 0 4px 0 var(--ink); font: 900 16px/1 var(--font); color: var(--ink); }
+
+/* the dialogue card (the only other touchable thing) */
+.ll-tut-card { position: fixed; width: min(420px, 92vw); background: var(--paper); border: 4px solid var(--ink); border-radius: 18px; box-shadow: 0 6px 0 var(--ink); padding: 10px 14px 12px; pointer-events: auto; color: var(--ink); transition: left .22s cubic-bezier(.215,.61,.355,1), top .22s, bottom .22s; }
+.ll-tut-card.pop { animation: ll-tut-pop .26s cubic-bezier(.34,1.56,.64,1) both; }
+.ll-tut-card.nudge { animation: ll-tut-nudge .3s linear; }
+@keyframes ll-tut-pop { from { opacity: 0; scale: .9; } to { opacity: 1; scale: 1; } }
+@keyframes ll-tut-nudge { 0%, 100% { translate: 0 0; } 25% { translate: -6px 0; } 50% { translate: 6px 0; } 75% { translate: -3px 0; } }
+.ll-tut-top { display: flex; align-items: center; justify-content: space-between; }
+.ll-tut-owl { font-size: 26px; width: 40px; height: 40px; display: grid; place-items: center; background: var(--gold); border: 3px solid var(--ink); border-radius: 50%; box-shadow: 0 3px 0 var(--ink); }
+.ll-tut-count { font-size: 12px; font-weight: 900; opacity: .6; letter-spacing: 1px; }
+.ll-tut-title { margin: 6px 0 2px; font-size: 20px; font-weight: 900; line-height: 1.15; }
+.ll-tut-text { margin: 0 0 10px; font-size: 14px; font-weight: 700; line-height: 1.35; }
+.ll-tut-text.waiting::after { content: var(--ll-ico-pointR) ' tap it now'; color: #e65100; font-weight: 900; }
+.ll-tut-row { display: flex; gap: 8px; align-items: center; }
+.ll-tut-btn { min-height: 44px; padding: 4px 14px; border: 3px solid var(--ink); border-radius: 12px; background: var(--paper); color: var(--ink); font: 900 15px/1 var(--font); box-shadow: 0 4px 0 var(--ink); cursor: pointer; touch-action: manipulation; }
+.ll-tut-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+.ll-tut-btn.skip { background: transparent; box-shadow: none; border-color: transparent; text-decoration: underline; opacity: .7; padding: 4px 6px; }
+.ll-tut-btn.next { margin-left: auto; background: var(--grass); }
+.ll-tut-btn.back { background: var(--blue); }
+
+/* while the tutorial is open the touch pad must stay visible (the hand points at it) even though the game is paused */
+body.ll-tut-open .ll-touch.on.modal { display: block; }
+body.ll-tut-open .ll-joy-hint { opacity: .8; }
+
+.ll-tut-card.compact { padding: 8px 10px 10px; }
+.ll-tut-card.compact .ll-tut-title { font-size: 16px; }
+.ll-tut-card.compact .ll-tut-text { font-size: 12.5px; margin-bottom: 6px; }
+.ll-tut-card.compact .ll-tut-owl { width: 30px; height: 30px; font-size: 18px; }
+.ll-tut-card.compact .ll-tut-btn { padding: 4px 10px; font-size: 14px; }
+@media (max-height: 420px) { .ll-tut-title { font-size: 16px; } .ll-tut-text { font-size: 12px; margin-bottom: 6px; } .ll-tut-owl { width: 30px; height: 30px; font-size: 18px; } .ll-tut-btn { min-height: 38px; } }
+body.ll-reduce-motion .ll-tut-hand span, body.ll-reduce-motion .ll-tut-ring { animation: none; }
+/* first-play delay blocker (game:start → tutorial open): transparent, catches every touch so nothing fires before the guide shows */
+.ll-tut-blocker { position: fixed; inset: 0; z-index: 59; display: none; pointer-events: auto; touch-action: none; background: transparent; }
+.ll-tut-blocker.on { display: block; }
+/* while the guide is open nothing behind it may be focused or text-selected */
+body.ll-tut-open { user-select: none; -webkit-user-select: none; }

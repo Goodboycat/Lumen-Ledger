@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Lumen Ledger — Chat 1D Decor Demo</title>
+<link rel="stylesheet" href="ui/base.css">
+<style>
+  .panel { position: absolute; left: 12px; top: 70px; z-index: 10; background: rgba(255,248,231,.94); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px 10px; font-size: 12px; font-weight: 600; max-width: 280px; pointer-events: auto; }
+  .panel b { display: block; font-size: 13px; margin-bottom: 4px; }
+  .row { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
+  .btn { background: var(--gold); border: 3px solid var(--ink); border-radius: 10px; padding: 4px 10px; font: inherit; font-weight: 800; box-shadow: 0 3px 0 var(--ink); cursor: pointer; }
+  .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+  .btn.alt { background: var(--blue); } .btn.warn { background: var(--orange); }
+  #tris { font-size: 11px; line-height: 1.3; white-space: pre; font-family: ui-monospace, Menlo, monospace; font-weight: 600; max-height: 40vh; overflow: auto; }
+  .label { position: absolute; transform: translate(-50%, -100%); background: var(--paper); border: 2px solid var(--ink); border-radius: 8px; padding: 1px 6px; font-size: 10px; font-weight: 800; pointer-events: none; white-space: nowrap; }
+  @media (max-width: 600px) { .panel { max-width: 180px; font-size: 11px; top: 64px; } #tris { display: none; } }
+</style>
+</head>
+<body>
+<div id="game-root">
+  <div id="game-container"></div>
+  <header id="hud" class="hud">
+    <div class="ribbon"><span class="ribbon-title">LUMEN LEDGER</span><span class="ribbon-sub">Chat 1D · Decor</span></div>
+    <div id="stats" class="stats">fps — · calls —</div>
+  </header>
+  <section class="panel" id="panel">
+    <b>Decor props</b>
+    <div class="row">
+      <button class="btn" id="btn-jars">J · Fill jars</button>
+      <button class="btn alt" id="btn-lit">L · Lanterns: ON</button>
+      <button class="btn warn" id="btn-labels">Labels</button>
+    </div>
+    <div id="tris"></div>
+  </section>
+  <aside id="help" class="help">
+    <b>J</b> jar fill 0→1 (anticipation 120 · fill 400 · wobble 200) &nbsp;·&nbsp; <b>K</b> jars empty &nbsp;·&nbsp; <b>L</b> lanterns lit &nbsp;·&nbsp; <b>1/2/3</b> jars / fences+crates / signs+lanterns only &nbsp;·&nbsp; <b>0</b> all &nbsp;·&nbsp; <b>WASD</b> move Pip &nbsp;·&nbsp; tap a prop
+  </aside>
+  <div id="labels"></div>
+</div>
+<script type="module">
+import * as THREE from './vendor/three.module.js';
+import { Game } from './src/core/Game.js';
+import { Island } from './src/world/Island.js';
+import { VFX } from './src/vfx/VFX.js';
+import { HeroController } from './src/entities/HeroController.js';
+import { PROP_CATALOG, makeProp, countTris } from './src/assets/props.js';
+import { DECOR_IDS, JAR_IDS, LANTERN_IDS, makeJarFillSequence, swayDecor } from './src/assets/props/decor.js';
+
+const container = document.getElementById('game-container');
+const game = new Game(container);
+window.game = game;
+
+// World (Foundation island; hide its placeholder trees/rocks so only decor shows)
+const island = new Island({ radius: 11, seed: 7 });
+island.group.traverse((o) => { if (o.name === 'tree' || o.name === 'rock') o.visible = false; });
+game.scene.add(island.group);
+game.add({ update: (dt) => island.update(dt) });
+const vfx = game.add(new VFX(game));
+const isLand = (x, z) => island.isLand(x, z);
+
+// ---- Showcase grid: row 1 jars (the FinLit centrepiece, big & front), row 2 fences/crates, row 3 signs/lanterns, row 4 paths/P3 ----
+const rowsDef = [
+  { key: 'jar', ids: JAR_IDS, z: -1.0, gap: 1.6, scale: 1.3 },
+  { key: 'fence', ids: ['fence_rail', 'fence_rail', 'fence_rail', 'fence_post', 'fence_gate', 'crate', 'barrel'], z: -3.2, gap: 1.1 },
+  { key: 'sign', ids: ['sign_arrow', 'sign_board', 'sign_hanging', 'lantern_post', 'lantern_hanging', 'bench'], z: -5.4, gap: 1.6 },
+  { key: 'misc', ids: ['path_dirt', 'path_dirt', 'path_stone', 'path_stone', 'banner_string', 'flower_pot', 'water_trough'], z: -7.4, gap: 1.3 },
+];
+const showcase = [], jars = [], lanterns = [];
+for (const row of rowsDef) {
+  let x = -(row.ids.length - 1) / 2 * row.gap; const x0f = x;
+  row.ids.forEach((id, i) => {
+    const g = makeProp(id, { seed: i + 1, scale: row.scale || 1, fill: 0.5 });
+    g.position.set(x, 0, row.z);
+    if (row.key === 'fence' && i < 3) g.position.x = x0f + i;            // 3 rails chain at 1-tile pitch (each rail owns the post at its x-0.5)
+    if (row.key === 'fence' && i === 3) g.position.x = x0f + 2.5;        // closing post at the end of the last rail
+    g.userData.rowKey = row.key;
+    game.scene.add(g); showcase.push(g);
+    if (JAR_IDS.includes(id)) jars.push(g);
+    if (LANTERN_IDS.includes(id)) lanterns.push(g);
+    x += row.gap;
+  });
+}
+// a little fenced "market corner" with a path to prove tiling + a lit night-lantern pair near Pip
+const corner = new THREE.Group();
+for (let i = 0; i < 4; i++) { const r = makeProp('fence_rail', { seed: i }); r.position.set(-5.5 + i, 0, 2.2); corner.add(r); }
+const endPost = makeProp('fence_post'); endPost.position.set(-1.5, 0, 2.2); corner.add(endPost);
+for (let i = 0; i < 5; i++) { const t = makeProp(i % 2 ? 'path_dirt' : 'path_stone', { seed: i + 9 }); t.position.set(-3.5, 0, 2.2 + 1 + i); corner.add(t); }
+const lp = makeProp('lantern_post', { seed: 5 }); lp.position.set(-1.0, 0, 3.4); corner.add(lp); lanterns.push(lp);
+const lp2 = makeProp('lantern_post', { seed: 6 }); lp2.position.set(-6.0, 0, 3.4); lp2.rotation.y = Math.PI; corner.add(lp2); lanterns.push(lp2);
+game.scene.add(corner);
+
+// Wind / swing: one call per frame (banner flags, hanging sign + lantern) — pure functions of time
+game.add({ update: () => swayDecor(game.time) });
+
+// Hero for scale
+const hero = new HeroController(game, { vfx, targets: () => [], isLand });
+hero.root.position.set(0, 0, 2.0);
+game.add({ update: (dt) => hero.update(dt) });
+game.followTarget = hero.root.position;
+game.camera.zoom = 1.5;
+game.camera.snapTo(hero.root.position);
+game.input.onWheel = (dir) => { game.camera.zoom = THREE.MathUtils.clamp(game.camera.zoom + dir * 0.1, 0.6, 1.8); };
+
+// ---- J: jar fill 0→1 as a Sequence (anticipation 120 inOutCubic → fill 400 outCubic → wobble 200 outElastic), staggered 90 ms ----
+const running = [];
+function fillJars(to = 1) {
+  for (const r of running) r.seq.stop(); running.length = 0;
+  jars.forEach((jar, i) => {
+    const from = jar.userData.fill;
+    const seq = makeJarFillSequence(jar, { from, to, onDone: (j) => {
+      const p = j.position.clone(); p.y = 1.2;
+      vfx.pop.show(p, `${j.userData.name} ${Math.round(to * 100)}%`, { color: '#' + j.userData.color.toString(16).padStart(6, '0'), dur: 0.9, size: 0.9 });
+      vfx.dust.burst(j.position.clone(), 6, { size: 0.2, speed: 1.4, dur: 0.4, up: 0.6 });
+    } });
+    // 90 ms stagger per jar (delta-time countdown, then the Sequence runs its own phase table)
+    running.push({ seq, delay: i * 0.09, jar });
+  });
+}
+game.add({ update: (dt) => {
+  for (const r of running) {
+    if (r.delay > 0) { r.delay -= dt; if (r.delay <= 0) r.seq.play(r.jar); continue; }
+    if (r.seq.playing) r.seq.update(dt);
+  }
+} });
+// ---- L: lanterns lit toggle (toon glass ↔ unlit glow) ----
+let lit = true;
+const litBtn = document.getElementById('btn-lit');
+function toggleLit() { lit = !lit; for (const l of lanterns) l.userData.setLit(lit); litBtn.textContent = `L · Lanterns: ${lit ? 'ON' : 'OFF'}`; }
+const showOnly = (key) => { for (const g of showcase) g.visible = !key || g.userData.rowKey === key; };
+let labelsOn = true;
+const toggleLabels = () => { labelsOn = !labelsOn; labelsRoot.style.display = labelsOn ? '' : 'none'; };
+document.getElementById('btn-jars').addEventListener('click', () => fillJars(1));
+litBtn.addEventListener('click', toggleLit);
+document.getElementById('btn-labels').addEventListener('click', toggleLabels);
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyJ') fillJars(1);
+  if (e.code === 'KeyK') fillJars(0);
+  if (e.code === 'KeyL') toggleLit();
+  if (e.code === 'Digit1') showOnly('jar');
+  if (e.code === 'Digit2') showOnly('fence');
+  if (e.code === 'Digit3') showOnly('sign');
+  if (e.code === 'Digit0') showOnly(null);
+});
+game.input.onTap = (world) => {
+  let best = null, bd = 1.0;
+  for (const g of showcase) { const d = Math.hypot(g.position.x - world.x, g.position.z - world.z); if (d < bd) { bd = d; best = g; } }
+  if (!best) return;
+  if (JAR_IDS.includes(best.userData.kind)) { const s = makeJarFillSequence(best, { from: best.userData.fill, to: best.userData.fill >= 0.99 ? 0.1 : Math.min(1, best.userData.fill + 0.3) }); s.play(best); running.push({ seq: s, delay: 0, jar: best }); }
+  else if (best.userData.setLit) best.userData.setLit(!best.userData.lit);
+  vfx.dust.burst(best.position.clone(), 8, { size: 0.25, speed: 1.8, dur: 0.45, up: 0.5 });
+  const p = best.position.clone(); p.y = 1.6; vfx.pop.show(p, best.userData.name, { color: '#FFD54F', dur: 0.8, size: 0.9 });
+};
+
+// ---- Tri / draw-call table (budget: ≤ 150 tris small prop, ≤ 10 draw calls incl. outline) ----
+const trisEl = document.getElementById('tris');
+const rows = DECOR_IDS.map((id) => {
+  const g = PROP_CATALOG[id].make({ outline: true, sway: false });
+  let meshes = 0, hulls = 0; g.traverse((o) => { if (o.isMesh) (o.userData.isOutline ? hulls++ : meshes++); });
+  g.userData.dispose && g.userData.dispose();
+  return `${id.padEnd(16)} ${String(countTris(g)).padStart(4)}t ${meshes + hulls}dc`;
+});
+trisEl.textContent = 'prop              tris  draw calls\n' + rows.join('\n');
+
+// ---- Floating labels above showcase props ----
+const labelsRoot = document.getElementById('labels');
+const labels = showcase.map((g) => { const el = document.createElement('div'); el.className = 'label'; el.textContent = g.userData.name; labelsRoot.appendChild(el); return el; });
+const v = new THREE.Vector3();
+game.add({ lateUpdate: () => {
+  if (!labelsOn) return;
+  const w = container.clientWidth, h = container.clientHeight;
+  showcase.forEach((g, i) => {
+    const el = labels[i];
+    if (!g.visible) { el.style.display = 'none'; return; }
+    v.set(g.position.x, 1.9, g.position.z).project(game.camera.three);
+    if (v.z > 1) { el.style.display = 'none'; return; }
+    el.style.display = ''; el.style.left = ((v.x + 1) / 2 * w) + 'px'; el.style.top = ((1 - v.y) / 2 * h) + 'px';
+  });
+} });
+
+const statsEl = document.getElementById('stats');
+game.add({ update: () => { const s = game.stats; statsEl.textContent = `fps ${s.fps} · calls ${s.drawCalls} · tris ${(s.triangles / 1000).toFixed(0)}k`; } });
+
+if (game.input.isTouch) document.body.classList.add('is-touch');
+game.start();
+</script>
+</body>
+</html>

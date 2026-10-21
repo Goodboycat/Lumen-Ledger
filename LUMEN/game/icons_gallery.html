@@ -1,0 +1,5 @@
+<!doctype html><meta charset="utf-8"><title>Lumen Ledger — procedural icons</title>
+<style>body{font:13px system-ui;background:#FFF8E7;margin:16px}#g{display:grid;grid-template-columns:repeat(auto-fill,96px);gap:8px}.c{background:#fff;border:2px solid #263238;border-radius:10px;text-align:center;padding:6px}.c .ll-ico{width:64px;height:64px}</style>
+<h2>Procedural icon set (ui/icons.js) — replaces every emoji</h2><div id="g"></div>
+<script type="module">import {icon,ICON_NAMES,EMOJI} from './ui/icons.js';const inv={};for(const[k,v]of Object.entries(EMOJI))(inv[v]=inv[v]||[]).push(k);
+document.getElementById('g').innerHTML=ICON_NAMES.map(n=>`<div class="c">${icon(n)}<div>${n}</div><small>${(inv[n]||[]).join(' ')}</small></div>`).join('');</script>

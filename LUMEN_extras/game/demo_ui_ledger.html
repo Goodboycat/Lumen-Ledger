@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Lumen Ledger — Chat 7B UI: Ledger Review + Dialogue + Toasts</title>
+<link rel="stylesheet" href="ui/base.css">
+<link rel="stylesheet" href="ui/hud.css">
+<link rel="stylesheet" href="ui/ledger.css">
+<link rel="stylesheet" href="ui/dialogue.css">
+<link rel="stylesheet" href="ui/toast.css">
+<style>
+  .panel { position: absolute; left: 12px; top: 78px; z-index: 15; background: rgba(255,248,231,.94); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px 10px; font-size: 12px; font-weight: 600; max-width: 300px; pointer-events: auto; }
+  .panel b { display: block; font-size: 13px; margin-bottom: 4px; }
+  .row { display: flex; gap: 5px; margin: 6px 0; flex-wrap: wrap; align-items: center; }
+  .btn { background: var(--gold); border: 3px solid var(--ink); border-radius: 10px; padding: 4px 8px; font: inherit; font-weight: 800; box-shadow: 0 3px 0 var(--ink); cursor: pointer; font-size: 11px; }
+  .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+  .btn.alt { background: var(--blue); } .btn.warn { background: var(--orange); } .btn.fog { background: #CE93D8; } .btn.ok { background: var(--grass); }
+  #log { font-size: 11px; line-height: 1.3; white-space: pre; font-family: ui-monospace, Menlo, monospace; max-height: 30vh; overflow: auto; margin-top: 6px; }
+  @media (max-width: 640px) { .panel { max-width: 170px; font-size: 11px; } #log { display: none; } }
+</style>
+</head>
+<body>
+<div id="game-root">
+  <div id="game-container"></div>
+  <section class="panel" id="panel">
+    <b>7B · Ledger / Dialogue / Toasts (DOM only, no Three)</b>
+    <div class="row">
+      <button class="btn" id="b-ledger1">1 · ledger ★</button>
+      <button class="btn ok" id="b-ledger3">2 · ledger ★★★</button>
+      <button class="btn fog" id="b-ledger0">3 · ledger (lose)</button>
+      <button class="btn alt" id="b-talk">4 · dialogue</button>
+      <button class="btn warn" id="b-choice">5 · Baron's deal</button>
+      <button class="btn" id="b-toast">6 · toasts</button>
+      <button class="btn ok" id="b-win">7 · WIN</button>
+    </div>
+    <div id="log"></div>
+  </section>
+  <aside id="help" class="help">1–3 ledger · 4 dialogue (tap/Enter advances) · 5 choice (1/2 keys) · 6 toasts · 7 win · Esc closes</aside>
+</div>
+<script type="module">
+import { bus } from './src/core/EventBus.js';
+import { mountHUD } from './ui/hud.js';
+import { mountLedger, LESSONS } from './ui/ledger.js';
+import { mountDialogue } from './ui/dialogue.js';
+import { mountToast } from './ui/toast.js';
+
+// ---- a fake "game" so smoke.mjs can read stats (no Three on this page) ----
+const game = { bus, stats: { fps: 0, drawCalls: 0, triangles: 0 }, time: 0, scene: { traverse() {} } };
+window.game = game;
+let frames = 0, acc = 0, last = performance.now();
+const tick = (t) => { const dt = (t - last) / 1000; last = t; acc += dt; frames++; if (acc > 0.5) { game.stats.fps = Math.round(frames / acc); frames = 0; acc = 0; } game.time += dt; requestAnimationFrame(tick); };
+requestAnimationFrame(tick);
+
+const root = document.getElementById('game-root');
+const hud = mountHUD(root, { bus, stats: () => game.stats }); hud.sync({ spark: 240, season: 3, fog01: 0.3, debt: 0, reputation: 0.6 });
+const ledger = mountLedger(root, { bus, seasonsToWin: 10 });
+const dlg = mountDialogue(root, { bus, cps: 45, pauseGame: true });
+const toast = mountToast(root, { bus });
+window.ledger = ledger; window.dlg = dlg; window.toast = toast;
+
+const $ = (id) => document.getElementById(id);
+const lines = []; const log = (s) => { lines.unshift(s); if (lines.length > 14) lines.pop(); $('log').textContent = lines.join('\n'); };
+['ui:continue', 'ui:choice', 'ui:advance', 'ui:pause', 'ui:ledger:open', 'ui:dialogue:close'].forEach((n) => bus.on(n, (p) => log(`${n} ${JSON.stringify(p && (p.index != null ? { index: p.index, text: p.text } : p.outcome ? { season: p.season, stars: p.stars, outcome: p.outcome } : p.on != null ? { on: p.on } : {}))}`)));
+
+let season = 3;
+const report = (stars, extra = {}) => ({ season, income: 312, expenses: 180, interestEarned: 14, interestPaid: stars < 2 ? 36 : 0, investReturn: stars === 3 ? 22 : -8, upkeep: 60, saved: 90, debt: stars < 2 ? 216 : 0, debtBefore: 180,
+  fog01: stars === 3 ? 0.2 : 0.42, fogDelta: stars === 3 ? -0.1 : 0.05, spark: 240, jars: { spend: 40, save: 290, invest: 120, protect: 60 }, netWorth: 534, reputation: 0.6, lessonId: Object.keys(LESSONS)[(season - 1) % 10], stars, ...extra });
+
+const actions = {
+  ledger1() { bus.emit('eco:season', report(1)); season++; log('eco:season ★'); },
+  ledger3() { bus.emit('story:lesson', { id: 'custom', title: 'Lesson from 8B', lesson: 'This card came through story:lesson — the 8B StorySystem owns the text.', tip: 'Pass { id, title, lesson, tip }.' }); bus.emit('eco:season', report(3)); season++; log('story:lesson + eco:season ★★★'); },
+  ledger0() { bus.emit('eco:season', report(0, { fog01: 0.92, fogDelta: 0.12, debt: 540 })); bus.emit('eco:lose', { season, reason: 'fog' }); season++; log('eco:season ☆ + eco:lose'); },
+  talk() {
+    bus.emit('story:line', { speaker: 'owl', text: 'Hoo! Season three already, Pip. The books say you earned more than you spent.' });
+    bus.emit('story:line', { speaker: 'pip', mood: 'happy', text: 'Then the Save jar gets the first scoop. Interest that works FOR us, right?' });
+    bus.emit('story:line', { speaker: 'owl', text: 'Five percent a season, compounding. Small today, a lighthouse tomorrow.' });
+    log('story:line ×3 (tap / Enter to advance)');
+  },
+  choice() {
+    bus.emit('story:line', { speaker: 'baron', mood: 'happy', text: 'Psst, Channeler. A guaranteed deal — 300 Spark now, pay later. Tonight only! Nobody else knows.' , choices: ['Take the deal', 'Spot the tells & refuse'] });
+    log('story:line with choices → ui:choice');
+  },
+  toast() {
+    bus.emit('build:placed', { id: 'stall_fruit' }); setTimeout(() => bus.emit('eco:denied', { cost: 90 }), 300); setTimeout(() => bus.emit('eco:event', { event: { title: 'Spark Storm', text: 'Repairs cost 40 Spark — unless Protect covers it.' } }), 600);
+    setTimeout(() => bus.emit('cust:angry', { reason: 'waited' }), 900); setTimeout(() => bus.emit('cust:angry', { reason: 'waited' }), 1100); setTimeout(() => bus.emit('story:toast', { text: 'Tip: drag a jar slider — the others rebalance.' }), 1400);
+    log('toasts ×6 (coalesce ×2)');
+  },
+  win() { bus.emit('eco:season', report(3, { season: 10, fog01: 0, fogDelta: -0.1 })); bus.emit('eco:win', { season: 10 }); log('eco:season + eco:win'); },
+};
+$('b-ledger1').onclick = actions.ledger1; $('b-ledger3').onclick = actions.ledger3; $('b-ledger0').onclick = actions.ledger0; $('b-talk').onclick = actions.talk; $('b-choice').onclick = actions.choice; $('b-toast').onclick = actions.toast; $('b-win').onclick = actions.win;
+window.addEventListener('keydown', (e) => { const m = { 1: 'ledger1', 2: 'ledger3', 3: 'ledger0', 4: 'talk', 5: 'choice', 6: 'toast', 7: 'win' }[e.key]; if (m && !dlg.isOpen) actions[m](); if (e.key === 'Escape') { ledger.hide(); dlg.hide(); } });
+bus.on('ui:choice', (p) => { if (p.line && p.line.speaker === 'baron') toast.push(p.index === 0 ? { text: 'Hidden 35 % interest… the Baron grins.', kind: 'bad', icon: '🎩' } : { text: 'Scam spotted: hurry + secrecy + "guaranteed".', kind: 'ok', icon: '🦉' }); });
+log('ready — 1–7 or the buttons');
+</script>
+</body>
+</html>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Lumen Ledger — Chat 3A Hero Moves Demo</title>
+<link rel="stylesheet" href="ui/base.css">
+<style>
+  .panel { position: absolute; left: 12px; top: 70px; z-index: 10; background: rgba(255,248,231,.94); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px 10px; font-size: 12px; font-weight: 600; max-width: 300px; pointer-events: auto; }
+  .panel b { display: block; font-size: 13px; margin-bottom: 4px; }
+  .row { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
+  .btn { background: var(--gold); border: 3px solid var(--ink); border-radius: 10px; padding: 4px 10px; font: inherit; font-weight: 800; box-shadow: 0 3px 0 var(--ink); cursor: pointer; }
+  .btn:active, .btn.on { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+  .btn.alt { background: var(--blue); } .btn.warn { background: var(--orange); } .btn.fog { background: #c9b8e8; }
+  #phase { font-size: 11px; line-height: 1.35; white-space: pre; font-family: ui-monospace, Menlo, monospace; font-weight: 600; max-height: 38vh; overflow: auto; margin-top: 4px; }
+  @media (max-width: 600px) { .panel { max-width: 200px; font-size: 11px; top: 64px; } #phase { display: none; } }
+</style>
+</head>
+<body>
+<div id="game-root">
+  <div id="game-container"></div>
+  <header id="hud" class="hud">
+    <div class="ribbon"><span class="ribbon-title">LUMEN LEDGER</span><span class="ribbon-sub">Chat 3A · Hero moves</span></div>
+    <div id="stats" class="stats">fps — · calls —</div>
+  </header>
+  <section class="panel" id="panel">
+    <b>Pip's moves (keys 1–9)</b>
+    <div class="row" id="move-buttons"></div>
+    <div class="row">
+      <button class="btn alt" id="btn-slow">T · Slow-mo: OFF</button>
+      <button class="btn warn" id="btn-drop">X · Drop</button>
+      <button class="btn fog" id="btn-all">0 · Play all</button>
+    </div>
+    <div id="phase"></div>
+  </section>
+  <aside id="help" class="help">
+    <b>1</b> hammer · <b>2</b> dash · <b>3</b> celebrate · <b>4</b> build · <b>5</b> pickUp→carry · <b>6</b> carry · <b>7</b> throwCoin · <b>8</b> sad · <b>9</b> stunned · <b>0</b> all · <b>T</b> slow-mo · <b>X</b> drop · <b>WASD</b> walk · <b>Space</b> sword
+  </aside>
+  <nav class="touch-ui" id="touch-ui"><button class="btn-action" id="btn-attack" aria-label="attack">⚔</button></nav>
+</div>
+<script type="module">
+import * as THREE from './vendor/three.module.js';
+import { Game } from './src/core/Game.js';
+import { Island } from './src/world/Island.js';
+import { VFX } from './src/vfx/VFX.js';
+import { HeroController } from './src/entities/HeroController.js';
+import { makeGlimmer, GlimmerController } from './src/assets/glimmer.js';
+import { G, mesh } from './src/assets/geo.js';
+import { PALETTE as P } from './src/core/Toon.js';
+import { addOutline } from './src/core/Outline.js';
+import { HERO_MOVES, attachMoves } from './src/anim/heroAnims.js';
+
+const container = document.getElementById('game-container');
+const game = new Game(container);
+window.game = game;
+
+// World (Foundation island)
+const island = new Island({ radius: 11, seed: 7 });
+game.scene.add(island.group);
+game.add({ update: (dt) => island.update(dt) });
+const vfx = game.add(new VFX(game));
+const isLand = (x, z) => island.isLand(x, z);
+
+// A few Glimmers as sword targets + a throwCoin target; a build plot (crate stack) as hammer/build target
+const glims = [];
+for (let i = 0; i < 3; i++) {
+  const g = makeGlimmer({ color: [P.glimmerBlue, P.glimmerPink, P.glimmerGreen][i], size: 1 });
+  g.position.set(-3 + i * 3, 0, -3.5); game.scene.add(g);
+  const c = new GlimmerController(g); glims.push(c);
+}
+game.add({ update: (dt) => { for (const c of glims) c.update(dt); } });
+const plot = new THREE.Group(); plot.name = 'buildPlot';
+plot.add(mesh(G.rbox(1.2, 0.5, 1.2, 0.06), P.wood, 0, 0.25, 0));
+plot.add(mesh(G.rbox(0.8, 0.4, 0.8, 0.06), P.woodDark, 0, 0.7, 0));
+addOutline(plot); plot.position.set(2.5, 0, 1.5); game.scene.add(plot);
+plot.userData.height = 1.0;
+
+// Hero + 3A moves
+const hero = new HeroController(game, { vfx, targets: () => glims, isLand });
+attachMoves(hero);
+hero.root.position.set(0, 0, 1.5);
+game.add({ update: (dt) => hero.update(dt) });
+game.followTarget = hero.root.position;
+game.camera.zoom = 1.1;
+game.camera.snapTo(hero.root.position);
+game.input.onWheel = (dir) => { game.camera.zoom = THREE.MathUtils.clamp(game.camera.zoom + dir * 0.1, 0.6, 1.8); };
+window.hero = hero;
+
+// ---- Moves: keys 1–9 (order = HERO_MOVES order: hammer, dash, celebrate, build, pickUp, carry, throwCoin, sad, stunned) ----
+const names = Object.keys(HERO_MOVES);
+const log = [];
+const phaseEl = document.getElementById('phase');
+function nearestTargetOf(name) {
+  if (name === 'hammer' || name === 'build') return plot;
+  if (name === 'throwCoin') { let best = glims[0], bd = 1e9; for (const c of glims) { const d = c.root.position.distanceTo(hero.root.position); if (d < bd) { bd = d; best = c; } } return best.root; }
+  if (name === 'pickUp') return plot;
+  return null;
+}
+function play(name) {
+  const seq = hero.playMove(name, {
+    target: nearestTargetOf(name),
+    onHit: (i, pos) => { plot.scale.set(1.1, 0.85, 1.1); plotJelly = 1; },
+    onArrive: (t) => { const c = glims.find((c) => c.root === t); if (c) c.hit(new THREE.Vector3(0, 0, -1), 0.4); },
+  });
+  if (!seq) { log.unshift(`✗ ${name} blocked (busy)`); render(); return; }
+  const table = HERO_MOVES[name].phases.map(([n, ms, ez]) => `   ${n.padEnd(9)} ${String(ms).padStart(4)} ms  ${ez}`).join('\n');
+  log.unshift(`▶ ${name}  (${seq.totalMs} ms, ${seq.phases.length} phases)\n${table}`);
+  log.length = Math.min(log.length, 3); render();
+}
+function render() { phaseEl.textContent = log.join('\n'); }
+let plotJelly = 0;
+game.add({ update: (dt) => { if (plotJelly > 0) { plotJelly = Math.max(0, plotJelly - dt * 4); const k = 1 - plotJelly; plot.scale.set(1.1 + (1 - 1.1) * k, 0.85 + (1 - 0.85) * k, 1.1 + (1 - 1.1) * k); } } });
+
+// buttons
+const bRoot = document.getElementById('move-buttons');
+names.forEach((n, i) => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = `${i + 1} · ${n}`; b.addEventListener('click', () => play(n)); bRoot.appendChild(b); });
+let slow = false; const slowBtn = document.getElementById('btn-slow');
+function toggleSlow() { slow = !slow; game.timeScale = slow ? 0.25 : 1; slowBtn.textContent = `T · Slow-mo: ${slow ? 'ON' : 'OFF'}`; slowBtn.classList.toggle('on', slow); }
+slowBtn.addEventListener('click', toggleSlow);
+document.getElementById('btn-drop').addEventListener('click', () => { hero.stopMove(); hero.dropCarry(); });
+// 0 / "Play all": every move in order, each starting when the previous finished (loops run 1.2 s)
+let queue = [], wait = 0;
+function playAll() { queue = names.slice(); wait = 0; }
+document.getElementById('btn-all').addEventListener('click', playAll);
+game.add({ update: (dt) => {
+  if (!queue.length) return;
+  if (hero.state === 'move') { if (HERO_MOVES[hero.moveName] && HERO_MOVES[hero.moveName].loop) { wait += dt; if (wait > 1.2) { hero.stopMove(); hero.dropCarry(); wait = 0; } } return; }
+  wait += dt; if (wait < 0.35) return; wait = 0;
+  play(queue.shift());
+} });
+
+window.addEventListener('keydown', (e) => {
+  if (e.repeat) return;
+  const k = e.code;
+  if (k.startsWith('Digit')) { const d = +k.slice(5); if (d === 0) playAll(); else if (names[d - 1]) play(names[d - 1]); }
+  if (k === 'KeyT') toggleSlow();
+  if (k === 'KeyX') { hero.stopMove(); hero.dropCarry(); }
+});
+// tap: on the build plot → hammer; on a glimmer → throwCoin; elsewhere → dash toward tap
+game.input.onTap = (world) => {
+  if (Math.hypot(plot.position.x - world.x, plot.position.z - world.z) < 1.2) return play('hammer');
+  for (const c of glims) if (Math.hypot(c.root.position.x - world.x, c.root.position.z - world.z) < 1.0) return play('throwCoin');
+  const dir = new THREE.Vector3(world.x - hero.root.position.x, 0, world.z - hero.root.position.z).normalize();
+  hero.playMove('dash', { dir });
+};
+document.getElementById('btn-attack').addEventListener('pointerdown', (e) => { e.preventDefault(); game.input.press('attack'); });
+
+// stats: fps · draw calls · tris · current move/phase
+const statsEl = document.getElementById('stats');
+game.add({ update: () => { const s = game.stats; const mv = hero.state === 'move' && hero.currentMove ? ` · ${hero.moveName}:${hero.currentMove.currentName}` : ` · ${hero.state}`; statsEl.textContent = `fps ${s.fps} · calls ${s.drawCalls} · tris ${(s.triangles / 1000).toFixed(0)}k${mv}`; } });
+
+if (game.input.isTouch) document.body.classList.add('is-touch');
+game.start();
+</script>
+</body>
+</html>

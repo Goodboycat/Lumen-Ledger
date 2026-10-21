@@ -1,0 +1,71 @@
+/* LUMEN LEDGER — Pause menu + Settings (Chat 7C). Extends ui/base.css. DOM/CSS only.
+   Motion: backdrop 180 ms · sheet drop-in 360 ms outBack · buttons stagger 60 ms · settings expand 240 ms outCubic · "Sure?" shake 300 ms · close 200 ms inQuad. */
+.ll-pause { position: absolute; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center; pointer-events: auto; }
+.ll-pause.open, .ll-pause.closing { display: flex; }
+.ll-pause.closing { pointer-events: none; }
+.ll-pause-back { position: absolute; inset: 0; background: rgba(38,50,56,.45); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); animation: ll-pause-fade .18s ease-out both; }
+.ll-pause.closing .ll-pause-back { animation: ll-pause-fade .2s ease-in reverse both; }
+@keyframes ll-pause-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.ll-pause-sheet { position: relative; width: min(340px, 90vw); max-height: 92vh; overflow: auto; background: var(--paper); border: 4px solid var(--ink); border-radius: 22px; box-shadow: 0 8px 0 var(--ink); padding: 18px 18px 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; animation: ll-pause-drop .36s cubic-bezier(.34,1.56,.64,1) both; }
+.ll-pause.closing .ll-pause-sheet { animation: ll-pause-out .2s cubic-bezier(.55,.085,.68,.53) both; }
+@keyframes ll-pause-drop { from { transform: translateY(-60px) scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes ll-pause-out { to { transform: translateY(30px) scale(.95); opacity: 0; } }
+.ll-pause-title { margin: 0; font-size: 34px; font-weight: 900; letter-spacing: 3px; color: var(--gold); -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 0 4px 0 var(--ink); }
+.ll-pause-sub { margin: 0 0 6px; font-size: 12px; font-weight: 700; opacity: .7; }
+
+.ll-pause-menu { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.ll-pause-btn { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 54px; padding: 6px 16px; border: 4px solid var(--ink); border-radius: 14px; background: var(--gold); color: var(--ink); box-shadow: 0 5px 0 var(--ink); font: inherit; font-weight: 900; font-size: 16px; letter-spacing: 1px; cursor: pointer; opacity: 0; transform: translateY(16px); animation: ll-pause-btn .3s cubic-bezier(.34,1.56,.64,1) both; transition: transform .14s cubic-bezier(.34,1.56,.64,1), box-shadow .14s cubic-bezier(.34,1.56,.64,1); touch-action: manipulation; }
+@keyframes ll-pause-btn { to { opacity: 1; transform: none; } }
+.ll-pause-btn.resume { background: var(--grass); }
+.ll-pause-btn.settings { background: var(--blue); }
+.ll-pause-btn.restart { background: var(--orange); }
+.ll-pause-btn.title { background: var(--paper); }
+.ll-pause-btn.settings.on { box-shadow: 0 2px 0 var(--ink); transform: translateY(3px); filter: brightness(.95); }
+.ll-pause-btn:hover { transform: translateY(-2px); box-shadow: 0 7px 0 var(--ink); }
+.ll-pause-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink); transition: none; }
+.ll-pause-btn.confirm { background: #e53935; color: #fff; animation: ll-pause-shake .3s linear; }
+@keyframes ll-pause-shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
+.ll-pause-ico { width: 30px; text-align: center; font-size: 22px; }
+.ll-pause-lab { flex: 1; text-align: left; }
+
+/* settings panel (expands in sheet) */
+.ll-settings { width: 100%; display: block; max-height: 0; overflow: hidden; opacity: 0; margin-top: 0; transition: max-height .24s cubic-bezier(.22,1,.36,1), opacity .2s, margin .24s; }
+.ll-pause.settings .ll-settings { max-height: 420px; opacity: 1; margin-top: 10px; }
+.ll-set-row { display: grid; grid-template-columns: 84px 1fr; align-items: center; gap: 8px; padding: 6px 0; border-top: 2px dashed rgba(38,50,56,.15); font-size: 12px; font-weight: 800; }
+.ll-set-row:first-child { border-top: 0; }
+.ll-set-hint { grid-column: 2; font-size: 10px; font-weight: 600; opacity: .55; margin-top: -4px; }
+.ll-seg { display: inline-flex; border: 3px solid var(--ink); border-radius: 10px; overflow: hidden; background: #fff; }
+.ll-seg-btn { flex: 1; padding: 5px 8px; border: 0; background: transparent; font: inherit; font-size: 12px; font-weight: 800; text-transform: capitalize; cursor: pointer; color: var(--ink); border-right: 3px solid var(--ink); }
+.ll-seg-btn:last-child { border-right: 0; }
+.ll-seg-btn.on { background: var(--gold); }
+.ll-range-wrap { display: flex; align-items: center; gap: 8px; }
+.ll-range { flex: 1; -webkit-appearance: none; appearance: none; height: 10px; border: 3px solid var(--ink); border-radius: 8px; background: #fff; outline: 0; }
+.ll-range::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: var(--gold); border: 3px solid var(--ink); box-shadow: 0 2px 0 var(--ink); cursor: pointer; }
+.ll-range::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: var(--gold); border: 3px solid var(--ink); box-shadow: 0 2px 0 var(--ink); cursor: pointer; }
+.ll-set-val { min-width: 48px; text-align: right; font-size: 11px; font-variant-numeric: tabular-nums; opacity: .8; }
+.ll-check { width: 22px; height: 22px; accent-color: var(--gold); border: 3px solid var(--ink); }
+.ll-set-reset { margin-top: 6px; border: 0; background: transparent; font: inherit; font-size: 11px; font-weight: 800; text-decoration: underline; opacity: .6; cursor: pointer; color: var(--ink); }
+.ll-pause-foot { margin: 8px 0 0; font-size: 10px; font-weight: 700; opacity: .5; text-align: center; }
+
+/* reduce-motion: applies globally when the setting is on */
+body.ll-reduce-motion *, body.ll-reduce-motion *::before, body.ll-reduce-motion *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+
+@media (max-height: 460px) {
+  .ll-pause-sheet { padding: 10px 14px 8px; gap: 4px; }
+  .ll-pause-title { font-size: 24px; } .ll-pause-sub, .ll-pause-foot { display: none; }
+  .ll-pause-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ll-pause-btn { min-height: 44px; font-size: 13px; padding: 4px 10px; }
+}
+
+/* 📖 TUTORIAL button (replay the guided tutorial) + ⏸ pause button in the HUD (touch players have no Esc) */
+.ll-pause-btn.tutorial { background: #CE93D8; }
+.ll-pause-fab { width: 40px; height: 40px; border-radius: 12px; border: 3px solid var(--ink); background: var(--paper); color: var(--ink); box-shadow: var(--shadow); font: 900 18px/1 var(--font); display: grid; place-items: center; padding: 0; cursor: pointer; pointer-events: auto; touch-action: manipulation; }
+.ll-pause-fab:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+.ll-pause-fab.floating { position: absolute; z-index: 21; top: calc(max(10px, env(safe-area-inset-top)) + 4px); right: max(12px, env(safe-area-inset-right)); }
+body.is-touch .ll-pause-fab { width: 44px; height: 44px; }
+/* mobile QA re-run (tutorial chat): the ⏸ button used to stack ON TOP of the HUD's right column (stats + stars) and pushed it 45–50 px
+   down into the jars panel (hud×jars 228×33–37 px). It now sits to the LEFT of the column, so the column stays as tall as before. */
+.ll-right:has(> .ll-pause-fab) { display: grid; grid-template-columns: auto auto; column-gap: 6px; row-gap: 5px; justify-items: end; align-items: start; }
+.ll-right > .ll-pause-fab { grid-column: 1; grid-row: 1 / span 2; }
+.ll-right > :not(.ll-pause-fab) { grid-column: 2; }

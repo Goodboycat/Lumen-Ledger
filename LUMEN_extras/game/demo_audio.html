@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Lumen Ledger — Chat 12 Audio Demo</title>
+<link rel="stylesheet" href="ui/base.css">
+<style>
+  .panel { position: absolute; left: 12px; top: 70px; z-index: 10; background: rgba(255,248,231,.94); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px 10px; font-size: 12px; max-width: min(92vw, 640px); max-height: calc(100vh - 90px); overflow: auto; }
+  .panel b { display: block; font-size: 13px; margin: 6px 0 4px; }
+  .row { display: flex; gap: 6px; margin: 4px 0; flex-wrap: wrap; align-items: center; }
+  .btn { background: var(--gold); border: 3px solid var(--ink); border-radius: 10px; padding: 3px 9px; font: inherit; font-weight: 800; box-shadow: 0 3px 0 var(--ink); cursor: pointer; }
+  .btn:active, .btn.on { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+  .btn.music { background: var(--blue); } .btn.ev { background: #c9b8e8; } .btn.warn { background: var(--orange); }
+  .btn.file { outline: 3px solid #2e7d32; } .btn.missing { opacity: .8; }
+  input[type=range] { width: 110px; }
+  #log { font-size: 11px; line-height: 1.35; white-space: pre; font-family: ui-monospace, Menlo, monospace; font-weight: 600; max-height: 26vh; overflow: auto; margin-top: 4px; }
+  #gate { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(43,32,24,.55); color: #fff8e7; font-weight: 900; font-size: 22px; text-align: center; cursor: pointer; }
+  #gate.off { display: none; }
+</style>
+</head>
+<body>
+<div id="game-root">
+  <div id="game-container"></div>
+  <header id="hud" class="hud">
+    <div class="ribbon"><span class="ribbon-title">LUMEN LEDGER</span><span class="ribbon-sub">Chat 12 · Audio</span></div>
+    <div id="stats" class="stats">fps — · calls —</div>
+  </header>
+  <div id="gate">TAP / CLICK ANYWHERE<br><small style="font-size:14px;font-weight:700">unlocks the AudioContext (iOS rule) → bus 'input:first'</small></div>
+  <section class="panel" id="panel">
+    <div class="row">
+      <label>SFX <input id="vol-sfx" type="range" min="0" max="1" step="0.05" value="0.8"></label>
+      <label>Music <input id="vol-music" type="range" min="0" max="1" step="0.05" value="0.6"></label>
+      <button class="btn warn" id="btn-duck">Duck: OFF</button>
+      <button class="btn warn" id="btn-stop">Stop music</button>
+      <span id="src-legend">green ring = real file · plain = synth fallback</span>
+    </div>
+    <b>SFX ids (<span id="n-sfx">0</span>) — click plays (file if present, else synth)</b>
+    <div class="row" id="sfx-buttons"></div>
+    <b>Music ids</b>
+    <div class="row" id="music-buttons"></div>
+    <b>Bus events (fire through the map, cooldowns apply)</b>
+    <div class="row" id="ev-buttons"></div>
+    <div id="log"></div>
+  </section>
+</div>
+<script type="module">
+import { Game } from './src/core/Game.js';
+import { Island } from './src/world/Island.js';
+import { createAudio, DEFAULT_EVENTS } from './src/core/Audio.js';
+
+const game = new Game(document.getElementById('game-container'));
+window.game = game;
+const island = new Island({ radius: 11, seed: 7 });
+game.scene.add(island.group); game.add({ update: (dt) => island.update(dt) });
+
+const audio = createAudio({ bus: game.bus, settings: { sfx: 0.8, music: 0.6 } });
+window.audio = audio;
+const logEl = document.getElementById('log'); const lines = [];
+const log = (s) => { lines.unshift(s); if (lines.length > 40) lines.pop(); logEl.textContent = lines.join('\n'); };
+
+// 11B-style unlock: first gesture → bus 'input:first' → audio.unlock() (Audio.js listens). Never create the context at load.
+const gate = document.getElementById('gate'); let fired = false;
+const unlock = () => { if (fired) return; fired = true; gate.classList.add('off'); game.bus.emit('input:first', { touch: game.input.isTouch }); log(`unlocked: ctx ${audio.state.ctx?.state} · sampleRate ${audio.state.ctx?.sampleRate}`); audio.preload().then(() => { log(`preload done · missing files: ${audio.state.missing.size}/${Object.keys(audio.state.manifest.sfx).length + Object.keys(audio.state.manifest.music).length} (synth covers them)`); paint(); }); };
+for (const t of ['pointerdown', 'touchend', 'keydown']) window.addEventListener(t, unlock, { capture: true, passive: true });
+
+const btn = (parent, label, cls, fn) => { const b = document.createElement('button'); b.className = 'btn ' + cls; b.textContent = label; b.type = 'button'; b.onclick = fn; parent.appendChild(b); return b; };
+const sfxB = {}, musB = {};
+function paint() { for (const [id, b] of Object.entries({ ...sfxB, ...musB })) { const buf = audio.state.buffers.get(id); b.classList.toggle('file', !!buf && !(buf instanceof Promise)); b.classList.toggle('missing', audio.state.missing.has(id)); } }
+await audio.load('./audio/manifest.json');
+const m = audio.state.manifest;
+document.getElementById('n-sfx').textContent = Object.keys(m.sfx).length;
+for (const id of Object.keys(m.sfx)) sfxB[id] = btn(document.getElementById('sfx-buttons'), id, '', () => { audio.play(id); const buf = audio.state.buffers.get(id); log(`play ${id} → ${buf && !(buf instanceof Promise) ? 'file ' + m.sfx[id].file : 'synth ' + m.sfx[id].synth.type + ' ' + m.sfx[id].synth.f + 'Hz'} · ×${audio.state.played[id]}`); setTimeout(paint, 300); });
+for (const id of Object.keys(m.music)) musB[id] = btn(document.getElementById('music-buttons'), '♪ ' + id, 'music', () => { audio.music(id); log(`music ${id} (${m.music[id].file} or synth pad ${m.music[id].synth.bpm} bpm)`); setTimeout(paint, 600); });
+const evs = ['eco:sale', 'eco:spark', 'eco:denied', 'build:placed', 'build:removed', 'build:upgraded', 'eco:season', 'eco:loan', 'eco:scam', 'eco:scamResult', 'eco:upgrade', 'eco:win', 'eco:lose', 'story:line', 'ui:choice', 'ui:ledger:open', 'ui:ledger:close', 'ui:dialogue:open', 'ui:dialogue:close', 'game:start', 'ui:title:open', 'sandbox:ability'];
+const payload = { 'eco:scamResult': { accepted: true }, 'sandbox:ability': { name: 'fogSweep' } };
+for (const ev of evs) btn(document.getElementById('ev-buttons'), ev, 'ev', () => { const before = audio.state.throttled || 0; game.bus.emit(ev, payload[ev] || {}); const r = DEFAULT_EVENTS[ev]; log(`emit ${ev} → ${r.sfx || '—'}${r.music ? ' · music ' + r.music : ''}${r.duck !== undefined ? ' · duck ' + r.duck : ''}${(audio.state.throttled || 0) > before ? ' · THROTTLED (cooldown ' + r.cooldown + 's)' : ''}`); });
+
+document.getElementById('vol-sfx').oninput = (e) => { audio.setVolume({ sfx: +e.target.value }); };
+document.getElementById('vol-music').oninput = (e) => { audio.setVolume({ music: +e.target.value }); };
+const duckB = document.getElementById('btn-duck'); duckB.onclick = () => { audio.duck(!audio.state.ducked); duckB.textContent = 'Duck: ' + (audio.state.ducked ? 'ON (35 %)' : 'OFF'); duckB.classList.toggle('on', audio.state.ducked); };
+document.getElementById('btn-stop').onclick = () => { audio.stopMusic(); log('music stopped'); };
+window.addEventListener('keydown', (e) => { const i = '1234567890'.indexOf(e.key); const ids = Object.keys(m.sfx); if (i >= 0 && ids[i]) sfxB[ids[i]].click(); if (e.key === 'm') musB.island_day.click(); });
+
+const statsEl = document.getElementById('stats');
+game.add({ update: () => { const s = game.stats; statsEl.textContent = `fps ${s.fps} · calls ${s.drawCalls} · tris ${(s.triangles / 1000).toFixed(0)}k · ctx ${audio.state.ctx?.state || 'locked'} · music ${audio.state.currentMusic || '—'}`; } });
+log(`manifest: ${Object.keys(m.sfx).length} sfx · ${Object.keys(m.music).length} music · ${audio.state.wired} bus events wired · keys 1–0 = first ten sfx, M = island_day`);
+game.start();
+</script>
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Lumen Ledger — Chat 1A Stalls Demo</title>
+<link rel="stylesheet" href="ui/base.css">
+<style>
+  .panel { position: absolute; left: 12px; top: 70px; z-index: 10; background: rgba(255,248,231,.94); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px 10px; font-size: 12px; font-weight: 600; max-width: 260px; pointer-events: auto; }
+  .panel b { display: block; font-size: 13px; margin-bottom: 4px; }
+  .row { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
+  .btn { background: var(--gold); border: 3px solid var(--ink); border-radius: 10px; padding: 4px 10px; font: inherit; font-weight: 800; box-shadow: 0 3px 0 var(--ink); cursor: pointer; }
+  .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+  .btn.alt { background: var(--blue); }
+  .btn.warn { background: var(--orange); }
+  #tris { font-size: 11px; line-height: 1.35; white-space: pre; font-family: ui-monospace, Menlo, monospace; font-weight: 600; max-height: 38vh; overflow: auto; }
+  .label { position: absolute; transform: translate(-50%, -100%); background: var(--paper); border: 2px solid var(--ink); border-radius: 8px; padding: 1px 7px; font-size: 11px; font-weight: 800; pointer-events: none; white-space: nowrap; }
+  @media (max-width: 600px) { .panel { max-width: 180px; font-size: 11px; top: 64px; } #tris { display: none; } }
+</style>
+</head>
+<body>
+<div id="game-root">
+  <div id="game-container"></div>
+  <header id="hud" class="hud">
+    <div class="ribbon"><span class="ribbon-title">LUMEN LEDGER</span><span class="ribbon-sub">Chat 1A · 12 Stalls</span></div>
+    <div id="stats" class="stats">fps — · calls —</div>
+  </header>
+  <section class="panel" id="panel">
+    <b>Stall levels</b>
+    <div class="row">
+      <button class="btn" data-lvl="1">L1</button>
+      <button class="btn" data-lvl="2">L2</button>
+      <button class="btn" data-lvl="3">L3</button>
+      <button class="btn alt" id="btn-cycle">Cycle ▶</button>
+      <button class="btn warn" id="btn-random">Random one</button>
+    </div>
+    <div id="tris"></div>
+  </section>
+  <aside id="help" class="help">
+    <b>1/2/3</b> set level on all (animated) &nbsp;·&nbsp; <b>C</b> cycle one stall &nbsp;·&nbsp; <b>Space</b> level-up random &nbsp;·&nbsp; <b>WASD</b> move Pip &nbsp;·&nbsp; wheel zoom
+  </aside>
+  <div id="labels"></div>
+</div>
+<script type="module">
+import * as THREE from './vendor/three.module.js';
+import { Game } from './src/core/Game.js';
+import { Island } from './src/world/Island.js';
+import { VFX } from './src/vfx/VFX.js';
+import { HeroController } from './src/entities/HeroController.js';
+import { PROP_CATALOG, makeProp, propsByCategory, measureCatalog, countTris } from './src/assets/props.js';
+
+const container = document.getElementById('game-container');
+const game = new Game(container);
+window.game = game;
+
+// World
+const island = new Island({ radius: 11, seed: 7 });
+game.scene.add(island.group);
+game.add({ update: (dt) => island.update(dt) });
+const vfx = game.add(new VFX(game));
+
+// 12 stalls on a 4×3 grid (2×2 tiles each, with 1-tile aisles). Stalls face +Z.
+const ids = propsByCategory('stall');
+const stalls = [];
+const cols = 4, rows = 3, sx = 3.6, sz = 4.6;
+ids.forEach((id, i) => {
+  const c = i % cols, r = Math.floor(i / cols);
+  const g = makeProp(id, { level: 1 });
+  g.position.set((c - (cols - 1) / 2) * sx, 0, (r - (rows - 1) / 2) * sz - 1.2);
+  game.scene.add(g);
+  stalls.push(g);
+});
+// Queue slot markers (small flat discs) so Chat 6 can see where Glimmers stand
+const discGeo = new THREE.CircleGeometry(0.16, 10);
+const discMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false });
+const discs = new THREE.InstancedMesh(discGeo, discMat, stalls.length * 4);
+discs.userData.noOutline = true;
+const m4 = new THREE.Matrix4(), q = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)), s1 = new THREE.Vector3(1, 1, 1);
+let k = 0;
+for (const st of stalls) for (const slot of st.userData.slots.queue) {
+  const p = slot.clone(); st.localToWorld(p); p.y = 0.03;
+  m4.compose(p, q, s1); discs.setMatrixAt(k++, m4);
+}
+discs.instanceMatrix.needsUpdate = true;
+game.scene.add(discs);
+
+// Per-stall idle (flag/sign)
+game.add({ update: (dt) => { for (const s of stalls) s.userData.update(dt); } });
+
+// Hero for scale + to show the camera framing
+const hero = new HeroController(game, { vfx, targets: () => [], isLand: (x, z) => island.isLand(x, z) });
+hero.root.position.set(0, 0, 5.2);
+game.add({ update: (dt) => hero.update(dt) });
+game.followTarget = hero.root.position;
+game.camera.zoom = 1.5;
+game.camera.snapTo(hero.root.position);
+game.input.onWheel = (dir) => { game.camera.zoom = THREE.MathUtils.clamp(game.camera.zoom + dir * 0.1, 0.6, 1.8); };
+
+// Level controls
+const setAll = (lvl) => stalls.forEach((s, i) => setTimeout(() => s.userData.setLevel(lvl, { animate: true, game, vfx }), i * 60));
+let cycleIdx = 0;
+const cycleOne = () => { const s = stalls[cycleIdx++ % stalls.length]; s.userData.setLevel((s.userData.level % 3) + 1, { animate: true, game, vfx }); };
+const randomOne = () => { const s = stalls[Math.floor(Math.random() * stalls.length)]; const lvl = (s.userData.level % 3) + 1; s.userData.setLevel(lvl, { animate: true, game, vfx }); const p = s.position.clone(); p.y = 2.6; vfx.pop.show(p, `L${lvl}!`, { color: '#FFD54F', dur: 0.9, size: 1.1 }); game.camera.shake(0.18); };
+document.querySelectorAll('[data-lvl]').forEach((b) => b.addEventListener('click', () => setAll(+b.dataset.lvl)));
+document.getElementById('btn-cycle').addEventListener('click', cycleOne);
+document.getElementById('btn-random').addEventListener('click', randomOne);
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Digit1') setAll(1);
+  if (e.code === 'Digit2') setAll(2);
+  if (e.code === 'Digit3') setAll(3);
+  if (e.code === 'KeyC') cycleOne();
+  if (e.code === 'Space') randomOne();
+});
+game.input.onTap = (world) => {
+  // tap a stall → level it up
+  let best = null, bd = 1.6;
+  for (const s of stalls) { const d = Math.hypot(s.position.x - world.x, s.position.z - world.z); if (d < bd) { bd = d; best = s; } }
+  if (best) best.userData.setLevel((best.userData.level % 3) + 1, { animate: true, game, vfx });
+};
+
+// Tri stats per stall (L1 / L2 / L3) — budget is ≤ 900 tris / ≤ 10 draw calls per stall
+const trisEl = document.getElementById('tris');
+const triTable = {};
+for (const id of ids) {
+  triTable[id] = [1, 2, 3].map((lvl) => countTris(PROP_CATALOG[id].make({ level: lvl, outline: false })));
+}
+measureCatalog(1);
+trisEl.textContent = 'tris  L1   L2   L3\n' + ids.map((id) => `${id.replace('stall_', '').padEnd(13)} ${triTable[id].map((n) => String(n).padStart(4)).join(' ')}`).join('\n');
+console.table(triTable);
+
+// Floating name labels (DOM) above each stall
+const labelsRoot = document.getElementById('labels');
+const labels = stalls.map((s) => { const el = document.createElement('div'); el.className = 'label'; el.textContent = s.userData.name; labelsRoot.appendChild(el); return el; });
+const v = new THREE.Vector3();
+game.add({ lateUpdate: () => {
+  const w = container.clientWidth, h = container.clientHeight;
+  stalls.forEach((s, i) => {
+    v.set(s.position.x, 3.3, s.position.z).project(game.camera.three);
+    const el = labels[i];
+    if (v.z > 1) { el.style.display = 'none'; return; }
+    el.style.display = ''; el.style.left = ((v.x + 1) / 2 * w) + 'px'; el.style.top = ((1 - v.y) / 2 * h) + 'px';
+  });
+} });
+
+const statsEl = document.getElementById('stats');
+game.add({ update: () => { const s = game.stats; statsEl.textContent = `fps ${s.fps} · calls ${s.drawCalls} · tris ${(s.triangles / 1000).toFixed(0)}k`; } });
+
+if (game.input.isTouch) document.body.classList.add('is-touch');
+game.start();
+setTimeout(() => setAll(2), 900);
+setTimeout(() => setAll(3), 2600);
+</script>
+</body>
+</html>
