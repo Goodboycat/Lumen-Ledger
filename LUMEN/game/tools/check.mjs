@@ -713,7 +713,9 @@ if (doStory) {
     for (let s = 1; s <= 10 && !eco.state.ended; s++) {
       // play half a season, mid lines must appear once, then a scam offer with a choice, then finish the season
       eco.tick(season0 * 0.55); story.update(0); if (story.current?.group !== 'mid') throw new Error('S' + s + ' mid not playing: ' + story.current?.group); drain();
-      if (s === 2) { eco.offerScam('zeroInterestLoan'); if (!story.isPlaying || story.current.group !== 'scam') throw new Error('scam pitch'); drain(1); scams++; if (eco.ledger.scamsRefused !== 1) throw new Error('refuse not applied'); }
+      if (s === 2) { eco.offerScam('zeroInterestLoan'); if (!story.isPlaying || story.current.group !== 'scam') throw new Error('scam pitch'); if (ev['story:line'].some((l) => l.fox)) throw new Error('fox tell without Scout Fox'); drain(1); scams++; if (eco.ledger.scamsRefused !== 1) throw new Error('refuse not applied'); }
+      // Scout Fox owned → the tell is whispered BEFORE the choice line (the helper's promised effect); refusing still works
+      if (s === 5) { eco.state.owned.push('helper_scoutFox'); const n0 = ev['story:line'].length; eco.offerScam('doubleSpark'); drain(1); const got = ev['story:line'].slice(n0), fi = got.findIndex((l) => l.fox), ci = got.findIndex((l) => l.choices); if (fi < 0 || ci < 0 || fi !== ci - 1 || !/Guaranteed/.test(got[fi].text)) throw new Error('Scout Fox tell right before the choice: fox=' + fi + ' choice=' + ci); if (eco.ledger.scamsRefused !== 1) throw new Error('refuse after fox tell (per-season ledger)'); eco.state.owned = eco.state.owned.filter((x) => x !== 'helper_scoutFox'); }
       eco.earn(420, 'check'); eco.allocate({ save: 140, protect: 80, invest: 60 }); if (eco.state.debt > 0) eco.repay(Math.min(eco.state.debt, 150));
       eco.tick(season0 * 0.5); if (eco.state.season !== s + 1 && !eco.state.ended) throw new Error('season did not roll'); lessons.push(ev['story:lesson'].filter((l) => !l.scam).pop().id);
       if (story.current?.group !== 'ledger') throw new Error('S' + s + ' ledger lines not playing');
@@ -729,7 +731,7 @@ if (doStory) {
     const json = story.serialize(); const s2 = StorySystem.deserialize(JSON.stringify(json), eco, { data, bus: new EventBus() });
     if (s2.state.toastsFired.length !== story.state.toastsFired.length || s2.state.openingPlayed !== story.state.openingPlayed) throw new Error('serialize round-trip');
     story.destroy();
-    console.log(`  bus-driven walk: ui:start → S1 opening + t_move toast · 10 × (mid @0.55 · eco:season → lesson + ledger[${pickLedgerVariant(2)}…] → story:review → ui:continue → opening) · scam refuse via ui:choice · ${ev['story:line'].length} lines · ${ev['story:toast'].length} toasts · lessons in BALANCE order · ended=${eco.state.ended} finale=${ev['story:finale']?.[0]?.outcome || '—'} · serialize round-trip · destroy  OK`);
+    console.log(`  bus-driven walk: ui:start → S1 opening + t_move toast · 10 × (mid @0.55 · eco:season → lesson + ledger[${pickLedgerVariant(2)}…] → story:review → ui:continue → opening) · scam refuse via ui:choice · Scout Fox tell before the choice · ${ev['story:line'].length} lines · ${ev['story:toast'].length} toasts · lessons in BALANCE order · ended=${eco.state.ended} finale=${ev['story:finale']?.[0]?.outcome || '—'} · serialize round-trip · destroy  OK`);
   } catch (err) { bad++; console.log('  story system FAIL →', err.message); }
 }
 if (doVFX) {

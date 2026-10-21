@@ -110,10 +110,16 @@ export class StorySystem {
   onScam(offer) {
     if (!offer || !offer.id) return false;
     this.pendingOffer = offer; this.state.scamsSeen.push(offer.id);
-    const lines = linesFor(this.data, 'scam', offer.id, 'pitch');
+    let lines = linesFor(this.data, 'scam', offer.id, 'pitch');
     if (!lines.length) { // no script → synthesize a 2-line pitch from the 4B offer so the choice still happens
-      const fallback = [{ speaker: 'collector', text: offer.text || offer.title || 'A wonderful offer!', mood: 'happy' }, { speaker: 'collector', text: 'Well?', choices: [{ id: 'accept', text: 'Accept' }, { id: 'refuse', text: 'Refuse' }] }];
-      return this._play('scam', fallback, { id: offer.id, offer });
+      lines = [{ speaker: 'collector', text: offer.text || offer.title || 'A wonderful offer!', mood: 'happy' }, { speaker: 'collector', text: 'Well?', choices: [{ id: 'accept', text: 'Accept' }, { id: 'refuse', text: 'Refuse' }] }];
+    }
+    // BUGFIX: Scout Fox (helper_scoutFox, effect.revealScams) promised "shows the tell" but nothing consumed the flag. Owned → the tell is
+    // whispered by Owl right BEFORE the choice line, so the player can refuse for the right reason. Not owned → the tell only comes after.
+    const tell = this.data?.scams?.[offer.id]?.tell || offer.tell;
+    if (tell && this.economy?.mod?.('revealScams', false) === true) {
+      const i = Math.max(0, lines.findIndex((l) => l && l.choices)); const fox = { speaker: 'owl', text: 'Scout Fox sniffs the air. "Smell that? ' + tell + '"', mood: 'angry', fox: true };
+      lines = i > 0 ? [...lines.slice(0, i), fox, ...lines.slice(i)] : [fox, ...lines];
     }
     return this._play('scam', lines, { id: offer.id, offer });
   }
