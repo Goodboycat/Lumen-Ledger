@@ -61,3 +61,8 @@ body.ll-tut-open .ll-joy-hint { opacity: .8; }
 .ll-tut-card.compact .ll-tut-btn { padding: 4px 10px; font-size: 14px; }
 @media (max-height: 420px) { .ll-tut-title { font-size: 16px; } .ll-tut-text { font-size: 12px; margin-bottom: 6px; } .ll-tut-owl { width: 30px; height: 30px; font-size: 18px; } .ll-tut-btn { min-height: 38px; } }
 body.ll-reduce-motion .ll-tut-hand span, body.ll-reduce-motion .ll-tut-ring { animation: none; }
+/* first-play delay blocker (game:start → tutorial open): transparent, catches every touch so nothing fires before the guide shows */
+.ll-tut-blocker { position: fixed; inset: 0; z-index: 59; display: none; pointer-events: auto; touch-action: none; background: transparent; }
+.ll-tut-blocker.on { display: block; }
+/* while the guide is open nothing behind it may be focused or text-selected */
+body.ll-tut-open { user-select: none; -webkit-user-select: none; }

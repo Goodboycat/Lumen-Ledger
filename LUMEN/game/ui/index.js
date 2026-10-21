@@ -51,7 +51,7 @@ export function mountUI(root, opts = {}) {
   add('seasons', mountSeasonInfo(root, { bus, seasonsToWin, lessons: opts.storyData?.lessons, seasons: opts.storyData?.seasons, isModal: () => !!(ui.title?.isOpen || ui.ledger?.isOpen || ui.dialogue?.isOpen || ui.pause?.isOpen || ui.tutorial?.isOpen) }));
   if (opts.touch !== false && opts.input) add('touch', mountTouch(root, opts.input, { bus, force: opts.forceTouch }));
   // guided tutorial: hand pointer + input lock, opens on the first PLAY (opts.autoTutorial — index.html turns it on; headless checks leave it off) and from the pause menu's 📖 TUTORIAL (mounted last = on top)
-  if (opts.tutorial !== false) add('tutorial', mountTutorial(root, { bus, ui, auto: !!opts.autoTutorial, storageKey: opts.tutorialKey }));
+  if (opts.tutorial !== false) add('tutorial', mountTutorial(root, { bus, ui, input: opts.input, auto: !!opts.autoTutorial, storageKey: opts.tutorialKey }));
 
   /** One clock for every panel (count-ups, typewriter, fps readout). */
   ui.update = (dt) => { ui.hud.update(dt); ui.ledger.update(dt); ui.dialogue.update(dt); ui.tutorial?.update?.(dt); };

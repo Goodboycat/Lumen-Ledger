@@ -13,7 +13,9 @@
 //   • INPUT LOCK while open: four dark shade panels surround a "hole" over the target, so the ONLY things that can be touched are
 //     the spot under the hand and the tutorial's own dialogue card (Next / Back / Skip). Look-only steps put a transparent cover in
 //     the hole (tap = Next); action steps (Build, jars) leave the hole open so the real control works. Every keydown is swallowed in
-//     the capture phase except Enter / Space / → (next), ← (back), Esc (skip). Everything is removed again on close.
+//     the capture phase except Enter / Space / → (next), ← (back), Esc (skip); Tab is trapped inside the card (+ the pointed control);
+//     wheel / context menu are swallowed; held keys / joystick are released on open; a full-screen blocker covers the 450 ms
+//     first-play delay. Everything is removed again on close.
 //   • Pauses the game: emits `ui:pause {on, by:'tutorial'}` + `ui:tutorial:open` / `ui:tutorial:close` (10C OR-s the pause reason;
 //     ui.isModal() already treats ui.tutorial.isOpen as a screen-blocking window; seasons.js defers its banner until close).
 // Motion: shade fade 200 ms · hole/ring glide 220 ms outCubic · hand bob 0.9 s loop · card pop 260 ms outBack.
@@ -80,8 +82,11 @@ export function mountTutorial(root, opts = {}) {
   bSkip.type = bBack.type = bNext.type = 'button';
   cRow.append(bSkip, bBack, bNext);
   card.append(cTop, cTitle, cText, cRow);
+  // full-screen transparent blocker for the first-play delay (game:start → open, 450 ms): nothing may be touched before the guide shows
+  const blocker = el('div', 'll-tut-blocker');
   wrap.append(ring, chip, cover, card, hand);
   root.appendChild(wrap);
+  root.appendChild(blocker);
 
   // ---------------------------------------------------------------- state
   const st = { open: false, waiting: false, waitT: 0, i: 0, pendingFirst: false, rect: null, offs: [], keyOff: null, from: null };
@@ -207,10 +212,32 @@ export function mountTutorial(root, opts = {}) {
 
   // ---------------------------------------------------------------- input lock (keyboard) — pointer lock = the shades
   const ALLOWED = new Set(['Enter', ' ', 'Spacebar', 'ArrowRight', 'ArrowLeft', 'Escape', 'Tab']);
+  /** Focusable things the player may reach with Tab: the card's buttons + (action steps) the real control in the hole. */
+  const focusables = () => {
+    const list = [bSkip, bBack, bNext].filter((b) => b.style.display !== 'none' && b.style.visibility !== 'hidden');
+    const s = step();
+    if (s && s.mode === 'act' && wrap.classList.contains('act')) {
+      const n = findVisible(root, s.target);
+      if (n) { if (n.matches?.('button,input,[tabindex]')) list.push(n); list.push(...n.querySelectorAll?.('button:not([disabled]),input:not([disabled])') || []); }
+    }
+    return list;
+  };
+  const inAllowedTarget = (t) => { const s = step(); if (!t || !s || s.mode !== 'act' || !wrap.classList.contains('act')) return false; const n = findVisible(root, s.target); return !!(n && n.contains?.(t)); };
   const onKeyCapture = (e) => {
+    if (st.waiting && !st.open) { e.stopImmediatePropagation?.(); e.stopPropagation?.(); e.preventDefault?.(); return; }   // first-play delay: swallow everything
     if (!st.open) return;
-    if (e.key === 'Tab') return;                                    // keep keyboard focus moving between the card's buttons
     e.stopImmediatePropagation?.(); e.stopPropagation?.(); e.preventDefault?.();
+    if (e.key === 'Tab') {                                          // focus trap: cycle only through the card (+ the pointed control)
+      const f = focusables(); if (!f.length) return;
+      const k = f.indexOf(document.activeElement);
+      const nx = k < 0 ? 0 : (k + (e.shiftKey ? -1 : 1) + f.length) % f.length;
+      f[nx].focus?.(); return;
+    }
+    // Enter / Space on the pointed control (action steps) or a focused card button = press it, nothing else
+    if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) {
+      const a = document.activeElement;
+      if (a && (wrap.contains(a) || inAllowedTarget(a)) && a.tagName === 'BUTTON') { a.click(); return; }
+    }
     if (e.repeat || !ALLOWED.has(e.key)) return;
     if (e.key === 'Escape') api.close('skip');
     else if (e.key === 'ArrowLeft') api.back();
@@ -228,14 +255,16 @@ export function mountTutorial(root, opts = {}) {
       if (st.open) return api;
       st.open = true; st.i = 0; st.from = from; st.pendingFirst = false;
       wrap.classList.add('open'); document.body?.classList?.add('ll-tut-open');
-      if (typeof window !== 'undefined' && window.addEventListener) { window.addEventListener('keydown', onKeyCapture, true); st.keyOff = () => window.removeEventListener('keydown', onKeyCapture, true); }
+      lockOn(); releaseHeld();
+      if (document.activeElement && !wrap.contains(document.activeElement)) document.activeElement.blur?.();
       bus.emit('ui:pause', { on: true, by: 'tutorial' }); bus.emit('ui:tutorial:open', { from });
       render(); return api;
     },
     close(why = 'done') {
       if (!st.open) return api;
       st.open = false; wrap.classList.remove('open', 'act'); document.body?.classList?.remove('ll-tut-open');
-      st.keyOff?.(); st.keyOff = null;
+      if (!st.waiting) lockOff();
+      if (document.activeElement && wrap.contains(document.activeElement)) document.activeElement.blur?.();
       const ui = getUI(); if (ui.build?.isOpen) { ui.build.deselect?.(); ui.build.close(); }
       markDone();
       bus.emit('ui:pause', { on: false, by: 'tutorial' }); bus.emit('ui:tutorial:close', { why, step: steps[st.i]?.id });
@@ -246,8 +275,25 @@ export function mountTutorial(root, opts = {}) {
     goto(id) { const k = steps.findIndex((s) => s.id === id); if (st.open && k >= 0) { st.i = k; render(); } return api; },
     reset() { try { localStorage.removeItem(storageKey); } catch { /* */ } return api; },
     update() { if (st.open) layout(); },
-    destroy() { clearTimeout(st.waitT); st.waiting = false; api.close('destroy'); st.offs.forEach((f) => f()); if (typeof window !== 'undefined') window.removeEventListener?.('resize', layout); wrap.remove(); },
+    destroy() { clearTimeout(st.waitT); st.waiting = false; blocker.classList.remove('on'); api.close('destroy'); lockOff(); st.offs.forEach((f) => f()); if (typeof window !== 'undefined') window.removeEventListener?.('resize', layout); wrap.remove(); blocker.remove(); },
   };
+
+  // ---------------------------------------------------------------- global lock (keyboard + wheel + context menu), on while open/waiting
+  const swallow = (e) => { if (!(st.open || st.waiting)) return; if (e.target && wrap.contains(e.target) && e.type !== 'wheel') return; if (e.type !== 'contextmenu' && inAllowedTarget(e.target)) return; e.stopImmediatePropagation?.(); e.preventDefault?.(); };
+  function lockOn() {
+    if (st.keyOff || typeof window === 'undefined' || !window.addEventListener) return;
+    window.addEventListener('keydown', onKeyCapture, true);
+    window.addEventListener('wheel', swallow, { capture: true, passive: false });   // no camera zoom behind the guide
+    window.addEventListener('contextmenu', swallow, true);
+    st.keyOff = () => { window.removeEventListener('keydown', onKeyCapture, true); window.removeEventListener('wheel', swallow, { capture: true }); window.removeEventListener('contextmenu', swallow, true); };
+  }
+  function lockOff() { st.keyOff?.(); st.keyOff = null; }
+  /** Let go of anything the player was already holding when the guide appeared (walk keys, joystick, held buttons). */
+  function releaseHeld() {
+    try { window.dispatchEvent?.(new Event('blur')); } catch { /* old DOM */ }
+    const inp = opts.input || getUI().input;
+    if (inp) { inp.keys?.clear?.(); if (inp.actions) for (const k in inp.actions) inp.actions[k] = false; if (inp.joystick) { inp.joystick.active = false; inp.joystick.vec?.set?.(0, 0); } }
+  }
 
   bNext.addEventListener('click', () => api.next());
   bBack.addEventListener('click', () => api.back());
@@ -262,11 +308,11 @@ export function mountTutorial(root, opts = {}) {
     bus.on('game:start', () => {
       if (!st.pendingFirst) return; st.pendingFirst = false;
       // pause at once (so the season-1 opening lines wait), then show once the HUD / pad have laid out
-      st.waiting = true; bus.emit('ui:pause', { on: true, by: 'tutorial-wait' });
-      st.waitT = setTimeout(() => { st.waiting = false; api.open('first'); bus.emit('ui:pause', { on: false, by: 'tutorial-wait' }); }, opts.delay ?? 450);
+      st.waiting = true; blocker.classList.add('on'); lockOn(); bus.emit('ui:pause', { on: true, by: 'tutorial-wait' });
+      st.waitT = setTimeout(() => { st.waiting = false; blocker.classList.remove('on'); api.open('first'); bus.emit('ui:pause', { on: false, by: 'tutorial-wait' }); }, opts.delay ?? 450);
     }),
     bus.on('ui:build:open', () => { if (st.open && step().id === 'build') api.next(); }),
-    bus.on('game:title', () => { clearTimeout(st.waitT); if (st.waiting) { st.waiting = false; bus.emit('ui:pause', { on: false, by: 'tutorial-wait' }); } api.close('title'); }),
+    bus.on('game:title', () => { clearTimeout(st.waitT); if (st.waiting) { st.waiting = false; blocker.classList.remove('on'); bus.emit('ui:pause', { on: false, by: 'tutorial-wait' }); } api.close('title'); lockOff(); }),
     bus.on('eco:lose', () => api.close('lose')),
   );
   return api;
