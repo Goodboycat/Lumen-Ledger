@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Lumen Ledger — Chat 1C Landmarks & Island v2 Demo</title>
+<link rel="stylesheet" href="ui/base.css">
+<style>
+  .panel { position: absolute; left: 12px; top: 70px; z-index: 10; background: rgba(255,248,231,.94); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px 10px; font-size: 12px; font-weight: 600; max-width: 280px; pointer-events: auto; }
+  .panel b { display: block; font-size: 13px; margin-bottom: 4px; }
+  .row { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
+  .btn { background: var(--gold); border: 3px solid var(--ink); border-radius: 10px; padding: 4px 10px; font: inherit; font-weight: 800; box-shadow: 0 3px 0 var(--ink); cursor: pointer; }
+  .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+  .btn.alt { background: var(--blue); } .btn.warn { background: var(--orange); }
+  #info { font-size: 11px; line-height: 1.35; white-space: pre; font-family: ui-monospace, Menlo, monospace; font-weight: 600; }
+  @media (max-width: 600px) { .panel { max-width: 190px; font-size: 11px; top: 64px; } #info { display: none; } }
+</style>
+</head>
+<body>
+<div id="game-root">
+  <div id="game-container"></div>
+  <header id="hud" class="hud">
+    <div class="ribbon"><span class="ribbon-title">LUMEN LEDGER</span><span class="ribbon-sub">Chat 1C · Landmarks + Island v2</span></div>
+    <div id="stats" class="stats">fps — · calls —</div>
+  </header>
+  <section class="panel" id="panel">
+    <b>Island v2 · Landmarks</b>
+    <div class="row">
+      <button class="btn" id="btn-zone">Unlock zone (Z)</button>
+      <button class="btn alt" id="btn-light">Lighthouse (L)</button>
+      <button class="btn warn" id="btn-cam">Camera (C)</button>
+    </div>
+    <div id="info"></div>
+  </section>
+  <aside id="help" class="help">
+    <b>Z</b> unlock next zone &nbsp;·&nbsp; <b>L</b> lighthouse dark → flicker → lit &nbsp;·&nbsp; <b>C</b> cycle camera (Pip / lighthouse / cottage / pier / fog tower) &nbsp;·&nbsp; <b>F</b> fog towers on/off &nbsp;·&nbsp; <b>WASD</b> move Pip &nbsp;·&nbsp; wheel zoom
+  </aside>
+</div>
+<script type="module">
+import * as THREE from './vendor/three.module.js';
+import { Game } from './src/core/Game.js';
+import { Island } from './src/world/Island.js';
+import { VFX } from './src/vfx/VFX.js';
+import { HeroController } from './src/entities/HeroController.js';
+import { makeProp, countTris } from './src/assets/props.js';
+import { makeLighthouse, makeCottage, makePier, makeFogTower, makeCliffWall, makeWaterfall, updateLandmarks, LANDMARK_IDS } from './src/assets/props/landmarks.js';
+
+const container = document.getElementById('game-container');
+const game = new Game(container);
+window.game = game;
+
+// ---- Island v2: start zone unlocked, 3 lobes hidden (press Z) ----
+const island = new Island({ radius: 11, seed: 7, zonesUnlocked: 1 });
+game.scene.add(island.group);
+game.add({ update: (dt) => { island.update(dt); updateLandmarks(dt); } });
+const vfx = game.add(new VFX(game));
+window.island = island;
+
+// ---- Landmarks ----
+const far = island.zones[1], west = island.zones[2], east = island.zones[3];
+const lighthouse = makeLighthouse();
+lighthouse.position.set(far.center.x, 0, far.center.z - 1); lighthouse.rotation.y = Math.PI; far.group.add(lighthouse);
+window.lighthouse = lighthouse;
+
+const cottage = makeCottage();
+cottage.position.set(-5, 0, 5); cottage.rotation.y = 0.5; island.zones[0].group.add(cottage); cottage.userData.setLit(true);
+
+const edge = island.landEdge(1, 0) || { x: 10, z: 0 };
+const pier = makePier({ length: 4 });
+pier.position.set(edge.x + 0.5, 0, edge.z + 0.5); island.zones[0].group.add(pier);
+
+const towers = [];
+for (const [zone, dx, dz, seed] of [[west, 1.5, -1, 1], [east, -1, -2, 2], [far, 3.5, 2.5, 3]]) {
+  const t = makeFogTower({ seed }); t.position.set(zone.center.x + dx, 0, zone.center.z + dz); zone.group.add(t); towers.push(t);
+}
+const cliff = makeCliffWall({ length: 5 }); cliff.position.set(west.center.x - 1, 0, west.center.z + 3.5); west.group.add(cliff);
+const waterfall = makeWaterfall({ height: 2.4 }); waterfall.position.set(east.center.x + 2, 0, east.center.z + 2.5); waterfall.rotation.y = Math.PI; east.group.add(waterfall);
+
+// ---- Hero for scale ----
+const hero = new HeroController(game, { vfx, targets: () => [], isLand: (x, z) => island.isLand(x, z) });
+hero.root.position.set(0, 0, 2);
+game.add({ update: (dt) => hero.update(dt) });
+game.followTarget = hero.root.position;
+game.camera.zoom = 1.4;
+game.camera.snapTo(hero.root.position);
+game.input.onWheel = (dir) => { game.camera.zoom = THREE.MathUtils.clamp(game.camera.zoom + dir * 0.1, 0.6, 2.2); };
+
+// ---- Controls ----
+const info = document.getElementById('info');
+const states = ['dark', 'flicker', 'lit']; let si = 0;
+const camSpots = [
+  { name: 'Pip', get: () => hero.root.position, zoom: 1.4 },
+  { name: 'Lighthouse', get: () => lighthouse.getWorldPosition(new THREE.Vector3()), zoom: 1.0 },
+  { name: 'Cottage', get: () => cottage.getWorldPosition(new THREE.Vector3()), zoom: 0.8 },
+  { name: 'Pier', get: () => pier.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(2, 0, 0)), zoom: 0.8 },
+  { name: 'Fog tower (west)', get: () => towers[0].getWorldPosition(new THREE.Vector3()), zoom: 0.9 },
+];
+let ci = 0; const camTarget = new THREE.Vector3();
+const setCam = (i) => { ci = i % camSpots.length; game.camera.zoom = camSpots[ci].zoom; };
+game.add({ update: () => { camTarget.copy(camSpots[ci].get()); game.followTarget = camTarget; } });
+const unlockNext = () => { const z = island.nextLockedZone(); if (z) island.unlockZone(z.index, { game, vfx }); else vfx.pop.show(hero.root.position.clone().setY(1.8), 'All zones open!', { color: '#4FC3F7' }); };
+const cycleLight = () => { si = (si + 1) % 3; lighthouse.userData.setState(states[si]); if (states[si] === 'lit') { game.camera.shake(0.3); vfx.flash.flash('#fff3b0', 160, 0.35); vfx.pop.show(lighthouse.getWorldPosition(new THREE.Vector3()).setY(7.5), 'Relit!', { color: '#FFD54F', size: 1.4 }); } };
+let fogOn = true; const toggleFog = () => { fogOn = !fogOn; towers.forEach((t) => t.userData.setActive(fogOn)); };
+document.getElementById('btn-zone').addEventListener('click', unlockNext);
+document.getElementById('btn-light').addEventListener('click', cycleLight);
+document.getElementById('btn-cam').addEventListener('click', () => setCam(ci + 1));
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyZ') unlockNext();
+  if (e.code === 'KeyL') cycleLight();
+  if (e.code === 'KeyC') setCam(ci + 1);
+  if (e.code === 'KeyF') toggleFog();
+  if (e.code === 'Digit1') unlockNext();                 // smoke tool: --keys 1,2,3 → unlock zones
+  if (e.code === 'Digit2') { unlockNext(); setCam(1); }
+  if (e.code === 'Digit3') { cycleLight(); cycleLight(); setCam(1); } // → lit, look at it
+});
+
+// ---- Info table: tris + draw calls per landmark; island draw calls per zone ----
+const rows = LANDMARK_IDS.map((id) => { const g = makeProp(id); let m = 0, h = 0; g.traverse((o) => { if (o.isMesh) (o.userData.isOutline ? h++ : m++); }); g.userData.dispose(); return `${id.padEnd(11)} ${String(countTris(g)).padStart(5)}t ${String(m + h).padStart(2)}dc`; });
+const zoneRows = island.zones.map((z) => { let m = 0; z.group.traverse((o) => { if (o.isMesh && o.parent === z.group || (o.isMesh && o.parent && o.parent.name === 'ground')) m++; }); return `zone ${z.id.padEnd(6)} ${String(z.cells.length).padStart(3)} cells  ground=1 mesh`; });
+const refresh = () => { info.textContent = `landmark     tris  dc\n${rows.join('\n')}\n\n${zoneRows.join('\n')}\nunlocked: ${island.zones.filter((z) => z.unlocked).length}/${island.zones.length} · cells ${island.gridCells().length}\nlighthouse: ${lighthouse.userData.state} · cam: ${camSpots[ci].name}`; };
+const statsEl = document.getElementById('stats');
+game.add({ update: () => { const s = game.stats; statsEl.textContent = `fps ${s.fps} · calls ${s.drawCalls} · tris ${(s.triangles / 1000).toFixed(0)}k`; refresh(); } });
+
+if (game.input.isTouch) document.body.classList.add('is-touch');
+game.start();
+</script>
+</body>
+</html>

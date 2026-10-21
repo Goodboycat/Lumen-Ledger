@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Lumen Ledger — Chat 10A World Integration Demo</title>
+<link rel="stylesheet" href="ui/base.css">
+<style>
+  .panel { position: absolute; left: 12px; top: 70px; z-index: 10; background: rgba(255,248,231,.94); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px 10px; font-size: 12px; font-weight: 600; max-width: 320px; pointer-events: auto; }
+  .panel b { display: block; font-size: 13px; margin-bottom: 4px; }
+  .row { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
+  .btn { background: var(--gold); border: 3px solid var(--ink); border-radius: 10px; padding: 4px 9px; font: inherit; font-weight: 800; box-shadow: 0 3px 0 var(--ink); cursor: pointer; font-size: 11px; }
+  .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+  .btn.alt { background: var(--blue); } .btn.warn { background: var(--orange); } .btn.fog { background: #B39DDB; } .btn.on { outline: 3px solid #fff; }
+  #table { font-size: 11px; line-height: 1.3; white-space: pre; font-family: ui-monospace, Menlo, monospace; font-weight: 600; margin-top: 6px; }
+  @media (max-width: 600px) { .panel { max-width: 200px; font-size: 11px; top: 64px; } #table { display: none; } }
+</style>
+</head>
+<body>
+<div id="game-root">
+  <div id="game-container"></div>
+  <header id="hud" class="hud">
+    <div class="ribbon"><span class="ribbon-title">LUMEN LEDGER</span><span class="ribbon-sub">Chat 10A · World integration</span></div>
+    <div id="stats" class="stats">fps — · calls —</div>
+  </header>
+  <section class="panel" id="panel">
+    <b>Everything on Island v2</b>
+    <div class="row" id="move-buttons"></div>
+    <div class="row">
+      <button class="btn alt" id="btn-zone">Z unlock zone</button>
+      <button class="btn alt" id="btn-cam">C camera</button>
+      <button class="btn fog" id="btn-fog">F fog</button>
+      <button class="btn warn" id="btn-night">N night</button>
+      <button class="btn warn" id="btn-slow">T slow</button>
+    </div>
+    <div id="table"></div>
+  </section>
+  <aside id="help" class="help">
+    <b>WASD</b> move · <b>Space</b> sword · <b>1–9</b> hero moves · <b>Q/W/E/R/F/G</b> abilities · <b>Z</b> unlock zone · <b>C</b> camera · <b>N</b> night · <b>T</b> slow-mo · tap a Glimmer = hit · tap a stall = level up
+  </aside>
+</div>
+<script type="module">
+import * as THREE from './vendor/three.module.js';
+import { Game } from './src/core/Game.js';
+import { PALETTE as P } from './src/core/Toon.js';
+import { Island } from './src/world/Island.js';
+import { VFX } from './src/vfx/VFX.js';
+import { installPack1 } from './src/vfx/pack1.js';
+import { installPack2 } from './src/vfx/pack2.js';
+import { HeroController } from './src/entities/HeroController.js';
+import { attachMoves, HERO_MOVES } from './src/anim/heroAnims.js';
+import { attachAbilities, ABILITY_NAMES, FINLIT } from './src/anim/heroAbilities.js';
+import { makeProp, STALL_TYPES, countTris, swayAll, makeFlowerField, makeGrassTufts, swayDecor, JAR_IDS, updateLandmarks } from './src/assets/props.js';
+import { bakeStatic } from './src/assets/props/bake.js';
+import { CreatureAnimator, HelperAnimator, VillainAnimator, FogPuffPool, makeGlimmerAny, ALL_GLIMMER_VARIANTS, registerVariants,
+         makeHelper, HELPER_TYPES, makeBaronGilt, makeFogCollector, measureCreature } from './src/assets/creatures/index.js';
+
+registerVariants();
+
+const container = document.getElementById('game-container');
+const game = new Game(container);
+window.game = game;
+
+// ---------------------------------------------------------------- deterministic rng
+let _s = 2026; const rnd = () => { _s = (_s * 1664525 + 1013904223) >>> 0; return _s / 4294967296; };
+
+// ---------------------------------------------------------------- Island v2 (no v1 starter props — 1B nature instead)
+const island = new Island({ radius: 11, seed: 7, zonesUnlocked: 1, starterProps: false });
+game.scene.add(island.group);
+window.island = island;
+const isLand = (x, z) => island.isLand(x, z);
+const occupied = new Set();                       // "x,z" cells taken by props (incl. footprint)
+const cellKey = (x, z) => `${Math.round(x)},${Math.round(z)}`;
+const free = (x, z, w = 1, d = 1) => {
+  for (let i = 0; i < w; i++) for (let j = 0; j < d; j++) {
+    const cx = Math.round(x) + i, cz = Math.round(z) + j;
+    if (!island.allTiles.has(cellKey(cx, cz)) || island.pathCells.has(cellKey(cx, cz)) || occupied.has(cellKey(cx, cz))) return false;
+  }
+  return true;
+};
+const take = (x, z, w = 1, d = 1) => { for (let i = 0; i < w; i++) for (let j = 0; j < d; j++) occupied.add(cellKey(Math.round(x) + i, Math.round(z) + j)); };
+const zoneOf = (x, z) => island.zones[Math.max(0, island.zoneAt(x, z))].group;
+// place a prop at a cell, parented to its zone group so it rises with the unlock Sequence
+function place(g, x, z, { rot = 0, w = 1, d = 1, parent = null } = {}) {
+  g.position.set(x, 0, z); g.rotation.y = rot; (parent || zoneOf(x, z)).add(g); take(x, z, w, d); return g;
+}
+
+// ---------------------------------------------------------------- VFX (Foundation + 9A + 9B)
+const vfx = game.add(new VFX(game));
+installPack1(vfx);
+const fogPool = game.add(new FogPuffPool(game.scene, 32));
+
+// ---------------------------------------------------------------- Landmarks (1C) — reserve their cells first
+const far = island.zones[1], west = island.zones[2], east = island.zones[3];
+const lighthouse = makeProp('lighthouse'); place(lighthouse, far.center.x, far.center.z - 1, { rot: Math.PI, w: 2, d: 2, parent: far.group });
+occupied.add(cellKey(far.center.x - 1, far.center.z - 1)); occupied.add(cellKey(far.center.x - 1, far.center.z - 2));
+installPack2(vfx, { island, lighthouse, radius: 12.5, core: 2.5 });
+vfx.fog.setCoverage(0, { immediate: true });
+window.lighthouse = lighthouse;
+const cottage = makeProp('cottage'); place(cottage, -6, 6, { rot: 0.5, w: 2, d: 2 }); cottage.userData.setLit(true);
+occupied.add(cellKey(-7, 6)); occupied.add(cellKey(-7, 5)); occupied.add(cellKey(-6, 5)); occupied.add(cellKey(-5, 5)); occupied.add(cellKey(-5, 7)); occupied.add(cellKey(-7, 7));
+const edge = island.landEdge(1, 0) || { x: 10, z: 0 };
+const pier = makeProp('pier', { length: 4 }); pier.position.set(edge.x + 0.5, 0, edge.z + 0.5); island.zones[0].group.add(pier);
+const towers = [];
+for (const [zone, dx, dz, seed] of [[west, 1.5, -1, 1], [east, -1, -2, 2], [far, 3.5, 2.5, 3]]) {
+  const t = makeProp('fog_tower', { seed }); place(t, zone.center.x + dx, zone.center.z + dz, { parent: zone.group }); towers.push(t);
+}
+const cliff = makeProp('cliff_wall', { length: 5 }); place(cliff, west.center.x - 1, west.center.z + 3.5, { w: 5, parent: west.group });
+const staticLandmarks = [cliff];
+const waterfall = makeProp('waterfall', { height: 2.4 }); place(waterfall, east.center.x + 2, east.center.z + 2.5, { rot: Math.PI, w: 2, d: 2, parent: east.group });
+
+// ---------------------------------------------------------------- Stalls (1A) — 6 around the start-zone plaza, facing the cross path
+const stalls = [];
+const stallSpots = [[-4, -3, Math.PI / 2], [-4, 2, Math.PI / 2], [3, -3, -Math.PI / 2], [3, 2, -Math.PI / 2], [-3, -6, 0], [2, -6, 0]];
+stallSpots.forEach(([x, z, rot], i) => {
+  const type = STALL_TYPES[i];
+  const g = makeProp('stall_' + type, { level: 1 + (i % 3), seed: i + 1 });
+  place(g, x, z, { rot, w: 2, d: 2 }); take(x - 1, z - 1, 3, 3);   // 1-cell margin
+  stalls.push(g);
+});
+
+// ---------------------------------------------------------------- Decor (1D) — jars by the cottage, lanterns, fence, bench, signs, banner, crates
+const decor = [], lanterns = [], jars = [], staticDecor = [];
+const st = (g) => { staticDecor.push(g); return g; };
+JAR_IDS.forEach((id, i) => { const j = makeProp(id, { fill: 0.25 + i * 0.2 }); place(j, -8 + i, 3, {}); jars.push(j); decor.push(j); });
+for (const [x, z] of [[-1.5, -8], [1.5, -8], [-6, -2], [5, 4], [-2, 5.5]]) { const l = makeProp(rnd() < 0.5 ? 'lantern_post' : 'lantern_hanging'); place(l, x, z); lanterns.push(l); decor.push(l); }
+for (let i = 0; i < 4; i++) { decor.push(st(place(makeProp('fence_rail'), 4 + i, 6))); } decor.push(st(place(makeProp('fence_post'), 8.5, 6)));
+decor.push(st(place(makeProp('fence_gate'), 5, 7.5, { w: 2 })));
+decor.push(st(place(makeProp('bench'), -2.5, 7, { w: 2 })));
+decor.push(st(place(makeProp('sign_board'), 2, 7)));
+decor.push(st(place(makeProp('sign_arrow'), 7, -2, { rot: Math.PI / 2 })));
+decor.push(place(makeProp('sign_hanging'), -5, -6));
+decor.push(place(makeProp('banner_string'), -1, -4.5, { w: 2 }));
+decor.push(st(place(makeProp('crate'), 6, -5))); decor.push(st(place(makeProp('barrel'), 7, -5))); decor.push(st(place(makeProp('crate'), 6, -6)));
+decor.push(st(place(makeProp('flower_pot'), -4, 7))); decor.push(st(place(makeProp('water_trough'), 5.5, -7.5, { w: 2 })));
+for (const [x, z] of [[-3, 4], [-2, 4], [-1, 4]]) decor.push(st(place(makeProp('path_stone'), x, z)));
+lanterns.forEach((l) => l.userData.setLit(false));
+
+// ---------------------------------------------------------------- Nature (1B) — scattered trees/rocks/bushes on every zone + instanced fields
+const TREES = ['tree_round', 'tree_cone', 'tree_double', 'tree_palm', 'tree_blossom', 'tree_tall', 'tree_bush', 'tree_lantern'];
+const ROCKS = ['rock_small', 'rock_medium', 'rock_flat', 'rock_spire', 'rock_cluster', 'rock_crystal', 'rock_mossy'];
+const BUSHES = ['bush_round', 'bush_berry', 'bush_flower', 'bush_fern', 'bush_tallgrass'];
+const nature = [];
+function scatter(zone, n, pool, { minR = 0, edgeBias = false } = {}) {
+  const cells = zone.cells.slice();
+  let placed = 0, tries = 0;
+  while (placed < n && tries++ < 400) {
+    const c = cells[(rnd() * cells.length) | 0];
+    const dist = Math.hypot(c.x - zone.center.x, c.z - zone.center.z);
+    if (dist < minR) continue;
+    if (edgeBias && dist < zone.radius - 3) continue;
+    if (!free(c.x, c.z)) continue;
+    const id = pool[(rnd() * pool.length) | 0];
+    const g = makeProp(id, { seed: (rnd() * 1e6) | 0, scale: 0.85 + rnd() * 0.35 });
+    place(g, c.x, c.z, { rot: rnd() * Math.PI * 2, parent: zone.group }); nature.push(g); placed++;
+  }
+}
+scatter(island.zones[0], 9, TREES, { minR: 5, edgeBias: true });
+scatter(island.zones[0], 4, ROCKS, { minR: 6 });
+scatter(island.zones[0], 5, BUSHES, { minR: 4 });
+for (const z of [far, west, east]) { scatter(z, 5, TREES, { minR: 2.5 }); scatter(z, 3, ROCKS, { minR: 2 }); scatter(z, 3, BUSHES, { minR: 1.5 }); }
+// ---- static batching (10A bake.js): rocks + fences + crates + signs + paths + trees/bushes → ≤ 4 dc per zone ----
+const batches = [];
+for (const z of island.zones) {
+  const inZone = (g) => g.parent === z.group;
+  const list = [...nature.filter(inZone), ...staticDecor.filter(inZone), ...staticLandmarks.filter(inZone)];
+  if (list.length) batches.push(bakeStatic(list, { parent: z.group, name: 'batch_' + z.id }));
+}
+window.batches = batches;
+// instanced fields per zone (1 dc each): flowers + tufts on free, non-path land
+for (const z of island.zones) {
+  const area = (x, y) => island.allTiles.get(cellKey(x, y)) === z.index && !island.pathCells.has(cellKey(x, y)) && !occupied.has(cellKey(x, y));
+  const sq = z.radius + 1;
+  const fl = makeFlowerField(z.index === 0 ? 160 : 70, area, { seed: 11 + z.index, radius: sq }); fl.position.set(z.center.x, 0, z.center.z); z.group.add(fl);
+  const tu = makeGrassTufts(z.index === 0 ? 120 : 60, area, { seed: 21 + z.index, radius: sq }); tu.position.set(z.center.x, 0, z.center.z); z.group.add(tu);
+}
+
+// ---------------------------------------------------------------- Hero (0 + 3A + 3B)
+const glims = [];
+const hero = new HeroController(game, { vfx, targets: () => glims, isLand });
+hero.root.position.set(0, 0, 1);
+attachMoves(hero); attachAbilities(hero);
+game.add({ update: (dt) => hero.update(dt) });
+game.followTarget = hero.root.position;
+game.camera.zoom = 1.25;
+game.camera.snapTo(hero.root.position);
+window.hero = hero;
+
+// ---------------------------------------------------------------- Glimmers (2A + 2D) — all 12 types animating in the plaza
+const onCoin = (pos) => vfx.coinFly(pos, hero.root.position, null, { count: 1 });
+ALL_GLIMMER_VARIANTS.forEach((type, i) => {
+  const a = (i / 12) * Math.PI * 2, r = 2.2 + (i % 2) * 0.9;
+  const g = makeGlimmerAny(type, { seed: i + 1 });
+  g.position.set(Math.sin(a) * r, 0, 1 + Math.cos(a) * r); game.scene.add(g);
+  const anim = new CreatureAnimator(g, { vfx, onCoin });
+  anim.faceToNow(hero.root.position);
+  anim.play(['idle', 'browse', 'wait', 'walk'][i % 4]);
+  glims.push({ root: g, g, anim, type, hit: (dir, pow) => anim.hit(dir, pow), dir: new THREE.Vector3(rnd() - 0.5, 0, rnd() - 0.5).normalize() });
+});
+// walkers wander on land inside the plaza
+game.add({ update: (dt) => {
+  for (const c of glims) {
+    c.anim.update(dt); c.g.userData.update(dt);
+    if (c.anim.current !== 'walk') { c.anim.faceTo(hero.root.position); continue; }
+    const nx = c.g.position.x + c.dir.x * 1.2 * dt, nz = c.g.position.z + c.dir.z * 1.2 * dt;
+    if (isLand(nx, nz) && Math.hypot(nx, nz - 1) < 5.5 && !occupied.has(cellKey(nx, nz))) { c.g.position.x = nx; c.g.position.z = nz; }
+    else c.dir.set(-c.g.position.x, 0, 1 - c.g.position.z).normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), (rnd() - 0.5) * 1.4);
+    c.anim.faceTo(c.g.position.clone().add(c.dir));
+  }
+} });
+// every 2.5 s one Glimmer reacts (happy / pay / sad) so the plaza is alive
+let beat = 0;
+game.add({ update: (dt) => { beat += dt; if (beat > 2.5) { beat = 0; const c = glims[(rnd() * glims.length) | 0]; c.anim.play(['happy', 'pay', 'sad', 'happy'][(rnd() * 4) | 0]); } } });
+
+// ---------------------------------------------------------------- Helpers (2B) — one per stall, working
+const helpers = [];
+HELPER_TYPES.forEach((type, i) => {
+  const st = stalls[i]; const g = makeHelper(type, { seed: i + 1 });
+  const back = new THREE.Vector3(0, 0, -0.9).applyAxisAngle(new THREE.Vector3(0, 1, 0), st.rotation.y);
+  g.position.set(st.position.x + back.x, 0, st.position.z + back.z); game.scene.add(g);
+  const anim = new HelperAnimator(g, type, { vfx }); anim.faceToNow(new THREE.Vector3(st.position.x - back.x * 3, 0, st.position.z - back.z * 3)); anim.play('work');
+  helpers.push({ g, anim, type });
+});
+game.add({ update: (dt) => { for (const h of helpers) h.anim.update(dt); } });
+
+// ---------------------------------------------------------------- Villains (2C) — Baron struts on the pier side, collectors lurk at the far shore
+const villains = [];
+const vSpots = [[7.5, -1, 'baron', () => makeBaronGilt({ seed: 1 })], [6.5, 1, 'collector0', () => makeFogCollector(0, { seed: 1 })], [-8, -4, 'collector1', () => makeFogCollector(1, { seed: 2 })], [8, -7, 'collector2', () => makeFogCollector(2, { seed: 3 })]];
+for (const [x, z, key, make] of vSpots) {
+  const g = make(); g.position.set(x, 0, z); game.scene.add(g);
+  const anim = new VillainAnimator(g, { vfx, fogPool, game, onDeal: (p) => vfx.pop.show(p.clone().setY(2), 'TOO-GOOD DEAL!', { color: '#7B5EA7', dur: 0.9, size: 0.8 }) });
+  anim.faceToNow(hero.root.position); anim.play(key === 'baron' ? 'strut' : 'idle');
+  villains.push({ g, anim, key });
+}
+let vBeat = 4;
+game.add({ update: (dt) => { for (const v of villains) { v.anim.update(dt); v.anim.faceTo(hero.root.position); } vBeat -= dt; if (vBeat < 0) { vBeat = 5 + rnd() * 3; villains[0].anim.play(['taunt', 'offerDeal', 'fogPuff'][(rnd() * 3) | 0]); } } });
+
+// ---------------------------------------------------------------- per-frame world drivers (1B sway, 1D sway, 1C landmarks)
+game.add({ update: (dt) => { island.update(dt); swayAll(game.time); swayDecor(game.time); updateLandmarks(dt); } });
+
+// ---------------------------------------------------------------- controls
+const MOVES = ['hammer', 'dash', 'celebrate', 'build', 'pickUp', 'throwCoin', 'sad', 'stunned', 'carry'];
+const ABIL = ABILITY_NAMES();                  // coinMagnetDash bubbleShield growthStomp ledgerFlash haggleShout fogSweep
+const ABIL_KEYS = Object.fromEntries(ABIL.map((n) => [FINLIT[n].key, n]));
+const nearestGlim = () => { let b = glims[0], bd = 1e9; for (const c of glims) { const d = c.g.position.distanceTo(hero.root.position); if (d < bd) { bd = d; b = c; } } return b; };
+const nearestStall = () => { let b = stalls[0], bd = 1e9; for (const s of stalls) { const d = s.position.distanceTo(hero.root.position); if (d < bd) { bd = d; b = s; } } return b; };
+let fogLevel = 0;
+function playMove(name) {
+  const opts = { target: name === 'throwCoin' ? nearestGlim().root : nearestStall(), onArrive: (t) => { const c = glims.find((c) => c.root === t); if (c) c.anim.play('happy'); } };
+  if (name === 'coinMagnetDash') opts.coins = glims.map((c) => c.g.position);
+  if (name === 'bubbleShield') opts.event = 'Storm';
+  if (name === 'ledgerFlash') { opts.cost = 100; opts.trueCost = 340; }
+  if (name === 'haggleShout') { opts.targets = glims.map((c) => c.g); opts.onShout = (i) => glims[i % glims.length].anim.play('angry'); }
+  if (name === 'fogSweep') { opts.fog = vfx.fog; opts.strength = 1; }
+  if (name === 'growthStomp') opts.onPulse = (i, r) => stalls.forEach((s) => { if (s.position.distanceTo(hero.root.position) < r) vfx.sparks.burst(s.position.clone().setY(1.2), 6); });
+  const seq = hero.playMove(name, opts);
+  document.querySelectorAll('#move-buttons .btn').forEach((b) => b.classList.toggle('on', b.dataset.m === name && !!seq));
+  return seq;
+}
+const bRoot = document.getElementById('move-buttons');
+[...MOVES, ...ABIL].forEach((n, i) => { const b = document.createElement('button'); b.className = 'btn' + (i >= MOVES.length ? ' alt' : ''); b.dataset.m = n; b.textContent = (i < MOVES.length ? `${i + 1} ` : `${FINLIT[n].key} `) + n; b.addEventListener('click', () => playMove(n)); bRoot.appendChild(b); });
+const unlockNext = () => { const z = island.nextLockedZone(); if (z) island.unlockZone(z.index, { game, vfx }); else vfx.pop.show(hero.root.position.clone().setY(1.8), 'All zones open!', { color: '#4FC3F7' }); };
+const camSpots = [{ get: () => hero.root.position, zoom: 1.25 }, { get: () => lighthouse.getWorldPosition(new THREE.Vector3()), zoom: 0.9 }, { get: () => cottage.getWorldPosition(new THREE.Vector3()), zoom: 0.8 }, { get: () => new THREE.Vector3(0, 0, 0), zoom: 0.55 }];
+let ci = 0; const camTarget = new THREE.Vector3();
+game.add({ update: () => { camTarget.copy(camSpots[ci].get()); game.followTarget = ci === 0 ? hero.root.position : camTarget; } });
+const cycleCam = () => { ci = (ci + 1) % camSpots.length; game.camera.zoom = camSpots[ci].zoom; };
+const cycleFog = () => { fogLevel = (fogLevel + 0.35) % 1.05; vfx.fog.setCoverage(fogLevel); if (fogLevel > 0.6) vfx.debtPulse(0.5); towers.forEach((t) => t.userData.setActive(fogLevel > 0.3)); };
+let night = false;
+const toggleNight = () => { night = !night; lanterns.forEach((l) => l.userData.setLit(night)); cottage.userData.setLit(true); lighthouse.userData.setState(night ? 'lit' : 'dark'); if (night) vfx.lighthouseBeam.show(lighthouse); else vfx.lighthouseBeam.hide(); document.getElementById('btn-night').classList.toggle('on', night); };
+let slow = false;
+const toggleSlow = () => { slow = !slow; game.timeScale = slow ? 0.25 : 1; game.sequences.timeScale = game.timeScale; document.getElementById('btn-slow').classList.toggle('on', slow); };
+document.getElementById('btn-zone').addEventListener('click', unlockNext);
+document.getElementById('btn-cam').addEventListener('click', cycleCam);
+document.getElementById('btn-fog').addEventListener('click', cycleFog);
+document.getElementById('btn-night').addEventListener('click', toggleNight);
+document.getElementById('btn-slow').addEventListener('click', toggleSlow);
+window.addEventListener('keydown', (e) => {
+  const k = e.code;
+  if (k.startsWith('Digit')) { const d = +k.slice(5); if (MOVES[d - 1]) playMove(MOVES[d - 1]); }
+  if (k === 'KeyZ') unlockNext();
+  if (k === 'KeyC') cycleCam();
+  if (k === 'KeyN') toggleNight();
+  if (k === 'KeyT') toggleSlow();
+  if (k === 'KeyF' && !e.shiftKey) cycleFog();
+  const key = e.key.toUpperCase(); if (ABIL_KEYS[key] && key !== 'F') playMove(ABIL_KEYS[key]);
+  if (key === 'F' && e.shiftKey) playMove('fogSweep');
+});
+game.input.onWheel = (dir) => { game.camera.zoom = THREE.MathUtils.clamp(game.camera.zoom + dir * 0.1, 0.5, 2.2); };
+game.input.onTap = (world) => {
+  let best = null, bd = 0.9;
+  for (const c of glims) { const d = Math.hypot(c.g.position.x - world.x, c.g.position.z - world.z); if (d < bd) { bd = d; best = c; } }
+  if (best) { best.anim.hit(best.g.position.clone().sub(hero.root.position), 0.8); best.anim.play('angry'); game.hitstop(60); return; }
+  for (const s of stalls) { if (Math.hypot(s.position.x - world.x, s.position.z - world.z) < 1.4) { s.userData.setLevel((s.userData.level % 3) + 1, { animate: true, game, vfx }); return; } }
+  if (ci === 0) hero.playMove('dash', { dir: world.clone().sub(hero.root.position).setY(0).normalize() });
+};
+
+// ---------------------------------------------------------------- measurement table
+const dcOf = (g) => { let n = 0; g.traverse((o) => { if (o.isMesh && o.visible) n++; }); return n; };
+const sum = (arr) => arr.reduce((a, g) => a + dcOf(g), 0);
+const tbl = document.getElementById('table');
+const rows = [
+  `island ground  ${island.zones.length} zones ~6 dc each`,
+  `stalls   ×${stalls.length}   ${sum(stalls)} dc  ${stalls.reduce((a, g) => a + countTris(g), 0)} t`,
+  `landmarks×6   ${sum([lighthouse, cottage, pier, waterfall, ...towers])} dc (live)`,
+  `decor live ×${decor.length - staticDecor.length}  ${sum(decor.filter((g) => !staticDecor.includes(g)))} dc (jars, lanterns, banner, hanging sign)`,
+  `baked    ${batches.reduce((a, b) => a + b.userData.count, 0)} props → ${batches.length} batches = ${sum(batches)} dc (nature ${nature.length} + static decor ${staticDecor.length} + cliff)`,
+  `fields   8 InstancedMesh = 8 dc`,
+  `glimmers ×12  ${sum(glims.map((c) => c.g))} dc`,
+  `helpers  ×6   ${sum(helpers.map((h) => h.g))} dc`,
+  `villains ×4   ${sum(villains.map((v) => v.g))} dc`,
+  `(mesh count incl. outline; frustum culling keeps on-screen calls ≤ 150)`,
+];
+tbl.textContent = rows.join('\n');
+window.worldReport = { stalls: stalls.length, decor: decor.length, nature: nature.length, glimmers: glims.length, helpers: helpers.length, villains: villains.length };
+
+const statsEl = document.getElementById('stats');
+game.add({ update: () => { const s = game.stats; statsEl.textContent = `fps ${s.fps} · calls ${s.drawCalls} · tris ${(s.triangles / 1000).toFixed(0)}k · fog ${(vfx.fog.coverage * 100) | 0}%`; } });
+
+setTimeout(() => vfx.pop.show(hero.root.position.clone().setY(1.9), 'Welcome to Glowmarket!', { color: '#FFA726', dur: 1.6, size: 1.1 }), 500);
+if (game.input.isTouch) document.body.classList.add('is-touch');
+game.start();
+</script>
+</body>
+</html>

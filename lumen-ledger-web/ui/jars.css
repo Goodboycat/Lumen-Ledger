@@ -1,0 +1,46 @@
+/* LUMEN LEDGER — FinLit Jars panel (Chat 7A). Spend / Save / Invest / Protect sliders summing to 100 %. */
+.ll-jars { position: absolute; right: max(12px, env(safe-area-inset-right)); top: calc(max(10px, env(safe-area-inset-top)) + 64px); z-index: 20; width: 228px; background: var(--paper); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px 10px 10px; pointer-events: auto; animation: ll-bounce-in .5s .2s cubic-bezier(.34,1.56,.64,1) both; transform-origin: top right; }
+.ll-jars.collapsed .ll-jar, .ll-jars.collapsed .ll-jars-foot { display: none; }
+.ll-jars-head { display: flex; justify-content: space-between; align-items: center; font-weight: 900; font-size: 13px; margin-bottom: 6px; cursor: pointer; }
+.ll-jars-head .ll-jars-total { font-size: 11px; font-weight: 800; color: #555; }
+.ll-jars-head .ll-jars-total.bad { color: #b71c1c; }
+.ll-jars-head .ll-caret { font-size: 11px; opacity: .6; margin-left: 6px; }
+
+.ll-jar { display: grid; grid-template-columns: 30px 1fr 42px; grid-template-rows: auto auto; gap: 1px 6px; align-items: center; padding: 4px 0; }
+.ll-jar-icon { grid-row: 1 / span 2; width: 28px; height: 32px; border: 3px solid var(--ink); border-radius: 6px 6px 9px 9px; position: relative; overflow: hidden; background: #fff; box-shadow: 0 2px 0 var(--ink); }
+.ll-jar-icon::before { content: ''; position: absolute; left: 6px; right: 6px; top: -3px; height: 5px; background: var(--ink); border-radius: 0 0 3px 3px; }
+.ll-jar-icon > i { position: absolute; left: 0; right: 0; bottom: 0; height: 40%; background: var(--jar-c, var(--gold)); transition: height .35s cubic-bezier(.22,1,.36,1); }
+.ll-jar-icon.pop > i { animation: ll-jar-slosh .45s cubic-bezier(.34,1.56,.64,1); }
+.ll-jar-name { font-size: 11px; font-weight: 900; letter-spacing: .3px; display: flex; justify-content: space-between; }
+.ll-jar-name small { font-weight: 700; opacity: .6; font-size: 9px; }
+.ll-jar-pct { grid-row: 1 / span 2; font-weight: 900; font-size: 14px; text-align: right; font-variant-numeric: tabular-nums; }
+.ll-jar-pct small { display: block; font-size: 9px; font-weight: 700; opacity: .6; }
+.ll-jar input[type=range] { width: 100%; height: 18px; margin: 0; -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; touch-action: none; }
+.ll-jar input[type=range]::-webkit-slider-runnable-track { height: 10px; border: 2px solid var(--ink); border-radius: 6px; background: linear-gradient(90deg, var(--jar-c, var(--gold)) 0 var(--pct, 25%), #fff var(--pct, 25%) 100%); }
+.ll-jar input[type=range]::-moz-range-track { height: 10px; border: 2px solid var(--ink); border-radius: 6px; background: linear-gradient(90deg, var(--jar-c, var(--gold)) 0 var(--pct, 25%), #fff var(--pct, 25%) 100%); }
+.ll-jar input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -6px; border-radius: 50%; background: var(--jar-c, var(--gold)); border: 3px solid var(--ink); box-shadow: 0 2px 0 var(--ink); }
+.ll-jar input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--jar-c, var(--gold)); border: 3px solid var(--ink); box-shadow: 0 2px 0 var(--ink); }
+.ll-jar input[type=range]:active::-webkit-slider-thumb { transform: scale(1.15); }
+.ll-jar.locked { opacity: .5; } .ll-jar.locked input { pointer-events: none; }
+
+.ll-jar.spend { --jar-c: #FFA726; } .ll-jar.save { --jar-c: #7ED957; } .ll-jar.invest { --jar-c: #4FC3F7; } .ll-jar.protect { --jar-c: #CE93D8; }
+
+.ll-jars-foot { display: flex; gap: 6px; margin-top: 6px; align-items: center; }
+.ll-jars-foot .ll-btn { flex: 1; background: var(--gold); border: 3px solid var(--ink); border-radius: 10px; padding: 4px 6px; font: inherit; font-weight: 900; font-size: 11px; box-shadow: 0 3px 0 var(--ink); cursor: pointer; color: var(--ink); }
+.ll-jars-foot .ll-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.ll-jars-foot .ll-btn.alt { background: #fff; }
+.ll-jars-foot .ll-btn:disabled { opacity: .5; cursor: default; }
+.ll-jars-hint { font-size: 10px; font-weight: 700; color: #555; margin-top: 4px; min-height: 12px; }
+
+@keyframes ll-jar-slosh { 0% { transform: scaleY(1); } 35% { transform: scaleY(1.18) translateY(-2px); } 70% { transform: scaleY(.94); } 100% { transform: scaleY(1); } }
+
+@media (max-width: 640px) { .ll-jars { width: 184px; top: calc(max(10px, env(safe-area-inset-top)) + 56px); padding: 6px 8px 8px; } .ll-jar { grid-template-columns: 24px 1fr 36px; } .ll-jar-icon { width: 22px; height: 26px; } .ll-jar-pct { font-size: 12px; } }
+@media (orientation: portrait) and (max-width: 640px) { .ll-jars { top: auto; bottom: calc(max(12px, env(safe-area-inset-bottom)) + 150px); right: 10px; } }
+
+/* 11B mobile QA: on phones the jars panel sat on top of the dialogue box (portrait: 182×66 px, landscape: 150×84 px overlap).
+   While a dialogue is open the panel folds to its header (same look as the user's own collapse); portrait also lifts it above the touch pad. */
+@media (max-width: 900px) {
+  body.ll-dlg-open .ll-jars .ll-jar, body.ll-dlg-open .ll-jars .ll-jars-foot { display: none; }
+  body.ll-dlg-open .ll-jars { opacity: .85; }
+}
+@media (orientation: portrait) and (max-width: 640px) { .ll-jars { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 250px); } }

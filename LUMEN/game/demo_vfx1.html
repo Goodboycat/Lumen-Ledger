@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Lumen Ledger — Chat 9A VFX pack 1 Demo</title>
+<link rel="stylesheet" href="ui/base.css">
+<style>
+  .panel { position: absolute; left: 12px; top: 70px; z-index: 10; background: rgba(255,248,231,.94); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px 10px; font-size: 12px; font-weight: 600; max-width: 300px; pointer-events: auto; }
+  .panel b { display: block; font-size: 13px; margin-bottom: 4px; }
+  .row { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
+  .btn { background: var(--gold); border: 3px solid var(--ink); border-radius: 10px; padding: 4px 10px; font: inherit; font-weight: 800; box-shadow: 0 3px 0 var(--ink); cursor: pointer; }
+  .btn:active, .btn.on { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+  .btn.alt { background: var(--blue); } .btn.warn { background: var(--orange); } .btn.fog { background: #c9b8e8; }
+  #log { font-size: 11px; line-height: 1.35; white-space: pre; font-family: ui-monospace, Menlo, monospace; font-weight: 600; max-height: 30vh; overflow: auto; margin-top: 4px; }
+  @media (max-width: 600px) { .panel { max-width: 200px; font-size: 11px; top: 64px; } #log { display: none; } }
+</style>
+</head>
+<body>
+<div id="game-root">
+  <div id="game-container"></div>
+  <header id="hud" class="hud">
+    <div class="ribbon"><span class="ribbon-title">LUMEN LEDGER</span><span class="ribbon-sub">Chat 9A · VFX pack 1</span></div>
+    <div id="stats" class="stats">fps — · calls —</div>
+  </header>
+  <section class="panel" id="panel">
+    <b>VFX pack 1 (keys 1–6)</b>
+    <div class="row" id="fx-buttons"></div>
+    <div class="row">
+      <button class="btn alt" id="btn-slow">T · Slow-mo: OFF</button>
+      <button class="btn warn" id="btn-stress">S · Stress ×200</button>
+      <button class="btn fog" id="btn-all">0 · Play all</button>
+    </div>
+    <div id="log"></div>
+  </section>
+  <aside id="help" class="help">
+    <b>1</b> coinFly (jar → Pip) · <b>2</b> coinBurst · <b>3</b> confetti · <b>4</b> levelRing · <b>5</b> sparkTrail (dash) · <b>6</b> savingSparkle · <b>0</b> all · <b>S</b> stress · <b>T</b> slow-mo · <b>WASD</b> walk · tap = coinFly to tap
+  </aside>
+</div>
+<script type="module">
+import * as THREE from './vendor/three.module.js';
+import { Game } from './src/core/Game.js';
+import { Island } from './src/world/Island.js';
+import { VFX } from './src/vfx/VFX.js';
+import { installPack1, PACK1_NAMES } from './src/vfx/pack1.js';
+import { HeroController } from './src/entities/HeroController.js';
+import { G, mesh } from './src/assets/geo.js';
+import { PALETTE as P } from './src/core/Toon.js';
+import { addOutline } from './src/core/Outline.js';
+
+const container = document.getElementById('game-container');
+const game = new Game(container);
+window.game = game;
+
+// World (Foundation island)
+const island = new Island({ radius: 11, seed: 7 });
+game.scene.add(island.group);
+game.add({ update: (dt) => island.update(dt) });
+const vfx = game.add(new VFX(game));
+const pack = installPack1(vfx);
+window.vfx = vfx;
+
+// A "jar" (coin source) and a "stall" (level-up target) as simple toy props
+const jar = new THREE.Group(); jar.name = 'jar';
+jar.add(mesh(G.cyl(0.5, 0.42, 1.0, 10), P.glimmerBlue, 0, 0.5, 0));
+jar.add(mesh(G.cyl(0.55, 0.55, 0.14, 10), P.woodDark, 0, 1.07, 0));
+addOutline(jar); jar.position.set(-3.5, 0, -2.5); game.scene.add(jar);
+const stall = new THREE.Group(); stall.name = 'stall';
+stall.add(mesh(G.rbox(1.6, 0.8, 1.2, 0.06), P.wood, 0, 0.4, 0));
+stall.add(mesh(G.rbox(1.9, 0.12, 1.5, 0.04), P.red, 0, 1.2, 0));
+addOutline(stall); stall.position.set(3.5, 0, -2.5); game.scene.add(stall);
+
+// Hero
+const hero = new HeroController(game, { vfx, targets: () => [], isLand: (x, z) => island.isLand(x, z) });
+hero.root.position.set(0, 0, 1.5);
+game.add({ update: (dt) => hero.update(dt) });
+game.followTarget = hero.root.position;
+game.camera.zoom = 1.1;
+game.camera.snapTo(hero.root.position);
+game.input.onWheel = (dir) => { game.camera.zoom = THREE.MathUtils.clamp(game.camera.zoom + dir * 0.1, 0.6, 1.8); };
+window.hero = hero;
+
+// ---- Effects: keys 1–6 (PACK1_NAMES order: coinFly, coinBurst, confetti, levelRing, sparkTrail, savingSparkle) ----
+const log = []; const logEl = document.getElementById('log');
+const say = (s) => { log.unshift(s); log.length = Math.min(log.length, 6); logEl.textContent = log.join('\n'); };
+const _hp = () => hero.root.position;
+let trailT = 0;          // seconds left of sparkTrail streaming (follows Pip)
+const FX = {
+  coinFly: () => { const n = vfx.coinFly(jar.position, _hp(), (i, to) => { if (i === 0) vfx.pop.show(to, '+Spark', { color: '#FFD54F' }); hero.spring?.kick?.(-0.4); }, { count: 8 }); say(`coinFly ×${n}  jar → Pip (0.55 s outQuad arc, +0.04 s stagger, squash on arrival)`); },
+  coinBurst: () => { const n = vfx.coinBurst(_hp(), 14); say(`coinBurst ×${n}  (0.9 s, bounce 0.45, shrink last 30 %)`); },
+  confetti: () => { const n = vfx.confetti(_hp(), 40); say(`confetti ×${n}  (1.6 s, gravity 4.5, flutter 6 Hz)`); },
+  levelRing: () => { vfx.levelRing(stall.position, { color: P.sparkGold, radius: 2.4 }); vfx.levelRing(stall.position, { color: P.glimmerBlue, radius: 1.6, dur: 0.45 }); say('levelRing ×2  at stall (0.6 s outCubic radius, inQuad fade)'); },
+  sparkTrail: () => { trailT = 0.6; say('sparkTrail  streaming 40/s behind Pip for 0.6 s (0.35 s shrink inCubic)'); },
+  savingSparkle: () => { const n = vfx.savingSparkle(jar.position, 8); say(`savingSparkle ×${n}  around jar (1.1 s, rise 0.9 u, twinkle 8 Hz)`); },
+};
+game.add({ update: (dt) => { if (trailT > 0) { trailT -= dt; vfx.sparkTrail.stream(_hp(), dt, 40, { color: P.sparkGold }); } } });
+
+// buttons
+const bRoot = document.getElementById('fx-buttons');
+PACK1_NAMES.forEach((n, i) => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = `${i + 1} · ${n}`; b.addEventListener('click', () => FX[n]()); bRoot.appendChild(b); });
+let slow = false; const slowBtn = document.getElementById('btn-slow');
+function toggleSlow() { slow = !slow; game.timeScale = slow ? 0.25 : 1; slowBtn.textContent = `T · Slow-mo: ${slow ? 'ON' : 'OFF'}`; slowBtn.classList.toggle('on', slow); }
+slowBtn.addEventListener('click', toggleSlow);
+// stress: fill every pool (~328 instances) at once and report ms/frame for the next 60 frames
+let stress = null;
+function doStress() {
+  vfx.coinFly(jar.position, _hp(), null, { count: 32 }); vfx.coinBurst(_hp(), 32); vfx.confetti(_hp(), 120);
+  for (let i = 0; i < 6; i++) vfx.levelRing(_hp(), { radius: 1 + i * 0.4 });
+  for (let i = 0; i < 96; i++) vfx.sparkTrail.emit(_hp(), { jitter: 1.5 }); vfx.savingSparkle(_hp(), 48, { radius: 1.2 });
+  stress = { frames: 0, ms: 0, max: 0 }; say(`stress: ${pack.alive} / ${pack.capacity} instances alive`);
+}
+document.getElementById('btn-stress').addEventListener('click', doStress);
+// measure the pack's own update cost (wrap once)
+const packUpdate = pack.list.map((p) => p.update.bind(p));
+for (let i = 0; i < pack.list.length; i++) pack.list[i].update = (dt) => { const t0 = performance.now(); packUpdate[i](dt); if (stress) stress.ms += performance.now() - t0; };
+game.add({ lateUpdate: () => { if (!stress) return; stress.frames++; stress.max = Math.max(stress.max, stress.ms); if (stress.frames >= 60) { say(`stress done: pack update avg ${(stress.ms / 60).toFixed(2)} ms/frame over 60 frames (budget 2 ms)`); window.stressResult = stress.ms / 60; stress = null; } else stress.ms = 0; } });
+// 0 / "Play all": every effect in order, 0.5 s apart
+let queue = [], wait = 0;
+function playAll() { queue = PACK1_NAMES.slice(); wait = 0.5; }
+document.getElementById('btn-all').addEventListener('click', playAll);
+game.add({ update: (dt) => { if (!queue.length) return; wait += dt; if (wait < 0.5) return; wait = 0; FX[queue.shift()](); } });
+
+window.addEventListener('keydown', (e) => {
+  if (e.repeat) return;
+  const k = e.code;
+  if (k.startsWith('Digit')) { const d = +k.slice(5); if (d === 0) playAll(); else if (PACK1_NAMES[d - 1]) FX[PACK1_NAMES[d - 1]](); }
+  if (k === 'KeyT') toggleSlow();
+  if (k === 'KeyS') doStress();
+});
+// tap: coins fly from Pip to the tapped point (+ ring there on arrival)
+game.input.onTap = (world) => { const to = new THREE.Vector3(world.x, 0, world.z); vfx.coinFly(_hp(), to, (i, p) => { if (i === 0) vfx.levelRing(p, { radius: 1.2, dur: 0.4 }); }, { count: 5 }); };
+
+// stats: fps · draw calls · tris · alive instances
+const statsEl = document.getElementById('stats');
+game.add({ update: () => { const s = game.stats; statsEl.textContent = `fps ${s.fps} · calls ${s.drawCalls} · tris ${(s.triangles / 1000).toFixed(0)}k · fx ${pack.alive}/${pack.capacity}`; } });
+window.pack = pack;
+game.start();
+</script>
+</body>
+</html>

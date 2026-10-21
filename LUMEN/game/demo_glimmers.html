@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Lumen Ledger — Chat 2A Glimmers Demo</title>
+<link rel="stylesheet" href="ui/base.css">
+<style>
+  .panel { position: absolute; left: 12px; top: 70px; z-index: 10; background: rgba(255,248,231,.94); border: 3px solid var(--ink); border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px 10px; font-size: 12px; font-weight: 600; max-width: 290px; pointer-events: auto; }
+  .panel b { display: block; font-size: 13px; margin-bottom: 4px; }
+  .row { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
+  .btn { background: var(--gold); border: 3px solid var(--ink); border-radius: 10px; padding: 4px 10px; font: inherit; font-weight: 800; box-shadow: 0 3px 0 var(--ink); cursor: pointer; }
+  .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+  .btn.alt { background: var(--blue); } .btn.warn { background: var(--orange); } .btn.on { outline: 3px solid #fff; }
+  #tris { font-size: 11px; line-height: 1.3; white-space: pre; font-family: ui-monospace, Menlo, monospace; font-weight: 600; }
+  .label { position: absolute; transform: translate(-50%, -100%); background: var(--paper); border: 2px solid var(--ink); border-radius: 8px; padding: 1px 6px; font-size: 10px; font-weight: 800; pointer-events: none; white-space: nowrap; }
+  input[type=range] { width: 120px; vertical-align: middle; }
+  @media (max-width: 600px) { .panel { max-width: 190px; font-size: 11px; top: 64px; } #tris { display: none; } }
+</style>
+</head>
+<body>
+<div id="game-root">
+  <div id="game-container"></div>
+  <header id="hud" class="hud">
+    <div class="ribbon"><span class="ribbon-title">LUMEN LEDGER</span><span class="ribbon-sub">Chat 2A · Glimmers</span></div>
+    <div id="stats" class="stats">fps — · calls —</div>
+  </header>
+  <section class="panel" id="panel">
+    <b>Glimmer variants · CreatureAnimator</b>
+    <div class="row" id="anim-buttons"></div>
+    <div class="row">
+      <label>Mood <input type="range" id="mood" min="0" max="100" value="60"></label>
+      <button class="btn warn" id="btn-slow">Slow-mo</button>
+      <button class="btn alt" id="btn-crowd">Crowd ×24</button>
+    </div>
+    <div id="tris"></div>
+  </section>
+  <aside id="help" class="help">
+    <b>1–8</b> idle · walk · happy · sad · pay · browse · wait · angry &nbsp;·&nbsp; <b>T</b> slow-mo 0.25 &nbsp;·&nbsp; <b>C</b> crowd &nbsp;·&nbsp; <b>M</b> mood sweep &nbsp;·&nbsp; tap a Glimmer = hit &nbsp;·&nbsp; <b>WASD</b> move Pip (Glimmers face him)
+  </aside>
+  <div id="labels"></div>
+</div>
+<script type="module">
+import * as THREE from './vendor/three.module.js';
+import { Game } from './src/core/Game.js';
+import { Island } from './src/world/Island.js';
+import { VFX } from './src/vfx/VFX.js';
+import { HeroController } from './src/entities/HeroController.js';
+import { CreatureAnimator, CREATURE_ANIMS, makeGlimmerVariant, GLIMMER_VARIANTS_READY, GLIMMER_INFO, measureCreature } from './src/assets/creatures/index.js';
+
+const container = document.getElementById('game-container');
+const game = new Game(container);
+window.game = game;
+
+const island = new Island({ radius: 11, seed: 7 });
+game.scene.add(island.group);
+game.add({ update: (dt) => island.update(dt) });
+const vfx = game.add(new VFX(game));
+const isLand = (x, z) => island.isLand(x, z);
+
+// coin pop callback shared by all animators (6A will replace with real coin-fly to Pip)
+const onCoin = (pos) => { vfx.pop.show(pos.clone().add(new THREE.Vector3(0, 0.3, 0)), '+1', { color: '#FFD54F', dur: 0.7, size: 0.9 }); };
+
+// ---- showcase row: the 4 shipped variants ----
+const showcase = [];
+GLIMMER_VARIANTS_READY.forEach((type, i) => {
+  const g = makeGlimmerVariant(type, { seed: i + 1 });
+  g.position.set((i - 1.5) * 1.8, 0, -2.2);
+  game.scene.add(g);
+  const anim = new CreatureAnimator(g, { vfx, onCoin });
+  anim.faceToNow(new THREE.Vector3(g.position.x, 0, 10));
+  showcase.push({ g, anim, type });
+});
+game.add({ update: (dt) => { for (const s of showcase) s.anim.update(dt); for (const c of crowd) c.anim.update(dt); } });
+
+// ---- optional crowd (perf proof: 24 extra Glimmers walking around) ----
+let crowd = [];
+function toggleCrowd() {
+  if (crowd.length) { for (const c of crowd) game.scene.remove(c.g); crowd = []; return; }
+  let s = 99; const r = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  for (let i = 0; i < 24; i++) {
+    let x, z, tries = 0; do { x = (r() * 2 - 1) * 9; z = (r() * 2 - 1) * 9; tries++; } while ((!isLand(x, z) || (Math.abs(z + 2.2) < 1.5 && Math.abs(x) < 4)) && tries < 50);
+    const type = GLIMMER_VARIANTS_READY[i % 4];
+    const g = makeGlimmerVariant(type, { seed: 10 + i }); g.position.set(x, 0, z); game.scene.add(g);
+    const anim = new CreatureAnimator(g, { vfx, onCoin });
+    anim.play(['walk', 'browse', 'wait', 'idle'][i % 4]);
+    anim.faceToNow(new THREE.Vector3(x + r() - 0.5, 0, z + r() - 0.5));
+    crowd.push({ g, anim, dir: new THREE.Vector3(r() - 0.5, 0, r() - 0.5).normalize(), speed: 1.4 });
+  }
+}
+// crowd walkers actually move (walk clip = 420 ms hop; 1.4 u/s)
+game.add({ update: (dt) => { for (const c of crowd) { if (c.anim.current !== 'walk') continue; const nx = c.g.position.x + c.dir.x * c.speed * dt, nz = c.g.position.z + c.dir.z * c.speed * dt; if (isLand(nx, nz)) { c.g.position.x = nx; c.g.position.z = nz; } else { c.dir.negate(); } c.anim.faceTo(c.g.position.clone().add(c.dir)); } } });
+
+// ---- Hero for scale; showcase Glimmers track him ----
+const hero = new HeroController(game, { vfx, targets: () => [], isLand });
+hero.root.position.set(0, 0, 2.2);
+game.add({ update: (dt) => { hero.update(dt); for (const s of showcase) s.anim.faceTo(hero.root.position); } });
+game.followTarget = hero.root.position;
+game.camera.zoom = 1.6;
+game.camera.snapTo(hero.root.position);
+game.input.onWheel = (dir) => { game.camera.zoom = THREE.MathUtils.clamp(game.camera.zoom + dir * 0.1, 0.6, 1.8); };
+
+// ---- controls ----
+const btns = document.getElementById('anim-buttons');
+const playAll = (name) => { for (const s of showcase) s.anim.play(name); for (const c of crowd) c.anim.play(name); document.querySelectorAll('#anim-buttons .btn').forEach((b) => b.classList.toggle('on', b.dataset.anim === name)); };
+CREATURE_ANIMS.forEach((name, i) => { const b = document.createElement('button'); b.className = 'btn' + (i === 0 ? ' on' : ''); b.dataset.anim = name; b.textContent = `${i + 1} ${name}`; b.addEventListener('click', () => playAll(name)); btns.appendChild(b); });
+let slow = false;
+const toggleSlow = () => { slow = !slow; game.timeScale = slow ? 0.25 : 1; game.sequences.timeScale = game.timeScale; document.getElementById('btn-slow').classList.toggle('on', slow); };
+document.getElementById('btn-slow').addEventListener('click', toggleSlow);
+document.getElementById('btn-crowd').addEventListener('click', toggleCrowd);
+const moodEl = document.getElementById('mood');
+const setMood = (v) => { moodEl.value = v * 100; for (const s of showcase) s.anim.moodTint(v); for (const c of crowd) c.anim.moodTint(v); };
+moodEl.addEventListener('input', () => setMood(moodEl.value / 100));
+let sweeping = false;
+game.add({ update: () => { if (sweeping) setMood(0.5 + Math.sin(game.time * 1.5) * 0.5); } });
+window.addEventListener('keydown', (e) => {
+  const k = e.code;
+  if (k.startsWith('Digit')) { const n = +k.slice(5) - 1; if (CREATURE_ANIMS[n]) playAll(CREATURE_ANIMS[n]); }
+  if (k === 'KeyT') toggleSlow();
+  if (k === 'KeyC') toggleCrowd();
+  if (k === 'KeyM') sweeping = !sweeping;
+});
+game.input.onTap = (world) => {
+  let best = null, bd = 0.9;
+  for (const s of showcase.concat(crowd)) { const d = Math.hypot(s.g.position.x - world.x, s.g.position.z - world.z); if (d < bd) { bd = d; best = s; } }
+  if (best) { const dir = best.g.position.clone().sub(hero.root.position); best.anim.hit(dir, 1); best.anim.play('angry'); game.hitstop(60); game.camera.shake && game.camera.shake(0.15); }
+};
+
+// ---- measurements ----
+const rows = showcase.map(({ g, type }) => { const m = measureCreature(g); return `${type.padEnd(9)} ${String(m.tris).padStart(4)}t ${m.meshes}m+${m.hulls}o=${m.drawCalls}dc`; });
+document.getElementById('tris').textContent = 'variant    tris  draw calls\n' + rows.join('\n') + '\nbudget: ≤12 dc / creature';
+
+// ---- labels ----
+const labelsRoot = document.getElementById('labels');
+const labels = showcase.map(({ type }) => { const el = document.createElement('div'); el.className = 'label'; el.textContent = GLIMMER_INFO[type].name; labelsRoot.appendChild(el); return el; });
+const v = new THREE.Vector3();
+game.add({ lateUpdate: () => {
+  const w = container.clientWidth, h = container.clientHeight;
+  showcase.forEach(({ g }, i) => { v.set(g.position.x, 1.7, g.position.z).project(game.camera.three); const el = labels[i]; if (v.z > 1) { el.style.display = 'none'; return; } el.style.display = ''; el.style.left = ((v.x + 1) / 2 * w) + 'px'; el.style.top = ((1 - v.y) / 2 * h) + 'px'; });
+} });
+
+const statsEl = document.getElementById('stats');
+game.add({ update: () => { const s = game.stats; statsEl.textContent = `fps ${s.fps} · calls ${s.drawCalls} · tris ${(s.triangles / 1000).toFixed(0)}k · ${showcase.length + crowd.length} glimmers`; } });
+
+if (game.input.isTouch) document.body.classList.add('is-touch');
+game.start();
+</script>
+</body>
+</html>
