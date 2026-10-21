@@ -67,3 +67,16 @@ body.is-touch .ll-build { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 
 .ll-build-detail .ll-btn.poor { background: #ffcdd2; }
 .ll-build-detail .ll-btn.close { padding: 5px 8px; }
 body.is-touch .ll-build.has-detail .ll-build-grid { max-height: 92px; }
+
+/* B24: price control in the stall detail bar (− price +) */
+.ll-det-price { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 900; }
+.ll-det-price small { font-size: 8px; color: #555; margin-right: 2px; }
+.ll-build-detail .ll-btn.pm { padding: 2px 7px; font-size: 12px; line-height: 1; border-radius: 999px; }
+.ll-det-price-val { min-width: 54px; text-align: center; background: #fff; border: 2px solid var(--ink); border-radius: 999px; padding: 1px 6px; }
+.ll-det-price-val.hot { background: #ffcdd2; }
+/* B24: Crew & Land tab — offer cards (helpers + zones) buy on tap, no placement */
+.ll-card.offer { min-height: 78px; }
+.ll-card.offer.owned { background: #e8f5e9; }
+.ll-card.offer.poor .ll-card-cost { background: #ffcdd2; color: var(--ink); }
+.ll-build-empty { grid-column: 1 / -1; text-align: center; font-size: 11px; font-weight: 700; color: #555; padding: 12px 0; }
+.ll-build.crew .ll-build-foot .ll-btn { display: none; }

@@ -30,7 +30,10 @@ export const ICONS = {
   jar_spend: '🫙', jar_save: '🫙', jar_invest: '🫙', jar_protect: '🫙', fence_post: '🪵', fence_rail: '🪵', fence_gate: '🚪', crate: '📦', barrel: '🛢️',
   lantern_post: '🏮', lantern_hanging: '🏮', sign_arrow: '➡️', sign_board: '🪧', sign_hanging: '🪧', bench: '🪑', path_dirt: '🟫', path_stone: '⬜', banner_string: '🎏', flower_pot: '🪴', water_trough: '🛁',
 };
-export const CATEGORY_LABELS = { stall: 'Stalls', decor: 'Decor', nature: 'Nature', landmark: 'Landmarks' };
+export const CATEGORY_LABELS = { stall: 'Stalls', decor: 'Decor', nature: 'Nature', landmark: 'Landmarks', crew: 'Crew & Land' };
+// BUGFIX B24: helpers + zone unlocks were debug-key only (H/Z). The 'crew' tab lists what the integrator offers via api.offers()
+// → [{ id, name, icon, cost, text, kind:'helper'|'zone', owned, blocker }] and a tap emits ui:build { action:'buy', id }.
+export const OFFER_ICONS = { helper_tallyOwl: '🦉', helper_packMole: '🧺', helper_sparkBee: '⚡', helper_guardTortoise: '🛡', helper_scoutFox: '👀', helper_gardenerSnail: '🌱', zone_west: '🗺', zone_east: '⚓', zone_far: '🗼' };
 
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = iconize(html); return e; };
 
@@ -39,7 +42,7 @@ export function mountBuildMenu(root, opts = {}) {
   const catalog = opts.catalog || {};
   const sparkFn = typeof opts.spark === 'function' ? opts.spark : null;
   const iconFn = opts.icon || ((id) => ICONS[id] || '▪️');
-  const cats = opts.categories || ['stall', 'decor', 'nature'];
+  const cats = [...(opts.categories || ['stall', 'decor', 'nature'])]; if (opts.crewTab !== false && !cats.includes('crew')) cats.push('crew');
   const st = { open: false, placing: null, selected: null, placedById: new Map(), spark: sparkFn ? sparkFn() : (opts.spark ?? 0), cat: cats[0], locked: new Set(opts.locked || []), counts: {}, demolish: false };
 
   const wrap = el('section', 'll-build'); wrap.id = 'll-build';
@@ -63,7 +66,10 @@ export function mountBuildMenu(root, opts = {}) {
   const detIcon = el('span', 'll-det-icon'); const detInfo = el('span', 'll-det-info');
   const deployBtn = el('button', 'll-btn deploy', '🚀 Deploy'); const upBtn = el('button', 'll-btn up', '⬆ Upgrade'); const detClose = el('button', 'll-btn close', '✕');
   deployBtn.type = upBtn.type = detClose.type = 'button';
-  detail.append(detIcon, detInfo, deployBtn, upBtn, detClose);
+  const priceBox = el('span', 'll-det-price'); const priceDown = el('button', 'll-btn pm', '−'); const priceVal = el('span', 'll-det-price-val', '0 ✦'); const priceUp = el('button', 'll-btn pm', '+');
+  priceDown.type = priceUp.type = 'button'; priceDown.title = 'lower the price (more buyers, less per sale)'; priceUp.title = 'raise the price (fewer buyers, more per sale)';
+  priceBox.append(el('small', null, 'price'), priceDown, priceVal, priceUp); priceBox.style.display = 'none';
+  detail.append(detIcon, detInfo, priceBox, deployBtn, upBtn, detClose);
   tray.append(tabs, grid, detail, foot);
   wrap.append(placing, tray, toggle);
   root.appendChild(wrap);
@@ -84,9 +90,30 @@ export function mountBuildMenu(root, opts = {}) {
   // nothing survives a new run); the event-fed counter is only the standalone fallback.
   const countOf = (id) => (typeof api.placedInfo === 'function' ? api.placedInfo(id).length : (st.counts[id] || 0));
 
+  // B24: 'crew' tab = offers (helpers + zones) from the integrator; a card buys, no placement
+  function renderOffers() {
+    const list = typeof api.offers === 'function' ? (api.offers() || []) : [];
+    if (!list.length) { grid.append(el('div', 'll-build-empty', 'nobody to hire yet')); return; }
+    list.forEach((o, i) => {
+      const card = el('button', 'll-card offer'); card.style.setProperty('--i', i); card.dataset.id = o.id; card.type = 'button';
+      card.append(el('span', 'll-card-icon', o.icon || OFFER_ICONS[o.id] || '▪️'), el('span', 'll-card-name', o.name || o.id),
+        el('span', 'll-card-cost' + (o.owned ? ' free' : ''), o.owned ? '✓ yours' : `${o.cost} ✦`), el('span', 'll-card-count', '0'));
+      card.title = `${o.name || o.id} · ${o.cost} Spark${o.upkeep ? ` · ${o.upkeep} ✦/season` : ''}\n${o.text || ''}`;
+      card.classList.toggle('owned', !!o.owned); card.classList.toggle('locked', !!o.blocker && o.blocker !== 'cost'); card.classList.toggle('poor', o.blocker === 'cost');
+      card.addEventListener('click', () => {
+        if (o.owned) { footTxt.innerHTML = iconize(`${o.name}: already yours`); return; }
+        if (o.blocker && o.blocker !== 'cost') { retrigger(card, 'denied'); footTxt.innerHTML = iconize(`${o.name}: ${o.blocker}`); return; }
+        if (o.blocker === 'cost') { retrigger(card, 'denied'); footTxt.innerHTML = iconize(`need ${o.cost} ✦ (have ${st.spark})`); return; }
+        footTxt.innerHTML = iconize(`${o.icon || OFFER_ICONS[o.id] || ''} ${o.text || o.name}`); bus.emit('ui:build', { id: o.id, cost: o.cost, action: 'buy', kind: o.kind });
+      });
+      card._offer = o; grid.append(card); cards.set(o.id, card);
+    });
+  }
   function renderGrid() {
     for (const c of cats) tabEls[c].classList.toggle('on', c === st.cat);
     grid.innerHTML = ''; cards.clear();
+    wrap.classList.toggle('crew', st.cat === 'crew');
+    if (st.cat === 'crew') { renderOffers(); refreshCards(); return; }
     items().forEach(([id, e], i) => {
       const cost = costOf(id);
       const card = el('button', 'll-card'); card.style.setProperty('--i', i); card.dataset.id = id;
@@ -100,6 +127,7 @@ export function mountBuildMenu(root, opts = {}) {
   }
   function refreshCards() {
     sparkEl.innerHTML = iconize(`✦ ${st.spark}`);
+    if (st.cat === 'crew') { for (const [, card] of cards) { const o = card._offer; if (o && !o.owned && (!o.blocker || o.blocker === 'cost')) { o.blocker = o.cost > st.spark ? 'cost' : null; card.classList.toggle('poor', o.blocker === 'cost'); } } refreshDetail(); return; }   // offers re-render on eco:upgrade / sandbox:hired
     for (const [id, card] of cards) {
       const locked = st.locked.has(id); const cost = costOf(id);
       card.classList.toggle('poor', !locked && !affordable(cost));
@@ -127,7 +155,11 @@ export function mountBuildMenu(root, opts = {}) {
     const poor = !affordable(cost);
     deployBtn.disabled = poor; deployBtn.classList.toggle('poor', poor); deployBtn.innerHTML = iconize(poor ? `🚀 need ${cost} ✦` : '🚀 Deploy');
     const isStall = e.category === 'stall';
-    upBtn.style.display = isStall ? '' : 'none';
+    upBtn.style.display = isStall ? '' : 'none'; priceBox.style.display = isStall && n && typeof api.priceOf === 'function' ? '' : 'none';
+    if (isStall && n && typeof api.priceOf === 'function') {   // B24: price control for a placed stall type (CustomerSystem.setPrice via ui:price)
+      const pr = api.priceOf(id) || {}; const p = pr.price ?? 0, f = pr.fair ?? p; const tag = p > f * 1.25 ? ' · greedy?' : p < f * 0.75 ? ' · cheap' : ' · fair';
+      priceVal.innerHTML = iconize(`${p} ✦${tag}`); priceVal.classList.toggle('hot', p > f * 1.25); priceDown.disabled = p <= 1;
+    }
     if (isStall) {
       const u = upgradeInfo(id);
       upBtn.disabled = !u.can || u.poor; upBtn.classList.toggle('poor', !!u.poor);
@@ -170,6 +202,10 @@ export function mountBuildMenu(root, opts = {}) {
     upgradeSelected(id = st.selected) { if (!id) return api; bus.emit('ui:build', { action: 'upgrade', id }); return api; },
     deselect() { st.selected = null; refreshCards(); footTxt.textContent = 'pick a card'; return api; },
     upgradeCost: opts.upgradeCost || null,   // (level) => cost   · set by the integrator (Game.js)
+    offers: opts.offers || null,             // () => [{ id, name, icon, cost, upkeep, text, kind, owned, blocker }] · B24 crew tab (helpers + zones)
+    priceOf: opts.priceOf || null,           // (id) => { price, fair } · B24 price control in the stall detail bar
+    /** Nudge the selected stall type's price by ±1 (emits ui:price { id, delta }). */
+    nudgePrice(delta, id = st.selected) { if (!id) return api; bus.emit('ui:price', { id, delta }); return api; },
     placedInfo: opts.placedInfo || null,     // (id) => [{ level }] · set by the integrator so silently-loaded starter stalls count too
     costOf: opts.costOf || null,             // (id) => Spark · set by the integrator (BuildSystem.cost) — BUGFIX B09
     /** BUGFIX B02: forget everything about the previous run (badges, tracked entries, selection, placing). */
@@ -194,6 +230,7 @@ export function mountBuildMenu(root, opts = {}) {
   toggle.addEventListener('click', () => api.toggle());
   deployBtn.addEventListener('click', () => api.deploy());
   upBtn.addEventListener('click', () => api.upgradeSelected());
+  priceDown.addEventListener('click', () => api.nudgePrice(-1)); priceUp.addEventListener('click', () => api.nudgePrice(+1));
   detClose.addEventListener('click', () => api.deselect());
   rotBtn.addEventListener('click', () => bus.emit('ui:build', { action: 'rotate' }));
   okBtn.addEventListener('click', () => bus.emit('ui:build', { action: 'confirm' }));
@@ -223,6 +260,9 @@ export function mountBuildMenu(root, opts = {}) {
     bus.on('build:denied', (p) => { const id = (p && p.id) || st.selected || st.placing; const c = id && cards.get(id); if (c) retrigger(c, 'denied'); footTxt.textContent = 'denied: ' + ((p && p.why) || '?'); }),
     bus.on('ui:unlock', (p) => { if (p && p.ids) api.setUnlocked(p.ids); }),
     bus.on('build:loaded', () => refreshCards()),
+    bus.on('cust:price', () => refreshDetail()),                                   // B24: price changed (ui:price → Game.js → cust.setPrice)
+    bus.on('eco:upgrade', () => { if (st.cat === 'crew') renderGrid(); }),         // B24: helper hired / zone bought → offer cards update
+    bus.on('sandbox:hired', () => { if (st.cat === 'crew') renderGrid(); }),
   ];
   function track(p, on) {
     const ent = p.entry || p; const k = ent.uid ?? `${p.cx},${p.cz}`;

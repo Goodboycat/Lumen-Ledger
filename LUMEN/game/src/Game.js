@@ -504,7 +504,32 @@ function installRunWires(lg) {
       else e = build.nearest(hero.root.position.x, hero.root.position.z, 2.5);
       if (e && !e.scenery) build.upgrade(e); else bus.emit('build:denied', { id: p.id, why: p.id ? 'no stall of that type to upgrade' : 'stand next to a stall to upgrade it' });
     }
+    else if (a === 'buy') lg.buyOffer(p.id);   // BUGFIX B24: Crew & Land tab (helpers + zones) — was debug H/Z only
   });
+  // BUGFIX B24: player-facing hire / unlock / price. offers() feeds the tray's Crew & Land tab; buyOffer pays through the economy
+  // (prereqs + cost enforced by buyUpgrade, C03) and then does the world side (helper creature / zone rise). ui:price nudges the per-type
+  // price in CustomerSystem (±1 Spark, floor 1, ceiling 3× fair) and emits cust:price so the detail bar refreshes.
+  const HELPER_NAMES = { tallyOwl: 'Tally Owl', packMole: 'Pack Mole', sparkBee: 'Spark Bee', guardTortoise: 'Guard Tortoise', scoutFox: 'Scout Fox', gardenerSnail: 'Gardener Snail' };
+  const ZONE_NAMES = { zone_west: 'West Meadow', zone_east: 'East Shore', zone_far: 'Far Point' };
+  lg.offers = () => Object.values(eco.upgrades || UPGRADES).filter((u) => u.kind === 'helper' || u.kind === 'zone').map((u) => {
+    const owned = eco.owns(u.id) || (u.kind === 'zone' && !!sb.island.zones[u.effect.zone]?.unlocked);
+    const blocker = owned ? 'owned' : eco.upgradeBlocker(u.id);
+    const name = u.kind === 'helper' ? HELPER_NAMES[u.id.slice(7)] || u.id : ZONE_NAMES[u.id] || u.id;
+    return { id: u.id, kind: u.kind, name, cost: u.cost, upkeep: u.upkeep || 0, text: u.text, owned, blocker: blocker === 'owned' ? null : blocker && String(blocker).replace(/^needs (zone_|helper_)/, 'needs ') };
+  });
+  lg.buyOffer = (id) => {
+    const u = (eco.upgrades || UPGRADES)[id]; if (!u) return null;
+    if (u.kind === 'helper') return hireHelper(sb, id.slice(7));
+    if (u.kind === 'zone') { const z = sb.island.zones[u.effect.zone]; if (!z || z.unlocked) { bus.emit('eco:denied', { why: 'owned', id }); return null; } return eco.buyUpgrade(id); }   // eco:upgrade → wireEconomy raises the zone
+    return eco.buyUpgrade(id);
+  };
+  on('ui:price', (p) => {
+    const id = p?.id; if (!id || !sb.cust?.setPrice) return;
+    const fair = sb.cust.fair(id), cur = sb.cust.price(id), next = Math.max(1, Math.min(Math.round(fair * 3), Math.round(cur + (+p.delta || 0))));
+    if (next === cur) return; sb.cust.setPrice(id, next); bus.emit('cust:price', { id, price: next, fair });
+  });
+  if (ui?.build) { ui.build.offers = lg.offers; ui.build.priceOf = (id) => ({ price: sb.cust?.price?.(id) ?? 0, fair: sb.cust?.fair?.(id) ?? 0 }); }
+  offs.push(() => { if (ui?.build) { ui.build.offers = null; ui.build.priceOf = null; } });
   on('ui:build:close', () => { lg.demolishMode = false; if (build.mode === 'place') build.exit(); });   // BUGFIX B13: closing the tray never leaves a live ghost
   // BUGFIX B13: a placed STALL ends placement in both layers (no accidental second purchase on the next click); cheap decor/nature stay
   // armed for quick fences/paths and Esc / ✕ cancel them. build.exit() emits build:exit → the tray leaves placing.

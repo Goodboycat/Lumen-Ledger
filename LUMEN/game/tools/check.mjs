@@ -1261,6 +1261,20 @@ if (doGame) {
     const payBtn = ui.jars.el.querySelector('.ll-jars-debt .ll-btn'); if (payBtn.disabled) throw new Error('PAY BARON should be enabled with debt + pouch'); payBtn.click();
     if (!ev['game:repaid'] || eco.state.debt !== Math.max(0, debt0 - Math.min(debt0, sp2)) || eco.state.spark !== sp2 - Math.min(debt0, sp2)) throw new Error(`repay: debt ${debt0}→${eco.state.debt} spark ${sp2}→${eco.state.spark}`);
     if (parseInt(ui.jars.el.querySelector('.ll-jars-debt-val').textContent, 10) !== Math.round(eco.state.debt)) throw new Error('debt row text ' + ui.jars.el.querySelector('.ll-jars-debt-val').textContent);
+    // B24: player-facing price / hire / zone — build tray detail bar (− price +) and the Crew & Land tab (offer cards buy via ui:build {action:'buy'})
+    { const cust = lg.sb.cust, sid = 'stall_fruit'; ui.build.open(); ui.build.setCategory('stall'); ui.build.select(sid);
+      const p0 = cust.price(sid); ui.build.el.querySelector('.ll-det-price .ll-btn.pm:last-of-type').click();
+      if (cust.price(sid) !== p0 + 1 || !ev['cust:price']) throw new Error(`price +: ${p0}→${cust.price(sid)}`);
+      ui.build.nudgePrice(-1); if (cust.price(sid) !== p0) throw new Error('price −');
+      if (!/fair/.test(ui.build.el.querySelector('.ll-det-price-val').textContent)) throw new Error('price tag ' + ui.build.el.querySelector('.ll-det-price-val').textContent);
+      ui.build.setCategory('crew'); const offers = lg.offers(); if (offers.length !== 9 || !offers.find((o) => o.id === 'zone_west' && /season/.test(o.blocker || ''))) throw new Error('offers ' + JSON.stringify(offers.map((o) => [o.id, o.blocker])));
+      const h0 = lg.sb.helpers.length, hc = ui.build.el.querySelector('.ll-card.offer[data-id="helper_packMole"]'); if (!hc) throw new Error('no packMole card');
+      eco.state.spark = 999; ui.build.refresh(); hc.click();
+      if (lg.sb.helpers.length !== h0 + 1 || !eco.owns('helper_packMole') || !ui.build.el.querySelector('.ll-card.offer[data-id="helper_packMole"].owned')) throw new Error(`hire via tray: helpers ${h0}→${lg.sb.helpers.length} owned=${eco.owns('helper_packMole')}`);
+      hc.click(); if (lg.sb.helpers.length !== h0 + 1) throw new Error('owned card re-bought');
+      const s0 = eco.state.season; eco.state.season = Math.max(s0, 3); ui.build.setCategory('crew'); const zc = ui.build.el.querySelector('.ll-card.offer[data-id="zone_west"]'); eco.state.spark = 999; ui.build.refresh(); zc.click();
+      if (!eco.owns('zone_west') || !lg.sb.island.zones[1].unlocked) throw new Error('zone via tray'); eco.state.season = s0;
+      ui.build.setCategory('stall'); ui.build.close(); }
     pressKey('Escape'); if (!ui.pause.isOpen || !game.paused || !ui.isModal()) throw new Error('Esc → pause menu');
     if (lg.ability('coinMagnetDash') !== null) throw new Error('ability while paused should be refused');
     pressKey('Escape'); if (ui.pause.isOpen || game.paused) throw new Error('Esc → resume');
