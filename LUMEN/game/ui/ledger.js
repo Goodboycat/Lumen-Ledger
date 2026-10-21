@@ -118,7 +118,8 @@ export function mountLedger(root, opts = {}) {
       if (st.outcome !== 'season') wrap.classList.add(st.outcome);
       title.innerHTML = iconize(st.outcome === 'win' ? '✦ The Lighthouse is lit!' : st.outcome === 'lose' ? 'Fogged out…' : `Season ${season} Ledger`);
       sub.textContent = st.outcome === 'win' ? `Debt Fog pushed off the island in ${season} seasons` : st.outcome === 'lose'
-        ? (report.reason === 'debt' ? 'the Baron owns the market' : 'the Debt Fog covered the Lighthouse') : season >= seasonsToWin ? 'last season before the Lighthouse' : `${seasonsToWin - season} season${seasonsToWin - season === 1 ? '' : 's'} to the Lighthouse`;
+        ? (report.reason === 'debt' ? 'the Baron owns the market' : 'the Debt Fog covered the Lighthouse') : season >= seasonsToWin ? ((report.debt || 0) > 0 ? 'the Lighthouse waits — pay the Baron off to light it' : (report.fog01 || 0) > 0 ? 'the Lighthouse waits — push the last Fog away' : 'last season before the Lighthouse')   // BUGFIX: S10+ without a win said "last season" forever
+        : season === seasonsToWin - 1 ? 'last season before the Lighthouse' : `${seasonsToWin - season} season${seasonsToWin - season === 1 ? '' : 's'} to the Lighthouse`;
       // rows
       let netSum = 0;
       LEDGER_ROWS.forEach(([key], i) => {
