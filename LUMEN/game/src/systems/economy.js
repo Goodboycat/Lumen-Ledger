@@ -157,7 +157,10 @@ export class Economy {
       day01: 0,
       reputation: 0.5,
       stalls: 0,                         // count of built stalls (BuildSystem calls addStall/removeStall) → upkeep
+      stallUpkeepExtra: 0,               // BUGFIX C01: extra upkeep from upgraded stalls (L2 +3, L3 +6) — set by the integrator from BuildSystem
+      owned: [],                         // BUGFIX C03: ids of one-time upgrades bought (helpers, zones) — saved with the state
       lighthouseLit: false,
+      storyWon: false,                   // BUGFIX B19: the story victory fires ONCE; Endless never re-triggers it
       ended: null,                       // null | 'win' | 'lose'
     };
     this.ledger = this._freshLedger();   // running totals for the current season
@@ -201,7 +204,8 @@ export class Economy {
     if (price === undefined || price === null) price = info.fair;
     price = Math.max(0, +price || 0);
     const mood = this.mood(glimmerType);
-    const base = info.base * (opts.baseMul || 1);
+    // BUGFIX B10/C01: opts.level (stall level 1–3) applies the stallL2/L3 baseMul; owned helpers apply baseMulAll (Spark Bee)
+    const base = info.base * (opts.baseMul || 1) * this.levelMul(opts.level) * this.mod('baseMulAll', 1);
     const q = demand(price, info.fair, base, mood, g.tolerance);
     // deterministic rounding: integer part + Bernoulli on the fraction
     let sold = Math.floor(q); if (this.rng() < q - sold) sold++;
@@ -242,6 +246,44 @@ export class Economy {
   /** Convenience for BuildSystem: pay for a stall and count it. */
   buyStall(stallId) { const cost = this.stallCost(stallId); if (!this.spend(cost, 'build:' + stallId)) return false; this.addStall(1); return true; }
 
+  /** Sales multiplier for a stall level (1 → 1, 2 → stallL2.baseMul, 3 → stallL3.baseMul). */
+  levelMul(level = 1) {
+    const lv = Math.round(+level || 1); if (lv <= 1) return 1;
+    const u = this.upgrades[lv === 2 ? 'stallL2' : 'stallL3'];
+    return (u && u.effect && u.effect.baseMul) || 1;
+  }
+  /** Extra upkeep per season for one stall at `level` (stallL2/L3 effect.upkeep). */
+  levelUpkeep(level = 1) {
+    const lv = Math.round(+level || 1); if (lv <= 1) return 0;
+    const u = this.upgrades[lv === 2 ? 'stallL2' : 'stallL3'];
+    return (u && u.effect && +u.effect.upkeep) || 0;
+  }
+  // ------------------------------------------------ owned one-time upgrades (helpers / zones) — BUGFIX C01/C03
+  owns(id) { return (this.state.owned || []).includes(id); }
+  /** Combined modifier `key` over every owned upgrade's effect (multiplicative for *Mul keys, additive otherwise). */
+  mod(key, dflt = 0) {
+    const mul = /Mul/.test(key); let v = dflt;
+    for (const id of this.state.owned || []) {
+      const e = this.upgrades[id] && this.upgrades[id].effect; if (!e || e[key] === undefined) continue;
+      if (typeof e[key] === 'boolean') { if (e[key]) v = true; continue; }
+      v = mul ? v * e[key] : v + e[key];
+    }
+    return v;
+  }
+  /** Seasonal wages of owned helpers. */
+  helperWages() { let n = 0; for (const id of this.state.owned || []) { const u = this.upgrades[id]; if (u && u.kind === 'helper') n += +u.upkeep || 0; } return n; }
+  /** Why an upgrade cannot be bought right now (null = it can). Stall levels are repeatable (bought per stall by BuildSystem). */
+  upgradeBlocker(upgradeId) {
+    const u = this.upgrades[upgradeId]; if (!u) return 'unknown';
+    if (u.kind && u.kind !== 'stall' && this.owns(upgradeId)) return 'owned';
+    for (const req of u.requires || []) {
+      if (String(req).startsWith('season:')) { if (this.state.season < +String(req).slice(7)) return 'from season ' + String(req).slice(7); }
+      else if (u.kind !== 'stall' && !this.owns(req)) return 'needs ' + req;
+    }
+    if (!this.canAfford(u.cost)) return 'cost';
+    return null;
+  }
+
   // ------------------------------------------------ jars
   /**
    * Move Spark between the pouch and the jars. jarDeltas = { save: +50, spend: -10, ... } (positive = pouch → jar).
@@ -269,6 +311,16 @@ export class Economy {
     this.bus.emit('eco:jar', { jars: { ...this.state.jars }, deltas });
     return true;
   }
+  /**
+   * BUGFIX B11: take Spark OUT of a jar back into the pouch (the player-facing "withdraw"). Capped by the jar balance.
+   * Returns the amount moved (0 = nothing). Emits eco:jar + eco:spark (via allocate).
+   */
+  withdraw(jar, amount) {
+    if (!JARS.includes(jar)) { this.bus.emit('eco:denied', { reason: 'unknown jar ' + jar }); return 0; }
+    const a = Math.min(round(+amount || 0), this.state.jars[jar]);
+    if (!(a > 0)) { this.bus.emit('eco:denied', { reason: 'jar ' + jar + ' is empty' }); return 0; }
+    return this.allocate({ [jar]: -a }) ? a : 0;
+  }
   /** Sum of pouch + all jars − debt. */
   netWorth() { const j = this.state.jars; return this.state.spark + j.spend + j.save + j.invest + j.protect - this.state.debt; }
 
@@ -283,7 +335,7 @@ export class Economy {
   }
   repay(amount) {
     amount = round(Math.min(+amount || 0, this.state.debt, this.state.spark));
-    if (amount <= 0) return 0;
+    if (this.state.ended === 'lose' || amount <= 0) { this.bus.emit('eco:denied', { reason: this.state.debt <= 0 ? 'no debt to repay' : 'nothing to repay with', cost: 0, spark: this.state.spark }); return 0; }
     this.state.debt -= amount; this.ledger.repaid += amount;
     this._addSpark(-amount, 'repay');
     this.bus.emit('eco:loan', { debt: this.state.debt, delta: -amount, kind: 'repay' });
@@ -298,7 +350,8 @@ export class Economy {
   applyLoss(amount, reason = 'loss', { useProtect = true } = {}) {
     amount = round(Math.max(0, +amount || 0)); if (!amount) return { absorbed: 0, paid: 0, debt: 0 };
     const j = this.state.jars;
-    const absorbed = useProtect ? Math.min(j.protect, round(amount * this.config.protectAbsorb)) : 0;
+    // BUGFIX C01: Guard Tortoise (protectBonus) lets the Protect jar absorb more of a shock (still capped by the loss and the balance)
+    const absorbed = useProtect ? Math.min(j.protect, amount, round(amount * this.config.protectAbsorb * (1 + this.mod('protectBonus', 0)))) : 0;
     j.protect -= absorbed; this.ledger.absorbed += absorbed;
     let rest = amount - absorbed;
     const fromPouch = Math.min(rest, Math.max(0, this.state.spark)); if (fromPouch) this._addSpark(-fromPouch, reason); rest -= fromPouch;
@@ -366,8 +419,22 @@ export class Economy {
     this.bus.emit('eco:scamResult', out);
     return out;
   }
-  /** Buy an upgrade by id from this.upgrades. Returns the upgrade or null. */
-  buyUpgrade(upgradeId) { const u = this.upgrades[upgradeId]; if (!u || !this.spend(u.cost, 'upgrade:' + upgradeId)) return null; this.bus.emit('eco:upgrade', { id: upgradeId, upgrade: u }); return u; }
+  /**
+   * Buy an upgrade by id from this.upgrades. Returns the upgrade or null.
+   * BUGFIX C03: prerequisites (other upgrades / season gates) and one-time ownership are enforced HERE, before any Spark moves;
+   * a refusal emits eco:denied {why} and costs nothing. One-time upgrades (helpers, zones) are recorded in state.owned.
+   */
+  buyUpgrade(upgradeId) {
+    const u = this.upgrades[upgradeId]; if (!u) return null;
+    const why = this.upgradeBlocker(upgradeId);
+    if (why && why !== 'cost') { this.bus.emit('eco:denied', { reason: why, why, id: upgradeId, cost: u.cost, spark: this.state.spark }); return null; }
+    if (!this.spend(u.cost, 'upgrade:' + upgradeId)) return null;
+    if (u.kind && u.kind !== 'stall') this.state.owned = [...(this.state.owned || []), upgradeId];
+    this.bus.emit('eco:upgrade', { id: upgradeId, upgrade: u });
+    return u;
+  }
+  /** Grant an upgrade without paying (save restore). Idempotent. */
+  grantUpgrade(upgradeId) { const u = this.upgrades[upgradeId]; if (!u || this.owns(upgradeId)) return null; if (u.kind && u.kind !== 'stall') this.state.owned = [...(this.state.owned || []), upgradeId]; return u; }
 
   // ------------------------------------------------ fog
   _setFog(v, reason) {
@@ -388,7 +455,7 @@ export class Economy {
     const season = s.season;
     const debtBefore = s.debt, fogBefore = s.fog01;
     // GOOD interest
-    const interestEarned = round(s.jars.save * c.savingsRate);
+    const interestEarned = round(s.jars.save * (c.savingsRate + this.mod('interestBonus', 0)));   // + Tally Owl
     s.jars.save += interestEarned;
     // Invest: 8 % ± 4 %
     const investRate = c.investMean + (this.rng() * 2 - 1) * c.investSpread;
@@ -399,7 +466,11 @@ export class Economy {
     const interestPaid = round(s.debt * rate);
     s.debt += interestPaid;
     // upkeep (routine cost: pouch → Spend jar → forced debt; the Protect jar is for shocks, NOT rent)
-    const upkeep = c.baseUpkeep + c.upkeepPerStall * s.stalls;
+    // BUGFIX C01: upgraded stalls cost their promised extra upkeep, Pack Mole cuts STALL upkeep −20 %, helpers are paid wages
+    const stallUpkeep = round((c.upkeepPerStall * s.stalls + (s.stallUpkeepExtra || 0)) * this.mod('upkeepMul', 1));
+    const wages = this.helperWages();
+    const upkeep = c.baseUpkeep + stallUpkeep + wages;
+    const repBonus = this.mod('reputationBonus', 0); if (repBonus) s.reputation = clamp(s.reputation + repBonus, 0, 1);   // Gardener Snail
     const upkeepRes = this.applyLoss(upkeep, 'upkeep', { useProtect: false });
     // fog rules
     let fogDelta = 0;
@@ -415,7 +486,7 @@ export class Economy {
     if (L.saved >= c.starSaveMin || (debtBefore > 0 && s.debt < debtBefore)) stars++;
     if (s.debt <= debtBefore && s.fog01 <= fogBefore) stars++;
     const report = {
-      season, income, expenses, interestEarned, interestPaid, investReturn, investRate: +investRate.toFixed(3), upkeep,
+      season, income, expenses, interestEarned, interestPaid, investReturn, investRate: +investRate.toFixed(3), upkeep, wages,
       upkeepDebt: upkeepRes.debt, saved: L.saved, invested: L.invested, protected: L.protected, absorbed: L.absorbed,
       loansTaken: L.loansTaken, repaid: L.repaid, sales: L.sales, units: L.units, events: L.events.slice(),
       scamsAccepted: L.scamsAccepted, scamsRefused: L.scamsRefused,
@@ -429,12 +500,13 @@ export class Economy {
     this.bus.emit('eco:season', report);
     // win / lose
     if (this.isLose()) { s.ended = 'lose'; this.bus.emit('eco:lose', { season, reason: s.fog01 >= c.fogLoseAt ? 'fog' : 'debt' }); }
-    else if (this.isWin()) { s.ended = 'win'; s.lighthouseLit = true; this.bus.emit('eco:win', { season }); }
+    else if (this.isWin()) { s.ended = 'win'; s.lighthouseLit = true; s.storyWon = true; this.bus.emit('eco:win', { season }); }
     return report;
   }
   isWin() {
     const c = this.config, s = this.state;
     if (s.ended === 'win') return true;
+    if (c.endless) return false;                                       // BUGFIX B19: Endless (after a win or from the title) has no win gate
     if (s.fog01 > c.fogWinAt || s.debt > 0) return false;
     return c.winRequiresSeasons ? s.season > c.seasonsToWin : true;   // season has already advanced past the last one
   }

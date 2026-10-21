@@ -335,7 +335,8 @@ export class CustomerSystem {
     const s = c.stall; if (!s || !this._stallAlive(c)) { this._react(c, 'sad', 'stall gone'); return; }
     const price = this.price(s.id), fair = this.fair(s.id);
     let r;
-    if (this.economy && this.economy.sell) r = this.economy.sell(s.id, c.type, price);
+    // BUGFIX B10: the stall's CURRENT level (live BuildSystem entry) is passed so paid L2/L3 upgrades apply their sales multiplier
+    if (this.economy && this.economy.sell) r = this.economy.sell(s.id, c.type, price, { level: (s.entry && s.entry.level) || s.level || 1 });
     else { r = { paid: price, sold: 1, fair, happy: price <= fair * 1.1, mood: 1 }; }
     const ratio = fair > 0 ? price / fair : 1;
     let mood, reaction;
