@@ -26,7 +26,13 @@ const f = (n) => Math.round(n * 10) / 10;
 
 // ---------- primitives (all in a 64×64 box) ----------
 const sw = 3.2;   // ink width
-const st = (fill, extra = '') => `fill="${fill}" stroke="${INK}" stroke-width="${sw}" stroke-linejoin="round" stroke-linecap="round"${extra}`;
+// BUGFIX (icons PNG bake): `extra` may override stroke / stroke-width — strict XML parsers (rsvg, Inkscape) reject a
+// redefined attribute, browsers silently keep the last. Drop the base attribute when extra sets it.
+const st = (fill, extra = '') => {
+  const base = { fill, stroke: INK, 'stroke-width': sw, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' };
+  for (const m of extra.matchAll(/\s([\w-]+)=/g)) delete base[m[1]];
+  return Object.entries(base).map(([k, v]) => `${k}="${v}"`).join(' ') + extra;
+};
 const P = (d, fill = 'none', extra = '') => `<path d="${d}" ${st(fill, extra)}/>`;
 const Pn = (d, fill) => `<path d="${d}" fill="${fill}"/>`;                     // no outline (highlights / shading)
 const L = (d, w = sw, col = INK) => `<path d="${d}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
@@ -201,10 +207,31 @@ function svgBody(name) {
 }
 /** Icon name for a name-or-emoji (null if unknown). */
 export const iconName = (v) => (v && (G[v] ? v : EMOJI[v])) || null;
-/** Inline <svg> for a name or emoji. Unknown strings are returned escaped as-is (so text fallbacks still show). */
+/** Raw inner SVG markup (no <svg> wrapper) for a name — used by tools/icons_png.mjs to build the sprite sheet. */
+export const iconSVG = (name) => { const s = svgBody(name); return s ? s.body : ''; };
+
+// ---------- render mode: 'svg' (inline, default) or 'png' (ui/icons/<name>.png baked by tools/icons_png.mjs) ----------
+// PNG mode is what ships: the drawings are rasterised ONCE into ui/icons/*.png (sheet.png = all icons side by side) and the
+// game shows <img> tags — zero inline SVG parsing per toast / card, and the files are plain art assets with no font licence.
+// setIconMode('png', manifest) switches at runtime; icons missing from the manifest fall back to inline SVG.
+let MODE = 'svg', PNG_NAMES = null, PNG_BASE = './ui/icons/';
+export function setIconMode(mode, manifest, base) {
+  MODE = mode === 'png' ? 'png' : 'svg';
+  if (manifest && Array.isArray(manifest.names)) PNG_NAMES = new Set(manifest.names);
+  if (base) PNG_BASE = base.endsWith('/') ? base : base + '/';
+  return MODE;
+}
+export const iconMode = () => MODE;
+/** Load ui/icons/manifest.json and switch to PNG mode (no-op / stays SVG when the file is missing, e.g. headless or before the tool ran). */
+export async function usePngIcons(base = './ui/icons/') {
+  if (typeof fetch !== 'function') return 'svg';
+  try { const r = await fetch(base + 'manifest.json', { cache: 'force-cache' }); if (!r.ok) return 'svg'; return setIconMode('png', await r.json(), base); } catch { return 'svg'; }
+}
+/** Inline <svg> (or <img> of the baked PNG in png mode) for a name or emoji. Unknown strings are returned escaped as-is (so text fallbacks still show). */
 export function icon(name, { cls = '', title = '' } = {}) {
   const s = svgBody(name);
   if (!s) return String(name ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  if (MODE === 'png' && (!PNG_NAMES || PNG_NAMES.has(s.n))) return `<img class="ll-ico ll-ico-${s.n}${cls ? ' ' + cls : ''}" src="${PNG_BASE}${s.n}.png" alt="" draggable="false" aria-hidden="true"${title ? ` title="${title}"` : ''}>`;
   return `<svg class="ll-ico ll-ico-${s.n}${cls ? ' ' + cls : ''}" viewBox="0 0 64 64" aria-hidden="true" focusable="false">${title ? `<title>${title}</title>` : ''}${s.body}</svg>`;
 }
 const EMOJI_RE = new RegExp(Object.keys(EMOJI).sort((a, b) => b.length - a.length).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'gu');
@@ -212,9 +239,10 @@ const EMOJI_RE = new RegExp(Object.keys(EMOJI).sort((a, b) => b.length - a.lengt
 export const iconize = (html) => String(html ?? '').replace(EMOJI_RE, (m) => icon(m));
 /** Same, but the input is plain text (escaped first) → safe for innerHTML. */
 export const iconizeText = (txt) => iconize(String(txt ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])));
-/** data: URL (for CSS content/background). */
+/** data: URL (for CSS content/background). In png mode → the baked file's URL. */
 export function iconDataURL(name, px = 64) {
   const s = svgBody(name); if (!s) return '';
+  if (MODE === 'png' && (!PNG_NAMES || PNG_NAMES.has(s.n))) return `${PNG_BASE}${s.n}.png`;
   return 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}" viewBox="0 0 64 64">${s.body}</svg>`);
 }
 /** List of all generator names (debug / gallery). */

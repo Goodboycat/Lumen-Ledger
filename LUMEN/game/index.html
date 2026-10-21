@@ -57,6 +57,7 @@ import { mountUI } from './ui/index.js';
 import { createLumenGame, GAME_VERSION } from './src/Game.js';
 import * as Save from './src/systems/save.js';
 import { createAudio } from './src/core/Audio.js';
+import { usePngIcons } from './ui/icons.js';
 
 const root = document.getElementById('game-root');
 const errEl = document.getElementById('boot-error');
@@ -72,6 +73,8 @@ try {
   const params = new URLSearchParams(location.search);
   const seasonSeconds = +params.get('season') || undefined;                               // ?season=30 → fast seasons (QA); default = BALANCE 150 s
   const storyData = await fetch('./data/story.json').then((r) => { if (!r.ok) throw new Error('data/story.json ' + r.status); return r.json(); });
+  // Icons: every former emoji is a procedural drawing (ui/icons.js) baked to ui/icons/*.png by tools/icons_png.mjs. ?svgicons keeps inline SVG.
+  if (!params.has('svgicons')) await usePngIcons('./ui/icons/');
 
   // UI first (title owns the screen and pauses the game), then the state machine over it.
   const ui = mountUI(root, {

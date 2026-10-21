@@ -39,6 +39,7 @@ const doSandbox = args.includes('--sandbox');      // 10B integrated systems san
 const doGame = args.includes('--game');            // 10C the whole game headless: real UI (domshim) + real story + real sandbox driven by createLumenGame's state machine
 const doSave = args.includes('--save');            // 10D save/load + tutorial: play to S2 → autosave → fresh lg → CONTINUE → same season/spark/stalls/toasts; export/import text; lose clears
 const doPerf = args.includes('--perf');            // 11A src/systems/perf.js: BlobShadows (N discs → 1 InstancedMesh), CreatureLOD tiers + hysteresis, PixelRatioGovernor steps, countGeometries
+const doIcons = args.includes('--icons');          // icons: ui/icons.js procedural set covers every emoji in src/ ui/ data/ index.html; SVG is strict-XML clean; ui/icons/*.png baked + manifest in sync
 const doAudio = args.includes('--audio');          // 12 src/core/Audio.js headless (no AudioContext → inert): manifest ids ↔ DEFAULT_EVENTS, bus walk counts, cooldown, duck, unknown id, destroy
 const doWorld = args.includes('--world');          // 10A integrated world: bakeStatic batches + Island v2 + every content pack placed headless (mirrors demo_world.html), counts meshes ≤ budget              // 9A/9B VFX packs: installPack1/installPack2 on a mock VFX+scene, fire every effect, step headless, check pools drain, 0 NaN, draw calls
 let files = args.filter((a) => !a.startsWith('--'));
@@ -1631,6 +1632,45 @@ if (doAudio) {
     console.log(`  manifest: ${sfxIds.length} sfx (all with file + synth) · ${musicIds.length} music · event map ${Object.keys(DEFAULT_EVENTS).length} bus events → ${refs.size} sfx ids referenced${unused.length ? ` (unreferenced: ${unused.join(', ')})` : ''}`);
     console.log(`  bus walk: 15 core events → 15 plays · variants scam_fell/sweep/cust_happy · cooldown 50 ticks/0.1 s → 1 play (${audio.state.throttled} throttled) · music lose→fog_lose, title · duck on/off · ui:settings → vol · unknown id logged once · destroy → 0 listeners  OK`);
   } catch (err) { bad++; console.log('  audio FAIL →', err.message); }
+}
+if (doIcons) {
+  // ICONS: every emoji the game prints must map to a procedural drawing; each drawing must be valid strict XML (so the PNG bake works);
+  // the baked ui/icons/<name>.png + manifest.json must exist for every name (index.html switches to png mode when the manifest loads).
+  console.log('\nICONS (procedural, no emoji font):');
+  try {
+    const fs = await import('node:fs'); const path = await import('node:path');
+    const I = await import(pathToFileURL(resolve('ui/icons.js')).href);
+    const walk = (d, o = []) => { for (const f of fs.readdirSync(d)) { const p = path.join(d, f); if (fs.statSync(p).isDirectory()) walk(p, o); else if (/\.(js|html|json)$/.test(f)) o.push(p); } return o; };
+    const files = [...walk('src'), ...walk('ui'), ...walk('data'), 'index.html'];
+    const re = /\p{Extended_Pictographic}\uFE0F?|[\u2190-\u21FF\u2600-\u27BF\u2B00-\u2BFF]\uFE0F?/gu;
+    const seen = new Map(); const unknown = new Set(); const SKIP = new Set(['™', '↔', '↓', '←', '→', '↑']);   // ↔ only in comments; arrows are plain text glyphs
+    for (const f of files) {
+      const src = fs.readFileSync(f, 'utf8');
+      for (const line of src.split('\n')) {
+        if (/^\s*(\/\/|\/\*|\*)/.test(line)) continue;                                   // comment-only lines don't render
+        for (const m of line.match(re) || []) { const k = m.replace(/\uFE0F$/, ''); if (SKIP.has(k)) continue; seen.set(k, (seen.get(k) || 0) + 1); if (!I.iconName(k) && !I.iconName(m)) unknown.add(k + ' @ ' + f); }
+      }
+    }
+    if (unknown.size) throw new Error('emoji without a drawing: ' + [...unknown].slice(0, 8).join(', '));
+    // strict XML: no attribute defined twice, every tag closed (rsvg rejects these; browsers silently accept)
+    let dup = [];
+    for (const n of I.ICON_NAMES) { const b = I.iconSVG(n); if (!b) throw new Error('empty icon ' + n); for (const t of b.match(/<[^>]+>/g) || []) { const a = [...t.matchAll(/\s([\w-]+)=/g)].map((x) => x[1]); if (new Set(a).size !== a.length) dup.push(n); } }
+    if (dup.length) throw new Error('duplicate SVG attribute in: ' + [...new Set(dup)].join(', '));
+    const sameTwice = I.icon('owl') === I.icon('🦉') && I.icon('owl') === I.icon('owl'); if (!sameTwice) throw new Error('icon() not deterministic / emoji alias broken');
+    if (!I.iconize('Press 🔨 to build').includes('ll-ico-hammer') || I.iconize('plain').includes('<svg')) throw new Error('iconize mapping wrong');
+    // png bake in sync with the generator
+    let baked = 'not baked (run node tools/icons_png.mjs)';
+    if (fs.existsSync('ui/icons/manifest.json')) {
+      const man = JSON.parse(fs.readFileSync('ui/icons/manifest.json', 'utf8'));
+      const missing = I.ICON_NAMES.filter((n) => !man.names.includes(n) || !fs.existsSync(`ui/icons/${n}.png`));
+      if (missing.length) throw new Error('png bake stale — missing: ' + missing.slice(0, 6).join(', ') + ' (run node tools/icons_png.mjs)');
+      if (!fs.existsSync('ui/icons/sheet.png')) throw new Error('ui/icons/sheet.png missing');
+      I.setIconMode('png', man, './ui/icons/'); const img = I.icon('🦉'); I.setIconMode('svg');
+      if (!img.startsWith('<img') || !img.includes('owl.png')) throw new Error('png mode did not emit <img>');
+      baked = `${man.names.length} PNGs @ ${man.size}px + sheet ${man.cols}×${man.rows} · png mode → <img>`;
+    }
+    console.log(`  ${seen.size} distinct emoji in ${files.length} files → all drawn · ${I.ICON_NAMES.length} generators, strict-XML clean, deterministic · ${baked}  OK`);
+  } catch (err) { bad++; console.log('  icons FAIL →', err.message); }
 }
 console.log(bad ? `\n${bad} FAILURE(S)` : '\nALL OK ✅');
 process.exit(bad ? 1 : 0);
