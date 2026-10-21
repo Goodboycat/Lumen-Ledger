@@ -337,6 +337,8 @@ export class Economy {
     amount = round(Math.min(+amount || 0, this.state.debt, this.state.spark));
     if (this.state.ended === 'lose' || amount <= 0) { this.bus.emit('eco:denied', { reason: this.state.debt <= 0 ? 'no debt to repay' : 'nothing to repay with', cost: 0, spark: this.state.spark }); return 0; }
     this.state.debt -= amount; this.ledger.repaid += amount;
+    // BUGFIX C04: the scam's hidden rate died with the scam debt. Without this a later HONEST loan still compounded at trueRate.
+    if (this.state.debt <= 0) { this.state.debt = 0; this.state.scamRate = 0; }
     this._addSpark(-amount, 'repay');
     this.bus.emit('eco:loan', { debt: this.state.debt, delta: -amount, kind: 'repay' });
     return amount;
@@ -370,7 +372,12 @@ export class Economy {
     if (effect.investPct) { const d = round(this.state.jars.invest * effect.investPct); this.state.jars.invest += d; r.investPct = effect.investPct; r.investDelta = d; this.bus.emit('eco:jar', { jars: { ...this.state.jars }, deltas: { invest: d } }); }
     if (effect.fog) { this._setFog(this.state.fog01 + effect.fog, reason); r.fog = effect.fog; }
     if (effect.reputation) { this.state.reputation = clamp(this.state.reputation + effect.reputation, 0, 1); r.reputation = effect.reputation; }
-    if (effect.debt) { this.state.debt = Math.max(0, this.state.debt + round(effect.debt)); r.debt += effect.debt; }
+    if (effect.debt) {
+      const before = this.state.debt; this.state.debt = Math.max(0, before + round(effect.debt)); r.debt += effect.debt;
+      if (this.state.debt <= 0) this.state.scamRate = 0;                                                         // BUGFIX C04 (see repay)
+      // BUGFIX C05: event debt changes never told the UI → jars panel debt row / PAY button stayed stale until the season closed
+      if (this.state.debt !== before) this.bus.emit('eco:loan', { debt: this.state.debt, delta: this.state.debt - before, kind: effect.debt > 0 ? 'forced' : 'repay' });
+    }
     for (const k of JARS) if (effect.jars && effect.jars[k]) { this.state.jars[k] = Math.max(0, this.state.jars[k] + round(effect.jars[k])); }
     return r;
   }

@@ -129,7 +129,7 @@ export function mountJars(root, opts = {}) {
     debtVal.innerHTML = iconize(Math.round(st.debt) + ' ✦');
     debtRow.classList.toggle('clear', st.debt <= 0);
     repayBtn.disabled = !(st.debt > 0 && st.spark > 0);
-    repayBtn.textContent = st.debt <= 0 ? 'DEBT FREE' : 'PAY ' + Math.min(Math.round(st.debt), Math.floor(st.spark)) + ' ✦';
+    repayBtn.innerHTML = iconize(st.debt <= 0 ? 'DEBT FREE' : 'PAY ' + Math.min(Math.round(st.debt), Math.floor(st.spark)) + ' ✦');
   };
 
   const api = {
