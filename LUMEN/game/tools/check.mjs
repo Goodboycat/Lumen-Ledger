@@ -1204,7 +1204,7 @@ if (doGame) {
     const { mountUI } = await import(pathToFileURL(resolve('ui/index.js')).href);
     const { PROP_CATALOG } = await import(pathToFileURL(resolve('src/assets/props.js')).href);
     const { readFileSync } = await import('node:fs'); const storyData = JSON.parse(readFileSync(resolve('data/story.json'), 'utf8'));
-    const bus = new EventBus(); const ev = {}; for (const n of ['game:state', 'game:paused', 'game:start', 'story:line', 'story:review', 'ui:continue', 'eco:season', 'game:endless', 'game:title', 'game:allocated', 'game:withdrew', 'game:repaid', 'build:placed', 'sandbox:ability', 'eco:scam']) bus.on(n, (p) => { (ev[n] ??= []).push(p); });
+    const bus = new EventBus(); const ev = {}; for (const n of ['game:state', 'game:paused', 'game:start', 'story:line', 'story:review', 'ui:continue', 'eco:season', 'game:endless', 'game:title', 'game:allocated', 'game:withdrew', 'game:repaid', 'cust:price', 'build:placed', 'sandbox:ability', 'eco:scam']) bus.on(n, (p) => { (ev[n] ??= []).push(p); });
     const game = { scene: new THREE.Scene(), bus, sequences: new SequencePlayer(), tweens, hitStop: new HitStop(), input: { pointerWorld: new THREE.Vector3(), hasPointerWorld: false, move: new THREE.Vector2(), joystick: new THREE.Vector2(), actions: {}, pressed: () => false, press() {} }, camera: { zoom: 1, shake() {} }, time: 0, timeScale: 1, paused: false, followTarget: null, systems: [], stats: { fps: 60, drawCalls: 0 }, add(s) { this.systems.push(s); return s; }, hitstop() {} };
     const root = document.body;
     const ui = mountUI(root, { bus, stats: () => game.stats, input: game.input, catalog: PROP_CATALOG, seasonsToWin: 10, touch: false, version: 'check' });
@@ -1263,16 +1263,16 @@ if (doGame) {
     if (parseInt(ui.jars.el.querySelector('.ll-jars-debt-val').textContent, 10) !== Math.round(eco.state.debt)) throw new Error('debt row text ' + ui.jars.el.querySelector('.ll-jars-debt-val').textContent);
     // B24: player-facing price / hire / zone — build tray detail bar (− price +) and the Crew & Land tab (offer cards buy via ui:build {action:'buy'})
     { const cust = lg.sb.cust, sid = 'stall_fruit'; ui.build.open(); ui.build.setCategory('stall'); ui.build.select(sid);
-      const p0 = cust.price(sid); ui.build.el.querySelector('.ll-det-price .ll-btn.pm:last-of-type').click();
+      const p0 = cust.price(sid); { const pm = ui.build.el.querySelectorAll('.ll-det-price .ll-btn.pm'); pm[pm.length - 1].click(); }
       if (cust.price(sid) !== p0 + 1 || !ev['cust:price']) throw new Error(`price +: ${p0}→${cust.price(sid)}`);
       ui.build.nudgePrice(-1); if (cust.price(sid) !== p0) throw new Error('price −');
       if (!/fair/.test(ui.build.el.querySelector('.ll-det-price-val').textContent)) throw new Error('price tag ' + ui.build.el.querySelector('.ll-det-price-val').textContent);
-      ui.build.setCategory('crew'); const offers = lg.offers(); if (offers.length !== 9 || !offers.find((o) => o.id === 'zone_west' && /season/.test(o.blocker || ''))) throw new Error('offers ' + JSON.stringify(offers.map((o) => [o.id, o.blocker])));
-      const h0 = lg.sb.helpers.length, hc = ui.build.el.querySelector('.ll-card.offer[data-id="helper_packMole"]'); if (!hc) throw new Error('no packMole card');
-      eco.state.spark = 999; ui.build.refresh(); hc.click();
-      if (lg.sb.helpers.length !== h0 + 1 || !eco.owns('helper_packMole') || !ui.build.el.querySelector('.ll-card.offer[data-id="helper_packMole"].owned')) throw new Error(`hire via tray: helpers ${h0}→${lg.sb.helpers.length} owned=${eco.owns('helper_packMole')}`);
+      ui.build.setCategory('crew'); const offers = lg.offers(); if (offers.length !== 9 || !offers.find((o) => o.id === 'zone_east' && /needs west/.test(o.blocker || ''))) throw new Error('offers ' + JSON.stringify(offers.map((o) => [o.id, o.blocker])));
+      const h0 = lg.sb.helpers.length, hc = ui.build.cards.get('helper_packMole'); if (!hc) throw new Error('no packMole card');
+      eco.state.spark = 999; hc.click();
+      if (lg.sb.helpers.length !== h0 + 1 || !eco.owns('helper_packMole') || !ui.build.cards.get('helper_packMole')?.classList.contains('owned')) throw new Error(`hire via tray: helpers ${h0}→${lg.sb.helpers.length} owned=${eco.owns('helper_packMole')}`);
       hc.click(); if (lg.sb.helpers.length !== h0 + 1) throw new Error('owned card re-bought');
-      const s0 = eco.state.season; eco.state.season = Math.max(s0, 3); ui.build.setCategory('crew'); const zc = ui.build.el.querySelector('.ll-card.offer[data-id="zone_west"]'); eco.state.spark = 999; ui.build.refresh(); zc.click();
+      const s0 = eco.state.season; eco.state.season = Math.max(s0, 3); ui.build.setCategory('crew'); eco.state.spark = 999; ui.build.setCategory('crew'); ui.build.cards.get('zone_west').click(); run(1.5);
       if (!eco.owns('zone_west') || !lg.sb.island.zones[1].unlocked) throw new Error('zone via tray'); eco.state.season = s0;
       ui.build.setCategory('stall'); ui.build.close(); }
     pressKey('Escape'); if (!ui.pause.isOpen || !game.paused || !ui.isModal()) throw new Error('Esc → pause menu');

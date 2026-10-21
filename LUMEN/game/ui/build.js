@@ -101,6 +101,7 @@ export function mountBuildMenu(root, opts = {}) {
       card.title = `${o.name || o.id} · ${o.cost} Spark${o.upkeep ? ` · ${o.upkeep} ✦/season` : ''}\n${o.text || ''}`;
       card.classList.toggle('owned', !!o.owned); card.classList.toggle('locked', !!o.blocker && o.blocker !== 'cost'); card.classList.toggle('poor', o.blocker === 'cost');
       card.addEventListener('click', () => {
+        if (typeof api.offers === 'function') { const live = (api.offers() || []).find((x) => x.id === o.id); if (live) Object.assign(o, live); }   // re-check at tap time (Spark may have moved)
         if (o.owned) { footTxt.innerHTML = iconize(`${o.name}: already yours`); return; }
         if (o.blocker && o.blocker !== 'cost') { retrigger(card, 'denied'); footTxt.innerHTML = iconize(`${o.name}: ${o.blocker}`); return; }
         if (o.blocker === 'cost') { retrigger(card, 'denied'); footTxt.innerHTML = iconize(`need ${o.cost} ✦ (have ${st.spark})`); return; }
