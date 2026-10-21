@@ -910,7 +910,7 @@ if (doUI) {
     dragRange(inputs[1], 70); // save → 70
     if (jars.pct.save !== 70 || sumPct(jars.pct) !== 100 || !ev['ui:jar'] || ev['ui:jar'][0].changed !== 'save') throw new Error('drag ' + JSON.stringify(jars.pct));
     if (jars.el.querySelector('.ll-jars-total').textContent !== '100 %') throw new Error('total text');
-    const applyBtn = jars.el.querySelectorAll('button')[1]; if (applyBtn.disabled) throw new Error('apply should be enabled after a drag');
+    const applyBtn = jars.el.querySelector('.ll-jars-foot').querySelectorAll('button')[1]; if (applyBtn.disabled) throw new Error('apply should be enabled after a drag');
     applyBtn.click(); if (!ev['ui:jar:apply'] || ev['ui:jar:apply'][0].pct.save !== 70 || !applyBtn.disabled) throw new Error('apply');
     bus.emit('eco:jar', { jars: { spend: 10, save: 150, invest: 20, protect: 5 } }); if (!/150/.test(jars.el.querySelector('.ll-jar.save .ll-jar-bal').textContent)) throw new Error('balances');
     jars.lock('invest', true); const before = jars.pct.invest; jars.setPct({ invest: 99 }); if (jars.pct.invest !== before) throw new Error('lock ignored');
@@ -1203,7 +1203,7 @@ if (doGame) {
     const { mountUI } = await import(pathToFileURL(resolve('ui/index.js')).href);
     const { PROP_CATALOG } = await import(pathToFileURL(resolve('src/assets/props.js')).href);
     const { readFileSync } = await import('node:fs'); const storyData = JSON.parse(readFileSync(resolve('data/story.json'), 'utf8'));
-    const bus = new EventBus(); const ev = {}; for (const n of ['game:state', 'game:paused', 'game:start', 'story:line', 'story:review', 'ui:continue', 'eco:season', 'game:endless', 'game:title', 'game:allocated', 'build:placed', 'sandbox:ability', 'eco:scam']) bus.on(n, (p) => { (ev[n] ??= []).push(p); });
+    const bus = new EventBus(); const ev = {}; for (const n of ['game:state', 'game:paused', 'game:start', 'story:line', 'story:review', 'ui:continue', 'eco:season', 'game:endless', 'game:title', 'game:allocated', 'game:withdrew', 'game:repaid', 'build:placed', 'sandbox:ability', 'eco:scam']) bus.on(n, (p) => { (ev[n] ??= []).push(p); });
     const game = { scene: new THREE.Scene(), bus, sequences: new SequencePlayer(), tweens, hitStop: new HitStop(), input: { pointerWorld: new THREE.Vector3(), hasPointerWorld: false, move: new THREE.Vector2(), joystick: new THREE.Vector2(), actions: {}, pressed: () => false, press() {} }, camera: { zoom: 1, shake() {} }, time: 0, timeScale: 1, paused: false, followTarget: null, systems: [], stats: { fps: 60, drawCalls: 0 }, add(s) { this.systems.push(s); return s; }, hitstop() {} };
     const root = document.body;
     const ui = mountUI(root, { bus, stats: () => game.stats, input: game.input, catalog: PROP_CATALOG, seasonsToWin: 10, touch: false, version: 'check' });
@@ -1253,6 +1253,13 @@ if (doGame) {
     bus.emit('ui:jar:apply', { pct: { spend: 40, save: 30, invest: 20, protect: 10 } });
     if (!ev['game:allocated'] || eco.state.spark >= pouch || eco.state.jars.save <= j0.save || eco.state.jars.protect <= j0.protect) throw new Error(`jars APPLY: spark ${pouch}→${eco.state.spark} jars ${JSON.stringify(eco.state.jars)}`);
     const moved = ev['game:allocated'][0].moved; if (Math.abs(moved - Math.floor(pouch * 0.3) - Math.floor(pouch * 0.2) - Math.floor(pouch * 0.1)) > 1) throw new Error('jars moved ' + moved);
+    // B11 withdraw ↩ + B01 PAY BARON through the jars panel's real buttons → economy.withdraw / economy.repay
+    const sv0 = eco.state.jars.save, sp1 = eco.state.spark; ui.jars.el.querySelector('.ll-jar.save .ll-jar-wd').click();
+    if (!ev['game:withdrew'] || eco.state.jars.save >= sv0 || eco.state.spark <= sp1) throw new Error(`jars withdraw: save ${sv0}→${eco.state.jars.save} spark ${sp1}→${eco.state.spark}`);
+    const debt0 = eco.state.debt, sp2 = eco.state.spark; if (!(debt0 > 0)) throw new Error('fixture: expected starting debt');
+    const payBtn = ui.jars.el.querySelector('.ll-jars-debt .ll-btn'); if (payBtn.disabled) throw new Error('PAY BARON should be enabled with debt + pouch'); payBtn.click();
+    if (!ev['game:repaid'] || eco.state.debt !== Math.max(0, debt0 - Math.min(debt0, sp2)) || eco.state.spark !== sp2 - Math.min(debt0, sp2)) throw new Error(`repay: debt ${debt0}→${eco.state.debt} spark ${sp2}→${eco.state.spark}`);
+    if (parseInt(ui.jars.el.querySelector('.ll-jars-debt-val').textContent, 10) !== Math.round(eco.state.debt)) throw new Error('debt row text ' + ui.jars.el.querySelector('.ll-jars-debt-val').textContent);
     pressKey('Escape'); if (!ui.pause.isOpen || !game.paused || !ui.isModal()) throw new Error('Esc → pause menu');
     if (lg.ability('coinMagnetDash') !== null) throw new Error('ability while paused should be refused');
     pressKey('Escape'); if (ui.pause.isOpen || game.paused) throw new Error('Esc → resume');

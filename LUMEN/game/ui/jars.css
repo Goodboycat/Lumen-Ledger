@@ -45,3 +45,22 @@
   body.ll-dlg-open .ll-jars { opacity: .85; }
 }
 @media (orientation: portrait) and (max-width: 640px) { .ll-jars { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 250px); } }
+
+/* B11 withdraw ↩ (per jar) + B01 debt row / PAY BARON */
+.ll-jar-wd { grid-column: 4; grid-row: 1 / span 2; width: 18px; height: 18px; padding: 0; border: 2px solid var(--ink); border-radius: 6px; background: #fff; color: var(--ink); font: inherit; font-size: 11px; font-weight: 900; line-height: 1; cursor: pointer; box-shadow: 0 2px 0 var(--ink); flex: none; }
+.ll-jar-wd:active { transform: translateY(1px); box-shadow: 0 1px 0 var(--ink); }
+.ll-jar.has-wd { grid-template-columns: 30px 1fr 42px 20px; }
+.ll-jar.locked .ll-jar-wd { visibility: hidden; }
+body.is-touch .ll-jar.has-wd { grid-template-columns: 30px 1fr 42px 28px; }
+.ll-jars-debt { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 6px; padding: 4px 6px; border: 3px solid var(--ink); border-radius: 10px; background: rgba(123, 84, 170, .22); }
+.ll-jars-debt.clear { background: rgba(76, 175, 80, .22); }
+.ll-jars-debt-lab { font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.ll-jars-debt-lab b { font-weight: 900; display: inline-flex; align-items: center; gap: 2px; }
+.ll-jars-debt-lab .ll-ico { width: 11px; height: 11px; vertical-align: 0; }
+.ll-jars-debt .ll-btn { flex: none; background: var(--gold); border: 3px solid var(--ink); border-radius: 10px; padding: 4px 8px; font: inherit; font-weight: 900; font-size: 11px; box-shadow: 0 3px 0 var(--ink); cursor: pointer; color: var(--ink); white-space: nowrap; }
+.ll-jars-debt .ll-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.ll-jars-debt .ll-btn:disabled { opacity: .5; cursor: default; }
+.ll-jars-debt.pop { animation: ll-jar-slosh .45s cubic-bezier(.34,1.56,.64,1); }
+.ll-jars.collapsed .ll-jars-debt { display: none; }
+body.is-touch .ll-jar-wd { width: 26px; height: 26px; font-size: 14px; }
+body.is-touch .ll-jars-debt .ll-btn { min-height: 44px; }

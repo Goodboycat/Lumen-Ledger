@@ -9,7 +9,9 @@
 //
 // Emits on bus:  'ui:jar' { pct: {...}, changed: 'save', source: 'drag'|'preset'|'api' }   (every change, debounced to the input event)
 //                'ui:jar:apply' { pct }   when the player presses APPLY (the integrator calls economy.allocate from this)
-// Listens:       'eco:jar' { jars } → setBalances · 'eco:season' report → setBalances(report.jars)
+//                'ui:jar:withdraw' { jar, amount }  BUGFIX B11: the ↩ button next to a jar balance → economy.withdraw (half the jar, min 1)
+//                'ui:repay' { amount }              BUGFIX B01: the PAY BARON button → economy.repay (whole debt, capped by the pouch in Game.js)
+// Listens:       'eco:jar' { jars } → setBalances · 'eco:season' report → setBalances(report.jars) · 'eco:loan' {debt} / 'eco:spark' → debt row
 //
 // Motion: slider fill is a CSS gradient var(--pct); jar icon liquid height 350 ms outExpo; slosh 450 ms outBack on change.
 
@@ -62,7 +64,7 @@ export const sumPct = (p) => JAR_ORDER.reduce((a, k) => a + (p[k] || 0), 0);
 
 export function mountJars(root, opts = {}) {
   const bus = opts.bus || defaultBus;
-  const st = { pct: { ...(opts.pct || JAR_PRESETS.balanced) }, balances: { spend: 0, save: 0, invest: 0, protect: 0 }, locked: {}, dirty: false };
+  const st = { pct: { ...(opts.pct || JAR_PRESETS.balanced) }, balances: { spend: 0, save: 0, invest: 0, protect: 0 }, locked: {}, dirty: false, debt: +opts.debt || 0, spark: +opts.spark || 0 };
   if (sumPct(st.pct) !== 100) st.pct = rebalance(st.pct, 'spend', st.pct.spend);
 
   const panel = el('aside', 'll-jars'); panel.id = 'll-jars';
@@ -81,6 +83,11 @@ export function mountJars(root, opts = {}) {
     const input = el('input'); input.type = 'range'; input.min = 0; input.max = 100; input.step = 1; input.value = st.pct[k]; input.setAttribute('aria-label', JAR_INFO[k].name + ' percent');
     const pctEl = el('div', 'll-jar-pct', `<span>${st.pct[k]}%</span>`);
     row.append(icon, name, input, pctEl);
+    if (k !== 'spend') { // B11: withdraw half of a jar back into the pouch (Spend IS the pouch, nothing to withdraw)
+      const wd = el('button', 'll-jar-wd'); wd.textContent = '↩'; wd.type = 'button'; wd.title = 'Take half of this jar back into your pouch'; wd.setAttribute('aria-label', 'Withdraw half of ' + JAR_INFO[k].name);
+      wd.addEventListener('click', (e) => { e.stopPropagation(); api.withdraw(k); });
+      row.append(wd); row.classList.add('has-wd');
+    }
     row.title = JAR_INFO[k].hint;
     panel.append(row);
     rows[k] = { row, icon, liquid, input, pctEl: pctEl.firstChild, bal: name.querySelector('.ll-jar-bal') };
@@ -93,7 +100,13 @@ export function mountJars(root, opts = {}) {
   const applyBtn = el('button', 'll-btn', 'APPLY'); applyBtn.disabled = true;
   foot.append(presetBtn, applyBtn);
   const hint = el('div', 'll-jars-hint', 'drag a jar — the others rebalance');
-  panel.append(foot, hint);
+  // B01: the debt row — the ONLY player-facing way to pay down Baron Gilt's principal (interest compounds every season)
+  const debtRow = el('div', 'll-jars-debt');
+  const debtLab = el('span', 'll-jars-debt-lab', '🎩 Debt'); const debtVal = el('b', 'll-jars-debt-val', '0 ✦'); debtLab.append(debtVal);
+  const repayBtn = el('button', 'll-btn repay', 'PAY BARON'); repayBtn.type = 'button'; repayBtn.disabled = true; repayBtn.title = 'Pay the Baron from your pouch — stops the interest and lets the Fog lift';
+  debtRow.append(debtLab, repayBtn);
+  panel.append(foot, debtRow, hint);
+  repayBtn.addEventListener('click', () => api.repay());
   root.appendChild(panel);
 
   presetBtn.addEventListener('click', () => { const keys = Object.keys(JAR_PRESETS); presetI = (presetI + 1) % keys.length; api.setPreset(keys[presetI]); hint.textContent = 'preset: ' + keys[presetI]; });
@@ -113,6 +126,10 @@ export function mountJars(root, opts = {}) {
     }
     const s = sumPct(st.pct); total.textContent = s + ' %'; total.classList.toggle('bad', s !== 100);
     applyBtn.disabled = !st.dirty;
+    debtVal.innerHTML = iconize(Math.round(st.debt) + ' ✦');
+    debtRow.classList.toggle('clear', st.debt <= 0);
+    repayBtn.disabled = !(st.debt > 0 && st.spark > 0);
+    repayBtn.textContent = st.debt <= 0 ? 'DEBT FREE' : 'PAY ' + Math.min(Math.round(st.debt), Math.floor(st.spark)) + ' ✦';
   };
 
   const api = {
@@ -129,13 +146,21 @@ export function mountJars(root, opts = {}) {
     setPreset(name) { const p = JAR_PRESETS[name]; if (!p) return api; st.pct = { ...p }; st.dirty = true; render('*'); bus.emit('ui:jar', { pct: { ...st.pct }, changed: '*', source: 'preset', preset: name }); return api; },
     setBalances(jars) { if (!jars) return api; for (const k of JAR_ORDER) if (jars[k] != null) st.balances[k] = Math.round(jars[k]); render(null); return api; },
     lock(k, on = true) { if (JAR_ORDER.includes(k)) { st.locked[k] = !!on; render(null); } return api; },
+    /** B11: ask the integrator to move half of a jar (min 1 ✦) back into the pouch. */
+    withdraw(k, amount) { if (!JAR_ORDER.includes(k) || k === 'spend') return api; const bal = st.balances[k] || 0; const a = Math.max(1, Math.round(amount != null ? amount : bal / 2)); if (bal <= 0) { hint.textContent = JAR_INFO[k].name + ' jar is empty'; return api; } bus.emit('ui:jar:withdraw', { jar: k, amount: Math.min(a, bal) }); retrigger(rows[k].icon, 'pop'); return api; },
+    /** B01: ask the integrator to repay the Baron (amount defaults to everything the pouch can cover). */
+    repay(amount) { if (!(st.debt > 0)) { hint.textContent = 'no debt — the Baron has nothing on you'; return api; } const a = Math.min(Math.round(amount != null ? amount : st.debt), Math.floor(st.spark)); if (!(a > 0)) { hint.textContent = 'your pouch is empty — sell Glimmers or ↩ withdraw from a jar'; return api; } bus.emit('ui:repay', { amount: a }); retrigger(debtRow, 'pop'); return api; },
+    /** B01: show debt + pouch so the PAY button knows what it can pay. */
+    setDebt(debt, spark) { if (debt != null) st.debt = Math.max(0, +debt || 0); if (spark != null) st.spark = Math.max(0, +spark || 0); render(null); return api; },
     apply() { st.dirty = false; render(null); bus.emit('ui:jar:apply', { pct: { ...st.pct } }); retrigger(panel, 'll-apply'); return api; },
     setCollapsed(on) { panel.classList.toggle('collapsed', !!on); caret.innerHTML = iconize(on ? '▸' : '▾'); return api; },
     destroy() { offs.forEach((f) => f()); panel.remove(); },
   };
   const offs = [
     bus.on('eco:jar', (p) => { if (p && p.jars) api.setBalances(p.jars); }),
-    bus.on('eco:season', (r) => { if (r && r.jars) api.setBalances(r.jars); }),
+    bus.on('eco:season', (r) => { if (r && r.jars) api.setBalances(r.jars); if (r && r.debt != null) api.setDebt(r.debt, r.spark); }),
+    bus.on('eco:loan', (p) => { if (p && p.debt != null) api.setDebt(p.debt, null); }),
+    bus.on('eco:spark', (p) => { if (p && p.spark != null) api.setDebt(null, p.spark); }),
   ];
   render('*');
   return api;

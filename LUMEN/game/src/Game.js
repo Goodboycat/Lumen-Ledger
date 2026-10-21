@@ -395,7 +395,7 @@ function installStart(lg) {
     lg.story = (lg.mode === 'story' && opts.storyData) ? new StorySystem(sb.eco, { data: opts.storyData, bus, ledgerLinesBeforeReview: true, autoAdvance: !!opts.autoAdvance, lineGap: opts.lineGap }) : null;
     if (lg._resuming?.story && lg.story) Object.assign(lg.story.state, StorySystem.deserialize(lg._resuming.story, sb.eco, { data: opts.storyData, autoplay: false }).state);   // 10D: before title.hide() → no toast replay
     installRunWires(lg);
-    ui?.hud?.sync?.(sb.eco.state); ui?.jars?.setBalances?.(sb.eco.state.jars); ui?.build?.setSpark?.(sb.eco.state.spark);
+    ui?.hud?.sync?.(sb.eco.state); ui?.jars?.setBalances?.(sb.eco.state.jars); ui?.jars?.setDebt?.(sb.eco.state.debt, sb.eco.state.spark); ui?.build?.setSpark?.(sb.eco.state.spark);
     lg.stats.starts++;
     ui?.title?.hide?.(); lg.pause('title', false);
     lg.setState('playing');
@@ -503,6 +503,10 @@ function installRunWires(lg) {
     const ok = eco.allocate(d); if (ok) bus.emit('game:allocated', { moved, deltas: d, spark: eco.state.spark }); return ok;
   };
   on('ui:jar:apply', (p) => lg.applyJars(p?.pct));
+  // BUGFIX B11: ↩ on a jar → Spark back into the pouch. BUGFIX B01: PAY BARON → economy.repay (the only way to clear principal; isWin needs debt 0).
+  on('ui:jar:withdraw', (p) => { if (!p?.jar) return; const a = eco.withdraw(p.jar, p.amount); if (a > 0) bus.emit('game:withdrew', { jar: p.jar, amount: a, spark: eco.state.spark }); });
+  lg.repay = (amount) => { const a = eco.repay(amount != null ? amount : eco.state.debt); if (a > 0) { bus.emit('game:repaid', { amount: a, debt: eco.state.debt, spark: eco.state.spark }); ui?.hud?.sync?.(eco.state); } return a; };
+  on('ui:repay', (p) => lg.repay(p?.amount));
   // ability keys — only while playing/endless and no modal owns the screen (dialogue keys 1–4, ledger Enter, pause Esc)
   lg.ability = (name) => { if (!lg.sb || (lg.state !== 'playing' && lg.state !== 'endless') || lg.game.paused) return null; return sb.ability(name); };
   on('ui:touch', (p) => { if (p?.action === 'build' && !lg.game.paused) ui?.build?.toggle?.(); });
@@ -609,7 +613,7 @@ function applySnapshot(lg, sb, snap) {
   for (const id of snap.helpers || []) { const type = String(id).replace(/^helper_/, ''); if (HELPER_TYPES.includes(type) && !sb.helpers.some((h) => h.type === type)) { const paid = eco.spend; eco.spend = () => true; try { hireHelper(sb); } finally { eco.spend = paid; } } }
   if (snap.hero && sb.hero?.root) { sb.hero.root.position.set(snap.hero.x, 0, snap.hero.z); lg.game.camera?.snapTo?.(sb.hero.root.position); }
   if (snap.jars) { lg.jarPct = { ...snap.jars }; lg.ui?.jars?.setPct?.(snap.jars); }
-  lg.ui?.hud?.sync?.(eco.state); lg.ui?.jars?.setBalances?.(eco.state.jars); lg.ui?.build?.setSpark?.(eco.state.spark);
+  lg.ui?.hud?.sync?.(eco.state); lg.ui?.jars?.setBalances?.(eco.state.jars); lg.ui?.jars?.setDebt?.(eco.state.debt, eco.state.spark); lg.ui?.build?.setSpark?.(eco.state.spark);
   if (lg.story && lg.state === 'playing') lg.story.onSeasonStart?.(eco.state.season);   // 8B: no-op if this season's opening already played (saved mid-season); plays it if the save was taken at the review
 }
 
