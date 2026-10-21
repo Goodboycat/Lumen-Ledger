@@ -310,10 +310,13 @@ function printLedger(r) {
   console.log(`LedgerReport — Season ${r.season}  ★${r.stars}  lesson: ${r.lessonId}\n` + [row('income', r.income), row('expenses', r.expenses), row('interestEarned', r.interestEarned), row('interestPaid', r.interestPaid), row('investReturn', `${r.investReturn} (${(r.investRate * 100).toFixed(1)}%)`), row('upkeep', r.upkeep), row('sales/units', `${r.sales}/${r.units}`), row('saved', r.saved), row('debt', `${r.debtBefore} → ${r.debt}`), row('fog', `${(r.fog01 * 100).toFixed(0)}% (${r.fogDelta >= 0 ? '+' : ''}${(r.fogDelta * 100).toFixed(1)})`), row('spark', r.spark), row('netWorth', r.netWorth), row('events', r.events.join(', ') || '—')].join('\n'));
 }
 // P3: hire the next un-hired helper (eco.buyUpgrade helper_<type>) and give it a work loop at an owned stall.
-function hireHelper(sb) {
+// BUGFIX restore: `hireHelper(sb, type, { free: true })` spawns a specific helper WITHOUT buying (the upgrade is already in eco.state.owned
+// after deserialize, so buyUpgrade would refuse with 'owned' and the helper never came back after CONTINUE).
+function hireHelper(sb, wantType = null, { free = false } = {}) {
   const owned = new Set(sb.helpers.map((h) => h.type));
-  const type = HELPER_TYPES.find((t) => !owned.has(t)); if (!type) return null;
-  const u = sb.eco.buyUpgrade('helper_' + type); if (!u) { sb.game.bus.emit('eco:denied', { why: 'cannot afford', id: 'helper_' + type }); return null; }
+  const type = wantType && HELPER_TYPES.includes(wantType) && !owned.has(wantType) ? wantType : HELPER_TYPES.find((t) => !owned.has(t)); if (!type) return null;
+  const u = free ? (sb.eco.grantUpgrade?.('helper_' + type) || sb.eco.upgrades?.['helper_' + type] || { cost: 0 }) : sb.eco.buyUpgrade('helper_' + type);
+  if (!u) { sb.game.bus.emit('eco:denied', { why: 'cannot afford', id: 'helper_' + type }); return null; }
   const stalls = [...sb.build.placed.values()].filter((e) => e.id.startsWith('stall_'));
   const stall = stalls[sb.helpers.length % Math.max(1, stalls.length)] || null;
   const g = makeHelper(type, { seed: sb.helpers.length + 1 });
@@ -621,7 +624,7 @@ function applySnapshot(lg, sb, snap) {
     if (lg.mode === 'endless') { eco.config.winRequiresSeasons = false; eco.config.endless = true; }
   }
   if (Array.isArray(snap.build) && snap.build.length) { build.load(snap.build); sb.syncStalls?.(); sb.cust?.reroute?.(); }   // BUGFIX: syncStalls is authoritative (skips decor/nature, adds L2/L3 upkeep)
-  for (const id of snap.helpers || []) { const type = String(id).replace(/^helper_/, ''); if (HELPER_TYPES.includes(type) && !sb.helpers.some((h) => h.type === type)) { const paid = eco.spend; eco.spend = () => true; try { hireHelper(sb); } finally { eco.spend = paid; } } }
+  for (const id of snap.helpers || []) { const type = String(id).replace(/^helper_/, ''); if (HELPER_TYPES.includes(type) && !sb.helpers.some((h) => h.type === type)) hireHelper(sb, type, { free: true }); }
   if (snap.hero && sb.hero?.root) { sb.hero.root.position.set(snap.hero.x, 0, snap.hero.z); lg.game.camera?.snapTo?.(sb.hero.root.position); }
   if (snap.jars) { lg.jarPct = { ...snap.jars }; lg.ui?.jars?.setPct?.(snap.jars); }
   lg.ui?.hud?.sync?.(eco.state); lg.ui?.jars?.setBalances?.(eco.state.jars); lg.ui?.jars?.setDebt?.(eco.state.debt, eco.state.spark); lg.ui?.build?.setSpark?.(eco.state.spark);

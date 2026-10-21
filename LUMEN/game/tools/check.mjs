@@ -1347,8 +1347,10 @@ if (doSave) {
     A.lg.save.write();                                                                                   // manual save mid-S2 (what index.html's visibilitychange does)
     // BUGFIX probe: a decor prop must NOT count as a stall after restore (eco.state.stalls comes from syncStalls, not placed.size)
     { const cell = A.lg.sb.island.gridCells().find((c) => A.lg.sb.build.canPlace('crate', c.x, c.z, 0)); if (cell) A.lg.sb.build.place('crate', cell.x, cell.z, 0, { animate: false }); }
-    A.lg.save.write();
-    const snapA = A.lg.save.read(); const stallsA = A.lg.sb.build.placed.size, sparkA = ecoA.state.spark, seasonA = ecoA.state.season, toastsSaved = snapA.story.state.toastsFired.slice();
+    { const sp = ecoA.state.spark; ecoA.state.spark = 999; A.lg.sb.keys.hire(); ecoA.state.spark = sp; if (A.lg.sb.helpers.length !== 1) throw new Error('A: hire helper'); }
+    const helperTypeA = A.lg.sb.helpers[0].type;
+    { const ok = A.lg.save.write(); if (!ok) { let e2 = ''; try { JSON.stringify(Save.snapshot(A.lg)); } catch (e) { e2 = e.message; } throw new Error('A: save.write failed ' + e2 + ' snap=' + !!Save.snapshot(A.lg) + ' st=' + A.lg.state); } }
+    const snapA = A.lg.save.read(); if (!snapA) { const raw = storage.getItem(Save.SAVE_KEY); throw new Error('A: read null, raw=' + (raw ? raw.slice(0, 200) : raw) + ' key=' + Save.SAVE_KEY + ' mem=' + [...mem.keys()]); } if (!snapA.helpers || snapA.helpers.length !== 1) throw new Error('A: snapshot helpers ' + JSON.stringify(snapA.helpers)); const stallsA = A.lg.sb.build.placed.size, sparkA = ecoA.state.spark, seasonA = ecoA.state.season, toastsSaved = snapA.story.state.toastsFired.slice();
     if (seasonA !== 2 || snapA.build.length !== stallsA || snapA.state !== 'playing' || snapA.mode !== 'story') throw new Error('A: snapshot ' + JSON.stringify({ seasonA, b: snapA.build.length, stallsA, st: snapA.state }));
     if (!toastsSaved.includes('tut:move') && !toastsSaved.includes('t_move')) throw new Error('A: toastsFired not saved ' + toastsSaved.join(','));
     A.lg.destroy(); A.ui.destroy();
@@ -1360,6 +1362,7 @@ if (doSave) {
     const ecoB = B.lg.sb?.eco; if (!ecoB || B.lg.state !== 'playing' || (B.ev['game:resumed'] || []).length !== 1) throw new Error('B: resume → ' + B.lg.state);
     if (ecoB.state.season !== seasonA || ecoB.state.spark !== sparkA || B.lg.sb.build.placed.size !== stallsA) throw new Error(`B: season ${ecoB.state.season}/${seasonA} spark ${ecoB.state.spark}/${sparkA} stalls ${B.lg.sb.build.placed.size}/${stallsA}`);
     if (B.ui.dialogue.isOpen) throw new Error('B: S2 opening replayed on resume');
+    if (B.lg.sb.helpers.length !== 1 || B.lg.sb.helpers[0].type !== helperTypeA || !ecoB.owns('helper_' + B.lg.sb.helpers[0].type)) throw new Error(`B: helpers restored ${B.lg.sb.helpers.length} (${B.lg.sb.helpers.map((h) => h.type)}) vs A ${helperTypeA}`);
     if (ecoB.state.stalls !== ecoA.state.stalls || ecoB.state.stalls >= B.lg.sb.build.placed.size) throw new Error(`B: eco.state.stalls ${ecoB.state.stalls}/${ecoA.state.stalls} (placed ${B.lg.sb.build.placed.size} incl. decor)`);
     if (JSON.stringify(B.lg.story.state.toastsFired) !== JSON.stringify(toastsSaved)) throw new Error('B: toastsFired ' + B.lg.story.state.toastsFired.join(','));
     if (Math.abs(B.lg.sb.hero.root.position.x - snapA.hero.x) > 0.01) throw new Error('B: hero pos ' + B.lg.sb.hero.root.position.x);
@@ -1381,7 +1384,7 @@ if (doSave) {
     B.lg.destroy(); B.ui.destroy();
     console.log(`  4. forced fog loss → eco:lose → save cleared → TRY AGAIN → title without CONTINUE · destroy clean  OK`);
     if (TUTORIAL_GATES.length !== 5) throw new Error('TUTORIAL_GATES');
-  } catch (err) { bad++; console.log('  save FAIL →', err.message); }
+  } catch (err) { bad++; console.log('  save FAIL →', err.message, process.env.STACK ? err.stack : ''); }
 }
 if (doWorld) {
   // 10A integrated world: real Three in Node. (1) src/assets/props/bake.js: bakeStatic merges N placed props into ≤ 4 meshes
