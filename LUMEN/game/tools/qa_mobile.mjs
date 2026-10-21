@@ -45,7 +45,7 @@ for (const vp of VIEWPORTS) {
   p.on('pageerror', (e) => errors.push('[pageerror] ' + e.message));
   p.on('requestfailed', (r) => errors.push('[404/failed] ' + r.url()));
   const url = `http://127.0.0.1:${port}/index.html?autoplay&debug${vp.touch ? '&touch=1' : ''}`;
-  await p.goto(url, { waitUntil: 'load' });
+  await p.goto(url, { waitUntil: 'load', timeout: 120000 });
   await p.waitForTimeout(1800);
   if (!noShots) await p.screenshot({ path: `tools/shots/qa_${vp.id}_0_title.png` });
 

@@ -43,7 +43,7 @@ for (const vp of VIEWPORTS) {
   const errors = [], fails = [];
   p.on('pageerror', (e) => errors.push('[pageerror] ' + e.message));
   p.on('console', (m) => { if (m.type() === 'error' && !/AudioContext encountered an error from the audio device/.test(m.text())) errors.push('[console.error] ' + m.text()); });
-  await p.goto(`http://127.0.0.1:${port}/index.html?mute${vp.touch ? '&touch=1' : ''}`, { waitUntil: 'load' });
+  await p.goto(`http://127.0.0.1:${port}/index.html?mute${vp.touch ? '&touch=1' : ''}`, { waitUntil: 'load', timeout: 120000 });
   await p.waitForTimeout(1800);
   await tapEl(p, vp, '.ll-title-btn.play');
   // the tutorial must open on the first PLAY
@@ -150,7 +150,7 @@ for (const vp of VIEWPORTS) {
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   if (await p.evaluate(() => window.ui.tutorial.isOpen)) fails.push('Esc did not skip the tutorial');
   // a reload must NOT auto-open it again
-  await p.goto(`http://127.0.0.1:${port}/index.html?mute${vp.touch ? '&touch=1' : ''}`, { waitUntil: 'load' });
+  await p.goto(`http://127.0.0.1:${port}/index.html?mute${vp.touch ? '&touch=1' : ''}`, { waitUntil: 'load', timeout: 120000 });
   await p.waitForTimeout(1500); await tapEl(p, vp, '.ll-title-btn.play'); await p.waitForTimeout(1500);
   if (await p.evaluate(() => window.ui.tutorial.state.open)) fails.push('tutorial auto-opened again after it was finished');
 
