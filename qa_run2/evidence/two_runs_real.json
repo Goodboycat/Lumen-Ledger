@@ -1,0 +1,433 @@
+{
+  "started": "2026-10-21T15:29:40.015Z",
+  "url": "http://localhost:3000/game/?mute&season=25&seed=2026",
+  "errors": [],
+  "console": [
+    "warning: [.WebGL-0x237c013bdc00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+    "warning: [.WebGL-0x237c013bdc00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+    "warning: [.WebGL-0x237c013bdc00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+    "warning: [.WebGL-0x237c013bdc00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)"
+  ],
+  "runs": [
+    {
+      "n": 1,
+      "log": [
+        "tutorial next",
+        "tutorial next",
+        "tutorial next",
+        "tutorial next",
+        "tutorial next",
+        "tutorial next",
+        "tutorial next",
+        "tutorial next",
+        "tutorial next",
+        "tutorial next",
+        "tutorial next",
+        "CHOICE [\"Double it!\",\"Who guarantees the guarantee?\"] -> Who guarantees the guarantee?",
+        {
+          "ledger": "season",
+          "text": "Season 1 Ledger 9 seasons to the Lighthouse Sales income 0 Save interest +5 % 0 Invest return 0 Expenses & upkeep 0 Loan interest 20 % 0 Net this season 0 Fog 35 % (+7) Debt 312 Net worth −263 No stars — the Fog is winning. Save first, spend second. FINLIT LESSON Budgeting A budget is a plan for your Spark before you spend it. Every coin that comes in gets a jar before it gets a wish. Tip: Fill th",
+          "eco": {
+            "spark": 49,
+            "debt": 312,
+            "fog01": 0.35,
+            "season": 2,
+            "stalls": 4,
+            "jars": {
+              "spend": 0,
+              "save": 0,
+              "invest": 0,
+              "protect": 0
+            },
+            "ended": null,
+            "stallUpkeepExtra": 0,
+            "owned": []
+          }
+        }
+      ],
+      "seasons": [
+        {
+          "season": 1,
+          "spark": 40,
+          "debt": 260,
+          "fog": 0.4,
+          "stalls": 4,
+          "jars": {
+            "spend": 0,
+            "save": 0,
+            "invest": 0,
+            "protect": 0
+          },
+          "cov": 0,
+          "vign": [
+            "0"
+          ]
+        },
+        {
+          "season": 2,
+          "spark": 49,
+          "debt": 312,
+          "fog": 0.35,
+          "stalls": 4,
+          "jars": {
+            "spend": 0,
+            "save": 0,
+            "invest": 0,
+            "protect": 0
+          },
+          "cov": 0.28,
+          "vign": [
+            "0.107"
+          ]
+        }
+      ],
+      "start": {
+        "tag": "start",
+        "state": "playing",
+        "mode": "story",
+        "paused": true,
+        "pauseBy": [
+          "tutorial"
+        ],
+        "eco": {
+          "spark": 100,
+          "debt": 260,
+          "fog01": 0.4,
+          "season": 1,
+          "stalls": 3,
+          "jars": {
+            "spend": 0,
+            "save": 0,
+            "invest": 0,
+            "protect": 0
+          },
+          "ended": null,
+          "stallUpkeepExtra": 0,
+          "owned": []
+        },
+        "placed": [
+          "stall_fruit@-4,-3L1",
+          "stall_bread@3,-3L1",
+          "stall_tea@-3,-6L1"
+        ],
+        "buildCounts": {},
+        "buildPlacedById": {},
+        "placingUi": null,
+        "buildMode": "idle",
+        "vignettes": [
+          {
+            "op": "0",
+            "bg": "radial-gradient(rgba(123, 94, 167, 0) 45%, rgba(123, 94, 167",
+            "inDom": true
+          }
+        ],
+        "vfxDomNodes": 2,
+        "fogCoverage": 0,
+        "fogTarget": 0,
+        "hudDebt": "100 SPARK debt 260 Season 1 / 10 Budgeting DEBT FOG 40% fps 47 · calls 132",
+        "sceneChildren": 41,
+        "systems": 5,
+        "save": false
+      },
+      "startButtons": [
+        "Budgeting",
+        "Preset",
+        "APPLY",
+        "BUILD B",
+        "What's a season?",
+        "Got it",
+        "Skip",
+        "Next"
+      ],
+      "afterIntro": {
+        "tag": "afterIntro",
+        "state": "playing",
+        "mode": "story",
+        "paused": false,
+        "pauseBy": [],
+        "eco": {
+          "spark": 100,
+          "debt": 260,
+          "fog01": 0.4,
+          "season": 1,
+          "stalls": 3,
+          "jars": {
+            "spend": 0,
+            "save": 0,
+            "invest": 0,
+            "protect": 0
+          },
+          "ended": null,
+          "stallUpkeepExtra": 0,
+          "owned": []
+        },
+        "placed": [
+          "stall_fruit@-4,-3L1",
+          "stall_bread@3,-3L1",
+          "stall_tea@-3,-6L1"
+        ],
+        "buildCounts": {},
+        "buildPlacedById": {},
+        "placingUi": null,
+        "buildMode": "idle",
+        "vignettes": [
+          {
+            "op": "0",
+            "bg": "radial-gradient(rgba(123, 94, 167, 0) 45%, rgba(123, 94, 167",
+            "inDom": true
+          }
+        ],
+        "vfxDomNodes": 2,
+        "fogCoverage": 0,
+        "fogTarget": 0,
+        "hudDebt": "100 SPARK debt 260 Season 1 / 10 Budgeting DEBT FOG 40% fps 20 · calls 134",
+        "sceneChildren": 41,
+        "systems": 5,
+        "save": false
+      },
+      "repayControls": [],
+      "buildOpen": [
+        "stall_fruit:40 :badge=0",
+        "stall_bread:55 :badge=0",
+        "stall_lantern:70 :badge=0",
+        "stall_fish:65 :badge=0",
+        "stall_flower:50 :badge=0",
+        "stall_tool:90 :badge=0",
+        "stall_cloth:85 :badge=0",
+        "stall_pottery:75 :badge=0",
+        "stall_toy:95 :badge=0",
+        "stall_tea:80 :badge=0",
+        "stall_book:100 :badge=0",
+        "stall_sparkExchange:150 :badge=0:poor"
+      ],
+      "fruitDetail": "🍎 Fruit Stand 40 · 2×2 · 1 placed Deploy Upgrade L1→2 · 90 ",
+      "placeClickedAt": {
+        "cell": {
+          "x": 0,
+          "z": 0,
+          "w": {
+            "x": 0.5,
+            "y": 0,
+            "z": 0.5
+          }
+        },
+        "sp": {
+          "x": 670.8412540001864,
+          "y": 315.9981655220536
+        }
+      },
+      "afterPlace": {
+        "tag": "afterPlace",
+        "state": "playing",
+        "mode": "story",
+        "paused": false,
+        "pauseBy": [],
+        "eco": {
+          "spark": 40,
+          "debt": 260,
+          "fog01": 0.4,
+          "season": 1,
+          "stalls": 4,
+          "jars": {
+            "spend": 0,
+            "save": 0,
+            "invest": 0,
+            "protect": 0
+          },
+          "ended": null,
+          "stallUpkeepExtra": 0,
+          "owned": []
+        },
+        "placed": [
+          "stall_fruit@-4,-3L1",
+          "stall_bread@3,-3L1",
+          "stall_tea@-3,-6L1",
+          "stall_fruit@0,0L1"
+        ],
+        "buildCounts": {
+          "stall_fruit": 1
+        },
+        "buildPlacedById": {
+          "stall_fruit": 1
+        },
+        "placingUi": null,
+        "buildMode": "place",
+        "vignettes": [
+          {
+            "op": "0",
+            "bg": "radial-gradient(rgba(123, 94, 167, 0) 45%, rgba(123, 94, 167",
+            "inDom": true
+          }
+        ],
+        "vfxDomNodes": 2,
+        "fogCoverage": 0,
+        "fogTarget": 0,
+        "hudDebt": "78 SPARK debt 260 −60 Season 1 / 10 Budgeting DEBT FOG 40% fps 20 · calls 168",
+        "sceneChildren": 49,
+        "systems": 5,
+        "save": false,
+        "sparkBefore": 100
+      },
+      "footText": "Fruit Stand: click the ground to place · R rotate · Esc cancel\n upgrade\n demolish",
+      "afterEsc": {
+        "tag": "afterEsc",
+        "state": "playing",
+        "mode": "story",
+        "paused": false,
+        "pauseBy": [],
+        "eco": {
+          "spark": 40,
+          "debt": 260,
+          "fog01": 0.4,
+          "season": 1,
+          "stalls": 4,
+          "jars": {
+            "spend": 0,
+            "save": 0,
+            "invest": 0,
+            "protect": 0
+          },
+          "ended": null,
+          "stallUpkeepExtra": 0,
+          "owned": []
+        },
+        "placed": [
+          "stall_fruit@-4,-3L1",
+          "stall_bread@3,-3L1",
+          "stall_tea@-3,-6L1",
+          "stall_fruit@0,0L1"
+        ],
+        "buildCounts": {
+          "stall_fruit": 1
+        },
+        "buildPlacedById": {
+          "stall_fruit": 1
+        },
+        "placingUi": null,
+        "buildMode": "place",
+        "vignettes": [
+          {
+            "op": "0",
+            "bg": "radial-gradient(rgba(123, 94, 167, 0) 45%, rgba(123, 94, 167",
+            "inDom": true
+          }
+        ],
+        "vfxDomNodes": 2,
+        "fogCoverage": 0,
+        "fogTarget": 0,
+        "hudDebt": "40 SPARK debt 260 Season 1 / 10 Budgeting DEBT FOG 40% fps 20 · calls 175",
+        "sceneChildren": 49,
+        "systems": 5,
+        "save": false
+      },
+      "afterEscClick": {
+        "tag": "afterEscClick",
+        "state": "playing",
+        "mode": "story",
+        "paused": false,
+        "pauseBy": [],
+        "eco": {
+          "spark": 40,
+          "debt": 260,
+          "fog01": 0.4,
+          "season": 1,
+          "stalls": 4,
+          "jars": {
+            "spend": 0,
+            "save": 0,
+            "invest": 0,
+            "protect": 0
+          },
+          "ended": null,
+          "stallUpkeepExtra": 0,
+          "owned": []
+        },
+        "placed": [
+          "stall_fruit@-4,-3L1",
+          "stall_bread@3,-3L1",
+          "stall_tea@-3,-6L1",
+          "stall_fruit@0,0L1"
+        ],
+        "buildCounts": {
+          "stall_fruit": 1
+        },
+        "buildPlacedById": {
+          "stall_fruit": 1
+        },
+        "placingUi": null,
+        "buildMode": "place",
+        "vignettes": [
+          {
+            "op": "0",
+            "bg": "radial-gradient(rgba(123, 94, 167, 0) 45%, rgba(123, 94, 167",
+            "inDom": true
+          }
+        ],
+        "vfxDomNodes": 2,
+        "fogCoverage": 0,
+        "fogTarget": 0,
+        "hudDebt": "40 SPARK debt 260 Season 1 / 10 Budgeting DEBT FOG 40% fps 20 · calls 175",
+        "sceneChildren": 49,
+        "systems": 5,
+        "save": false
+      },
+      "jarsBefore": {
+        "spark": 40,
+        "debt": 260,
+        "fog01": 0.4,
+        "season": 1,
+        "stalls": 4,
+        "jars": {
+          "spend": 0,
+          "save": 0,
+          "invest": 0,
+          "protect": 0
+        },
+        "ended": null,
+        "stallUpkeepExtra": 0,
+        "owned": []
+      },
+      "jarsAfter": {
+        "spark": 40,
+        "debt": 260,
+        "fog01": 0.4,
+        "season": 1,
+        "stalls": 4,
+        "jars": {
+          "spend": 0,
+          "save": 0,
+          "invest": 0,
+          "protect": 0
+        },
+        "ended": null,
+        "stallUpkeepExtra": 0,
+        "owned": []
+      }
+    }
+  ],
+  "notes": [],
+  "title": {
+    "tag": "title",
+    "state": "title",
+    "mode": "story",
+    "paused": true,
+    "pauseBy": [
+      "title"
+    ],
+    "eco": null,
+    "placed": [],
+    "buildCounts": {},
+    "buildPlacedById": {},
+    "placingUi": null,
+    "vignettes": [],
+    "vfxDomNodes": 0,
+    "fogCoverage": null,
+    "fogTarget": null,
+    "hudDebt": "0 SPARK Season 1 / 10 DEBT FOG 35% fps 60 · calls 0",
+    "sceneChildren": 3,
+    "systems": 2,
+    "save": false
+  },
+  "harnessError": "keyboard.press: Target page, context or browser has been closed\n    at /home/user/webapp/qa_run2/two_runs_real.mjs:53:121\n    at async handleModals (/home/user/webapp/qa_run2/two_runs_real.mjs:53:18)\n    at async playRun (/home/user/webapp/qa_run2/two_runs_real.mjs:109:15)\n    at /home/user/webapp/qa_run2/async file:/home/user/webapp/qa_run2/two_runs_real.mjs:135:32",
+  "finished": "2026-10-21T15:37:51.799Z"
+}

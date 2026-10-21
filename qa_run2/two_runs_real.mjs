@@ -30,7 +30,7 @@ const snap = (tag) => p.evaluate((tag) => {
     sceneChildren: game.scene.children.length, systems: game.systems.length, save: lg.save.has(),
   };
 }, tag);
-const shot = (n) => p.screenshot({ path: OUT + n + '.png' });
+const shot = async (n) => { await p.evaluate(() => { game.renderer.render = window.__render; }); await p.waitForTimeout(2500); await p.screenshot({ path: OUT + n + '.png' }); await p.evaluate(() => { game.renderer.render = () => {}; }); };
 const visibleButtons = () => p.evaluate(() => [...document.querySelectorAll('button')].filter((b) => b.offsetParent && getComputedStyle(b).visibility !== 'hidden').map((b) => b.innerText.replace(/\s+/g, ' ').trim()).filter(Boolean));
 
 // screen point of a world cell (for real mouse placement)
@@ -41,9 +41,9 @@ async function handleModals(run, log) {
   for (let i = 0; i < 40; i++) {
     const m = await p.evaluate(() => {
       const vis = (s) => { const e = document.querySelector(s); return !!(e && e.offsetParent && getComputedStyle(e).visibility !== 'hidden' && +getComputedStyle(e).opacity > 0.05); };
-      return { tut: vis('.ll-tut-card'), choice: [...document.querySelectorAll('.ll-dlg-choice')].filter((e) => e.offsetParent).map((e) => e.innerText), dlg: !!ui.dialogue.isOpen, ledger: !!ui.ledger.isOpen, outcome: ui.ledger.state?.outcome, ledgerTxt: ui.ledger.isOpen ? document.querySelector('.ll-ledger')?.innerText.replace(/\s+/g, ' ').slice(0, 400) : null };
+      return { tut: !!(ui.tutorial && ui.tutorial.isOpen), choice: [...document.querySelectorAll('.ll-dlg-choice')].filter((e) => e.offsetParent).map((e) => e.innerText), dlg: !!ui.dialogue.isOpen, ledger: !!ui.ledger.isOpen, outcome: ui.ledger.state?.outcome, ledgerTxt: ui.ledger.isOpen ? document.querySelector('.ll-ledger')?.innerText.replace(/\s+/g, ' ').slice(0, 400) : null };
     });
-    if (m.tut) { const nb = p.locator('.ll-tut-card button', { hasText: /Next|Got it|Done|Finish|Close|Play/i }).last(); if (await nb.count()) await nb.click({ timeout: 2000 }).catch(() => {}); else await p.keyboard.press('Enter'); await p.waitForTimeout(350); continue; }
+    if (m.tut) { if (i > 30) { await p.evaluate(() => ui.tutorial.close('qa')); continue; } await p.locator('.ll-tut-btn.next').click({ timeout: 2000 }).catch(() => p.evaluate(() => ui.tutorial?.next?.())); log.push('tutorial next'); await p.waitForTimeout(350); continue; }
     if (m.choice.length) { // refuse the Baron/collector: the non-greedy (question) option
       const idx = m.choice.findIndex((t) => /\?|not a plan|open the box/i.test(t)); const pick = idx < 0 ? m.choice.length - 1 : idx;
       log.push('CHOICE ' + JSON.stringify(m.choice) + ' -> ' + m.choice[pick]);
@@ -62,7 +62,7 @@ async function handleModals(run, log) {
 
 async function playRun(n) {
   const run = { n, log: [], seasons: [] }; R.runs.push(run);
-  await p.locator('.ll-title-btn', { hasText: 'PLAY' }).click();
+  await p.locator('.ll-title-btn.play').click();
   await p.waitForTimeout(1500);
   run.start = await snap('start'); await shot(`run${n}-01-start`);
   run.startButtons = await visibleButtons();
@@ -103,8 +103,8 @@ async function playRun(n) {
   const keys = ['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'];
   const abil = ['KeyQ', 'KeyE', 'KeyF', 'KeyG', 'KeyR', 'KeyW'];
   let k = 0, lastSeason = 0, ended = false; const t0 = Date.now();
-  while (Date.now() - t0 < 6.5 * 60 * 1000) {
-    const key = keys[k % 4]; await p.keyboard.down(key); await p.waitForTimeout(700); await p.keyboard.up(key);
+  while (Date.now() - t0 < 14 * 60 * 1000) {
+    const key = keys[k % 4]; await p.keyboard.down(key); await p.waitForTimeout(500); await p.keyboard.up(key);
     await p.keyboard.press(abil[k % abil.length]); k++;
     const m = await handleModals(run, run.log);
     const s = await snap('tick');
@@ -131,10 +131,11 @@ async function playRun(n) {
 try {
   await p.goto(R.url, { timeout: 120000 });
   await p.waitForFunction(() => window.lg && window.ui, null, { timeout: 120000 }); await p.waitForTimeout(1500);
+  await p.evaluate(() => { window.__render = game.renderer.render; game.renderer.render = () => {}; });
   R.title = await snap('title'); await shot('title');
   for (let n = 1; n <= 2; n++) await playRun(n);
   // third PLAY only to observe state accumulation (no full run)
-  await p.locator('.ll-title-btn', { hasText: 'PLAY' }).click(); await p.waitForTimeout(1500);
+  await p.locator('.ll-title-btn.play').click(); await p.waitForTimeout(1500);
   R.thirdStart = await snap('thirdStart'); await shot('run3-start-only');
 } catch (e) { R.harnessError = String(e.stack || e); console.error(e); }
 finally { R.finished = new Date().toISOString(); save(); await b.close(); }
