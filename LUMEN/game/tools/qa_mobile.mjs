@@ -17,7 +17,7 @@ try { ({ chromium, devices } = require('playwright')); } catch { try { ({ chromi
 
 const only = (process.argv.find((a) => a.startsWith('--only')) || '').split('=')[1] || (process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : '');
 const noShots = process.argv.includes('--no-shots');
-const port = 3124;
+const port = +(process.env.QA_PORT || 3124);
 
 export const VIEWPORTS = [
   { id: '360x800',  width: 360,  height: 800, touch: true,  dpr: 2, note: 'phone portrait' },
@@ -41,7 +41,7 @@ for (const vp of VIEWPORTS) {
   const ctx = await b.newContext({ viewport: { width: vp.width, height: vp.height }, deviceScaleFactor: vp.dpr, hasTouch: vp.touch, isMobile: vp.touch, userAgent: vp.touch ? devices['Pixel 5'].userAgent : undefined });
   const p = await ctx.newPage();
   const errors = [];
-  p.on('console', (m) => { if (m.type() === 'error') errors.push('[console.error] ' + m.text()); });
+  p.on('console', (m) => { if (m.type() === 'error' && !/AudioContext encountered an error from the audio device/.test(m.text())) errors.push('[console.error] ' + m.text()); });
   p.on('pageerror', (e) => errors.push('[pageerror] ' + e.message));
   p.on('requestfailed', (r) => errors.push('[404/failed] ' + r.url()));
   const url = `http://127.0.0.1:${port}/index.html?autoplay&debug${vp.touch ? '&touch=1' : ''}`;

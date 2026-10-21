@@ -19,7 +19,7 @@ try { ({ chromium, devices } = require('playwright')); } catch { try { ({ chromi
 const argv = process.argv;
 const only = (argv.find((a) => a.startsWith('--only=')) || '').split('=')[1] || (argv.includes('--only') ? argv[argv.indexOf('--only') + 1] : '');
 const noShots = argv.includes('--no-shots');
-const port = 3125;
+const port = +(process.env.QA_PORT || 3125);
 const VIEWPORTS = [
   { id: '360x800',  width: 360,  height: 800, touch: true,  dpr: 2, note: 'phone portrait' },
   { id: '800x360',  width: 800,  height: 360, touch: true,  dpr: 2, note: 'phone landscape' },
@@ -42,7 +42,7 @@ for (const vp of VIEWPORTS) {
   const p = await ctx.newPage();
   const errors = [], fails = [];
   p.on('pageerror', (e) => errors.push('[pageerror] ' + e.message));
-  p.on('console', (m) => { if (m.type() === 'error') errors.push('[console.error] ' + m.text()); });
+  p.on('console', (m) => { if (m.type() === 'error' && !/AudioContext encountered an error from the audio device/.test(m.text())) errors.push('[console.error] ' + m.text()); });
   await p.goto(`http://127.0.0.1:${port}/index.html?mute${vp.touch ? '&touch=1' : ''}`, { waitUntil: 'load' });
   await p.waitForTimeout(1800);
   await tapEl(p, vp, '.ll-title-btn.play');
@@ -103,6 +103,13 @@ for (const vp of VIEWPORTS) {
       const after = await p.evaluate(() => !!window.ui.build.isOpen);
       if (before !== after) r.issues.push('KeyB leaked through the keyboard lock');
     }
+    // focus trap: 6 × Tab must never focus anything outside the tutorial (or the pointed control on action steps)
+    for (let t = 0; t < 6; t++) {
+      await p.keyboard.press('Tab');
+      const bad = await p.evaluate(() => { const a = document.activeElement; if (!a || a === document.body) return null; const T = window.ui.tutorial, s = T.step; if (a.closest('.ll-tut')) return null; const n = s.target && document.querySelector(s.target); if (s.mode === 'act' && n && n.contains(a)) return null; return a.className || a.tagName; });
+      if (bad) { r.issues.push(`Tab focused ${bad} outside the tutorial`); break; }
+    }
+    await p.evaluate(() => document.activeElement?.blur?.());
     const leaks = r.issues.filter((s) => s.startsWith('LOCK LEAK'));
     const other = r.issues.filter((s) => !s.startsWith('LOCK LEAK'));
     console.log(`  ${String(r.i + 1).padStart(2)}/${total} ${r.id.padEnd(9)} card ${Math.round(r.card.l)},${Math.round(r.card.t)} ${Math.round(r.card.w)}×${Math.round(r.card.h)}` +
