@@ -1362,7 +1362,7 @@ if (doSave) {
     const B = rig();
     if (B.ui.title.buttons.continue.style.display === 'none' || !/Season 2/.test(Save.describe(Save.load(storage)))) throw new Error('B: CONTINUE hidden / describe ' + Save.describe(Save.load(storage)));
     B.ui.title.buttons.continue.click(); B.step();
-    const ecoB = B.lg.sb?.eco; if (!ecoB || B.lg.state !== 'playing' || (B.ev['game:resumed'] || []).length !== 1) throw new Error('B: resume → ' + B.lg.state);
+    let ecoB = B.lg.sb?.eco; if (!ecoB || B.lg.state !== 'playing' || (B.ev['game:resumed'] || []).length !== 1) throw new Error('B: resume → ' + B.lg.state);
     if (ecoB.state.season !== seasonA || ecoB.state.spark !== sparkA || B.lg.sb.build.placed.size !== stallsA) throw new Error(`B: season ${ecoB.state.season}/${seasonA} spark ${ecoB.state.spark}/${sparkA} stalls ${B.lg.sb.build.placed.size}/${stallsA}`);
     if (B.ui.dialogue.isOpen) throw new Error('B: S2 opening replayed on resume');
     if (!B.lg.sb.island.zones[1].unlocked || B.lg.sb.island.zones[2].unlocked || B.lg.sb.build.placed.size !== stallsOnZonesA || ecoB.state.stalls !== ecoStallsA0) throw new Error(`B: zones ${B.lg.sb.island.zones.map((z) => +z.unlocked)} placed ${B.lg.sb.build.placed.size}/${stallsOnZonesA} stalls ${ecoB.state.stalls}/${ecoStallsA0}`);
@@ -1384,6 +1384,21 @@ if (doSave) {
       for (const b of bad) { if (Save.parseSnapshot(JSON.stringify(b)) !== null) throw new Error('B18: accepted ' + JSON.stringify(b).slice(0, 60)); if (B.lg.save.importText(Save.exportText(b))) throw new Error('B18: import accepted corrupt'); }
       if (storage.getItem(Save.SAVE_KEY) !== keep) throw new Error('B18: valid slot lost'); }
     console.log(`  3. exportText ${txt.length} chars (LUMEN1: base64) → clear → bad text refused ×2 → importText → save back, ${Save.load(storage).build.length} stalls  OK`);
+    // 3b. B16 prices survive · B12 RESTART SEASON = back to this season's checkpoint (not S1) · B17 TITLE writes a save
+    { const sbB = B.lg.sb; const stall = [...sbB.build.placed.values()].find((e) => String(e.id).startsWith('stall_')); if (!stall) throw new Error('3b: no stall');
+      sbB.cust.setPrice(stall.id, 17); if (Save.snapshot(B.lg).cust?.prices?.some(([k, v]) => k === stall.id && v === 17) !== true) throw new Error('B16: price not in snapshot');
+      const seasonBefore = ecoB.state.season, sparkBefore = B.lg.seasonCheckpoint && JSON.parse(B.lg.seasonCheckpoint.eco).state.spark;
+      if (!B.lg.seasonCheckpoint || JSON.parse(B.lg.seasonCheckpoint.eco).state.season !== seasonBefore) throw new Error('B12: no season checkpoint');
+      ecoB.state.spark = 1; B.bus.emit('ui:restart'); B.step();
+      const eco4 = B.lg.sb.eco; if (eco4 === ecoB || eco4.state.season !== seasonBefore || B.lg.state !== 'playing' || eco4.state.spark !== sparkBefore) throw new Error(`B12: restart → S${eco4.state.season} spark ${eco4.state.spark} (want S${seasonBefore} ${sparkBefore}) ${B.lg.state}`);
+      // B16 through CONTINUE: price set → write → fresh rig → resume → price back
+      B.lg.sb.cust.setPrice(stall.id, 17); B.lg.save.write(); const B2 = rig(); B2.bus.emit('ui:start', { mode: 'continue' }); B2.step();
+      const st2 = [...B2.lg.sb.build.placed.values()].find((e) => e.id === stall.id); if (!st2 || B2.lg.sb.cust.price(stall.id) !== 17) throw new Error('B16: price after CONTINUE ' + B2.lg.sb.cust.price(stall.id));
+      // B17: pouch changes → TITLE → the slot holds the new spark
+      B2.lg.sb.eco.state.spark = 777; B2.bus.emit('ui:title'); B2.step(); const sl = Save.load(storage); if (!sl || JSON.parse(sl.eco).state.spark !== 777 || B2.lg.state !== 'title') throw new Error('B17: title did not save (' + (sl && JSON.parse(sl.eco).state.spark) + ')');
+      B2.lg.destroy(); B2.ui.destroy(); B.lg.save.write();
+      console.log(`  3b. B16 price 17 in snapshot + after CONTINUE · B12 RESTART SEASON → S${seasonBefore} checkpoint (spark ${sparkBefore}, not S1) · B17 TITLE saves (spark 777)  OK`); }
+    ecoB = B.lg.sb.eco;
     // 4. lose clears
     ecoB.state.fog01 = 1; ecoB.state.day01 = 0.99; ecoB.endSeason(); if (ecoB.state.ended !== 'lose' || B.lg.state !== 'ending') throw new Error('forced lose → ' + ecoB.state.ended + ' ' + B.lg.state);
     if (Save.hasSave(storage)) throw new Error('save not cleared on lose');

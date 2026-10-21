@@ -144,6 +144,7 @@ export class HitStop {
   constructor() { this.remaining = 0; this.targets = []; this.saved = []; }
   /** @param {number} ms @param {Array<{timeScale:number}>} targets */
   trigger(ms, targets) {
+    if (this.disabled) return;                       // BUGFIX B23: Reduce Motion → no hit-stop freezes
     if (this.remaining > 0) { this.remaining = Math.max(this.remaining, ms / 1000); return; }
     this.remaining = ms / 1000;
     this.targets = targets;

@@ -22,7 +22,7 @@ export class GameCamera {
   get three() { return this.cam; }
   setAspect(a) { this.cam.aspect = a; this.cam.updateProjectionMatrix(); }
   /** Add shake. amount 0..1 (0.25 small hit, 0.5 heavy, 1 explosion). */
-  shake(amount) { this.trauma = Math.min(1, this.trauma + amount); }
+  shake(amount) { if (this.reduceMotion) return; this.trauma = Math.min(1, this.trauma + amount); }   // BUGFIX B23: Reduce Motion → no camera shake
   snapTo(pos) { this.target.copy(pos); this.lookAt.copy(pos); this.cam.position.copy(pos).add(this.offset).multiplyScalar(1); }
 
   /** @param {THREE.Vector3} followPos @param {number} dt seconds */

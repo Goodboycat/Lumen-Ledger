@@ -36,6 +36,7 @@ export function snapshot(lg) {
     helpers: (sb.helpers || []).map((h) => 'helper_' + h.type),
     jars: lg.ui?.jars?.getPct?.() || lg.jarPct || null,
     hero: sb.hero?.root ? { x: +sb.hero.root.position.x.toFixed(2), z: +sb.hero.root.position.z.toFixed(2) } : null,
+    cust: typeof sb.cust?.serialize === 'function' ? sb.cust.serialize() : null,     // BUGFIX B16: per-stall prices + sale totals
   };
 }
 
@@ -68,6 +69,7 @@ export function parseSnapshot(raw) {
   if (d.story != null && (typeof d.story !== 'object' || (d.story.state != null && typeof d.story.state !== 'object'))) return null;
   if (d.jars != null && typeof d.jars !== 'object') return null;
   if (d.hero != null && (typeof d.hero !== 'object' || !Number.isFinite(+d.hero.x) || !Number.isFinite(+d.hero.z))) return null;
+  if (d.cust != null && (typeof d.cust !== 'object' || (d.cust.prices != null && !Array.isArray(d.cust.prices)))) return null;
   return d;
 }
 

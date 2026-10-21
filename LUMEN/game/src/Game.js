@@ -420,14 +420,25 @@ function installStart(lg) {
 // title · ui:settings quality → game.setQuality?.() / pixel ratio (11A owns presets; outline is already wired by 7C's onOutline).
 function installMenu(lg) {
   const { bus, game, ui } = lg, on = (n, f) => lg._offs.push(bus.on(n, f));
-  on('ui:restart', () => { if (!lg.sb) return; const mode = lg.mode; lg.teardown(); lg.setState('title'); lg.start(mode); bus.emit('game:restart', { mode }); });
-  on('ui:title', () => { if (lg.state !== 'title') lg.toTitle('menu'); });
+  // BUGFIX B12: RESTART SEASON really restarts the CURRENT season — from the checkpoint snapshot taken at the season's start
+  // (lg.seasonCheckpoint, set by installSave). No checkpoint (old run / headless without save) → fresh run as before.
+  on('ui:restart', () => { if (!lg.sb) return; const mode = lg.mode, snap = lg.seasonCheckpoint || null; lg.teardown(); lg.setState('title'); if (!(snap && lg.resume?.(snap))) lg.start(mode); bus.emit('game:restart', { mode, season: lg.sb?.eco.state.season || 1, fromCheckpoint: !!snap }); });
+  // BUGFIX B17: a deliberate quit to TITLE keeps everything since the last checkpoint (was: silently dropped). Finished/ending runs do not save.
+  on('ui:title', () => { if (lg.state === 'title') return; if (lg.sb && !lg.sb.eco.state.ended && lg.state !== 'ending') lg.save?.write?.(); lg.toTitle('menu'); });
   on('ui:settings', (p) => {
     if (!p) return; lg.settings = p.settings || lg.settings;
     if (p.key === 'quality') { if (typeof game.setQuality === 'function') game.setQuality(p.value); else if (game.renderer?.setPixelRatio && typeof devicePixelRatio !== 'undefined') game.renderer.setPixelRatio(Math.min(devicePixelRatio, { low: 1, medium: 1.5, high: 2 }[p.value] || 1.5)); }
-    if (p.key === 'reduceMotion' && lg.sb) lg.sb.reduceMotion = !!p.value;
+    if (p.key === 'reduceMotion') applyReduceMotion(lg, !!p.value);
   });
-  lg.sb && (lg.sb.reduceMotion = !!ui?.pause?.settings?.reduceMotion);
+  applyReduceMotion(lg, !!ui?.pause?.settings?.reduceMotion);
+}
+// BUGFIX B23: Reduce Motion is applied to the run that is live AND to every later run (installRunWires calls this), and it is consumed:
+// camera trauma shake off, hit-stop off, pulses/beams damped (vfx.reduceMotion read by pack2 where present).
+function applyReduceMotion(lg, on) {
+  lg.reduceMotion = on;
+  if (lg.game?.camera) lg.game.camera.reduceMotion = on;
+  if (lg.game?.hitStop) lg.game.hitStop.disabled = on;
+  if (lg.sb) { lg.sb.reduceMotion = on; if (lg.sb.vfx) lg.sb.vfx.reduceMotion = on; }
 }
 // endless: keep the 10B scheduler's events, drop the Too-Good Deal (scams are a story beat).
 function wrapNoScam(sb) { const inner = sb.updateScheduler; return () => { inner?.(); if (sb.eco.pendingOffer) sb.eco.refuseOffer(); }; }
@@ -477,6 +488,7 @@ function installRunWires(lg) {
   const { bus, ui, sb } = lg, offs = lg._runOffs = [], on = (n, f) => offs.push(bus.on(n, f));
   const { build, eco, hero } = sb;
   lg.demolishMode = false;
+  applyReduceMotion(lg, !!(lg.reduceMotion ?? ui?.pause?.settings?.reduceMotion));   // BUGFIX B23: every new run inherits the setting
   on('ui:build', (p) => {
     const a = p?.action;
     if (a === 'select') { lg.demolishMode = false; build.enter(p.id); }
@@ -613,6 +625,12 @@ function installSave(lg) {
   on('game:state', (p) => { if (p.prev === 'review' && (p.state === 'playing' || p.state === 'endless')) lg.save.write(); });
   on('game:endless', () => lg.save.write());
   on('game:title', (p) => { if (p?.why === 'lose') lg.save.clear(); });
+  // BUGFIX B12: season checkpoint = snapshot at the start of every season (fresh start, resume, review → next season, endless)
+  const checkpoint = () => { if (lg.sb && !lg.sb.eco.state.ended) lg.seasonCheckpoint = Save.snapshot(lg); };
+  on('game:start', () => { if (!lg._resuming) checkpoint(); });
+  on('game:resumed', checkpoint);
+  on('game:state', (p) => { if (p.prev === 'review' && (p.state === 'playing' || p.state === 'endless')) checkpoint(); });
+  on('game:endless', checkpoint);
   on('eco:lose', () => lg.save.clear());
   on('game:start', () => { if (!lg._resuming) ui?.title?.setHasSave?.(lg.save.has()); });
   on('ui:jar', (p) => { if (p?.pct) lg.jarPct = { ...p.pct }; });
@@ -634,6 +652,7 @@ function applySnapshot(lg, sb, snap) {
   for (const id of snap.helpers || []) { const type = String(id).replace(/^helper_/, ''); if (HELPER_TYPES.includes(type) && !sb.helpers.some((h) => h.type === type)) hireHelper(sb, type, { free: true }); }
   if (snap.hero && sb.hero?.root) { sb.hero.root.position.set(snap.hero.x, 0, snap.hero.z); lg.game.camera?.snapTo?.(sb.hero.root.position); }
   if (snap.jars) { lg.jarPct = { ...snap.jars }; lg.ui?.jars?.setPct?.(snap.jars); }
+  if (snap.cust && sb.cust?.load) sb.cust.load(snap.cust);                               // BUGFIX B16: per-stall prices (+ sale totals) survive CONTINUE
   lg.ui?.hud?.sync?.(eco.state); lg.ui?.jars?.setBalances?.(eco.state.jars); lg.ui?.jars?.setDebt?.(eco.state.debt, eco.state.spark); lg.ui?.build?.setSpark?.(eco.state.spark);
   if (lg.story && lg.state === 'playing') lg.story.onSeasonStart?.(eco.state.season);   // 8B: no-op if this season's opening already played (saved mid-season); plays it if the save was taken at the review
 }
