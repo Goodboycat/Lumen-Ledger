@@ -1,0 +1,672 @@
+{
+  "input": "uploaded LUMEN.tar.gz; NOT verified GitHub HEAD",
+  "filesCompared": 133,
+  "allUnchanged": true,
+  "files": [
+    {
+      "path": "LUMEN/README.md",
+      "sha256": "a5a5fd22f6b9f834303ad634aed8bc8c49b2a00372b78b592c899bbbacc68515",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/README.md",
+      "sha256": "3aad2f0a9ac4a817b678e88120da2bdca7ab3a1aebd341020e55f77353852ce5",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/manifest.json",
+      "sha256": "f45cd1a76421b9732c89bdf2f9b8a62a5885bc8f199a3415e2a1a4f47d571583",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/music/fog_lose.ogg",
+      "sha256": "b56d5a61d0434acadc86372d5085e1573a1b5adfe6c0491afedd9f28116f54d8",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/music/island_day.ogg",
+      "sha256": "8f38c6d746e2b64d6feb3d994dc04fdae1d2871673e6316f9287703221a9fee3",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/music/island_endless.ogg",
+      "sha256": "5cf249181718d0fe50e61b9d42e6f0169adffcd26455e4fdc4c3be49e614eb09",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/music/ledger.ogg",
+      "sha256": "a89fc804c1c5a54f76b3459ed5fce21880427f7eb7763b88aedac06c2673d3f0",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/music/title.ogg",
+      "sha256": "cb094c27c4f254567a2b1925a5853d272675cafa0222fd6ad1573028c6493a61",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/music/victory.ogg",
+      "sha256": "c706d2d6b68ade7a2d8f9bc099bcd0e95389b7aa3f53d66e4f19428a9f605fa1",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/ability.ogg",
+      "sha256": "58d9933363f8145a3e5311b94dfa9233d3f152416340e03b28a9ce54f43e8784",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/click.ogg",
+      "sha256": "5949740db1f5eeb549173537e058127bc05efd0709da2041c2d17944122f7a21",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/coin.ogg",
+      "sha256": "4a8b740d7e273bb76dace946fe936e9a6583a508ab0cbf15e7bce7e19fc9358d",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/crumble.ogg",
+      "sha256": "63ce2d07e2eefddcbc0536104ef5d6d0556e0651fba10d077ba4d91049b0dea9",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/cust_grumble.ogg",
+      "sha256": "f8b3d43c52de4f8c86a9e8b7ca61a0e6ad160c948429d1f6e3f0a60e6cf50936",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/cust_happy.ogg",
+      "sha256": "85b9266b8cdcfd545c28fdf5e5617d7b40156418eef8f60afe2d205996977b40",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/deny.ogg",
+      "sha256": "72bfc97fca32efbc1145426ade340d9965b12c354f4fd673e79a5d9576816532",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/dlg_blip.ogg",
+      "sha256": "4a80823fa6724f37b0c70fd6f30a31f1e28602bf5b67524f2aa6f5e9338e32a1",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/fanfare.ogg",
+      "sha256": "4a660df1445a440b00b9efd0c3ff20e581ec8134293ee4cdd6acb16fc7f904cd",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/flash.ogg",
+      "sha256": "6c9cc5a169c0be0321db5606266e2c5d09b57d16b1f8db85db08a3109aaf59a1",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/fog_breath.ogg",
+      "sha256": "c91ee613bd749241679d8195050762e89d49c68ad77942096652a7d380f00488",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/footstep_grass.ogg",
+      "sha256": "dd614a77a11b6222ab39f8260d0eb5f7d8c43074288f31ba451a6aa23fc7f9d1",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/footstep_wood.ogg",
+      "sha256": "6148fb9a3e283660c3233806c5281deee3c4c7549a6eb1831b5786f304397211",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/footstep_wood_2.ogg",
+      "sha256": "63f44627fcaf8167d75a85383562f2c0b50bab3869bbf07295a33ec4bbbe87e5",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/hammer.ogg",
+      "sha256": "4f537377043d1dfb7efb36fdb6f682c021d2275db8d29c548727835e915cd9b6",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/hire.ogg",
+      "sha256": "cd7c409e90e6e05704f1d989a0b21b1bef2ca02ba33d05ead159f40be560b9db",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/jar_apply.ogg",
+      "sha256": "e90c18e6c0a6edc92aeacd5a0ff6240c5245b8782a9bd71343268bdffd1bfbc4",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/jar_fill.ogg",
+      "sha256": "3e949f3b1a5fd10ae6306ef419fcf0494030330ce4bf307b7c30f04ee891b128",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/ledger_open.ogg",
+      "sha256": "9ef9dc9367c5f71e8c9189f89ee746454732c88b9f164f4c10fb75fc18b6c57d",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/level_up.ogg",
+      "sha256": "de247ede63005b605eccd44770d77d748516c053441e688418f1edb36f080f01",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/loan_stamp.ogg",
+      "sha256": "c52ff82b1f52290682a9d0cb595472f1e643650c6c5f000b31dd230820ead171",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/lose_sting.ogg",
+      "sha256": "349e2e2de18b95016cb49a6d8916c71c46850e0865f524f9163601892c8c39ad",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/magnet.ogg",
+      "sha256": "45e31e5056d8feaad88546536549e63fc06f8c4edf13840298f4928d23e2e601",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/pick_up.ogg",
+      "sha256": "375eb111d222be824808ebced93b911d51e0acc5dddac21734b3e8745d4f951c",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/scam_fell.ogg",
+      "sha256": "114e7abd7aabbf69874d8bbbc4086bcb143c84ca5fbd43e35fa2f50d1acb29d3",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/scam_refuse.ogg",
+      "sha256": "334ad335c4d7592c97e7dbb28d08d11d3475eadd6170288055407e57b0186327",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/scam_sting.ogg",
+      "sha256": "689c8f284471cfe43db33c5ad7c1d5adc3f5581a44e55075e7c0ac29f50ec269",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/seagull.ogg",
+      "sha256": "ac0c1b96c98de61157bebc6e2c50a16bf5da0301d34be4465243a45c4eed261d",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/season_bell.ogg",
+      "sha256": "8db6961032f59c67f1c60958c89a22992f7230bd30c63438fc0691d4da0990a2",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/shield.ogg",
+      "sha256": "e438d6dac2f860a0ae796788600b0b6270bfcb15b641504665416313b78b4436",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/shout.ogg",
+      "sha256": "d364a844088b8cf29ef54f34c3beadd469b68a61eb3063141f0433182c57a146",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/spark_tick.ogg",
+      "sha256": "7bc0ef65c42f0823b2ca72e9915108f1df1768f54e5d81c86c0b5c7ff5fcaba8",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/start.ogg",
+      "sha256": "fc987a0802cff449a51eacbb2f0bc2d968b3ad60d134b2c98bf5b8566a46b72b",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/stomp.ogg",
+      "sha256": "15c5b17174daf045d94cf0a9b1309b2bb934fc6be4293a2fbbe213db69fa47c1",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/sweep.ogg",
+      "sha256": "f8a674c16c1568fa47a7286b666eb2351845cd71477e086aa946895a0bd0916e",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/toast.ogg",
+      "sha256": "3fa7faba1b92007562af246c90180520f5f37011c1589f37e8d2f9dcaeec2343",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/tray_close.ogg",
+      "sha256": "09098ecfa93f7d0c6c12ab911af4f9490af39bb607e060d4500492165d44bc16",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/tray_open.ogg",
+      "sha256": "b22129f6be24525615317410bc20094c22126b26dc63fa8bca30b0cbccae83d0",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/ui_hover.ogg",
+      "sha256": "591a7e4445d0d1dac7435f9fcf05099f2534e9ab807b9cb98592a20fd8888a75",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/water_lap.ogg",
+      "sha256": "2428c1b4ef82c131866edc3cf6cdc68933a4fa6973a0ecf44341f98a886fe3a8",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/audio/sfx/wind_chime.ogg",
+      "sha256": "1dd668cf5c9ea3a80b29705c6270b0cee2a35e14e9780bcfc34a68267eeffdb9",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/data/story.json",
+      "sha256": "a1c0d42b00766066a37bc6a2cb1af928c39fe49d9405fad99e31faed9ada03e9",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/docs/BUDGET.md",
+      "sha256": "38b2de7b96f023dad45124f2c177135098602bda3cc556138b98b21a4080c397",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/docs/GAME_BIBLE.md",
+      "sha256": "94c11e112429e64d01269a1d2a855f98718b18014ae0ea9d20acc47866c33289",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/docs/GDD.md",
+      "sha256": "b45b320a19ee1e8a4cf81aa43671b2f953d298249288dc1503be97d9fe32763b",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/docs/ITCH_PAGE.md",
+      "sha256": "664141e28c9fc984efe2410fa0d10ff89fe078db11f6e31415531577f713c151",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/docs/SUBMISSION_CHECKLIST.md",
+      "sha256": "68188b12a1e3d73af49dac8f1078e3823860d784eb5fd2377f8225f2d1be807a",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/docs/balance.md",
+      "sha256": "5a951aa5e1063ca7ff212578e986dbbfe751d7b2e2b6690214cf2776e6c1e948",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/docs/story_outline.md",
+      "sha256": "34223b96e4dc7e3400dc79ae6feaebfd249febf631896619d3ba3ecf83281fcb",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/icons_gallery.html",
+      "sha256": "6e37079e2c840ee17a37dd40c5867ca0e8d9aff9c85c6e433fcc4846846580bf",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/index.html",
+      "sha256": "5085e900a7bda927f2d737f4147026a8e9c541b20177908eabfc9c2e64428f4c",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/Game.js",
+      "sha256": "5badf6615d32f9b0b6fc7c5e309c7296dd46b755d885bb91d2e3edeb8a1dc28a",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/anim/Easing.js",
+      "sha256": "cd6d738a9c7e9e79ad39c45e6198f94861159f381fec844b1ba68c8da3cf0fc5",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/anim/Sequencer.js",
+      "sha256": "954423358c65c3da5dc143d2e18c3575a6f3a32396f4df366a960b9b352ac8e8",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/anim/SquashStretch.js",
+      "sha256": "07749e9870f10e558e7f32a3394e846e95430bf5666af91ec729940df7dd2d1e",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/anim/Tween.js",
+      "sha256": "e44c0b8e351c1c42d178effd17cdaa0a19994f0068669fd7c00814e89c00e2b6",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/anim/heroAbilities.js",
+      "sha256": "46eb9d0596cb89dab0a5782b91f19f13435cb14f06fdc5098f78a3fc536d04ed",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/anim/heroAnims.js",
+      "sha256": "900c46aaeabdbd07f66dc840b3e0b84d98b150d8c10cb86134528245275253a3",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/anim/index.js",
+      "sha256": "55738bf132ba5e0a3c0f769e976666c1ded63e56c88ad47c37b0f7e361553072",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/assets/creatures/animator.js",
+      "sha256": "6400bd4214c9e9ab381e76f106f7eedf1175b8ed9c211f2a765d3ceab9f12cb8",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/assets/creatures/glimmers.js",
+      "sha256": "243c8b71bec8bde9d5937f9e72603d3a98f04ccd10b8236a4846ae3d25636d1b",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/assets/creatures/glimmers2.js",
+      "sha256": "e401fcbab7e3ba2992a76a532b3bbb89748341c9597c4b163a19373edf1b8d87",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/assets/creatures/helpers.js",
+      "sha256": "a68c79619b22f61d02a03cb24412d817b037980688c6c6058cff5ed8a88d8288",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/assets/creatures/index.js",
+      "sha256": "41ba559c3e1da1ac1ea58ad373a89d089e8e78edf693dfa89e2fcf55ca98e2ed",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/assets/creatures/villains.js",
+      "sha256": "e8f7c96608f6040252b718d3d74109687df60f7bad52e8be3d3d8b4e16155b73",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/assets/geo.js",
+      "sha256": "24e98a225f447ba4eb76e568ba912f82b8a3fd5c0a2085ac9f2390f3c7f9700a",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/assets/glimmer.js",
+      "sha256": "efe0a74ee8d672a0b103fd73349de6744f378c88fd5acaab148528aa26ca418d",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/assets/hero.js",
+      "sha256": "8b1775a3b3403e23b655bcd080d3c386d819baa10cd52d20797a0c0cb3c9683e",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/assets/props.js",
+      "sha256": "28d4ba5fddd1788934649a57a075f6e8f380320403bf1a3ed04b7ae5f273cf96",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/assets/props/bake.js",
+      "sha256": "4cca2124047f04bd5cd05b90d16478c726ec0f8e172dd1ada9612cde40e066a1",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/assets/props/decor.js",
+      "sha256": "0f18c5b9e661727dbbdef58ec3cc65f6a53d8239c30c3646711d63d852353e9a",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/assets/props/landmarks.js",
+      "sha256": "0f216c6cefba18eda478786c3c58b9b3b66474f0211959129fc47416c167abde",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/assets/props/merge.js",
+      "sha256": "5f99be9dba71e38a09005ce536c24d89f075a5cf563493493d05aacca5b7736f",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/assets/props/nature.js",
+      "sha256": "e807d67ba4e23072722ffaba51e573e5fb8c018623cee735c60a8d055b5d67d9",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/assets/props/stalls.js",
+      "sha256": "845c6c52fabc854994cc0fbb37e6acc700634688a868640e634abb6c7fdded10",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/core/Audio.js",
+      "sha256": "1ea3ef0fd2e835bc7d110f3089a8d2a4842c8ac02d96e101ea6800a64fb06c1b",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/core/Camera.js",
+      "sha256": "d4f34048e127b1fa7726caae49a3987800833d89dda5c12a82393ec21c80b7f7",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/core/EventBus.js",
+      "sha256": "61ae90dd851f07f43820ad45028d5eb32e10961f4b7117e685507a0d0645da28",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/core/Game.js",
+      "sha256": "4093b1f4d35559f69e020f442a431c8f4b867e0786aa542cb4f8b808e8a6492f",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/core/Input.js",
+      "sha256": "36075db087f13576be0e5a5c2451728f38f6bd452c505b2dbf7aea024d229fdf",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/core/Outline.js",
+      "sha256": "6fb8c4be79a9a831460b0ba1da75210a37548d2f449a0b00880df3c3acdc90e1",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/core/Toon.js",
+      "sha256": "240c1bea1c1f709efce24b4f059dea449704983662cb11ee62811c84edd602d6",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/core/index.js",
+      "sha256": "fdf3dd3c5467eb5ff208358850f05b5f2685516dba9d478c2a2010c41f18558f",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/entities/HeroController.js",
+      "sha256": "9bf655eebc415671bd2b1af0196da1112884d23a9553c9ced9c2f96a9c5cac0e",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/main.js",
+      "sha256": "fa0ffac272914fab484c82c75f72411301e2937ab461a1fbbe3917104d65bb39",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/systems/build.js",
+      "sha256": "e59f6978646289426770af6853e6b26a3af0f36a01e97ca70a6e4510df7eeb62",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/systems/customers.js",
+      "sha256": "9416730387a8b5f0f31c3ac79687e901b8ec7831a40843894c0aed3bc8614530",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/systems/demoMode.js",
+      "sha256": "24c4ddc9f488823e35567f390390f1c3340270d6a881222c27a88fa923984c1e",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/systems/economy.js",
+      "sha256": "d0027c5e2577717d3f0982281a565724eb12a8b5ec6526bca8f906569c8ecab1",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/systems/economyData.js",
+      "sha256": "1d91198f46fe5dfea52f0f13afea6453a5c27b0a535e5919ad81f9451e4d8ffe",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/systems/flowfield.js",
+      "sha256": "24241761686df53a2559f4a90940033a63f1d428671c7f71a6e5753b35776103",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/systems/perf.js",
+      "sha256": "599e654d30a12a0fbd29dff9ab36528ffe578c1246f19bf3157937bff1f27691",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/systems/save.js",
+      "sha256": "716286d3cab01851735ee18dfeed1a724249c917f6bee24000fcfb5a8dadc7df",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/systems/story.js",
+      "sha256": "6dcf7a603d9d63744fd485674a5f617ceff74ee10de5fd0df8bc6492821c1bc4",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/vfx/VFX.js",
+      "sha256": "ccd42abc37bac5b43c6bca26b56f5ce95a04e8d7783cc71e977d6bb064dfb427",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/vfx/pack1.js",
+      "sha256": "b5857561e077b038bda2d61d639ae1ad9e821e63a232668ac6f4b4f208ca6f4c",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/vfx/pack2.js",
+      "sha256": "040703ea8b40bb9df76800b08039f502339b495d0edbd91036bf533a23b690d3",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/src/world/Island.js",
+      "sha256": "de5b3b7d369bc60244dae72a6519b8169474faee2c29723a900cd409ad6727af",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/base.css",
+      "sha256": "ee9521a535dd18a5e1d797c9b05726340ac0fa23e6f77615f97894a86049ddfb",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/build.css",
+      "sha256": "5430a13cf861fcd1f00a72af67cfcbad327a6d5efb84b164c650684df9b8e84c",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/build.js",
+      "sha256": "1a52d5fab7f081227f40deff797bcd14efc21f0b59eb69981381fe1448db4bf2",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/dialogue.css",
+      "sha256": "e3b9d7105c4e0fdd4bf3a68a12c65072b99baa4d172b521a62f556e27077c607",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/dialogue.js",
+      "sha256": "ea2bd8b03ee192f1c1a49b10dfd6b7e2fd684c12312c81cc20e60c0c44a782f9",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/hud.css",
+      "sha256": "0c1b126c3a6f30f04f1a7b65f9d85b14589dfe745cd8786a10497503ccb43fc7",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/hud.js",
+      "sha256": "f56828808c64672f8d7580e7af30f07ce4774cdb25c142f55d0ac8f66e2c576c",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/icons.js",
+      "sha256": "a95b81043809e916ae074e6002f55090dee31d5acd0402ada0fe4a45c8f22c2a",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/index.js",
+      "sha256": "a7ddf7e78b2f42cfeadd2d3210f8499307a3480da26b678c5557431132075d2b",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/jars.css",
+      "sha256": "229e59447b181fcbc42252a62a87310e5e79e5b6fc1eea6fc3a0b0f55f498588",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/jars.js",
+      "sha256": "a6cd7fef5ef1f9ce8576c8acfc7fbac2786e5ab65c09bc13fdb87bd761a60488",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/ledger.css",
+      "sha256": "e878a1bd7d8fda58bd3dc5a57e48cb15bcf3578d49045f442fad86346e277726",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/ledger.js",
+      "sha256": "2f9823c261826f650f3b14700389c8be81ab3252fabbc71adae101486e59c1c2",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/pause.css",
+      "sha256": "24acb8457544a141f2c81babd919bbd1fdce7a61d40c2b6b3c6c758596340450",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/pause.js",
+      "sha256": "79750a2dfe68c16bc8630031826c57a7c669f8dd483f9a92808f2c20414f986b",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/seasons.css",
+      "sha256": "413270ee62f535b268531085a137c988df04580f4702740630c7512f8f089828",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/seasons.js",
+      "sha256": "3dea58ad476f76d0768a00724fe714f262cd32eeaeb430db79ed5af8de775708",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/title.css",
+      "sha256": "3224b0628ad210d8029c43d7decf6750c3e091989d2ba6b00f867f16c37dc073",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/title.js",
+      "sha256": "be489070da17509a83d6cd7a384e77492f49a8a3df22ce23445f86c1ee24fc49",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/toast.css",
+      "sha256": "278dd1272faa6743061b5beee2c4fc1ffead7f78dca7e97e65ec42e765800898",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/toast.js",
+      "sha256": "e24668852caa6bc78fb25b400b4954f3746f13e9c9bb64acd312b3e0f3772dd7",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/touch.css",
+      "sha256": "c71442ac4f790b02d8978b2980587af5ed61bb56321b4f0ec3a30a75e45242a8",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/touch.js",
+      "sha256": "8b3629de5233e9e23d07533b6a4f8ae86413f52ef1a9e3b32698d718378cb1d9",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/tutorial.css",
+      "sha256": "793e5a25b39d87cb73344cd5f55cba47515fb10bf7f268ea8c833d6314c617d3",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/ui/tutorial.js",
+      "sha256": "992282fc8cf232b5e163532f633e1edd6994be06dc8978fa1fd50e18b4597cea",
+      "unchanged": true
+    },
+    {
+      "path": "LUMEN/game/vendor/three.module.js",
+      "sha256": "76dea8151bc9352aef3528b4262e249b2604f62543828328db978d060d61a495",
+      "unchanged": true
+    }
+  ]
+}

@@ -1,0 +1,580 @@
+{
+  "method": "Two runs, same page/context, no reload between runs. season=1 QA flag. Software GPU rendering disabled at runtime after title (canvas screenshots are not visual-world evidence); gameplay/UI logic still runs. Dialogues advanced through exposed UI API, rejecting scams; normal economy clock. Placement cursor moved through BuildSystem API, confirm through UI.",
+  "errors": [],
+  "consoleErrors": [],
+  "runs": [
+    {
+      "number": 1,
+      "seasons": [
+        {
+          "season": 1,
+          "debt": 312,
+          "fog": 0.45,
+          "spark": 40,
+          "upkeep": 35,
+          "stalls": 3
+        },
+        {
+          "season": 2,
+          "debt": 384,
+          "fog": 0.52,
+          "spark": 0,
+          "upkeep": 35,
+          "stalls": 3
+        },
+        {
+          "season": 3,
+          "debt": 532,
+          "fog": 0.57,
+          "spark": 0,
+          "upkeep": 35,
+          "stalls": 3
+        },
+        {
+          "season": 4,
+          "debt": 691,
+          "fog": 0.64,
+          "spark": 0,
+          "upkeep": 35,
+          "stalls": 3
+        },
+        {
+          "season": 5,
+          "debt": 864,
+          "fog": 0.69,
+          "spark": 0,
+          "upkeep": 35,
+          "stalls": 3
+        },
+        {
+          "season": 6,
+          "debt": 1037,
+          "fog": 0.76,
+          "spark": 0,
+          "upkeep": 35,
+          "stalls": 3
+        }
+      ],
+      "start": {
+        "state": "playing",
+        "mode": "story",
+        "paused": false,
+        "pauseBy": [],
+        "eco": {
+          "spark": 100,
+          "jars": {
+            "spend": 0,
+            "save": 0,
+            "invest": 0,
+            "protect": 0
+          },
+          "debt": 260,
+          "fog01": 0.4,
+          "season": 1,
+          "day01": 0.2000999999999995,
+          "reputation": 0.5,
+          "stalls": 2,
+          "lighthouseLit": false,
+          "ended": null
+        },
+        "placed": [
+          {
+            "id": "stall_fruit",
+            "level": 1,
+            "cx": -4,
+            "cz": -3
+          },
+          {
+            "id": "stall_bread",
+            "level": 1,
+            "cx": 3,
+            "cz": -3
+          }
+        ],
+        "counts": {},
+        "vignettes": [
+          {
+            "opacity": "0"
+          }
+        ],
+        "sceneChildren": 40,
+        "systems": 5,
+        "save": false,
+        "jarsPct": {
+          "spend": 40,
+          "save": 30,
+          "invest": 20,
+          "protect": 10
+        },
+        "story": {
+          "season": 1,
+          "midPlayed": 0,
+          "openingPlayed": 1,
+          "endedPlayed": 0,
+          "toastsFired": [
+            "t_build"
+          ],
+          "scamsSeen": [],
+          "eventsSeen": [],
+          "finale": null,
+          "choicesMade": 0
+        }
+      },
+      "confirmFallback": "ui:build confirm bus",
+      "afterPurchase": {
+        "state": "playing",
+        "mode": "story",
+        "paused": true,
+        "pauseBy": [
+          "dialogue"
+        ],
+        "eco": {
+          "spark": 75,
+          "jars": {
+            "spend": 0,
+            "save": 0,
+            "invest": 0,
+            "protect": 0
+          },
+          "debt": 260,
+          "fog01": 0.4,
+          "season": 1,
+          "day01": 0.45009999999999944,
+          "reputation": 0.58,
+          "stalls": 3,
+          "lighthouseLit": false,
+          "ended": null
+        },
+        "placed": [
+          {
+            "id": "stall_fruit",
+            "level": 1,
+            "cx": -4,
+            "cz": -3
+          },
+          {
+            "id": "stall_bread",
+            "level": 1,
+            "cx": 3,
+            "cz": -3
+          },
+          {
+            "id": "stall_fruit",
+            "level": 1,
+            "cx": 0,
+            "cz": 0
+          }
+        ],
+        "counts": {
+          "stall_fruit": 1
+        },
+        "vignettes": [
+          {
+            "opacity": "0"
+          }
+        ],
+        "sceneChildren": 44,
+        "systems": 5,
+        "save": false,
+        "jarsPct": {
+          "spend": 40,
+          "save": 30,
+          "invest": 20,
+          "protect": 10
+        },
+        "story": {
+          "season": 1,
+          "midPlayed": 0,
+          "openingPlayed": 1,
+          "endedPlayed": 0,
+          "toastsFired": [
+            "t_build",
+            "t_event",
+            "t_placed"
+          ],
+          "scamsSeen": [],
+          "eventsSeen": [
+            "festival"
+          ],
+          "finale": null,
+          "choicesMade": 0
+        }
+      },
+      "end": {
+        "state": "ending",
+        "mode": "story",
+        "paused": true,
+        "pauseBy": [
+          "ledger"
+        ],
+        "eco": {
+          "spark": 0,
+          "jars": {
+            "spend": 0,
+            "save": 0,
+            "invest": 0,
+            "protect": 0
+          },
+          "debt": 1037,
+          "fog01": 0.76,
+          "season": 7,
+          "day01": 0,
+          "reputation": 0.7799999999999999,
+          "stalls": 3,
+          "lighthouseLit": false,
+          "ended": "lose"
+        },
+        "placed": [
+          {
+            "id": "stall_fruit",
+            "level": 1,
+            "cx": -4,
+            "cz": -3
+          },
+          {
+            "id": "stall_bread",
+            "level": 1,
+            "cx": 3,
+            "cz": -3
+          },
+          {
+            "id": "stall_fruit",
+            "level": 1,
+            "cx": 0,
+            "cz": 0
+          }
+        ],
+        "counts": {
+          "stall_fruit": 1
+        },
+        "vignettes": [
+          {
+            "opacity": "0.428"
+          }
+        ],
+        "sceneChildren": 62,
+        "systems": 5,
+        "save": false,
+        "jarsPct": {
+          "spend": 40,
+          "save": 30,
+          "invest": 20,
+          "protect": 10
+        },
+        "story": {
+          "season": 6,
+          "midPlayed": 6,
+          "openingPlayed": 6,
+          "endedPlayed": 6,
+          "toastsFired": [
+            "t_build",
+            "t_event",
+            "t_placed",
+            "t_scam",
+            "t_fog",
+            "tut:endSeason",
+            "t_ledger"
+          ],
+          "scamsSeen": [
+            "foggyInsurance",
+            "premiumStallKit",
+            "zeroInterestLoan"
+          ],
+          "eventsSeen": [
+            "festival",
+            "helperDay",
+            "leakyRoof",
+            "helperDay",
+            "sparkDip",
+            "festival"
+          ],
+          "finale": "lose",
+          "choicesMade": 3
+        }
+      },
+      "endingText": "0\nSPARK\ndebt 1037\nFogged out…\n Insurance \nDEBT FOG\n76%\nfps 24 · calls 0\n FinLit Jars\n100 %\nSpend\n0\n40%\nSave\n0\n30%\nInvest\n0\n20%\nProtect\n0\n10%\nPreset \nAPPLY\ndrag a jar — the others rebalance\nBUILD\nB\nFogged out…\n\nthe Debt Fog covered the Lighthouse\n\nSales income\n7\nSave interest +5 %\n0\nInvest return\n0\nExpenses & upkeep\n0\nLoan interest 20 %\n0\nNet this season\n0\nFog 76 % (+7)\nDebt 1,037\nNet worth −1,037\n\nNo stars — the Fog is winning. Save first, spend second.\n\nFINLIT LESSON\nCompound Growth\n\nInterest earns interest. A small jar left alone for many seasons quietly becomes a big one — time does the heavy lifting.\n\nTip: Start early, even tiny. The calendar is your best helper.\n\nTRY AGAIN \nThe Debt Fog took the island…\nGlow Festival: Lantern boats fill the bay. Glimmers everywhere! +35 Spark in tips.\nSEASON 6 / 10 · THE QUIET JAR\n This season: Compound Growth\n Start early, even tiny. The calendar is your best helper.\nWhat's a season? \nGot it",
+      "finished": true,
+      "afterReturn": {
+        "state": "title",
+        "mode": "story",
+        "paused": true,
+        "pauseBy": [
+          "title"
+        ],
+        "eco": null,
+        "placed": [],
+        "counts": {
+          "stall_fruit": 1
+        },
+        "vignettes": [
+          {
+            "opacity": "0.428"
+          }
+        ],
+        "sceneChildren": 29,
+        "systems": 3,
+        "save": false,
+        "jarsPct": {
+          "spend": 40,
+          "save": 30,
+          "invest": 20,
+          "protect": 10
+        }
+      }
+    },
+    {
+      "number": 2,
+      "seasons": [
+        {
+          "season": 1,
+          "debt": 312,
+          "fog": 0.45,
+          "spark": 107,
+          "upkeep": 28,
+          "stalls": 2
+        },
+        {
+          "season": 2,
+          "debt": 374,
+          "fog": 0.52,
+          "spark": 64,
+          "upkeep": 28,
+          "stalls": 2
+        },
+        {
+          "season": 3,
+          "debt": 449,
+          "fog": 0.57,
+          "spark": 6,
+          "upkeep": 28,
+          "stalls": 2
+        },
+        {
+          "season": 4,
+          "debt": 578,
+          "fog": 0.64,
+          "spark": 0,
+          "upkeep": 28,
+          "stalls": 2
+        },
+        {
+          "season": 5,
+          "debt": 722,
+          "fog": 0.69,
+          "spark": 0,
+          "upkeep": 28,
+          "stalls": 2
+        },
+        {
+          "season": 6,
+          "debt": 866,
+          "fog": 0.76,
+          "spark": 7,
+          "upkeep": 28,
+          "stalls": 2
+        },
+        {
+          "season": 7,
+          "debt": 1060,
+          "fog": 0.81,
+          "spark": 0,
+          "upkeep": 28,
+          "stalls": 2
+        }
+      ],
+      "start": {
+        "state": "playing",
+        "mode": "story",
+        "paused": false,
+        "pauseBy": [],
+        "eco": {
+          "spark": 100,
+          "jars": {
+            "spend": 0,
+            "save": 0,
+            "invest": 0,
+            "protect": 0
+          },
+          "debt": 260,
+          "fog01": 0.4,
+          "season": 1,
+          "day01": 0.15000000000000002,
+          "reputation": 0.5,
+          "stalls": 2,
+          "lighthouseLit": false,
+          "ended": null
+        },
+        "placed": [
+          {
+            "id": "stall_fruit",
+            "level": 1,
+            "cx": -4,
+            "cz": -3
+          },
+          {
+            "id": "stall_bread",
+            "level": 1,
+            "cx": 3,
+            "cz": -3
+          }
+        ],
+        "counts": {
+          "stall_fruit": 1
+        },
+        "vignettes": [
+          {
+            "opacity": "0.428"
+          },
+          {
+            "opacity": "0"
+          }
+        ],
+        "sceneChildren": 66,
+        "systems": 6,
+        "save": false,
+        "jarsPct": {
+          "spend": 40,
+          "save": 30,
+          "invest": 20,
+          "protect": 10
+        },
+        "story": {
+          "season": 1,
+          "midPlayed": 0,
+          "openingPlayed": 1,
+          "endedPlayed": 0,
+          "toastsFired": [
+            "t_build"
+          ],
+          "scamsSeen": [],
+          "eventsSeen": [],
+          "finale": null,
+          "choicesMade": 0
+        }
+      },
+      "end": {
+        "state": "ending",
+        "mode": "story",
+        "paused": true,
+        "pauseBy": [
+          "ledger"
+        ],
+        "eco": {
+          "spark": 0,
+          "jars": {
+            "spend": 0,
+            "save": 0,
+            "invest": 0,
+            "protect": 0
+          },
+          "debt": 1060,
+          "fog01": 0.81,
+          "season": 8,
+          "day01": 0,
+          "reputation": 0.7799999999999999,
+          "stalls": 2,
+          "lighthouseLit": false,
+          "ended": "lose"
+        },
+        "placed": [
+          {
+            "id": "stall_fruit",
+            "level": 1,
+            "cx": -4,
+            "cz": -3
+          },
+          {
+            "id": "stall_bread",
+            "level": 1,
+            "cx": 3,
+            "cz": -3
+          }
+        ],
+        "counts": {
+          "stall_fruit": 1
+        },
+        "vignettes": [
+          {
+            "opacity": "0.428"
+          },
+          {
+            "opacity": "0.477"
+          }
+        ],
+        "sceneChildren": 85,
+        "systems": 6,
+        "save": false,
+        "jarsPct": {
+          "spend": 40,
+          "save": 30,
+          "invest": 20,
+          "protect": 10
+        },
+        "story": {
+          "season": 7,
+          "midPlayed": 7,
+          "openingPlayed": 7,
+          "endedPlayed": 7,
+          "toastsFired": [
+            "t_build",
+            "t_event",
+            "t_scam",
+            "t_fog",
+            "tut:endSeason",
+            "t_ledger"
+          ],
+          "scamsSeen": [
+            "foggyInsurance",
+            "premiumStallKit",
+            "zeroInterestLoan",
+            "zeroInterestLoan"
+          ],
+          "eventsSeen": [
+            "festival",
+            "helperDay",
+            "leakyRoof",
+            "helperDay",
+            "sparkDip",
+            "festival",
+            "sparkBoom"
+          ],
+          "finale": "lose",
+          "choicesMade": 4
+        }
+      },
+      "endingText": "0\nSPARK\ndebt 1060\nFogged out…\n Diversification \nDEBT FOG\n81%\nfps 20 · calls 0\n FinLit Jars\n100 %\nSpend\n0\n40%\nSave\n0\n30%\nInvest\n0\n20%\nProtect\n0\n10%\nPreset \nAPPLY\ndrag a jar — the others rebalance\nBUILD\nB\nFogged out…\n\nthe Debt Fog covered the Lighthouse\n\nSales income\n0\nSave interest +5 %\n0\nInvest return\n0\nExpenses & upkeep\n−43\nLoan interest 20 %\n−37\nNet this season\n0\nFog 81 % (+7)\nDebt 1,060\nNet worth −1,060\n\nNo stars — the Fog is winning. Save first, spend second.\n\nFINLIT LESSON\nInsurance\n\nThe Protect jar absorbs shocks so one bad day cannot undo a good season. It feels wasted right up until the moment it isn't.\n\nTip: Real cover names exactly what it covers and how to claim.\n\nTRY AGAIN \nThe Debt Fog took the island…\nLoan +21 — the Baron smiles. Debt 1060\nBaron's deal: Zero-Interest* Loan…\nSEASON 7 / 10 · COVER\n This season: Insurance\n Real cover names exactly what it covers and how to claim.\nWhat's a season? \nGot it",
+      "finished": true,
+      "afterReturn": {
+        "state": "title",
+        "mode": "story",
+        "paused": true,
+        "pauseBy": [
+          "title"
+        ],
+        "eco": null,
+        "placed": [],
+        "counts": {
+          "stall_fruit": 1
+        },
+        "vignettes": [
+          {
+            "opacity": "0.428"
+          },
+          {
+            "opacity": "0.477"
+          }
+        ],
+        "sceneChildren": 55,
+        "systems": 4,
+        "save": false,
+        "jarsPct": {
+          "spend": 40,
+          "save": 30,
+          "invest": 20,
+          "protect": 10
+        }
+      }
+    }
+  ],
+  "events": []
+}

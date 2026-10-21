@@ -1,0 +1,22 @@
+import {chromium} from 'playwright';
+import fs from 'node:fs';
+const browser=await chromium.launch({headless:true,args:['--no-sandbox','--enable-unsafe-swiftshader']});
+const page=await browser.newPage({viewport:{width:1280,height:720}});const r={method:'Additional controlled browser/system checks. Runtime fixtures and stopped render loop; not normal unaided wins.',errors:[]};page.on('pageerror',e=>r.errors.push(e.message));
+try{
+ await page.goto('http://localhost:3000/game/?notutorial&mute&nohistory&seed=1');await page.waitForFunction(()=>window.lg);await page.evaluate(()=>{game.stop();game.renderer.render=()=>{};lg.start('story');});
+ r.seed1Starter=await page.evaluate(()=>{const b=lg.sb.build;return {placed:[...b.placed.values()].map(e=>e.id),teaCells:b.cellsFor('stall_tea',-3,-6).map(c=>({...c,land:b.isLand(c.x,c.z),blocker:b.cells.get(`${c.x},${c.z}`)?.id})),fog:{economy:lg.sb.eco.state.fog01,target:lg.sb.vfx.fog.targetCoverage}};});
+ r.storyPrices=await page.evaluate(()=>Object.entries(lg.sb.build.catalog).filter(([id,e])=>e.category==='stall').map(([id,e])=>({id,shown:e.cost,charged:lg.sb.build.cost(id)})));
+ // Debt never decreases in event effects. Show inherited principal alone is enough to hit hard loss gate.
+ r.noRepayment=await page.evaluate(()=>{const e=lg.sb.eco,rows=[];for(let i=0;i<8;i++){e.state.spark=100000;e.endSeason();rows.push({season:i+1,debt:e.state.debt,fog:e.state.fog01,ended:e.state.ended});if(e.state.ended)break;}return rows;});
+ // Story win fixture, then another endless season.
+ r.storyEndless=await page.evaluate(()=>{lg.toTitle('menu');lg.start('story');const e=lg.sb.eco;e.state.spark=10000;e.state.debt=0;e.state.fog01=0;e.state.jars.save=500;e.state.season=10;e.endSeason();for(let i=0;i<150&&(!ui.ledger.isOpen||ui.ledger.state.outcome!=='win');i++){if(ui.dialogue.isOpen){ui.dialogue.skip();ui.dialogue.advance();}else if(lg.story?.isPlaying)lg.story.next();}const first={state:lg.state,ledger:ui.ledger.isOpen,finale:lg.story?.state.finale};ui.ledger.continue();const afterWin={state:lg.state,ledger:ui.ledger.isOpen};e.endSeason();for(let i=0;i<150;i++){if(ui.dialogue.isOpen){ui.dialogue.skip();ui.dialogue.advance();}else if(lg.story?.isPlaying)lg.story.next();else break;}return {first,afterWin,next:{state:lg.state,ended:e.state.ended,ledger:ui.ledger.isOpen,dialogue:ui.dialogue.isOpen,storyFinale:lg.story?.state.finale}};});
+ // Ordinary Save + Quit doesn't save the current season's purchases.
+ r.quitSave=await page.evaluate(()=>{lg.toTitle('menu');lg.start('endless');lg.save.clear();lg.sb.eco.state.spark=777;lg.toTitle('menu');return {saved:lg.save.has(),titleContinue:ui.title.el.innerText.includes('CONTINUE')};});
+ // Price affordability checks at the actual Story balance.
+ r.affordability=await page.evaluate(()=>{lg.start('story');const e=lg.sb.eco,b=lg.sb.build;e.state.spark=45;ui.build.setSpark(45);ui.build.open();ui.build.select('stall_fruit');return {spark:e.state.spark,shown:b.catalog.stall_fruit.cost,actual:b.cost('stall_fruit'),canAffordActual:b.canAfford(b.cost('stall_fruit')),deployDisabled:ui.build.el.querySelector('.ll-detail-deploy')?.disabled??null,detail:ui.build.el.innerText};});
+ // Settings apply affects DPR only, leaves expensive shadow maps enabled.
+ r.quality=await page.evaluate(()=>{ui.pause.setSetting('quality','low');return {uiQuality:ui.pause.settings.quality,dpr:game.renderer.getPixelRatio(),shadowMapEnabled:game.renderer.shadowMap.enabled,qualityConfig:game.quality};});
+ // Touch layout emulation, no physical device claim.
+ await page.setViewportSize({width:360,height:800});
+ r.mobile=await page.evaluate(()=>{ui.build.cancel();ui.build.open();const v={w:innerWidth,h:innerHeight};const off=[...document.querySelectorAll('button,input')].filter(e=>{const s=getComputedStyle(e);const a=e.getBoundingClientRect();return s.visibility!=='hidden'&&s.display!=='none'&&a.width&&a.height&&(a.right>innerWidth+2||a.left< -2||a.bottom>innerHeight+2||a.top< -2);}).map(e=>({text:e.innerText||e.title,rect:{x:e.getBoundingClientRect().x,y:e.getBoundingClientRect().y,w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height}}));return {viewport:v,overflow:document.documentElement.scrollWidth>innerWidth,offscreenControls:off};});
+}catch(e){r.harnessError=e.stack;}finally{fs.writeFileSync('qa/evidence/additional-checks.json',JSON.stringify(r,null,2));await browser.close();}console.log(JSON.stringify(r,null,2));
