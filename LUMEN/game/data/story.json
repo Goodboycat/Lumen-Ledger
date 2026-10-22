@@ -468,7 +468,7 @@
     { "id": "t_move",     "trigger": "ui:start",        "icon": "🦉", "text": "Drag the left side (or WASD) to walk. Pip is small; the island is not." },
     { "id": "t_build",    "trigger": "ui:title:close",  "icon": "🔨", "text": "Press B (or the 🔨 button) to build your first stall near the pier. Glimmers arrive there." },
     { "id": "t_placed",   "trigger": "build:placed",    "icon": "🦉", "text": "Stall placed! Glimmers walk to it, browse, and pay Spark. Fair prices make happy blobs." },
-    { "id": "t_firstpay", "trigger": "cust:paid",       "icon": "✨", "text": "First sale! Every coin lands in your Spend jar unless the sliders say otherwise. Open the jars." },
+    { "id": "t_firstpay", "trigger": "cust:paid",       "icon": "✨", "text": "First sale! Every coin lands in your pouch — that is your Spend jar. Press APPLY on the jars to split it into Save, Invest and Protect." },
     { "id": "t_jars",     "trigger": "ui:jar:apply",    "icon": "🏺", "text": "Jars set. Save pays 5 %/season, Invest wobbles 8±4 %, Protect absorbs shocks, Spend buys things." },
     { "id": "t_fog",      "trigger": "eco:fog",         "icon": "🌫️", "text": "The purple bar is Debt Fog. Borrowing and overspending grow it. Repaying and Protect shrink it." },
     { "id": "t_scam",     "trigger": "eco:scam",        "icon": "👀", "text": "A Collector has an offer. Secret + urgent + guaranteed = a Too-Good Deal. Look for the tell." },

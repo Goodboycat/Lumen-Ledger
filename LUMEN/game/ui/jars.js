@@ -120,12 +120,15 @@ export function mountJars(root, opts = {}) {
       r.input.style.setProperty('--pct', v + '%');
       r.pctEl.textContent = v + '%';
       r.liquid.style.height = (12 + v * 0.86) + '%';
-      r.bal.innerHTML = iconize((st.balances[k] || 0) + ' ✦');
+      // BUGFIX P02: Spend IS the pouch (sales land there, APPLY moves only save/invest/protect) → show pouch + any spend-jar Spark, not a dead 0
+      r.bal.innerHTML = iconize(Math.round(k === 'spend' ? (st.balances.spend || 0) + st.spark : (st.balances[k] || 0)) + ' ✦');
       r.row.classList.toggle('locked', !!st.locked[k]);
       if (changed === k || changed === '*') retrigger(r.icon, 'pop');
     }
     const s = sumPct(st.pct); total.textContent = s + ' %'; total.classList.toggle('bad', s !== 100);
-    applyBtn.disabled = !st.dirty;
+    // BUGFIX P01: APPLY was disabled until a slider moved, so keeping the shown split could never fill the jars. Now: enabled whenever
+    // the pouch has Spark and the split sends something to Save/Invest/Protect (or the sliders changed).
+    applyBtn.disabled = !(st.dirty || (st.spark > 0 && (st.pct.save + st.pct.invest + st.pct.protect) > 0));
     debtVal.innerHTML = iconize(Math.round(st.debt) + ' ✦');
     debtRow.classList.toggle('clear', st.debt <= 0);
     repayBtn.disabled = !(st.debt > 0 && st.spark > 0);
