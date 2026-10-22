@@ -624,16 +624,18 @@ function installRunWires(lg) {
     //   WASD/arrow key down) fires Bubble Shield. BUGFIX B21: R rotates the ghost while placing, so Ledger Flash is skipped then.
     let wDown = 0;
     const MOVE_KEYS = ['KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+    // BUGFIX P36: the open Build Tray is not a modal (ui.isModal) but it owns the keyboard — abilities and U must not fire behind it.
+    const hotkeysBlocked = () => !!(ui?.isModal?.() || ui?.build?.isOpen);
     const onKey = (e) => {
       if (e.repeat) return;
       // BUGFIX P33: U = upgrade the stall next to Pip (the tutorial / README said so, but U was debug-only) — same handler as touch ✋
-      if (e.code === 'KeyU' && !ui?.isModal?.() && lg.sb && lg.sb.build.mode !== 'place') { lg.interact(); return; }
-      const name = ABILITY_KEYS[e.code]; if (!name || ui?.isModal?.()) return;
+      if (e.code === 'KeyU' && !hotkeysBlocked() && lg.sb && lg.sb.build.mode !== 'place') { lg.interact(); return; }
+      const name = ABILITY_KEYS[e.code]; if (!name || hotkeysBlocked()) return;
       if (e.code === 'KeyW') { const k = lg.game.input?.keys; wDown = (k && MOVE_KEYS.some((c) => k.has(c))) ? 0 : (performance.now?.() || Date.now()); return; }
       if (e.code === 'KeyR' && lg.sb?.build?.mode === 'place') return;
       lg.ability(name);
     };
-    const onKeyUp = (e) => { if (e.code !== 'KeyW' || !wDown) return; const dt = (performance.now?.() || Date.now()) - wDown; wDown = 0; if (dt <= 220 && !ui?.isModal?.()) lg.ability('bubbleShield'); };
+    const onKeyUp = (e) => { if (e.code !== 'KeyW' || !wDown) return; const dt = (performance.now?.() || Date.now()) - wDown; wDown = 0; if (dt <= 220 && !hotkeysBlocked()) lg.ability('bubbleShield'); };
     window.addEventListener('keydown', onKey); window.addEventListener('keyup', onKeyUp);
     offs.push(() => { window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKeyUp); });
   }

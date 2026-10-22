@@ -63,6 +63,9 @@ export function mountSeasonInfo(root, opts = {}) {
   back.append(card);
   back.addEventListener('click', (e) => { if (e.target === back) api.close(); });
   root.append(banner, back);
+  // P34: Esc closes the card (capture phase, so the pause menu's window listener never sees that press).
+  const onEsc = (e) => { if (e.key === 'Escape' && st.open) { e.preventDefault?.(); e.stopImmediatePropagation?.(); api.close(); } };
+  if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('keydown', onEsc, true);
 
   const fmt = (s) => { s = Math.max(0, Math.round(s)); const m = Math.floor(s / 60); return m ? `${m} min ${String(s % 60).padStart(2, '0')} s` : `${s} s`; };
   function renderCard() {
@@ -119,7 +122,7 @@ export function mountSeasonInfo(root, opts = {}) {
     _flush() { if (st.pending == null || !st.playing) return; if (typeof opts.isModal === 'function' && opts.isModal()) return; const n = st.pending; st.pending = null; setTimeout(() => api.banner(n), 250); },
     hideBanner() { clearTimeout(st.bannerT); banner.classList.remove('on'); return api; },
     setSeason(n) { if (n && n !== st.season) { st.season = n; renderTag(); } return api; },
-    destroy() { offs.forEach((f) => f()); clearTimeout(st.bannerT); banner.remove(); back.remove(); tag.remove(); },
+    destroy() { offs.forEach((f) => f()); clearTimeout(st.bannerT); if (typeof window !== 'undefined' && window.removeEventListener) window.removeEventListener('keydown', onEsc, true); banner.remove(); back.remove(); tag.remove(); },
   };
 
   const offs = [

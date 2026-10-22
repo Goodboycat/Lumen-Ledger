@@ -46,7 +46,7 @@ export function mountUI(root, opts = {}) {
     const onEscCapture = (e) => { if (e.key === 'Escape' && (ui.build?.isOpen || ui.build?.state?.placing || ui.build?.state?.demolish)) { escOwned = true; setTimeout(() => { escOwned = false; }, 0); } };
     window.addEventListener('keydown', onEscCapture, true); ui._offEsc = () => window.removeEventListener('keydown', onEscCapture, true);
   }
-  add('pause', mountPause(root, { bus, onOutline: opts.onOutline, canOpen: () => !escOwned && !(ui.title?.isOpen) && !(ui.ledger?.isOpen) && !(ui.tutorial?.isOpen), storageKey: opts.storageKey }));
+  add('pause', mountPause(root, { bus, onOutline: opts.onOutline, canOpen: () => !escOwned && !(ui.title?.isOpen) && !(ui.ledger?.isOpen) && !(ui.tutorial?.isOpen) && !(ui.dialogue?.isOpen) && !(ui.seasons?.isOpen), storageKey: opts.storageKey }));
   // mobile bugfix: season info (HUD lesson tag + tap-the-pill card + new-season banner) — explains what a season is and what it teaches
   add('seasons', mountSeasonInfo(root, { bus, seasonsToWin, lessons: opts.storyData?.lessons, seasons: opts.storyData?.seasons, isModal: () => !!(ui.title?.isOpen || ui.ledger?.isOpen || ui.dialogue?.isOpen || ui.pause?.isOpen || ui.tutorial?.isOpen) }));
   if (opts.touch !== false && opts.input) add('touch', mountTouch(root, opts.input, { bus, force: opts.forceTouch }));

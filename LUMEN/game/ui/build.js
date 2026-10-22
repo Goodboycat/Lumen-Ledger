@@ -225,7 +225,10 @@ export function mountBuildMenu(root, opts = {}) {
     refresh() { refreshCards(); return api; },
     cancel() { st.selected = null; st.demolish = false; demolishBtn.classList.remove('on'); api.setPlacing(null); refreshCards(); bus.emit('ui:build', { action: 'cancel' }); return api; },
     setPlacing(id) {
-      st.placing = id; wrap.classList.toggle('placing', !!id);
+      const was = st.placing; st.placing = id; wrap.classList.toggle('placing', !!id);
+      // BUGFIX P40: while placing, the open tray is only hidden by CSS — so it popped back up over the island the moment the stall was
+      // placed. When placing ends the tray now closes for real (build.mode is already idle, so the ui:build:close → build.exit() is a no-op).
+      if (!id && was && st.open) { wrap.classList.remove('has-detail'); api.close(); }
       if (id) { const e = catalog[id] || {}; placingTxt.innerHTML = iconize(`${iconFn(id, e)} ${e.name || id} · ${costOf(id)} ✦`); }
       return api;
     },
