@@ -520,7 +520,15 @@ if (doBuild) {
       const st = build.stalls(); if (st.length !== 1 || !st[0].slots.counter || st[0].slots.queue.length !== 4) throw new Error('stalls() shape');
       const g = st[0].group, c = st[0].slots.counter; if (Math.abs(c.x - g.position.x) > 1e-6 || Math.abs(c.z - (g.position.z + 1.15)) > 1e-6) throw new Error(`counter world ${c.x},${c.z} vs stall ${g.position.x},${g.position.z}`);
       if (build.nearest(g.position.x + 0.4, g.position.z + 0.4) !== st[0].entry) throw new Error('nearest');
-      console.log(`  stalls() → 1 stall, world counter slot at z+1.15, 4 queue slots · nearest()/occupied()  OK`);
+      // P14/P19: a scenery sentinel on the cell next to the stall must not shadow the stall, and must be refused by demolish/upgrade
+      { const SC = { id: 'scenery', category: 'scenery', group: new THREE.Group(), cells: [], cx: 0, cz: 0, rot: 0, level: 0, cost: 0, scenery: true };
+        const e = st[0].entry, sx = e.cx + 3, sz = e.cz; if (build.occupied(sx, sz)) throw new Error('P14 probe: cell busy'); build.cells.set(`${sx},${sz}`, SC);
+        if (build.nearest(sx, sz, 2.5) !== e) throw new Error('P14: scenery shadows the stall'); if (build.nearest(sx, sz, 0.3) !== SC) throw new Error('P14: scenery not returned when nothing placed is in range');
+        const sp0 = eco.state.spark, n0 = build.placed.size, cells0 = build.cells.size;
+        if (build.demolish(SC) !== false || build.demolish({ x: sx, z: sz, scenery: true }) !== false) throw new Error('P19: demolished scenery'); if (build.upgrade(SC) !== false) throw new Error('P19: upgraded scenery');
+        if (SC.group.visible !== true || build.cells.get(`${sx},${sz}`) !== SC || build.placed.size !== n0 || eco.state.spark !== sp0 || build.cells.size !== cells0) throw new Error('P19: scenery mutated');
+        build.cells.delete(`${sx},${sz}`); }
+      console.log(`  stalls() → 1 stall, world counter slot at z+1.15, 4 queue slots · nearest()/occupied() · P14 nearest prefers placed over scenery · P19 demolish/upgrade refuse scenery  OK`);
     } catch (err) { bad++; console.log('  stalls FAIL →', err.message); }
     // 7. demolish: refund 50 % of (cost + upgrades), sequence removes group, cells free, stall count back to 0
     try {

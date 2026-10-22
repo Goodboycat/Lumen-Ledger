@@ -124,12 +124,20 @@ export class BuildSystem {
     }
     return out;
   }
-  /** entry whose footprint contains / is nearest to a point (x,z) within `radius` */
+  /** entry whose footprint contains / is nearest to a point (x,z) within `radius`.
+   *  BUGFIX P14: a pre-spawned scenery sentinel (`entry.scenery`, cost 0, not in `placed`) under the point no longer wins over a
+   *  real placed prop within `radius` — the plaza has ~100 scenery cells, so most slightly-off taps used to resolve to scenery and
+   *  the caller's `!e.scenery` filter silently aborted. Scenery is returned only when nothing placed is in range. */
   nearest(x, z, radius = 1.6) {
-    const hit = this.occupied(x, z); if (hit) return hit;
+    const hit = this.occupied(x, z); if (hit && !hit.scenery) return hit;
     let best = null, bd = radius;
-    for (const e of this.placed.values()) { const d = Math.hypot(e.group.position.x - x, e.group.position.z - z); if (d < bd) { bd = d; best = e; } }
-    return best;
+    for (const e of this.placed.values()) {
+      // distance to the footprint (0 inside), not just to the anchor, so wide props are picked from any of their cells
+      let d = Infinity; for (const c of e.cells) d = Math.min(d, Math.hypot(c.x - x, c.z - z));
+      d = Math.min(d, Math.hypot(e.group.position.x - x, e.group.position.z - z));
+      if (d < bd) { bd = d; best = e; }
+    }
+    return best || hit;
   }
   /** resolve "at": entry | group | {x,z} | Vector3 | "x,z" */
   _resolve(at) {
@@ -266,6 +274,7 @@ export class BuildSystem {
   demolish(at, opts = {}) {
     const entry = this._resolve(at);
     if (!entry) { this._deny('nothing to demolish', { at }); return false; }
+    if (entry.scenery || !this.placed.has(key(entry.cx, entry.cz))) { this._deny('not yours to demolish', { id: entry.id, scenery: !!entry.scenery }); return false; }   // BUGFIX P19
     if (this.busy.has(entry.group)) return false;
     const animate = opts.animate !== false;
     const refund = opts.refund === false ? 0 : Math.round(entry.cost * REFUND_RATIO + 1e-9);
@@ -305,6 +314,7 @@ export class BuildSystem {
   upgrade(at) {
     const entry = this._resolve(at);
     if (!entry) { this._deny('nothing to upgrade', { at }); return false; }
+    if (entry.scenery) { this._deny('not upgradable', { id: entry.id }); return false; }   // BUGFIX P19
     if (entry.category !== 'stall' || typeof entry.group.userData.setLevel !== 'function') { this._deny('not upgradable', { id: entry.id }); return false; }
     if (entry.level >= 3) { this._deny('max level', { id: entry.id, level: entry.level }); return false; }
     if (entry.group.userData.swapping) return false;
