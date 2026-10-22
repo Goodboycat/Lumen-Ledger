@@ -614,7 +614,7 @@ function installRunWires(lg) {
   if (lg.game.input) lg.game.input.onTap = (world, ev) => {
     if (build.mode === 'place') { if (ui?.isModal?.()) return; build.moveTo(world.x, world.z); if (ev?.pointerType === 'mouse') build.confirm(); return; }
     // BUGFIX P17: prefer the prop under the cursor in 3D (roof / sign / awning) — the ground-plane point sits ~1.9 u behind a 2.2 u tall stall
-    if (lg.demolishMode) { const e = build.pick(lg.game.input?._ray?.ray) || build.nearest(world.x, world.z, 1.2); if (e && !e.scenery) build.demolish(e); return; }
+    if (lg.demolishMode) { const e = build.pick(lg.game.input?._ray?.ray) || build.nearest(world.x, world.z, 1.2); if (e && !e.scenery) build.demolish(e); else if (e && e.scenery) bus.emit('ui:toast', { text: 'That is part of the island — only things YOU built can be sold', kind: 'info', icon: '🌿', id: 'scenery-sell', duration: 2200 }); return; }   // P23: explain instead of silent refusal
     if (lg.selectTap?.(world)) return;
     prevTap?.(world, ev);
   };
