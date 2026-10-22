@@ -38,7 +38,10 @@ export const DEFAULT_EVENTS = {
   'eco:upgrade':       { sfx: 'level_up',    cooldown: 0.3 },
   'eco:win':           { sfx: 'fanfare',     cooldown: 2, music: 'victory' },
   'eco:lose':          { sfx: 'lose_sting',  cooldown: 2, music: 'fog_lose' },
-  'story:line':        { sfx: 'dlg_blip',    cooldown: 0.12, vol: 0.6 },
+  'story:line':        { sfx: null },                                                              // voice blurb plays on ui:dialogue:say instead (when the box really starts the line)
+  // Character voice blurbs (short cartoon hums, Zelda-style): the dialogue box emits ui:dialogue:say when a line starts typing →
+  // voice_<speaker> (pip / owl / baron / glimmer / collector). Narrator / unknown speakers keep the neutral dlg_blip.
+  'ui:dialogue:say':   { sfx: 'dlg_blip',    cooldown: 0.05, pick: (p) => ({ sfx: VOICE_SFX[p?.speaker] || 'dlg_blip' }) },
   'story:toast':       { sfx: 'toast',       cooldown: 0.4, vol: 0.6 },
   'ui:choice':         { sfx: 'click',       cooldown: 0.1 },
   'ui:continue':       { sfx: 'click',       cooldown: 0.1 },
@@ -57,6 +60,7 @@ export const DEFAULT_EVENTS = {
   'cust:state':        { sfx: 'cust_happy',  cooldown: 0.25, vol: 0.5, pick: (p) => p?.state !== 'react' ? { sfx: null } : p?.reaction === 'happy' ? { sfx: 'cust_happy' } : { sfx: 'cust_grumble' } },
   'ui:touch':          { sfx: 'click',       cooldown: 0.08, vol: 0.4 },
 };
+export const VOICE_SFX = { pip: 'voice_pip', owl: 'voice_owl', tallyOwl: 'voice_owl', baron: 'voice_baron', glimmer: 'voice_glimmer', collector: 'voice_collector' };
 const ABILITY_SFX = { coinMagnetDash: 'magnet', bubbleShield: 'shield', growthStomp: 'stomp', ledgerFlash: 'flash', haggleShout: 'shout', fogSweep: 'sweep' };
 
 export function createAudio(opts = {}) {
@@ -64,7 +68,7 @@ export function createAudio(opts = {}) {
   const state = {
     unlocked: false, silent: !AC, ctx: null, manifest: null, buffers: new Map(), missing: new Set(),
     volumes: { sfx: +(opts.settings?.sfx ?? DEFAULT_VOLUMES.sfx), music: +(opts.settings?.music ?? DEFAULT_VOLUMES.music) },
-    played: {}, lastPlay: {}, currentMusic: null, musicNode: null, ducked: false, log: [],
+    played: {}, lastPlay: {}, currentMusic: null, musicNode: null, ducked: false, log: [], solo: {},
   };
   const offs = [];
   let sfxGain = null, musicGain = null, musicDuck = null;
@@ -88,6 +92,7 @@ export function createAudio(opts = {}) {
       if (!state.ctx) { try { state.ctx = window.lumenAudioCtx || new AC(); window.lumenAudioCtx = state.ctx; } catch { state.silent = true; return false; } }
       if (state.ctx.state === 'suspended') state.ctx.resume().catch(() => {});
       ensureGraph(); state.unlocked = true;
+      for (const id of Object.keys(state.manifest?.sfx || {})) if (state.manifest.sfx[id].preload) buffer('sfx', id);   // voice blurbs: decode now so the first line is not a synth blip
       if (state.pendingMusic) { const m = state.pendingMusic; state.pendingMusic = null; api.music(m); }
       return true;
     },
@@ -136,8 +141,9 @@ export function createAudio(opts = {}) {
     if (!state.ctx || !state.unlocked || state.volumes.sfx <= 0) return true;                     // inert (Node / before gesture / muted) but counted
     const vol = clamp01((o.vol ?? 1) * (d.vol ?? 1));
     const pv = d.pitchVar ?? 0; const pitch = (o.pitch ?? 1) * (pv ? 1 + (Math.random() * 2 - 1) * pv : 1);
+    if (d.solo) { const prev = state.solo[d.solo]; if (prev) { try { ramp(prev.g.gain, 0, 0.04); setTimeout(() => { try { prev.s.stop(); } catch {} }, 60); } catch {} state.solo[d.solo] = null; } }   // one voice at a time: a new line cuts the previous blurb
     const b = state.buffers.get(id);
-    if (b && !(b instanceof Promise)) { const s = state.ctx.createBufferSource(); s.buffer = b; s.playbackRate.value = pitch; const g = state.ctx.createGain(); g.gain.value = vol; s.connect(g); g.connect(sfxGain); s.start(); return true; }
+    if (b && !(b instanceof Promise)) { const s = state.ctx.createBufferSource(); s.buffer = b; s.playbackRate.value = pitch; const g = state.ctx.createGain(); g.gain.value = vol; s.connect(g); g.connect(sfxGain); s.start(); if (d.solo) { state.solo[d.solo] = { s, g }; s.onended = () => { if (state.solo[d.solo]?.s === s) state.solo[d.solo] = null; }; } return true; }
     if (d.file && !state.missing.has(id) && !b && fetchOK()) buffer('sfx', id);                   // kick off decode for next time; synth now
     if (d.synth) synthSfx(state.ctx, sfxGain, d.synth, vol, pitch);
     return true;

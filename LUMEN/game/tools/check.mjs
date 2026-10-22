@@ -1703,12 +1703,12 @@ if (doAudio) {
   // bus → SFX map, cooldowns, payload variants, ducking flags and destroy() are all testable without a browser.
   console.log('\nAUDIO (12):');
   try {
-    const { createAudio, DEFAULT_EVENTS, synthSfx, synthMusic } = await import(pathToFileURL(resolve('src/core/Audio.js')).href);
+    const { createAudio, DEFAULT_EVENTS, VOICE_SFX, synthSfx, synthMusic } = await import(pathToFileURL(resolve('src/core/Audio.js')).href);
     const { EventBus } = await import(pathToFileURL(resolve('src/core/EventBus.js')).href);
     const { readFileSync } = await import('node:fs'); const manifest = JSON.parse(readFileSync('audio/manifest.json', 'utf8'));
     const sfxIds = Object.keys(manifest.sfx || {}), musicIds = Object.keys(manifest.music || {});
     // (1) every id referenced by the event map (sfx / music / pick variants) exists in the manifest; every sfx has a synth fallback
-    const probe = [{}, { action: 'denied' }, { action: 'select' }, { accepted: true }, { accepted: false }, { state: 'react', reaction: 'happy' }, { state: 'react', reaction: 'sad' }];
+    const probe = [{}, { action: 'denied' }, { action: 'select' }, { accepted: true }, { accepted: false }, { state: 'react', reaction: 'happy' }, { state: 'react', reaction: 'sad' }, ...['pip', 'owl', 'tallyOwl', 'baron', 'glimmer', 'collector', 'narrator'].map((speaker) => ({ speaker }))];
     const abilities = ['coinMagnetDash', 'bubbleShield', 'growthStomp', 'ledgerFlash', 'haggleShout', 'fogSweep', 'unknown'];
     const refs = new Set();
     for (const [ev, r] of Object.entries(DEFAULT_EVENTS)) {
@@ -1724,7 +1724,7 @@ if (doAudio) {
     if (!audio.state.silent) throw new Error('expected silent (no AudioContext in Node)');
     await audio.load(manifest);
     if (audio.state.wired < 15) throw new Error('wired only ' + audio.state.wired + ' events');
-    const core = ['eco:sale', 'eco:spark', 'eco:denied', 'build:placed', 'eco:season', 'eco:loan', 'eco:scam', 'eco:scamResult', 'eco:upgrade', 'eco:win', 'eco:lose', 'story:line', 'ui:choice', 'ui:ledger:open', 'game:start'];
+    const core = ['eco:sale', 'eco:spark', 'eco:denied', 'build:placed', 'eco:season', 'eco:loan', 'eco:scam', 'eco:scamResult', 'eco:upgrade', 'eco:win', 'eco:lose', 'ui:dialogue:say', 'ui:choice', 'ui:ledger:open', 'game:start'];   // story:line is silent — the box's ui:dialogue:say carries the voice blurb
     let t = 0; audio._now = () => t;                                                           // cooldown clock under test control
     for (const ev of core) { t += 5; bus.emit(ev, {}); }
     const total = Object.values(audio.state.played).reduce((a, b) => a + b, 0);
@@ -1732,6 +1732,10 @@ if (doAudio) {
     if (!audio.state.played.coin || !audio.state.played.fanfare || !audio.state.played.lose_sting || !audio.state.played.scam_refuse) throw new Error('core ids not played: ' + JSON.stringify(audio.state.played));
     t += 5; bus.emit('eco:scamResult', { accepted: true }); if (!audio.state.played.scam_fell) throw new Error('scamResult accepted → scam_fell variant not picked');
     t += 5; bus.emit('sandbox:ability', { name: 'fogSweep' }); if (!audio.state.played.sweep) throw new Error('ability variant sweep not picked');
+    // voice blurbs: every dialogue speaker → its own voice_* id (narrator → neutral dlg_blip); a second line cuts the first (solo) — counted as a normal play
+    for (const [sp, id] of [['pip', 'voice_pip'], ['owl', 'voice_owl'], ['tallyOwl', 'voice_owl'], ['baron', 'voice_baron'], ['glimmer', 'voice_glimmer'], ['collector', 'voice_collector'], ['narrator', 'dlg_blip']]) { t += 5; const n0 = audio.state.played[id] || 0; bus.emit('ui:dialogue:say', { speaker: sp }); if ((audio.state.played[id] || 0) !== n0 + 1) throw new Error(`speaker ${sp} → ${id} not played`); }
+    t += 5; { const n0 = audio.state.played.voice_pip || 0, b0 = audio.state.played.dlg_blip || 0; bus.emit('story:line', { speaker: 'pip', text: 'x' }); if ((audio.state.played.voice_pip || 0) !== n0 || (audio.state.played.dlg_blip || 0) !== b0) throw new Error('story:line must stay silent (voice plays on ui:dialogue:say)'); }
+    for (const id of Object.values(VOICE_SFX)) if (!manifest.sfx[id]?.solo || !manifest.sfx[id]?.preload) throw new Error(`voice ${id} needs solo + preload in the manifest`);
     t += 5; bus.emit('cust:state', { state: 'walk' }); if (audio.state.played.cust_happy) throw new Error('cust:state walk should be silent');
     bus.emit('cust:state', { state: 'react', reaction: 'happy' }); if (audio.state.played.cust_happy !== 1) throw new Error('cust happy not played');
     // (3) cooldown: 50 eco:spark ticks inside 0.1 s → exactly one more play
@@ -1752,7 +1756,7 @@ if (doAudio) {
     if (sum() !== after) throw new Error('listeners survived destroy()');
     if (typeof synthSfx !== 'function' || typeof synthMusic !== 'function') throw new Error('synth exports missing');
     console.log(`  manifest: ${sfxIds.length} sfx (all with file + synth) · ${musicIds.length} music · event map ${Object.keys(DEFAULT_EVENTS).length} bus events → ${refs.size} sfx ids referenced${unused.length ? ` (unreferenced: ${unused.join(', ')})` : ''}`);
-    console.log(`  bus walk: 15 core events → 15 plays · variants scam_fell/sweep/cust_happy · cooldown 50 ticks/0.1 s → 1 play (${audio.state.throttled} throttled) · music lose→fog_lose, title · duck on/off · ui:settings → vol · unknown id logged once · destroy → 0 listeners  OK`);
+    console.log(`  bus walk: 15 core events → 15 plays · variants scam_fell/sweep/cust_happy · 5 voice blurbs by speaker (+narrator blip) · cooldown 50 ticks/0.1 s → 1 play (${audio.state.throttled} throttled) · music lose→fog_lose, title · duck on/off · ui:settings → vol · unknown id logged once · destroy → 0 listeners  OK`);
   } catch (err) { bad++; console.log('  audio FAIL →', err.message); }
 }
 if (doIcons) {

@@ -415,6 +415,71 @@
         "f": 1568,
         "dur": 1.2
       }
+    },
+    "voice_pip": {
+      "file": "sfx/voice_pip.ogg",
+      "vol": 0.9,
+      "pitchVar": 0.03,
+      "solo": "voice",
+      "preload": true,
+      "_src": "Pip.mp3",
+      "synth": {
+        "type": "blip",
+        "f": 880,
+        "dur": 0.12
+      }
+    },
+    "voice_owl": {
+      "file": "sfx/voice_owl.ogg",
+      "vol": 0.9,
+      "pitchVar": 0.03,
+      "solo": "voice",
+      "preload": true,
+      "_src": "Tally-Owl.mp3",
+      "synth": {
+        "type": "blip",
+        "f": 660,
+        "dur": 0.12
+      }
+    },
+    "voice_baron": {
+      "file": "sfx/voice_baron.ogg",
+      "vol": 0.9,
+      "pitchVar": 0.03,
+      "solo": "voice",
+      "preload": true,
+      "_src": "Baron Guilt.mp3",
+      "synth": {
+        "type": "blip",
+        "f": 330,
+        "dur": 0.12
+      }
+    },
+    "voice_glimmer": {
+      "file": "sfx/voice_glimmer.ogg",
+      "vol": 0.9,
+      "pitchVar": 0.03,
+      "solo": "voice",
+      "preload": true,
+      "_src": "Glimmer.mp3",
+      "synth": {
+        "type": "blip",
+        "f": 1040,
+        "dur": 0.12
+      }
+    },
+    "voice_collector": {
+      "file": "sfx/voice_collector.ogg",
+      "vol": 0.9,
+      "pitchVar": 0.03,
+      "solo": "voice",
+      "preload": true,
+      "_src": "Fog Collector.mp3",
+      "synth": {
+        "type": "blip",
+        "f": 440,
+        "dur": 0.12
+      }
     }
   },
   "music": {
@@ -605,5 +670,6 @@
       }
     }
   },
-  "events": {}
+  "events": {},
+  "_voices": "Character voice blurbs (cartoon hums, Zelda-style) — played by Audio.js on ui:dialogue:say when the dialogue box starts a line; speaker → voice_<speaker>, narrator → dlg_blip. solo:\"voice\" cuts the previous blurb; preload:true decodes them on unlock()."
 }

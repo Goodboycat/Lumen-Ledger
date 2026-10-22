@@ -11,6 +11,7 @@
 // Emits:           'ui:choice'   { index, text, line }            when the player picks a choice
 //                  'ui:advance'  { line }                          when the player taps past a line without choices
 //                  'ui:dialogue:open' / 'ui:dialogue:close' / 'ui:pause' {on:true|false} (only when opts.pauseGame)
+//                  'ui:dialogue:say' { speaker, line }  every time a line STARTS typing (Audio.js plays the speaker's voice blurb: voice_<speaker>)
 //
 // Speakers (P3 portraits = CSS blobs, see dialogue.css): pip (orange, sword scarf) · baron (purple top-hat blob) · owl (Tally-Owl, brown, big eyes)
 //   · glimmer (blue blob) · narrator (no portrait). Unknown speaker → generic blob with the first letter.
@@ -90,6 +91,7 @@ export function mountDialogue(root, opts = {}) {
       clearTimeout(st.hideT); st.line = line; st.full = String(line.text || ''); st.shown = 0; st.acc = 0; st.typing = true;
       text.textContent = ''; text.classList.remove('done'); box.classList.add('typing');
       setSpeaker(line); renderChoices(line);
+      bus.emit('ui:dialogue:say', { speaker: line.speaker || 'narrator', line });
       if (!st.open) { st.open = true; wrap.classList.remove('closing'); wrap.classList.add('open'); document.body && document.body.classList && document.body.classList.add('ll-dlg-open'); bus.emit('ui:dialogue:open', { line }); if (opts.pauseGame && !st.pauseEmitted) { st.pauseEmitted = true; bus.emit('ui:pause', { on: true, by: 'dialogue' }); } }
       return api;
     },
