@@ -248,7 +248,7 @@
         { "speaker": "pip", "text": "If my whole market were fish stalls I'd be in trouble right now." },
         { "speaker": "owl", "text": "That is diversification in a single sentence: different stalls, different jars and different Glimmers, so that when one of them dips, the others carry you through." },
         { "speaker": "baron", "text": "I have a hot tip. Put EVERYTHING in Quick-Flip Spark Notes. I personally know the fellow who prints them.", "mood": "happy" },
-        { "speaker": "owl", "text": "'I personally know' is not a plan, Baron. It is a tell, and a rather familiar one." }
+        { "speaker": "owl", "text": "'I personally know' is not a plan, Baron, it is a tell, and I have heard that particular one many times before." }
       ],
       "mid": [
         { "speaker": "owl", "text": "Three different kinds of stall will always beat three of the same. The West Meadow and the East Shore are not just extra land, they are different baskets for your eggs." },
@@ -314,7 +314,7 @@
       ],
       "ledger": {
         "default": [
-          { "speaker": "owl", "text": "Ten ledgers, ten lessons, and one plan with a deadline that you actually kept. Look up, Pip." },
+          { "speaker": "owl", "text": "Ten ledgers, ten lessons, and one plan with a deadline that you actually kept, so I think it is time you looked up, Pip." },
           { "speaker": "pip", "text": "The Lighthouse…", "mood": "happy" }
         ],
         "low": [
@@ -338,7 +338,7 @@
       ],
       "accept": [
         { "speaker": "collector", "text": "Signed! Zero interest for exactly one season, then 35 % per season. Compounding. Toodle-oo!", "mood": "happy" },
-        { "speaker": "owl", "text": "It was the asterisk, Pip. It is always the asterisk." }
+        { "speaker": "owl", "text": "It was the asterisk, Pip, and in my experience it is always the asterisk that costs you." }
       ],
       "refuse": [
         { "speaker": "collector", "text": "The asterisk? Oh, it's tiny. Barely a footnote. 35 % after the first season. Compounding. Why do you ask?" },
@@ -422,7 +422,7 @@
       ],
       "refuse": [
         { "speaker": "baron", "text": "A STRANGER? I am a Baron!", "mood": "angry" },
-        { "speaker": "owl", "text": "Spread your Spark rather than flipping it. That was well said." }
+        { "speaker": "owl", "text": "Spreading your Spark rather than flipping it is exactly the right instinct, and that was very well said." }
       ],
       "tell": "\"I personally know\" is not a plan. Insider tips from strangers are the oldest Too-Good Deal."
     }
@@ -436,9 +436,9 @@
     "sparkBoom":         [ { "speaker": "owl", "text": "A Spark Boom has sent Invest jumping upwards. Enjoy it, but remember that it wobbles in both directions." } ],
     "leakyRoof":         [ { "speaker": "pip", "text": "The roof! Water on the fruit!", "mood": "sad" }, { "speaker": "owl", "text": "That is a need, not a want, and Protect will cover it." } ],
     "touristBoat":       [ { "speaker": "glimmer", "text": "Tourists! We have no idea what anything costs!", "mood": "happy" } ],
-    "baronTax":          [ { "speaker": "baron", "text": "A small Fog Levy. For the upkeep of the Fog. You understand.", "mood": "happy" }, { "speaker": "owl", "text": "That is bad interest wearing a hat." } ],
+    "baronTax":          [ { "speaker": "baron", "text": "A small Fog Levy. For the upkeep of the Fog. You understand.", "mood": "happy" }, { "speaker": "owl", "text": "That, Pip, is simply bad interest wearing a hat and hoping nobody notices." } ],
     "helperDay":         [ { "speaker": "owl", "text": "It is Helper Appreciation Day. Upkeep is a need, and so is saying thank you to the people who earn it." } ],
-    "lighthouseFlicker": [ { "speaker": "pip", "text": "Did the Lighthouse just flicker?", "mood": "happy" }, { "speaker": "owl", "text": "It remembers you. Keep going." } ]
+    "lighthouseFlicker": [ { "speaker": "pip", "text": "Did the Lighthouse just flicker?", "mood": "happy" }, { "speaker": "owl", "text": "The Lighthouse remembers you, and every honest ledger brings it a little closer to lighting, so keep going." } ]
   },
 
   "ending": {
@@ -450,7 +450,7 @@
       { "speaker": "baron", "text": "…Five percent. Hm. HM.", "mood": "sad" },
       { "speaker": "collector", "text": "Does this mean we can stop collecting? We'd quite like a stall. A tea stall." },
       { "speaker": "pip", "text": "Channel it, Tally-Owl. Everything we saved — into the Lighthouse!", "mood": "shout" },
-      { "speaker": "owl", "text": "Ten seasons, ten lessons, and one plan with a deadline. Go and light it up, Channeler." },
+      { "speaker": "owl", "text": "Ten seasons, ten lessons, and one plan with a deadline that held together to the end. Go and light it up, Channeler." },
       { "speaker": "narrator", "text": "The Lighthouse of Glowmarket is lit." }
     ],
     "endlessUnlock": [
