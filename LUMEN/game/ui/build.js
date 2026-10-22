@@ -171,7 +171,9 @@ export function mountBuildMenu(root, opts = {}) {
   const api = {
     el: wrap, state: st, cards,
     get isOpen() { return st.open; },
-    open() { if (st.open) return api; st.open = true; wrap.classList.remove('closing'); wrap.classList.add('open'); renderGrid(); bus.emit('ui:build:open', {}); return api; },
+    open() { if (st.open) return api; st.open = true; wrap.classList.remove('closing'); wrap.classList.add('open'); renderGrid(); if (st.demolish) footTxt.textContent = 'demolish: tap a building (50 % refund)'; bus.emit('ui:build:open', {}); return api; },
+    // BUGFIX P13: close() keeps st.demolish (the player closes the tray to tap a stall on the island) — the 💥 button stays `.on` and
+    // the integrator keeps lg.demolishMode; Esc / a card pick / 💥 again / cancel() end it in both layers.
     close() {
       if (!st.open) return api; st.open = false; wrap.classList.remove('open'); wrap.classList.add('closing');
       setTimeout(() => wrap.classList.remove('closing'), 220); st.selected = null; refreshCards(); bus.emit('ui:build:close', {}); return api;
@@ -243,7 +245,7 @@ export function mountBuildMenu(root, opts = {}) {
     const k = e.key.toLowerCase();
     if (k === 'b' && !e.repeat && !st.placing && !opts.noHotkey) api.toggle();
     if (k === 'r' && !e.repeat && st.placing) bus.emit('ui:build', { action: 'rotate' });   // BUGFIX B21: the advertised R rotate
-    if (e.key === 'Escape') { if (st.placing) api.cancel(); else if (st.open) api.close(); }
+    if (e.key === 'Escape') { if (st.placing || st.demolish) api.cancel(); else if (st.open) api.close(); }   // P13: Esc leaves demolish mode even with the tray closed
   };
   window.addEventListener('keydown', onKey);
 

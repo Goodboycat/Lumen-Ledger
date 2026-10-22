@@ -1303,6 +1303,13 @@ if (doGame) {
       const s0 = eco.state.season; eco.state.season = Math.max(s0, 3); ui.build.setCategory('crew'); eco.state.spark = 999; ui.build.setCategory('crew'); ui.build.cards.get('zone_west').click(); run(1.5);
       if (!eco.owns('zone_west') || !lg.sb.island.zones[1].unlocked) throw new Error('zone via tray'); eco.state.season = s0;
       ui.build.setCategory('stall'); ui.build.close(); }
+    // P13 / P16: demolish mode survives closing the tray (tray + integrator agree), a card pick ends it in BOTH layers, Esc ends it without opening pause
+    { const dBtn = ui.build.el.querySelector('.ll-build-foot .ll-btn.warn'); ui.build.open(); dBtn.click();
+      if (!lg.demolishMode || !ui.build.state.demolish || !dBtn.classList.contains('on')) throw new Error('P13: demolish arm');
+      ui.build.close(); if (!lg.demolishMode || !ui.build.state.demolish || !dBtn.classList.contains('on')) throw new Error('P13: closing the tray dropped demolish mode');
+      ui.build.open(); ui.build.select('stall_fruit'); if (lg.demolishMode || ui.build.state.demolish || dBtn.classList.contains('on')) throw new Error('P16: pick left demolish armed');
+      dBtn.click(); ui.build.close(); pressKey('Escape'); if (lg.demolishMode || ui.build.state.demolish || ui.pause.isOpen) throw new Error(`P13: Esc should end demolish (lg ${lg.demolishMode} ui ${ui.build.state.demolish} pause ${ui.pause.isOpen})`);
+      await new Promise((r) => setTimeout(r, 2)); }   // let the shared-Esc "owned by tray" flag (setTimeout 0) clear
     pressKey('Escape'); if (!ui.pause.isOpen || !game.paused || !ui.isModal()) throw new Error('Esc → pause menu');
     if (lg.ability('coinMagnetDash') !== null) throw new Error('ability while paused should be refused');
     pressKey('Escape'); if (ui.pause.isOpen || game.paused) throw new Error('Esc → resume');

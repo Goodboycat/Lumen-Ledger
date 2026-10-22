@@ -79,9 +79,10 @@ export function installDomShim() {
   const winListeners = {};
   globalThis.document = document;
   globalThis.window = globalThis; globalThis.self = globalThis;
-  globalThis.addEventListener = (t, fn) => { (winListeners[t] ||= []).push(fn); };
+  // capture-phase listeners (addEventListener(t, fn, true) / {capture:true}) run before bubble listeners, like a real window
+  globalThis.addEventListener = (t, fn, o) => { const cap = o === true || (o && o.capture); (cap ? winListeners[t] ||= [] : winListeners[t] ||= [])[cap ? 'unshift' : 'push'](fn); if (cap) fn._cap = true; };
   globalThis.removeEventListener = (t, fn) => { winListeners[t] = (winListeners[t] || []).filter((f) => f !== fn); };
-  globalThis.dispatchEvent = (ev) => { (winListeners[ev.type] || []).slice().forEach((f) => f(ev)); return true; };
+  globalThis.dispatchEvent = (ev) => { const L = (winListeners[ev.type] || []).slice(); L.filter((f) => f._cap).forEach((f) => f(ev)); L.filter((f) => !f._cap).forEach((f) => f(ev)); return true; };
   globalThis.innerWidth ??= 1280; globalThis.innerHeight ??= 720; globalThis.devicePixelRatio ??= 1;
   globalThis.navigator ??= { userAgent: 'node', maxTouchPoints: 0 };
   globalThis.localStorage ??= (() => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k), clear: () => m.clear(), key: (i) => [...m.keys()][i] ?? null, get length() { return m.size; } }; })();

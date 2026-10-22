@@ -43,7 +43,7 @@ export function mountUI(root, opts = {}) {
   // listener marks the keypress as "owned by the tray" when the tray is open (or placing) so the pause menu skips that one press.
   let escOwned = false;
   if (typeof window !== 'undefined' && window.addEventListener) {
-    const onEscCapture = (e) => { if (e.key === 'Escape' && (ui.build?.isOpen || ui.build?.state?.placing)) { escOwned = true; setTimeout(() => { escOwned = false; }, 0); } };
+    const onEscCapture = (e) => { if (e.key === 'Escape' && (ui.build?.isOpen || ui.build?.state?.placing || ui.build?.state?.demolish)) { escOwned = true; setTimeout(() => { escOwned = false; }, 0); } };
     window.addEventListener('keydown', onEscCapture, true); ui._offEsc = () => window.removeEventListener('keydown', onEscCapture, true);
   }
   add('pause', mountPause(root, { bus, onOutline: opts.onOutline, canOpen: () => !escOwned && !(ui.title?.isOpen) && !(ui.ledger?.isOpen) && !(ui.tutorial?.isOpen), storageKey: opts.storageKey }));

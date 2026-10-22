@@ -502,6 +502,7 @@ function installRunWires(lg) {
     const a = p?.action;
     if (a === 'select') { lg.demolishMode = false; build.enter(p.id); }
     else if (a === 'cancel') { lg.demolishMode = false; build.exit(); }
+    else if (a === 'pick') { lg.demolishMode = false; }   // BUGFIX P16: picking a card leaves demolish mode in BOTH layers (tray already cleared st.demolish)
     else if (a === 'rotate') { if (build.mode === 'place') build.rotate(); }
     else if (a === 'confirm') { if (build.mode === 'place') build.confirm(); }
     else if (a === 'demolish') { build.exit(); lg.demolishMode = true; }
@@ -510,7 +511,11 @@ function installRunWires(lg) {
       // no need to walk to it. Without an id (old ⬆ foot button / U key) it is still "the stall next to Pip".
       let e = null;
       if (p.id) { const hp = hero.root.position; e = [...build.placed.values()].filter((x) => x.id === p.id && x.level < 3).sort((x, y) => (x.level - y.level) || (x.group.position.distanceToSquared(hp) - y.group.position.distanceToSquared(hp)))[0] || null; }
-      else e = build.nearest(hero.root.position.x, hero.root.position.z, 2.5);
+      else {
+        e = build.nearest(hero.root.position.x, hero.root.position.z, 2.5);
+        // BUGFIX P15: foot ⬆ / U key with nobody next to Pip → fall back to the lowest-level upgradable stall anywhere (nearest on ties)
+        if (!e || e.scenery) { const hp = hero.root.position; e = [...build.placed.values()].filter((x) => x.category === 'stall' && x.level < 3).sort((x, y) => (x.level - y.level) || (x.group.position.distanceToSquared(hp) - y.group.position.distanceToSquared(hp)))[0] || null; }
+      }
       if (e && !e.scenery) build.upgrade(e); else bus.emit('build:denied', { id: p.id, why: p.id ? 'no stall of that type to upgrade' : 'stand next to a stall to upgrade it' });
     }
     else if (a === 'buy') lg.buyOffer(p.id);   // BUGFIX B24: Crew & Land tab (helpers + zones) — was debug H/Z only
@@ -539,7 +544,9 @@ function installRunWires(lg) {
   });
   if (ui?.build) { ui.build.offers = lg.offers; ui.build.priceOf = (id) => ({ price: sb.cust?.price?.(id) ?? 0, fair: sb.cust?.fair?.(id) ?? 0 }); }
   offs.push(() => { if (ui?.build) { ui.build.offers = null; ui.build.priceOf = null; } });
-  on('ui:build:close', () => { lg.demolishMode = false; if (build.mode === 'place') build.exit(); });   // BUGFIX B13: closing the tray never leaves a live ghost
+  // BUGFIX B13: closing the tray never leaves a live ghost. BUGFIX P13: demolish mode SURVIVES closing the tray (the player closes it to see the
+  // island and tap a stall) — the tray's own close() keeps st.demolish, the HUD toast says how to leave it, and Esc / re-open ✕ / a pick ends it.
+  on('ui:build:close', () => { if (build.mode === 'place') build.exit(); if (lg.demolishMode) bus.emit('ui:toast', { text: 'Demolish mode: tap a building to sell it (50 % refund) · Esc to stop', kind: 'warn', icon: '💥', id: 'demolish-mode' }); });
   // BUGFIX B13: a placed STALL ends placement in both layers (no accidental second purchase on the next click); cheap decor/nature stay
   // armed for quick fences/paths and Esc / ✕ cancel them. build.exit() emits build:exit → the tray leaves placing.
   on('build:placed', (p) => { if (!p?.silent && build.mode === 'place' && String(p?.id).startsWith('stall_')) build.exit(); });
