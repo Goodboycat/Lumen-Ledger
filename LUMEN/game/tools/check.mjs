@@ -535,7 +535,8 @@ if (doBuild) {
         if (!gp || Math.abs(gp.z - e.group.position.z) < 1.2) throw new Error('P17 probe: ground point should sit behind the stall, got ' + (gp && gp.z.toFixed(2)));
         if (build.pick(ray) !== e) throw new Error('P17: roof ray did not pick the stall');
         const miss = new THREE.Ray(new THREE.Vector3(e.group.position.x + 40, 30, e.group.position.z + 30), dir); if (build.pick(miss) !== null) throw new Error('P17: ray in the sea picked something'); }
-      console.log(`  stalls() → 1 stall, world counter slot at z+1.15, 4 queue slots · nearest()/occupied() · P14 nearest prefers placed over scenery · P19 demolish/upgrade refuse scenery · P17 pick(ray) through the roof  OK`);
+      if (build.entry('stall_bakery') !== build.entry('stall_bread') || !build.entry('stall_bread')) throw new Error('P10: stall_bakery alias');   // P10
+      console.log(`  stalls() → 1 stall, world counter slot at z+1.15, 4 queue slots · nearest()/occupied() · P10 stall_bakery alias · P14 nearest prefers placed over scenery · P19 demolish/upgrade refuse scenery · P17 pick(ray) through the roof  OK`);
     } catch (err) { bad++; console.log('  stalls FAIL →', err.message); }
     // 7. demolish: refund 50 % of (cost + upgrades), sequence removes group, cells free, stall count back to 0
     try {
@@ -940,14 +941,16 @@ if (doUI) {
     const r1 = rebalance({ spend: 40, save: 30, invest: 20, protect: 10 }, 'save', 60); if (r1.save !== 60 || sumPct(r1) !== 100 || r1.spend < r1.invest) throw new Error('proportional ' + JSON.stringify(r1));
     const r2 = rebalance({ spend: 40, save: 30, invest: 20, protect: 10 }, 'spend', 100); if (r2.spend !== 100 || r2.save !== 0) throw new Error('max ' + JSON.stringify(r2));
     const r3 = rebalance({ spend: 40, save: 30, invest: 20, protect: 10 }, 'save', 90, { protect: true }); if (r3.protect !== 10 || r3.save !== 90 || r3.spend !== 0 || sumPct(r3) !== 100) throw new Error('locked ' + JSON.stringify(r3));
-    const jars = mountJars(root, { bus, pct: { spend: 40, save: 30, invest: 20, protect: 10 } });
+    const jars = mountJars(root, { bus, pct: { spend: 40, save: 30, invest: 20, protect: 10 }, spark: 120 });   // P09: APPLY needs a non-empty pouch
     const inputs = jars.el.querySelectorAll('input');
     if (inputs.length !== 4 || jars.el.querySelector('.ll-jars-total').textContent !== '100 %') throw new Error('mount');
     dragRange(inputs[1], 70); // save → 70
     if (jars.pct.save !== 70 || sumPct(jars.pct) !== 100 || !ev['ui:jar'] || ev['ui:jar'][0].changed !== 'save') throw new Error('drag ' + JSON.stringify(jars.pct));
     if (jars.el.querySelector('.ll-jars-total').textContent !== '100 %') throw new Error('total text');
     const applyBtn = jars.el.querySelector('.ll-jars-foot').querySelectorAll('button')[1]; if (applyBtn.disabled) throw new Error('apply should be enabled after a drag');
-    applyBtn.click(); if (!ev['ui:jar:apply'] || ev['ui:jar:apply'][0].pct.save !== 70 || !applyBtn.disabled) throw new Error('apply');
+    applyBtn.click(); if (!ev['ui:jar:apply'] || ev['ui:jar:apply'][0].pct.save !== 70 || jars.state.dirty) throw new Error('apply');
+    bus.emit('eco:spark', { spark: 0 }); if (!applyBtn.disabled) throw new Error('P09: APPLY stays enabled after the pouch emptied');   // the integrator's allocate empties the pouch → eco:spark 0
+    jars.setPreset('saver'); if (!applyBtn.disabled) throw new Error('P09: APPLY enabled with an empty pouch'); jars.setDebt(null, 50); if (applyBtn.disabled) throw new Error('P09: APPLY should re-arm once Spark arrives');
     bus.emit('eco:jar', { jars: { spend: 10, save: 150, invest: 20, protect: 5 } }); if (!/150/.test(jars.el.querySelector('.ll-jar.save .ll-jar-bal').textContent)) throw new Error('balances');
     jars.lock('invest', true); const before = jars.pct.invest; jars.setPct({ invest: 99 }); if (jars.pct.invest !== before) throw new Error('lock ignored');
     jars.setPreset('saver'); if (jars.pct.save !== 50) throw new Error('preset');

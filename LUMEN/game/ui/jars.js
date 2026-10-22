@@ -128,7 +128,10 @@ export function mountJars(root, opts = {}) {
     const s = sumPct(st.pct); total.textContent = s + ' %'; total.classList.toggle('bad', s !== 100);
     // BUGFIX P01: APPLY was disabled until a slider moved, so keeping the shown split could never fill the jars. Now: enabled whenever
     // the pouch has Spark and the split sends something to Save/Invest/Protect (or the sliders changed).
-    applyBtn.disabled = !(st.dirty || (st.spark > 0 && (st.pct.save + st.pct.invest + st.pct.protect) > 0));
+    // BUGFIX P09: with an EMPTY pouch APPLY would move 0 Spark (chime, no effect) → disabled, hint says why; a dirty split still arms it once Spark arrives.
+    const toJars = (st.pct.save + st.pct.invest + st.pct.protect) > 0;
+    applyBtn.disabled = !(st.spark > 0 && (st.dirty || toJars));
+    applyBtn.title = st.spark > 0 ? 'move the pouch into the jars by this split' : 'your pouch is empty — sell Glimmers first';
     debtVal.innerHTML = iconize(Math.round(st.debt) + ' ✦');
     debtRow.classList.toggle('clear', st.debt <= 0);
     repayBtn.disabled = !(st.debt > 0 && st.spark > 0);

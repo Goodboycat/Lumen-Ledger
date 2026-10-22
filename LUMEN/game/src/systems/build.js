@@ -24,6 +24,8 @@
 // UPGRADE: delegates to the stall's own userData.setLevel(lvl, { animate:true, game, vfx }) (1A "stallLevelUp").
 
 import * as THREE from '../../vendor/three.module.js';
+/** P10: friendly ids → catalog ids (the Warm Loaf Bakery card is `stall_bread`); saves keep the catalog id. */
+export const PROP_ALIASES = { stall_bakery: 'stall_bread', stall_loaf: 'stall_bread' };
 import { Sequence } from '../anim/Sequencer.js';
 import { Easing } from '../anim/Easing.js';
 import { setSquash } from '../anim/SquashStretch.js';
@@ -68,7 +70,7 @@ export class BuildSystem {
   }
 
   // --------------------------------------------------------------- queries
-  entry(id) { return this.catalog[id] || null; }
+  entry(id) { return this.catalog[id] || this.catalog[PROP_ALIASES[id]] || null; }
   /** footprint [w,d] for id at rotation rot */
   footprint(id, rot = this.rot) {
     const e = this.entry(id); const fp = (e && e.footprint) || [1, 1];
@@ -161,6 +163,7 @@ export class BuildSystem {
   // --------------------------------------------------------------- ghost / mode
   enter(propId) {
     if (!this.entry(propId)) { this._deny('unknown prop ' + propId, { id: propId }); return false; }
+    if (!this.catalog[propId] && PROP_ALIASES[propId]) propId = PROP_ALIASES[propId];   // P10: normalise to the catalog id (placed/save use it)
     this.exit(true);
     this.mode = 'place'; this.propId = propId;
     this._makeGhost();

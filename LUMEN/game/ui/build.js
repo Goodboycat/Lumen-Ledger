@@ -85,6 +85,7 @@ export function mountBuildMenu(root, opts = {}) {
   const affordable = (cost) => (cost || 0) <= st.spark;
   // BUGFIX B09: one authoritative price — the integrator sets api.costOf = (id) => BuildSystem.cost(id) (economy balance for stalls);
   // the catalogue cost is only a fallback for standalone demos. Cards, Deploy, placing banner and affordability all read this.
+  const ALIAS = { stall_bakery: 'stall_bread', stall_loaf: 'stall_bread' };   // P10: friendly ids → card ids (mirrors PROP_ALIASES in systems/build.js)
   const costOf = (id) => { const e = catalog[id] || {}; if (typeof api.costOf === 'function') { const c = api.costOf(id); if (Number.isFinite(c)) return c; } return e.cost || 0; };
   // BUGFIX B02/B06: badges come from the LIVE placed collection when the integrator provides placedInfo (starter + restored stalls count,
   // nothing survives a new run); the event-fed counter is only the standalone fallback.
@@ -180,6 +181,7 @@ export function mountBuildMenu(root, opts = {}) {
     },
     toggle() { return st.open ? api.close() : api.open(); },
     select(id) {
+      if (!catalog[id] && ALIAS[id]) id = ALIAS[id];   // P10
       const e = catalog[id]; if (!e) return api;
       const card = cards.get(id);
       if (st.locked.has(id)) { if (card) retrigger(card, 'denied'); footTxt.textContent = 'locked — finish the lesson first'; return api; }
@@ -191,6 +193,7 @@ export function mountBuildMenu(root, opts = {}) {
     },
     /** Deploy = enter place mode for `id` (the old one-tap behaviour). Emits ui:build {action:'select'} → integrator calls build.enter(id). */
     deploy(id = st.selected) {
+      if (!catalog[id] && ALIAS[id]) id = ALIAS[id];   // P10
       const e = catalog[id]; if (!e) return api;
       const card = cards.get(id);
       if (st.locked.has(id)) { if (card) retrigger(card, 'denied'); footTxt.textContent = 'locked — finish the lesson first'; return api; }
