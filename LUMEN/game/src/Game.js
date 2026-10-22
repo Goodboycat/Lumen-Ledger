@@ -684,7 +684,8 @@ function applySnapshot(lg, sb, snap) {
   if (lg.stats.zonesRestored) sb.cust?.reroute?.();
   if (Array.isArray(snap.build) && snap.build.length) { build.load(snap.build); sb.syncStalls?.(); sb.cust?.reroute?.(); }   // BUGFIX: syncStalls is authoritative (skips decor/nature, adds L2/L3 upkeep)
   for (const id of snap.helpers || []) { const type = String(id).replace(/^helper_/, ''); if (HELPER_TYPES.includes(type) && !sb.helpers.some((h) => h.type === type)) hireHelper(sb, type, { free: true }); }
-  if (snap.hero && sb.hero?.root) { sb.hero.root.position.set(snap.hero.x, 0, snap.hero.z); lg.game.camera?.snapTo?.(sb.hero.root.position); }
+  // BUGFIX P18: a restored position on water (old save, zone that is no longer unlocked) is pulled back to the nearest land cell (or the plaza)
+  if (snap.hero && sb.hero?.root) { sb.hero.root.position.set(snap.hero.x, 0, snap.hero.z); if (!sb.island.isLand(snap.hero.x, snap.hero.z) && !sb.hero.recoverToLand?.()) sb.hero.root.position.set(0, 0, 1); lg.game.camera?.snapTo?.(sb.hero.root.position); }
   if (snap.jars) { lg.jarPct = { ...snap.jars }; lg.ui?.jars?.setPct?.(snap.jars); }
   if (snap.cust && sb.cust?.load) sb.cust.load(snap.cust);                               // BUGFIX B16: per-stall prices (+ sale totals) survive CONTINUE
   lg.ui?.hud?.sync?.(eco.state); lg.ui?.jars?.setBalances?.(eco.state.jars); lg.ui?.jars?.setDebt?.(eco.state.debt, eco.state.spark); lg.ui?.build?.setSpark?.(eco.state.spark);

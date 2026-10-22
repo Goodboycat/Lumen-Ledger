@@ -22,7 +22,7 @@ import { Easing, lerp } from './Easing.js';
 import { G, mesh } from '../assets/geo.js';
 import { PALETTE as P, toonMat, flatMat } from '../core/Toon.js';
 import { addOutline } from '../core/Outline.js';
-import { HERO_MOVES, registerMoves, attachMoves, REST, POSE, snapPose, lerpPose, facingDir } from './heroAnims.js';
+import { HERO_MOVES, registerMoves, attachMoves, REST, POSE, snapPose, lerpPose, facingDir, lungeReach } from './heroAnims.js';
 
 const V = () => new THREE.Vector3();
 const _a = V(), _b = V(), _c = V(), _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = V(), _e = new THREE.Euler();
@@ -315,7 +315,7 @@ function buildHaggleShout(M) {
   const seq = new Sequence('haggleShout');
   tw(seq, 'inhale', 200, Easing.outCubic, HS_INHALE, { onEnter: (M) => {
     const hero = M.hero; ensureAbilityProps(hero); const t0 = M.targets && M.targets.length ? M.targets[0] : M.target; faceTo(hero, targetPos(t0));
-    hero.setTool('megaphone'); M.start.copy(hero.root.position); facingDir(hero, M.dir0); M.fired = 0;
+    hero.setTool('megaphone'); M.start.copy(hero.root.position); facingDir(hero, M.dir0); M.fired = 0; M.reach = lungeReach(hero, M.dir0, 0.2);   // BUGFIX P11
     const mp = hero.props.megaphone; mp.scale.setScalar(0.001);
   }, fn: (e, M) => { M.hero.props.megaphone.scale.setScalar(Math.max(0.001, e)); } });
   tw(seq, 'shout', 420, Easing.outCubic, HS_SHOUT, { onEnter: (M) => {
@@ -323,7 +323,7 @@ function buildHaggleShout(M) {
     _b.copy(hero.root.position).addScaledVector(M.dir0, 0.6).setY(1.2); pop(M, _b, M.text || '−20%!', { color: '#EF5350', dur: 0.9, size: 1.2 }); shake(M, 0.1); hero.spring.kick(-0.6);
     hook(M, 'coinBurst', 'burst', _b, 3);
   }, fn: (e, M, t) => {
-    const hero = M.hero; hero.root.position.copy(M.start).addScaledVector(M.dir0, 0.2 * Math.min(1, e * 1.5));
+    const hero = M.hero; hero.root.position.copy(M.start).addScaledVector(M.dir0, Math.min(M.reach ?? 0.2, 0.2 * Math.min(1, e * 1.5)));
     const rg = hero.props.rings; rg.position.copy(hero.root.position).setY(1.05); rg.rotation.set(0, hero.facing, 0);
     for (let i = 0; i < 3; i++) {
       const u = (t - SHOUT_RINGS[i]) / 0.5; const r = rg.children[i];
@@ -357,11 +357,11 @@ function setArc(hero, dist, scale, opacity) {
 function buildFogSweep(M) {
   const seq = new Sequence('fogSweep');
   tw(seq, 'windup', 220, Easing.outCubic, FS_WIND, { onEnter: (M) => {
-    const hero = M.hero; ensureAbilityProps(hero); hero.setTool('none'); faceTo(hero, targetPos(M.target)); M.start.copy(hero.root.position); facingDir(hero, M.dir0);
+    const hero = M.hero; ensureAbilityProps(hero); hero.setTool('none'); faceTo(hero, targetPos(M.target)); M.start.copy(hero.root.position); facingDir(hero, M.dir0); M.reach = lungeReach(hero, M.dir0, 0.3);   // BUGFIX P11
     const w = world(hero); if (hero.props.arc.parent !== w) { if (hero.props.arc.parent) hero.props.arc.parent.remove(hero.props.arc); w.add(hero.props.arc); }
     dust(M, hero.root.position, 3, { size: 0.14, speed: 0.8, dur: 0.35 });
   } });
-  tw(seq, 'sweep', 140, Easing.inQuart, FS_SWEEP, { fn: (e, M) => { M.hero.root.position.copy(M.start).addScaledVector(M.dir0, 0.3 * e); },
+  tw(seq, 'sweep', 140, Easing.inQuart, FS_SWEEP, { fn: (e, M) => { M.hero.root.position.copy(M.start).addScaledVector(M.dir0, Math.min(M.reach ?? 0.3, 0.3 * e)); },
     onExit: (M) => { M.hero.props.arc.visible = true; setArc(M.hero, 1.0, 1, 0.85); } });
   tw(seq, 'push', 380, Easing.outCubic, FS_PUSH, { onEnter: (M, ph) => {
     const hero = M.hero; ph.state.lastPuff = -1; hitstop(M, 30); shake(M, 0.12); hero.spring.kick(-0.7);

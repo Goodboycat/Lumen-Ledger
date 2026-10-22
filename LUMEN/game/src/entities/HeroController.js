@@ -95,7 +95,10 @@ export class HeroController {
     const p = this.p, hero = this;
     const seq = new Sequence('swordAttack');
     // Shared per-attack scratch
-    const S = { dir: new THREE.Vector3(0, 0, 1), start: new THREE.Vector3(), target: null, hitDone: false };
+    // BUGFIX P11: S.reach = how far the lunge may travel along S.dir and still be on land (0.46 u nominal). Both the strike and the
+    // follow-through used to write hero.root.position without consulting deps.isLand, so a slash facing the shore pushed Pip past the
+    // 0.5 u tile boundary into water, where every single-frame walk step was rejected → permanent soft-lock.
+    const S = { dir: new THREE.Vector3(0, 0, 1), start: new THREE.Vector3(), target: null, hitDone: false, reach: 0.46 };
     seq.ctx = S;
 
     // --- Anticipation 200 ms: squash (scaleY .85, scaleXZ 1.1), sword pulled back, dust puff. Ease-out.
@@ -112,6 +115,7 @@ export class HeroController {
       S.target = hero._pickTarget(S.dir);
       hero.root.rotation.y = Math.atan2(S.dir.x, S.dir.z); hero.facing = hero.root.rotation.y;
       S.start.copy(hero.root.position);
+      S.reach = hero.landReach(S.dir, 0.46);
       hero.deps.vfx.dust.burst(hero.root.position, 4, { size: 0.18, speed: 1.2, dur: 0.35 });
     }, cancellable: false });
 
@@ -131,7 +135,7 @@ export class HeroController {
       const along = lerp(1.08, 1.2, Math.min(1, e)), across = lerp(0.88, 0.9, Math.min(1, e));
       p.body.scale.set(across, across, along);
       // lunge 0.4 units toward target
-      hero.root.position.copy(S.start).addScaledVector(S.dir, 0.4 * Math.min(1.05, e));
+      hero.root.position.copy(S.start).addScaledVector(S.dir, Math.min(S.reach, 0.4 * Math.min(1.05, e)));
       // torso swings through: +0.95 → -0.75 (≈ 97° torso) + arm sweep makes ~160° blade arc
       p.torso.rotation.y = lerp(0.95, -0.75, e);
       p.torso.rotation.x = lerp(0.05, 0.35, e);                                  // lean into it
@@ -153,7 +157,7 @@ export class HeroController {
       p.armR.rotation.set(lerp(-1.35, -0.9, e), 0, lerp(-1.1, -1.3, e));
       hero.sword.rotation.set(lerp(0.55, 0.9, e), 0, lerp(-0.3, -0.4, e));
       p.head.rotation.y = lerp(0.15, 0.1, e);
-      hero.root.position.copy(S.start).addScaledVector(S.dir, 0.4 + 0.06 * Math.sin(Math.PI * e));
+      hero.root.position.copy(S.start).addScaledVector(S.dir, Math.min(S.reach, 0.4 + 0.06 * Math.sin(Math.PI * e)));
     }, { onEnter: () => { hero.spring.set(0.08); hero.spring.kick(-1.1); }, cancellable: true });
 
     // --- Recovery 300 ms: ease-in-out back to idle pose.
@@ -208,6 +212,37 @@ export class HeroController {
     }
   }
 
+  /** BUGFIX P11: furthest distance ≤ dist along dir (from the current position) that is still land, in 0.05 u steps. No isLand dep → dist. */
+  landReach(dir, dist, step = 0.05) {
+    const isLand = this.deps && this.deps.isLand; if (!isLand) return dist;
+    const o = this.root.position; let ok = 0;
+    for (let d = step; d <= dist + 1e-6; d += step) { if (!isLand(o.x + dir.x * d, o.z + dir.z * d)) break; ok = d; }
+    return Math.min(ok, dist);
+  }
+
+  /**
+   * BUGFIX P11 safety net: if the hero somehow stands on a non-land cell (old save, zone shape change, any animation that wrote the
+   * position directly), pull it back onto the nearest land cell so walking works again. Returns true when a correction was made.
+   */
+  recoverToLand() {
+    const isLand = this.deps && this.deps.isLand; if (!isLand) return false;
+    const o = this.root.position; if (isLand(o.x, o.z)) return false;
+    const cx = Math.round(o.x), cz = Math.round(o.z); let best = null, bd = Infinity;
+    for (let r = 1; r <= 3 && !best; r++) {
+      for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) {
+        if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
+        const x = cx + dx, z = cz + dz; if (!isLand(x, z)) continue;
+        const d = (x - o.x) * (x - o.x) + (z - o.z) * (z - o.z); if (d < bd) { bd = d; best = { x, z }; }
+      }
+    }
+    if (!best) return false;
+    // keep as much of the current offset as fits inside the cell (±0.45 u) so the snap is barely visible
+    o.x = best.x + Math.max(-0.45, Math.min(0.45, o.x - best.x));
+    o.z = best.z + Math.max(-0.45, Math.min(0.45, o.z - best.z));
+    this.vel.set(0, 0, 0);
+    return true;
+  }
+
   /** Trigger attack (from input). Returns true if started. */
   doAttack() {
     if (this.state === 'attack' && !this.attack.canCancel) return false;
@@ -226,6 +261,7 @@ export class HeroController {
       // allow steering input to be buffered as facing only
       this.vel.set(0, 0, 0);
     } else {
+      this.recoverToLand();                                   // BUGFIX P11: never stay stuck on a water cell
       const mv = inp.move;
       const wantMove = mv.lengthSq() > 0.001;
       // Camera-relative: screen up = -z world (camera looks toward -z from +z offset)

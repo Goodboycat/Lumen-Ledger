@@ -56,12 +56,14 @@ export function lerpPose(hero, A, B, e, jelly = 0) {
 export function facingDir(hero, out = V()) { return out.set(Math.sin(hero.facing), 0, Math.cos(hero.facing)); }
 function faceTo(hero, pos) { if (!pos) return; const yaw = Math.atan2(pos.x - hero.root.position.x, pos.z - hero.root.position.z); hero.facing = yaw; hero.root.rotation.y = yaw; }
 function targetPos(t) { return !t ? null : t.isVector3 ? t : t.position || (t.root && t.root.position) || null; }
-/** Furthest point ≤ dist along dir that is still land (steps of 0.25). */
-function landDist(hero, dir, dist) {
+/** Furthest point ≤ dist along dir that is still land (steps of `step`, default 0.25). */
+function landDist(hero, dir, dist, step = 0.25) {
   const isLand = hero.deps && hero.deps.isLand; if (!isLand) return dist;
-  let ok = 0; for (let d = 0.25; d <= dist + 1e-6; d += 0.25) { _a.copy(hero.root.position).addScaledVector(dir, d); if (!isLand(_a.x, _a.z)) break; ok = d; }
-  return ok;
+  let ok = 0; for (let d = step; d <= dist + 1e-6; d += step) { _a.copy(hero.root.position).addScaledVector(dir, d); if (!isLand(_a.x, _a.z)) break; ok = d; }
+  return Math.min(ok, dist);
 }
+/** BUGFIX P11: small lunge/hop clamp — how far (≤ dist) the hero may shift along dir from M.start and stay on land (0.05 u steps). */
+export function lungeReach(hero, dir, dist) { return landDist(hero, dir, Math.abs(dist), 0.05) * Math.sign(dist); }
 // Standard "two-pose phase": lerps from the pose snapshotted at phase start (or ctx.from) to `to`.
 function tween(seq, name, ms, ease, to, opts = {}) {
   return seq.phase(name, ms, ease, (e, M, t, ph) => { lerpPose(M.hero, ph.state.from, to, e, M.jelly); if (opts.fn) opts.fn(e, M, t, ph); },
@@ -122,8 +124,8 @@ function hammerImpact(M, ms, idx) {
 }
 function buildHammer(M) {
   const seq = new Sequence('hammer');
-  tween(seq, 'raise', 180, Easing.outCubic, HAMMER_UP, { onEnter: (M) => { faceTo(M.hero, targetPos(M.target)); M.hero.setTool('hammer'); M.start.copy(M.hero.root.position); } });
-  tween(seq, 'strike', 90, Easing.inQuart, HAMMER_DOWN, { fn: (e, M) => { facingDir(M.hero, _a); M.hero.root.position.copy(M.start).addScaledVector(_a, 0.15 * e); } });
+  tween(seq, 'raise', 180, Easing.outCubic, HAMMER_UP, { onEnter: (M) => { faceTo(M.hero, targetPos(M.target)); M.hero.setTool('hammer'); M.start.copy(M.hero.root.position); M.reach = lungeReach(M.hero, facingDir(M.hero, _a), 0.15); } });
+  tween(seq, 'strike', 90, Easing.inQuart, HAMMER_DOWN, { fn: (e, M) => { facingDir(M.hero, _a); M.hero.root.position.copy(M.start).addScaledVector(_a, Math.min(M.reach ?? 0.15, 0.15 * e)); } });
   tween(seq, 'impact', 40, Easing.linear, HAMMER_HIT, { onEnter: (M) => hammerImpact(M, 40, 0) });
   tween(seq, 'recovery', 220, Easing.outBack, REST, { cancellable: true, onEnter: (M) => { M.jellyOn = true; M.hero.spring.kick(-0.8); } });
   return seq;
@@ -212,10 +214,10 @@ const BUILD_POP = POSE({ bs: [0.94, 1.12, 0.94], torso: [-0.2, 0, 0], head: [-0.
 function buildBuild(M) {
   const seq = new Sequence('build'); const n = Math.max(1, Math.min(6, M.count || 3));
   for (let i = 0; i < n; i++) {
-    tween(seq, 'raise' + (i + 1), 160, Easing.outCubic, BUILD_UP, { onEnter: (M) => { if (i === 0) { faceTo(M.hero, targetPos(M.target)); M.hero.setTool('hammer'); M.start.copy(M.hero.root.position); } } });
+    tween(seq, 'raise' + (i + 1), 160, Easing.outCubic, BUILD_UP, { onEnter: (M) => { if (i === 0) { faceTo(M.hero, targetPos(M.target)); M.hero.setTool('hammer'); M.start.copy(M.hero.root.position); M.reach = -lungeReach(M.hero, facingDir(M.hero, _a).negate(), 0.2); } } });
     tween(seq, 'hit' + (i + 1), 80, Easing.inQuart, BUILD_HIT, { onExit: (M) => { hammerImpact(M, 30, i); shake(M, 0.12); } });
   }
-  tween(seq, 'pop', 160, Easing.outBack, BUILD_POP, { fn: (e, M) => { facingDir(M.hero, _a); M.hero.root.position.copy(M.start).addScaledVector(_a, -0.2 * Math.min(1, e)); M.hero.root.position.y = 0.25 * Math.sin(Math.PI * Math.min(1, e)); },
+  tween(seq, 'pop', 160, Easing.outBack, BUILD_POP, { fn: (e, M) => { facingDir(M.hero, _a); M.hero.root.position.copy(M.start).addScaledVector(_a, Math.max(M.reach ?? -0.2, -0.2 * Math.min(1, e))); M.hero.root.position.y = 0.25 * Math.sin(Math.PI * Math.min(1, e)); },
     onEnter: (M) => { M.hero.setTool(null); const v = vfxOf(M); facingDir(M.hero, _a); _b.copy(M.hero.root.position).addScaledVector(_a, 1.0);
       if (v && v.levelRing && v.levelRing.show) v.levelRing.show(_b); sparks(M, _a.copy(_b).setY(0.6), 12, 4); pop(M, _b, 'DONE!', { color: '#7ED957', dur: 0.8 }); }, onExit: (M) => { M.hero.root.position.y = 0; } });
   tween(seq, 'settle', 200, Easing.outBack, REST, { cancellable: true, onEnter: (M) => { M.jellyOn = true; M.hero.spring.kick(-0.9); } });

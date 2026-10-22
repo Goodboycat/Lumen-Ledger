@@ -239,6 +239,24 @@ if (doHero) {
     try { const s = H.makeMove('hammer', { hero, vfx, game }); if (!(s instanceof Sequence) || s.totalMs !== 530) throw new Error('makeMove hammer totalMs ' + s.totalMs); let threw = false; try { H.makeMove('nope', { hero }); } catch { threw = true; } if (!threw) throw new Error('unknown move did not throw'); console.log('  makeMove(name, ctx) → Sequence; unknown name throws  OK'); } catch (err) { bad++; console.log('  makeMove FAIL →', err.message); }
     // sword attack still works after attachMoves (update wrapper passes through)
     try { hero.doAttack(); for (let i = 0; i < 70; i++) step(); if (hero.state !== 'idle') throw new Error('state ' + hero.state); console.log('  swordAttack still OK after attachMoves'); } catch (err) { bad++; console.log('  swordAttack FAIL →', err.message); }
+    // P11: lunges at the shore never leave land. isLand here = disc r<9 → integer cells x≤8 are land on z=0 (hypot(8,0)=8<9, 9 is water).
+    // Park Pip at x=8.4 (rounds to 8, land), face +x and run every move that shifts the root: the position must stay on a land cell
+    // afterwards and walking -x must still work (previously the 0.4 u slash lunge ended at 8.8 → rounds to 9 → stuck).
+    try {
+      const isLandPrev = hero.deps.isLand; hero.deps.isLand = (x, z) => Math.hypot(Math.round(x), Math.round(z)) < 9;   // tile-rounded like Island.isLand
+      const onLand = () => hero.deps.isLand(hero.root.position.x, hero.root.position.z);
+      const runs = [];
+      const park = () => { hero.stopMove(); hero.root.position.set(8.4, 0, 0); hero.facing = Math.PI / 2; hero.root.rotation.y = hero.facing; hero.vel.set(0, 0, 0); };
+      park(); hero.doAttack(); let maxX = 0; for (let i = 0; i < 70; i++) { step(); maxX = Math.max(maxX, hero.root.position.x); } if (!onLand() || hero.state !== 'idle') throw new Error(`slash ended at x=${hero.root.position.x.toFixed(2)} (max ${maxX.toFixed(2)}) state=${hero.state}`); runs.push(`slash max x ${maxX.toFixed(2)}`);
+      for (const mv of ['hammer', 'build', 'dash']) { park(); hero.playMove(mv, { target: new THREE.Vector3(12, 0, 0) }); for (let i = 0; i < 200 && hero.state === 'move'; i++) step(); if (!onLand()) throw new Error(`${mv} ended at x=${hero.root.position.x.toFixed(2)}`); runs.push(`${mv} x ${hero.root.position.x.toFixed(2)}`); }
+      // 'build' hops backwards: facing -x at the west shore must not hop into water either
+      hero.stopMove(); hero.root.position.set(-8.4, 0, 0); hero.facing = -Math.PI / 2; hero.root.rotation.y = hero.facing; hero.playMove('build', {}); for (let i = 0; i < 200 && hero.state === 'move'; i++) step(); if (!onLand()) throw new Error(`build(back-hop) ended at x=${hero.root.position.x.toFixed(2)}`);
+      // safety net: force a water position → the next walk frame pulls Pip back onto land and he can move
+      hero.stopMove(); hero.root.position.set(8.8, 0, 0); input.move.set(-1, 0); hero.update(1 / 60); game.sequences.update(1 / 60); for (let i = 0; i < 10; i++) { input.move.set(-1, 0); hero.update(1 / 60); game.sequences.update(1 / 60); }
+      if (!onLand() || hero.root.position.x > 8.45) throw new Error(`recoverToLand: x=${hero.root.position.x.toFixed(2)}`);
+      console.log(`  P11 shore lunges stay on land (${runs.join(' · ')}) · forced x=8.8 → recovered to ${hero.root.position.x.toFixed(2)} and walking  OK`);
+      hero.deps.isLand = isLandPrev; hero.root.position.set(0, 0, 0);
+    } catch (err) { bad++; console.log('  P11 shore lunge FAIL →', err.message); hero.stopMove(); }
   } catch (e) { bad++; console.log('  heroAnims.js FAIL →', e.message.split('\n')[0]); }
 }
 if (doAbilities) {
@@ -1414,6 +1432,16 @@ if (doSave) {
       B2.lg.sb.eco.state.spark = 777; B2.bus.emit('ui:title'); B2.step(); const sl = Save.load(storage); if (!sl || JSON.parse(sl.eco).state.spark !== 777 || B2.lg.state !== 'title') throw new Error('B17: title did not save (' + (sl && JSON.parse(sl.eco).state.spark) + ')');
       B2.lg.destroy(); B2.ui.destroy(); B.lg.save.write();
       console.log(`  3b. B16 price 17 in snapshot + after CONTINUE · B12 RESTART SEASON → S${seasonBefore} checkpoint (spark ${sparkBefore}, not S1) · B17 TITLE saves (spark 777)  OK`); }
+    // 3c. P11/P18: a hero parked on a water cell is never persisted / restored there
+    { const sbC = B.lg.sb, isl = sbC.island; let wx = null; for (let x = 0; x < 40 && wx === null; x++) if (!isl.isLand(x, 1)) wx = x; if (wx === null) throw new Error('3c: no water east of the plaza');
+      sbC.hero.root.position.set(wx + 0.25, 0, 1); const snapC = Save.snapshot(B.lg); if (!snapC.hero || !isl.isLand(snapC.hero.x, snapC.hero.z)) throw new Error(`P18: snapshot kept water pos ${JSON.stringify(snapC.hero)}`);
+      if (!isl.isLand(sbC.hero.root.position.x, sbC.hero.root.position.z)) throw new Error('P11: recoverToLand did not move the hero');
+      // a tampered slot with a water hero → CONTINUE lands on land (and the hero can walk)
+      B.lg.save.write(); const raw = JSON.parse(storage.getItem(Save.SAVE_KEY)); raw.hero = { x: wx + 0.75, z: 1 }; storage.setItem(Save.SAVE_KEY, JSON.stringify(raw));
+      const B3 = rig(); B3.bus.emit('ui:start', { mode: 'continue' }); B3.step(); const hp = B3.lg.sb.hero.root.position;
+      if (!B3.lg.sb.island.isLand(hp.x, hp.z)) throw new Error(`P18: CONTINUE restored water pos ${hp.x},${hp.z}`);
+      B3.lg.destroy(); B3.ui.destroy();
+      console.log(`  3c. P11/P18 hero on water (${wx + 0.25},1) → snapshot hero (${snapC.hero.x},${snapC.hero.z}) on land · tampered slot (${wx + 0.75},1) → CONTINUE at (${hp.x.toFixed(2)},${hp.z.toFixed(2)}) on land  OK`); }
     ecoB = B.lg.sb.eco;
     // 4. lose clears
     ecoB.state.fog01 = 1; ecoB.state.day01 = 0.99; ecoB.endSeason(); if (ecoB.state.ended !== 'lose' || B.lg.state !== 'ending') throw new Error('forced lose → ' + ecoB.state.ended + ' ' + B.lg.state);

@@ -21,6 +21,14 @@ function storageOf(storage) {
   return null;
 }
 
+/** BUGFIX P18: hero coordinates are only persisted when they are on land; a hero standing on a water cell (P11 lunge, zone change) is
+ *  snapped back onto the nearest land cell first, so CONTINUE can never restore a soft-locked position. */
+function heroPos(sb) {
+  const h = sb.hero; if (!h?.root) return null;
+  if (sb.island?.isLand && !sb.island.isLand(h.root.position.x, h.root.position.z)) { if (!h.recoverToLand?.()) return null; }
+  return { x: +h.root.position.x.toFixed(2), z: +h.root.position.z.toFixed(2) };
+}
+
 /** Build a plain, JSON-safe snapshot of the running game. `lg` = createLumenGame() result; needs lg.sb. Returns null when no run. */
 export function snapshot(lg) {
   const sb = lg?.sb; if (!sb) return null;
@@ -35,7 +43,7 @@ export function snapshot(lg) {
     story: lg.story && typeof lg.story.serialize === 'function' ? lg.story.serialize() : null,
     helpers: (sb.helpers || []).map((h) => 'helper_' + h.type),
     jars: lg.ui?.jars?.getPct?.() || lg.jarPct || null,
-    hero: sb.hero?.root ? { x: +sb.hero.root.position.x.toFixed(2), z: +sb.hero.root.position.z.toFixed(2) } : null,
+    hero: heroPos(sb),
     cust: typeof sb.cust?.serialize === 'function' ? sb.cust.serialize() : null,     // BUGFIX B16: per-stall prices + sale totals
   };
 }
