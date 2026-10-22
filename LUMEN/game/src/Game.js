@@ -575,7 +575,8 @@ function installRunWires(lg) {
   build.followTarget = () => { const h = hero.root.position, a = hero.facing || 0; return { x: h.x + Math.sin(a) * 2, z: h.z + Math.cos(a) * 2 }; };
   if (lg.game.input) lg.game.input.onTap = (world, ev) => {
     if (build.mode === 'place') { if (ui?.isModal?.()) return; build.moveTo(world.x, world.z); if (ev?.pointerType === 'mouse') build.confirm(); return; }
-    if (lg.demolishMode) { const e = build.nearest(world.x, world.z, 1.2); if (e && !e.scenery) build.demolish(e); return; }
+    // BUGFIX P17: prefer the prop under the cursor in 3D (roof / sign / awning) — the ground-plane point sits ~1.9 u behind a 2.2 u tall stall
+    if (lg.demolishMode) { const e = build.pick(lg.game.input?._ray?.ray) || build.nearest(world.x, world.z, 1.2); if (e && !e.scenery) build.demolish(e); return; }
     if (lg.selectTap?.(world)) return;
     prevTap?.(world, ev);
   };

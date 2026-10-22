@@ -528,7 +528,14 @@ if (doBuild) {
         if (build.demolish(SC) !== false || build.demolish({ x: sx, z: sz, scenery: true }) !== false) throw new Error('P19: demolished scenery'); if (build.upgrade(SC) !== false) throw new Error('P19: upgraded scenery');
         if (SC.group.visible !== true || build.cells.get(`${sx},${sz}`) !== SC || build.placed.size !== n0 || eco.state.spark !== sp0 || build.cells.size !== cells0) throw new Error('P19: scenery mutated');
         build.cells.delete(`${sx},${sz}`); }
-      console.log(`  stalls() → 1 stall, world counter slot at z+1.15, 4 queue slots · nearest()/occupied() · P14 nearest prefers placed over scenery · P19 demolish/upgrade refuse scenery  OK`);
+      // P17: a camera ray through the stall's ROOF (y≈1.8, isometric from +Z/+Y) picks the stall although its ground-plane point is ~1.9 u behind it
+      { const e = st[0].entry; e.group.updateMatrixWorld(true); const roof = new THREE.Vector3(e.group.position.x, 1.6, e.group.position.z);
+        const dir = new THREE.Vector3(0, -1, -1).normalize(), ray = new THREE.Ray(roof.clone().sub(dir.clone().multiplyScalar(30)), dir);
+        const gp = ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), new THREE.Vector3());
+        if (!gp || Math.abs(gp.z - e.group.position.z) < 1.2) throw new Error('P17 probe: ground point should sit behind the stall, got ' + (gp && gp.z.toFixed(2)));
+        if (build.pick(ray) !== e) throw new Error('P17: roof ray did not pick the stall');
+        const miss = new THREE.Ray(new THREE.Vector3(e.group.position.x + 40, 30, e.group.position.z + 30), dir); if (build.pick(miss) !== null) throw new Error('P17: ray in the sea picked something'); }
+      console.log(`  stalls() → 1 stall, world counter slot at z+1.15, 4 queue slots · nearest()/occupied() · P14 nearest prefers placed over scenery · P19 demolish/upgrade refuse scenery · P17 pick(ray) through the roof  OK`);
     } catch (err) { bad++; console.log('  stalls FAIL →', err.message); }
     // 7. demolish: refund 50 % of (cost + upgrades), sequence removes group, cells free, stall count back to 0
     try {

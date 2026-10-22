@@ -139,6 +139,16 @@ export class BuildSystem {
     }
     return best || hit;
   }
+  /** BUGFIX P17: the placed prop whose 3D meshes the camera ray hits (so a click on a stall's roof/sign/awning picks THAT stall, not the
+   *  ground 1.9 u behind it). `ray` is a THREE.Ray (e.g. input._ray.ray after _project()). Returns entry | null. Ghost / busy groups skipped. */
+  pick(ray) {
+    if (!ray || this.placed.size === 0) return null;
+    const rc = this._picker || (this._picker = new THREE.Raycaster()); rc.ray.copy(ray); rc.near = 0; rc.far = Infinity;
+    const groups = []; for (const e of this.placed.values()) if (e.group.visible && !this.busy.has(e.group)) groups.push(e.group);
+    const hits = rc.intersectObjects(groups, true); if (!hits.length) return null;
+    let o = hits[0].object; while (o) { for (const e of this.placed.values()) if (e.group === o) return e; o = o.parent; }
+    return null;
+  }
   /** resolve "at": entry | group | {x,z} | Vector3 | "x,z" */
   _resolve(at) {
     if (!at) return null;
