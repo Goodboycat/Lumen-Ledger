@@ -530,7 +530,7 @@ function installRunWires(lg) {
       let e = null;
       if (p.id) { const hp = hero.root.position; e = [...build.placed.values()].filter((x) => x.id === p.id && x.level < 3).sort((x, y) => (x.level - y.level) || (x.group.position.distanceToSquared(hp) - y.group.position.distanceToSquared(hp)))[0] || null; }
       else {
-        e = build.nearest(hero.root.position.x, hero.root.position.z, 2.5);
+        e = build.nearestUpgradable(hero.root.position.x, hero.root.position.z, 2.5);   // BUGFIX P37/P38: skips decor / nature / L3 stalls
         // BUGFIX P15: foot ⬆ / U key with nobody next to Pip → fall back to the lowest-level upgradable stall anywhere (nearest on ties)
         if (!e || e.scenery) { const hp = hero.root.position; e = [...build.placed.values()].filter((x) => x.category === 'stall' && x.level < 3).sort((x, y) => (x.level - y.level) || (x.group.position.distanceToSquared(hp) - y.group.position.distanceToSquared(hp)))[0] || null; }
       }
@@ -598,11 +598,11 @@ function installRunWires(lg) {
   lg.interact = () => {
     if (!lg.sb || lg.game.paused || ui?.isModal?.()) return 'blocked';
     if (build.mode === 'place') { build.rotate(); return 'rotate'; }
-    const e = build.nearest(hero.root.position.x, hero.root.position.z, 2.5);
-    if (e && !e.scenery && e.category === 'stall') {
-      if (e.level >= 3) { bus.emit('ui:toast', { text: `${e.id.replace('stall_', '')} stall is already max level`, kind: 'info', icon: '⬆', id: 'interact', duration: 1800 }); return 'max'; }
-      return build.upgrade(e) ? 'upgrade' : 'denied';
-    }
+    // BUGFIX P37/P38: prefer the nearest stall that can still be upgraded; a decor pot or a maxed L3 stall between Pip and it no longer blocks U / ✋
+    const e = build.nearestUpgradable(hero.root.position.x, hero.root.position.z, 2.5);
+    if (e) return build.upgrade(e) ? 'upgrade' : 'denied';
+    const near = build.nearest(hero.root.position.x, hero.root.position.z, 2.5);
+    if (near && !near.scenery && near.category === 'stall' && near.level >= 3) { bus.emit('ui:toast', { text: `${near.id.replace('stall_', '')} stall is already max level`, kind: 'info', icon: '⬆', id: 'interact', duration: 1800 }); return 'max'; }
     ui?.build?.open?.(); return 'tray';
   };
   on('ui:touch', (p) => { if (p?.action === 'interact') lg.interact(); });
@@ -727,7 +727,11 @@ function applySnapshot(lg, sb, snap) {
   const { eco, build } = sb;
   if (snap.eco) {
     const e2 = Economy.deserialize(snap.eco, eco.config, { bus: null, events: eco.events, scams: eco.scams, upgrades: eco.upgrades });
-    eco.state = { ...eco.state, ...e2.state, day01: 0, ended: null }; eco.ledger = e2.ledger; eco.history = e2.history; eco.pendingOffer = null;
+    // BUGFIX P41: a save taken MID-season keeps its day01 (and the scheduler flags below) — resetting to 0 replayed the season's income,
+    //   event and scam a second time on CONTINUE. A save taken at the review (snap.midSeason false / old save) still starts the next season at 0.
+    const day01 = snap.midSeason && Number.isFinite(e2.state.day01) && e2.state.day01 < 1 ? e2.state.day01 : 0;
+    eco.state = { ...eco.state, ...e2.state, day01, ended: null }; eco.ledger = e2.ledger; eco.history = e2.history; eco.pendingOffer = null;
+    if (snap.midSeason && sb.sched && snap.sched) { sb.sched.season = eco.state.season; sb.sched.event = !!snap.sched.event; sb.sched.scam = !!snap.sched.scam; }
     if (lg.mode === 'endless') { eco.config.winRequiresSeasons = false; eco.config.endless = true; }
   }
   // BUGFIX B14: unlocked zones come back from the owned zone_* upgrades BEFORE the buildings are re-placed (locked zones are water → placements rejected)

@@ -130,17 +130,22 @@ export class BuildSystem {
    *  BUGFIX P14: a pre-spawned scenery sentinel (`entry.scenery`, cost 0, not in `placed`) under the point no longer wins over a
    *  real placed prop within `radius` — the plaza has ~100 scenery cells, so most slightly-off taps used to resolve to scenery and
    *  the caller's `!e.scenery` filter silently aborted. Scenery is returned only when nothing placed is in range. */
-  nearest(x, z, radius = 1.6) {
-    const hit = this.occupied(x, z); if (hit && !hit.scenery) return hit;
+  nearest(x, z, radius = 1.6, filter = null) {
+    // BUGFIX P37/P38: optional `filter(entry)` (e.g. upgradable stalls only) so a decor pot or a maxed L3 stall next to Pip no longer hides
+    //   the L1 stall right behind it. With a filter, scenery is never returned.
+    const hit = this.occupied(x, z); if (hit && !hit.scenery && (!filter || filter(hit))) return hit;
     let best = null, bd = radius;
     for (const e of this.placed.values()) {
+      if (filter && !filter(e)) continue;
       // distance to the footprint (0 inside), not just to the anchor, so wide props are picked from any of their cells
       let d = Infinity; for (const c of e.cells) d = Math.min(d, Math.hypot(c.x - x, c.z - z));
       d = Math.min(d, Math.hypot(e.group.position.x - x, e.group.position.z - z));
       if (d < bd) { bd = d; best = e; }
     }
-    return best || hit;
+    return best || (filter ? null : hit);
   }
+  /** BUGFIX P37/P38: the nearest stall within `radius` of (x,z) that can still be upgraded (category stall, level < 3). null if none. */
+  nearestUpgradable(x, z, radius = 2.5) { return this.nearest(x, z, radius, (e) => e.category === 'stall' && !e.scenery && (e.level || 1) < 3); }
   /** BUGFIX P17: the placed prop whose 3D meshes the camera ray hits (so a click on a stall's roof/sign/awning picks THAT stall, not the
    *  ground 1.9 u behind it). `ray` is a THREE.Ray (e.g. input._ray.ray after _project()). Returns entry | null. Ghost / busy groups skipped. */
   pick(ray) {

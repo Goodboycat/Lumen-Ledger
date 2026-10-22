@@ -45,6 +45,10 @@ export function snapshot(lg) {
     jars: lg.ui?.jars?.getPct?.() || lg.jarPct || null,
     hero: heroPos(sb),
     cust: typeof sb.cust?.serialize === 'function' ? sb.cust.serialize() : null,     // BUGFIX B16: per-stall prices + sale totals
+    // BUGFIX P41: mid-season saves (⌂ TITLE while playing) resume at the same day01 with the scheduler's "event / scam already fired" flags,
+    //   so CONTINUE does not replay the season. Saves taken at the review start the next season fresh (midSeason false).
+    midSeason: lg.state === 'playing' && !eco.state?.ended && (eco.state?.day01 || 0) > 0 && (eco.state?.day01 || 0) < 1,
+    sched: sb.sched ? { event: !!sb.sched.event, scam: !!sb.sched.scam } : null,
   };
 }
 
