@@ -172,12 +172,21 @@ export class BuildSystem {
     this.exit(true);
     this.mode = 'place'; this.propId = propId;
     this._makeGhost();
-    if (this.game && this.game.input && !this._bound) { const prev = this.game.input.onAction; this.game.input.onAction = (n) => { if (prev) prev(n); this._onAction(n); }; this._bound = true; }
+    // BUGFIX P44: the chained onAction is remembered so unbind() (destroySandbox) can restore the previous handler — destroyed runs used to
+    //   stay in the chain forever and every later run's 🔨 press called _onAction on each of them.
+    if (this.game && this.game.input && !this._bound) { const prev = this.game.input.onAction; this._prevAction = prev; this._chained = (n) => { if (prev) prev(n); this._onAction(n); }; this.game.input.onAction = this._chained; this._bound = true; }
     this.bus.emit('build:enter', { id: propId, cost: this.cost(propId), rot: this.rot });
     const f = this.followTarget && this.game && this.game.input && this.game.input.isTouch ? this.followTarget() : null;   // touch: spawn in front of Pip
     if (f) this.lastPointer.set(f.x, 0, f.z);
     this._placeGhost(this.lastPointer.x, this.lastPointer.z, true);
     return true;
+  }
+  /** BUGFIX P44: leave the input.onAction chain (restores whatever was there before enter()); safe to call twice. */
+  unbind() {
+    if (!this._bound) return;
+    const inp = this.game && this.game.input;
+    if (inp && inp.onAction === this._chained) inp.onAction = this._prevAction || null;
+    this._bound = false; this._chained = null; this._prevAction = null;
   }
   exit(silent = false) {
     if (this.ghost) { this.parent.remove(this.ghost.group); this.parent.remove(this.ghost.pad); for (const m of this.ghost.mats) m.dispose(); this.ghost.pad.geometry.dispose(); this.ghost = null; }

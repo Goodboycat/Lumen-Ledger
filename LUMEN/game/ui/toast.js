@@ -104,6 +104,9 @@ export function mountToast(root, opts = {}) {
     on('island:unlock', (p) => api.push({ text: `New zone unlocked${p && p.zone ? ': ' + nice(p.zone) : ''}!`, kind: 'gold', icon: '🗺', duration: 5000 }));
     on('eco:win', () => api.push({ text: 'The Lighthouse is lit! ✦', kind: 'gold', duration: 5000 }));
     on('eco:lose', () => api.push({ text: 'The Debt Fog took the island…', kind: 'bad', duration: 5000 }));
+    // BUGFIX P42: gameplay toasts (incl. the 6 s demolish-mode toast with its Stop button) no longer float over the Title screen
+    on('game:title', () => api.clear());
+    on('ui:title:open', () => api.clear());
   }
   return api;
 }

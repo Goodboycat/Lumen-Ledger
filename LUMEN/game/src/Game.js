@@ -476,7 +476,7 @@ export function destroySandbox(sb) {
   const { game } = sb;
   for (const f of sb._offs || []) f(); sb._offs = [];
   if (sb._onKey && typeof window !== 'undefined') window.removeEventListener('keydown', sb._onKey);
-  sb.build?.exit?.(true);
+  sb.build?.exit?.(true); sb.build?.unbind?.();   // BUGFIX P44: leave input.onAction chain
   game.systems = game.systems.filter((s) => s !== sb._system && s !== sb.vfx && s !== sb.hero?._lateSystem);   // BUGFIX B05
   sb.perf?.dispose?.();
   disposeVfx(sb.vfx, game.scene);                                                     // BUGFIX B03/B04: run-owned fog, vignette, pulses, pools
@@ -593,6 +593,10 @@ function installRunWires(lg) {
   //   not toggle (= close) the tray, which emitted ui:build:close → build.exit() and cancelled the placement. In demolish mode 🔨 leaves it (P28).
   on('ui:touch', (p) => { if (p?.action !== 'build' || lg.game.paused) return; if (build.mode === 'place') return; if (lg.demolishMode) { lg.demolishMode = false; ui?.build?.cancel?.(); bus.emit('ui:toast', { text: 'Demolish mode off', kind: 'info', icon: '💥', id: 'demolish-mode', duration: 1500 }); return; } ui?.build?.toggle?.(); });
   bus.on('ui:demolish:stop', () => { lg.demolishMode = false; ui?.build?.cancel?.(); });
+  // BUGFIX P43: the season ends (ledger review) / the run ends → drop the build ghost, demolish mode and the open tray so nothing stays armed
+  //   behind the Ledger modal or into the next season. ui.build.cancel() emits ui:build {action:'cancel'} → build.exit() + lg.demolishMode=false.
+  const disarm = () => { if (!lg.sb) return; const armed = build.mode === 'place' || lg.demolishMode || ui?.build?.isOpen || ui?.build?.state?.demolish; if (!armed) return; lg.demolishMode = false; ui?.build?.cancel?.(); if (build.mode === 'place') build.exit(); if (ui?.build?.isOpen) ui.build.close(); };
+  on('eco:season', disarm); on('eco:win', disarm); on('eco:lose', disarm); on('game:title', disarm);
   // BUGFIX P33: ✋ Interact (touch pad) finally DOES something, context-sensitive — placing a ghost → rotate it · next to an upgradable
   //   stall (≤ 2.5 u) → upgrade it (same as U / tray ⬆) · otherwise → open the Build Tray. Desktop E/F stay FinLit abilities (ABILITY_KEYS).
   lg.interact = () => {
