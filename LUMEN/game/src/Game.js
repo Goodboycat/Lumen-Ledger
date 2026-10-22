@@ -173,7 +173,8 @@ function wireEconomy(sb) {
   const { eco, bus, vfx, world, island } = { ...sb, bus: sb.game.bus };
   const off = []; sb._offs = off;
   off.push(bus.on('build:placed', () => sb.syncStalls()));
-  off.push(bus.on('build:removed', () => sb.syncStalls()));
+  off.push(bus.on('build:removed', () => { sb.syncStalls(); reseatHelpers(sb); }));   // BUGFIX P31: orphaned helpers move to another stall
+  off.push(bus.on('build:placed', (p) => { if (!p?.silent) reseatHelpers(sb); }));
   off.push(bus.on('build:upgraded', () => sb.syncStalls()));
   off.push(bus.on('eco:fog', (p) => { const f = p?.fog01 ?? eco.state.fog01; vfx.fog?.setCoverage?.(f); world.towers.forEach((t) => t.userData.setActive?.(f > 0.3)); if (f > 0.6) vfx.debtPulse?.(0.4); }));
   off.push(bus.on('eco:jar', () => { const j = eco.state.jars, tot = Math.max(1, j.spend + j.save + j.invest + j.protect); ['spend', 'save', 'invest', 'protect'].forEach((k, i) => world.jars[i]?.userData.setFill?.(Math.min(1, j[k] / tot))); }));
@@ -322,14 +323,31 @@ function hireHelper(sb, wantType = null, { free = false } = {}) {
   const stalls = [...sb.build.placed.values()].filter((e) => e.id.startsWith('stall_'));
   const stall = stalls[sb.helpers.length % Math.max(1, stalls.length)] || null;
   const g = makeHelper(type, { seed: sb.helpers.length + 1 });
-  const at = stall ? stall.group.position : sb.hero.root.position;
-  const back = new THREE.Vector3(0, 0, -0.9).applyAxisAngle(new THREE.Vector3(0, 1, 0), stall ? stall.group.rotation.y : 0);
-  g.position.set(at.x + back.x, 0, at.z + back.z); sb.game.scene.add(g);
+  sb.game.scene.add(g);
   const anim = new HelperAnimator(g, type, { vfx: sb.vfx });
-  anim.faceToNow(new THREE.Vector3(at.x - back.x * 3, 0, at.z - back.z * 3)); anim.play('work');
-  const h = { g, anim, type, stall, upgrade: u }; sb.helpers.push(h);
+  const h = { g, anim, type, stall: null, upgrade: u }; sb.helpers.push(h);
+  seatHelper(sb, h, stall);
   sb.game.bus.emit('sandbox:hired', { type, stall: stall?.id || null, cost: u.cost });
   return h;
+}
+/** Stand helper `h` behind `stall` (or next to Pip, idle, when there is none). BUGFIX P31: also used to re-seat orphans. */
+function seatHelper(sb, h, stall) {
+  const at = stall ? stall.group.position : sb.hero.root.position;
+  const back = new THREE.Vector3(0, 0, -0.9).applyAxisAngle(new THREE.Vector3(0, 1, 0), stall ? stall.group.rotation.y : 0);
+  h.g.position.set(at.x + back.x, 0, at.z + back.z); h.stall = stall || null;
+  h.anim.faceToNow(new THREE.Vector3(at.x - back.x * 3, 0, at.z - back.z * 3)); h.anim.play(stall ? 'work' : 'idle');
+}
+/** BUGFIX P31: a helper whose stall was sold/demolished (or who was hired with no stall) moves to the least-staffed remaining stall. */
+function reseatHelpers(sb) {
+  const stalls = [...sb.build.placed.values()].filter((e) => e.id.startsWith('stall_'));
+  const alive = new Set(stalls);
+  for (const h of sb.helpers) {
+    if (h.stall && alive.has(h.stall)) continue;
+    if (!stalls.length) { if (h.stall) seatHelper(sb, h, null); continue; }
+    const load = (e) => sb.helpers.filter((o) => o !== h && o.stall === e).length;
+    const target = stalls.slice().sort((a, b) => load(a) - load(b))[0];
+    seatHelper(sb, h, target);
+  }
 }
 
 // =====================================================================================================================
