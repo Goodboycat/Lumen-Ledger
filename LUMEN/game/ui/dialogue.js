@@ -14,7 +14,7 @@
 //
 // Speakers (P3 portraits = CSS blobs, see dialogue.css): pip (orange, sword scarf) · baron (purple top-hat blob) · owl (Tally-Owl, brown, big eyes)
 //   · glimmer (blue blob) · narrator (no portrait). Unknown speaker → generic blob with the first letter.
-// Motion: box slide-up 320 ms outBack · portrait pop 380 ms outBack · typewriter cps (default 45 chars/s, punctuation pause ×6 for . ! ? and ×3 for ,) ·
+// Motion: box slide-up 320 ms outBack · portrait pop 380 ms outBack · typewriter cps (default 60 chars/s, punctuation pause ×3.5 for . ! ? and ×2 for ,) ·
 //   portrait bob while typing (talk) · choices stagger 70 ms × i (240 ms outBack) · hide: slide-down 200 ms inQuad.
 
 import { iconize, icon } from './icons.js';
@@ -34,7 +34,7 @@ const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls)
 
 export function mountDialogue(root, opts = {}) {
   const bus = opts.bus || defaultBus;
-  const cps = opts.cps || 45;
+  const cps = opts.cps || 60;   // 60 chars/s: fluid, professional read (was 45 + long stops → felt clipped/Yoda-ish)
   const selfDrive = opts.selfDrive !== false;
 
   // ---------------------------------------------------------------- DOM
@@ -127,7 +127,7 @@ export function mountDialogue(root, opts = {}) {
       dt = Math.min(0.1, Math.max(0, +dt || 0)); st.acc += dt * cps;
       while (st.acc >= 1 && st.shown < st.full.length) {
         const ch = st.full[st.shown]; st.shown++; st.acc -= 1;
-        if ('.!?'.includes(ch)) st.acc -= 5; else if (',;:—'.includes(ch)) st.acc -= 2;
+        if ('.!?'.includes(ch)) st.acc -= 2.5; else if (',;:—'.includes(ch)) st.acc -= 1;
       }
       text.textContent = st.full.slice(0, st.shown);
       if (st.shown >= st.full.length) finishTyping();
