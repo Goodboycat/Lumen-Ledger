@@ -13,7 +13,7 @@ const BASE = process.argv[3] || 'http://localhost:3000/';
 const OUT = path.resolve(process.argv[4] || new URL('../../../LUMEN_extras/recordings', import.meta.url).pathname);
 fs.mkdirSync(OUT, { recursive: true });
 const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
-const R = { url: BASE + '?notutorial&mute&season=40&seed=7', secs: SECS, errors: [], console: [], actions: [], hints: [] };
+const R = { url: BASE + '?notutorial&mute&season=' + (process.env.SEASON || 15) + '&seed=7', secs: SECS, errors: [], console: [], actions: [], hints: [] };
 const hint = (id, s) => { R.hints.push({ id, s }); console.log('HINT', id, s); };
 
 const b = await chromium.launch({ args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
@@ -57,13 +57,13 @@ async function buildStall(id) {
   const card = p.locator(`.ll-card[data-id="${id}"]`);
   if (!(await card.count())) { await p.keyboard.press('Escape'); return 'no card ' + id; }
   const cardTxt = (await card.innerText().catch(() => '')).replace(/\s+/g, ' ');
-  await card.click({ timeout: 1500 }).catch(() => {}); await p.waitForTimeout(200);
+  await card.click({ timeout: 2500, force: true }).catch((e) => act('card click fail ' + e.message.slice(0, 60))); await p.waitForTimeout(250);
   const dep = p.locator('.ll-build-detail .ll-btn.deploy');
-  if (!(await dep.count()) || await dep.isDisabled().catch(() => true)) { await p.keyboard.press('Escape'); await p.waitForTimeout(150); return 'cannot deploy ' + cardTxt; }
+  if (!(await dep.count()) || !(await dep.isVisible().catch(() => false)) || await dep.isDisabled().catch(() => true)) { await p.keyboard.press('Escape'); await p.waitForTimeout(150); return 'cannot deploy ' + cardTxt; }
   const before = await snap();
-  await dep.click({ timeout: 1500 }).catch(() => {}); await p.waitForTimeout(250);
+  await dep.click({ timeout: 2500, force: true }).catch((e) => act('deploy click fail ' + e.message.slice(0, 60))); await p.waitForTimeout(250);
   const sp = await p.evaluate((id) => {
-    const bd = lg.sb.build, h = lg.sb.hero?.group?.position || { x: 0, z: 0 };
+    const bd = lg.sb.build, h = lg.sb.hero?.root?.position || { x: 0, z: 0 };
     for (let r = 1; r < 8; r++) for (let z = -r; z <= r; z++) for (let x = -r; x <= r; x++) {
       const cx = Math.round(h.x) + x, cz = Math.round(h.z) + z;
       if (bd.canPlace(id, cx, cz)) { const w = bd.anchorToWorld(id, cx, cz); const v = game.camera.three.position.clone().set(w.x, 0, w.z).project(game.camera.three); const rc = game.renderer.domElement.getBoundingClientRect();
