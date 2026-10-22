@@ -170,5 +170,5 @@ In a real browser: `?rec` autostarts, Ctrl+Shift+F9 toggles, `lumenRec.save()` d
 - **Bug status sync**: P34–P44 were fixed in commits 38f2261 / 105d7f3 / a399053 / b8deff9 but still read OPEN in the table → marked FIXED.
   BUG_REPORT.md (root, B01–B24 + C01–C05) was audited against the code: every B/C id is referenced by a fix in `src/` or `ui/` (C02 = `hireHelper(sb, type, {free:true})` on restore).
   Nothing from either file is left to fix; still OPEN by design: P03 (balance → S01), P06 (slow-mo < 20 fps → S02), P23 (baked scenery, deferred).
-- Not verified in a real browser this chat (credits): the blurbs audibly playing. Quick manual check: open the game, PLAY, the first Owl line should hum.
+- Browser-verified (headless Chromium, `?notutorial&season=1&seed=1`): all 5 voice buffers decoded on unlock; narrator opening → `dlg_blip`, then `voice_pip` ×1 / `voice_owl` ×2 after advancing lines; 0 page errors.
 
