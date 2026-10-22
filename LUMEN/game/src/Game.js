@@ -518,6 +518,10 @@ function installRunWires(lg) {
       }
       if (e && !e.scenery) build.upgrade(e); else bus.emit('build:denied', { id: p.id, why: p.id ? 'no stall of that type to upgrade' : 'stand next to a stall to upgrade it' });
     }
+    else if (a === 'sell') {   // BUGFIX P12: tray 💰 Sell → demolish (50 % refund) the lowest-level placed prop of that type, nearest Pip on ties
+      const hp = hero.root.position, e = [...build.placed.values()].filter((x) => x.id === p.id && !x.scenery).sort((x, y) => ((x.level || 1) - (y.level || 1)) || (x.group.position.distanceToSquared(hp) - y.group.position.distanceToSquared(hp)))[0] || null;
+      if (e) build.demolish(e); else bus.emit('build:denied', { id: p.id, why: 'nothing of that type to sell' });
+    }
     else if (a === 'buy') lg.buyOffer(p.id);   // BUGFIX B24: Crew & Land tab (helpers + zones) — was debug H/Z only
   });
   // BUGFIX B24: player-facing hire / unlock / price. offers() feeds the tray's Crew & Land tab; buyOffer pays through the economy

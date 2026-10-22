@@ -7,7 +7,7 @@
 //
 // Emits on bus:  'ui:build' { id, cost, action: 'select' }           → integrator calls build.enter(id)
 //                'ui:build' { action: 'cancel' }                      → build.exit()
-//                'ui:build' { action: 'rotate' | 'confirm' | 'demolish' | 'upgrade' }   (placing banner / foot buttons)
+//                'ui:build' { action: 'rotate' | 'confirm' | 'demolish' | 'upgrade' | 'sell' (id) }   (placing banner / foot buttons)
 //                'ui:build:open' / 'ui:build:close'
 // Listens:       eco:spark {spark} → affordability tint · build:enter → placing banner · build:exit/placed/removed → leave placing / counts
 //                build:denied {why} → shake the card · build:ghost {ok} → confirm button green/red · ui:unlock {ids} → unlock cards
@@ -65,11 +65,12 @@ export function mountBuildMenu(root, opts = {}) {
   const detail = el('div', 'll-build-detail');
   const detIcon = el('span', 'll-det-icon'); const detInfo = el('span', 'll-det-info');
   const deployBtn = el('button', 'll-btn deploy', '🚀 Deploy'); const upBtn = el('button', 'll-btn up', '⬆ Upgrade'); const detClose = el('button', 'll-btn close', '✕');
-  deployBtn.type = upBtn.type = detClose.type = 'button';
+  const sellBtn = el('button', 'll-btn sell', '💰 Sell');   // P12: sell one placed prop of this type from the tray (50 % refund) — no island tap needed
+  deployBtn.type = upBtn.type = detClose.type = sellBtn.type = 'button';
   const priceBox = el('span', 'll-det-price'); const priceDown = el('button', 'll-btn pm', '−'); const priceVal = el('span', 'll-det-price-val', '0 ✦'); const priceUp = el('button', 'll-btn pm', '+');
   priceDown.type = priceUp.type = 'button'; priceDown.title = 'lower the price (more buyers, less per sale)'; priceUp.title = 'raise the price (fewer buyers, more per sale)';
   priceBox.append(el('small', null, 'price'), priceDown, priceVal, priceUp); priceBox.style.display = 'none';
-  detail.append(detIcon, detInfo, priceBox, deployBtn, upBtn, detClose);
+  detail.append(detIcon, detInfo, priceBox, deployBtn, upBtn, sellBtn, detClose);
   tray.append(tabs, grid, detail, foot);
   wrap.append(placing, tray, toggle);
   root.appendChild(wrap);
@@ -157,6 +158,7 @@ export function mountBuildMenu(root, opts = {}) {
     const poor = !affordable(cost);
     deployBtn.disabled = poor; deployBtn.classList.toggle('poor', poor); deployBtn.innerHTML = iconize(poor ? `🚀 need ${cost} ✦` : '🚀 Deploy');
     const isStall = e.category === 'stall';
+    sellBtn.style.display = n ? '' : 'none'; sellBtn.innerHTML = iconize(`💰 Sell${n > 1 ? ' 1' : ''} · +${Math.round(cost * 0.5)} ✦`); sellBtn.title = `sell your ${n > 1 ? 'lowest-level ' : ''}${e.name || id} for half its cost (upgrades refunded too)`;
     upBtn.style.display = isStall ? '' : 'none'; priceBox.style.display = isStall && n && typeof api.priceOf === 'function' ? '' : 'none';
     if (isStall && n && typeof api.priceOf === 'function') {   // B24: price control for a placed stall type (CustomerSystem.setPrice via ui:price)
       const pr = api.priceOf(id) || {}; const p = pr.price ?? 0, f = pr.fair ?? p; const tag = p > f * 1.25 ? ' · greedy?' : p < f * 0.75 ? ' · cheap' : ' · fair';
@@ -206,6 +208,8 @@ export function mountBuildMenu(root, opts = {}) {
     },
     /** Upgrade your placed `id` stall (integrator picks which: the lowest level, nearest Pip). Emits ui:build {action:'upgrade', id}. */
     upgradeSelected(id = st.selected) { if (!id) return api; bus.emit('ui:build', { action: 'upgrade', id }); return api; },
+    /** P12: sell one placed prop of type `id` (integrator picks the lowest-level one, nearest Pip on ties; refund 50 %). */
+    sellSelected(id = st.selected) { if (!id || !countOf(id)) return api; bus.emit('ui:build', { action: 'sell', id }); return api; },
     deselect() { st.selected = null; refreshCards(); footTxt.textContent = 'pick a card'; return api; },
     upgradeCost: opts.upgradeCost || null,   // (level) => cost   · set by the integrator (Game.js)
     offers: opts.offers || null,             // () => [{ id, name, icon, cost, upkeep, text, kind, owned, blocker }] · B24 crew tab (helpers + zones)
@@ -236,6 +240,7 @@ export function mountBuildMenu(root, opts = {}) {
   toggle.addEventListener('click', () => api.toggle());
   deployBtn.addEventListener('click', () => api.deploy());
   upBtn.addEventListener('click', () => api.upgradeSelected());
+  sellBtn.addEventListener('click', () => api.sellSelected());
   priceDown.addEventListener('click', () => api.nudgePrice(-1)); priceUp.addEventListener('click', () => api.nudgePrice(+1));
   detClose.addEventListener('click', () => api.deselect());
   rotBtn.addEventListener('click', () => bus.emit('ui:build', { action: 'rotate' }));
