@@ -15,3 +15,9 @@ In a real browser: `?rec` autostarts, Ctrl+Shift+F9 toggles, `lumenRec.save()` d
 | P05 | P2 | FIXED (src/core/Game.js) | `game.stats.fps` was computed from the clamped dt (maxDt 1/20) → the F3/debug readout, the recorder and the PixelRatioGovernor could never see fps below 20. Headless run showed "fps 20" while game time advanced 0.18× real time. |
 | P06 | P3 | OPEN | Below 20 real fps the whole game runs in slow motion (dt clamp 1/20 per frame, no catch-up). Intended hitch guard, but on very weak phones a 150 s season lasts much longer in wall time. Consider maxDt 1/10 (see SUGGESTIONS S02). |
 | P07 | P3 | NOTE | ≤900 px wide: jar sliders + APPLY are hidden while a dialogue is open (11B mobile rule). Expected, documented so harnesses wait for the dialogue to close. |
+
+## Handoff (2026-10-22)
+- Done this chat: invisible recorder (`ui/recorder.js`, wired in `index.html`), harness `tools/play_record.mjs`, four 2-min recordings in
+  `LUMEN_extras/recordings/` (latest = run 4, with jars APPLY + PAY BARON working: debt 260→177 in S1), fixes P01 P02 P05.
+- Next: P03/S01 balance decision (ask the user), P06 (S02), then re-record with `SEASON=25` and add new P## rows.
+- Harness facts: headless swiftshader ≈ 20 fps reported (really slower); 640×360 viewport → mobile CSS rules apply (P07).
