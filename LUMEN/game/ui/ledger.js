@@ -185,7 +185,9 @@ export function mountLedger(root, opts = {}) {
   };
 
   btn.addEventListener('click', () => { if (!btn.disabled) api.continue(); });
-  sheet.addEventListener('click', (e) => { if (e.target !== btn && btn.disabled) api.skip(); });
+  // BUGFIX P08: clicking the disabled CONTINUE button (or any child of sheet) before the 1.2s stagger finishes now skips the reveal animation
+  // instead of silently ignoring the click.
+  sheet.addEventListener('click', (e) => { if (btn.disabled) api.skip(); });
   const onKey = (e) => { if (!st.open) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault && e.preventDefault(); btn.disabled ? api.skip() : api.continue(); } };
   window.addEventListener('keydown', onKey);
 
