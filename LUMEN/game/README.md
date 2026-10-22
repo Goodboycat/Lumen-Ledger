@@ -12,7 +12,7 @@ Dev material (demos, tests, tools, screenshots, handoffs) lives in `../../LUMEN_
 | **itch.io** | upload `lumen-ledger-web.zip` built by the recipe in `docs/ITCH_PAGE.md §6` (index.html at the zip root, viewport 1280 × 720, "click to launch") |
 | **Android** | Flutter WebView APK (Chat 14) loads this same folder from assets; `?import=LUMEN1:<base64>` restores a save exported from the web build |
 
-Useful URL flags: `?autoplay` skip the title · `?endless` start in Endless · `?season=30` 30‑second seasons (QA) · `?debug` fps / draw calls / dpr overlay · `?mute` · `?nohistory` (disable the Android back‑button sentinel).
+Useful URL flags: `?autoplay` skip the title · `?endless` start in Endless · `?season=30` 30‑second seasons (QA) · `?debug` fps / draw calls / dpr overlay · `?mute` · `?nohistory` (disable the Android back‑button sentinel) · `?rec` start the invisible gameplay recorder (Ctrl+Shift+F9 toggles; `lumenRec.save()` downloads a canvas .webm + timeline .json).
 
 **Controls** — WASD/arrows move · Space/J/Enter hammer/confirm · E/F interact · **B** build menu · Q W E R F G abilities (**tap** W = Bubble Shield, **hold** W = walk; R rotates the ghost while placing) · jars panel: ↩ withdraws half a jar, **PAY BARON** repays debt from the pouch · Esc/P pause · Enter/click advances dialogue, 1–4 picks a choice. Touch: left virtual joystick, A / B / 🔨 buttons, ⏸ in the HUD. Full table in `docs/GDD.md §6`.
 
