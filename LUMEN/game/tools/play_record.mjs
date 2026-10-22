@@ -100,8 +100,8 @@ try {
     const d = dirs[k % dirs.length]; await p.keyboard.down(d); await p.waitForTimeout(450); await p.keyboard.up(d);
     await p.keyboard.press('Space'); await p.keyboard.press('KeyE');
     if (k % 4 === 1) act('build: ' + await buildStall(plan[(k >> 2) % plan.length]));
-    if (k % 6 === 3) { const ap = p.locator('.ll-jars .ll-btn', { hasText: /APPLY/i }); if (await ap.count()) { await ap.first().click({ timeout: 1000 }).catch(() => {}); act('jars APPLY'); } }
-    if (k % 7 === 5) { const pay = p.locator('button', { hasText: /PAY BARON/i }); if (await pay.count() && await pay.first().isVisible().catch(() => false)) { const b4 = await snap(); await pay.first().click({ timeout: 1000 }).catch(() => {}); await p.waitForTimeout(200); const a = await snap(); act(`pay baron debt ${b4.debt}→${a.debt} spark ${b4.spark}→${a.spark}`); } }
+    if (k % 6 === 3) { const ap = p.locator('.ll-jars-foot .ll-btn:not(.alt)'); if (await ap.count()) { const b4 = await snap(); const dis = await ap.first().isDisabled().catch(() => true); if (dis) { await p.locator('.ll-jars-foot .ll-btn.alt').click({ timeout: 1000, force: true }).catch(() => {}); } await ap.first().click({ timeout: 1000, force: true }).catch(() => {}); await p.waitForTimeout(150); const a = await snap(); act(`jars APPLY (wasDisabled=${dis}) spark ${b4.spark}→${a.spark} jars ${JSON.stringify(a.jars)}`); } }
+    if (k % 5 === 4) { const pay = p.locator('.ll-jars .ll-btn.repay'); if (await pay.count() && !(await pay.first().isDisabled().catch(() => true))) { const b4 = await snap(); await pay.first().click({ timeout: 1000 }).catch(() => {}); await p.waitForTimeout(200); const a = await snap(); act(`pay baron debt ${b4.debt}→${a.debt} spark ${b4.spark}→${a.spark}`); } }
     if (k % 5 === 2) { const ab = ['KeyQ', 'KeyR', 'KeyF', 'KeyG'][(k / 5 | 0) % 4]; await p.keyboard.press(ab); act('ability ' + ab); }
     if (k % 10 === 0) R.timeline.push({ t: Math.round((Date.now() - t0) / 1000), ...s });
     k++;
