@@ -593,6 +593,19 @@ function installRunWires(lg) {
   //   not toggle (= close) the tray, which emitted ui:build:close → build.exit() and cancelled the placement. In demolish mode 🔨 leaves it (P28).
   on('ui:touch', (p) => { if (p?.action !== 'build' || lg.game.paused) return; if (build.mode === 'place') return; if (lg.demolishMode) { lg.demolishMode = false; ui?.build?.cancel?.(); bus.emit('ui:toast', { text: 'Demolish mode off', kind: 'info', icon: '💥', id: 'demolish-mode', duration: 1500 }); return; } ui?.build?.toggle?.(); });
   bus.on('ui:demolish:stop', () => { lg.demolishMode = false; ui?.build?.cancel?.(); });
+  // BUGFIX P33: ✋ Interact (touch pad) finally DOES something, context-sensitive — placing a ghost → rotate it · next to an upgradable
+  //   stall (≤ 2.5 u) → upgrade it (same as U / tray ⬆) · otherwise → open the Build Tray. Desktop E/F stay FinLit abilities (ABILITY_KEYS).
+  lg.interact = () => {
+    if (!lg.sb || lg.game.paused || ui?.isModal?.()) return 'blocked';
+    if (build.mode === 'place') { build.rotate(); return 'rotate'; }
+    const e = build.nearest(hero.root.position.x, hero.root.position.z, 2.5);
+    if (e && !e.scenery && e.category === 'stall') {
+      if (e.level >= 3) { bus.emit('ui:toast', { text: `${e.id.replace('stall_', '')} stall is already max level`, kind: 'info', icon: '⬆', id: 'interact', duration: 1800 }); return 'max'; }
+      return build.upgrade(e) ? 'upgrade' : 'denied';
+    }
+    ui?.build?.open?.(); return 'tray';
+  };
+  on('ui:touch', (p) => { if (p?.action === 'interact') lg.interact(); });
   // tap on the island while in demolish mode → demolish what is there (10B's onTap handles place mode)
   const prevTap = lg.game.input?.onTap;
   // BUGFIX (mobile): with debugKeys off (the real game) nothing handled a tap while PLACING → the ghost never moved on phones.
