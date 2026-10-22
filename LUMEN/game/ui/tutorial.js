@@ -50,7 +50,7 @@ export const TUTORIAL_STEPS = [
   { id: 'deploy',   title: '🚀 Deploy · ⬆ Upgrade', target: '.ll-build.open .ll-build-detail', mode: 'look', prep: 'tray',
     text: 'Pick a card, then <b>🚀 Deploy</b> places a new stall on the ground, and <b>⬆ Upgrade</b> levels up the one you already have — bigger stall, more Spark.' },
   { id: 'jars',     title: '🫙 The 4 money jars', target: '#ll-jars', mode: 'act',
-    text: 'Split your Spark: <b>Spend</b>, <b>Save</b>, <b>Invest</b> and <b>Protect</b>. Drag a jar and the others rebalance, then tap <b>APPLY</b>. Try it!' },
+    text: 'Split your Spark: <b>Spend</b>, <b>Save</b>, <b>Invest</b> and <b>Protect</b>. Drag a jar and the others rebalance, then tap <b>APPLY</b> to move real Spark from your pouch into the jars. Try it — or tap <b>Next</b> to keep your Spark for now.' },
   { id: 'fog',      title: '🌫 Debt Fog', target: '.ll-hud .ll-fog', mode: 'look',
     text: 'This bar is the <b>Debt Fog</b>. Borrowing and bad deals make it grow; saving and smart choices push it back. At 100 % the island is lost!' },
   { id: 'season',   title: '📅 Season', target: '.ll-hud .ll-season', mode: 'look',
@@ -313,6 +313,8 @@ export function mountTutorial(root, opts = {}) {
       st.waitT = setTimeout(() => { st.waiting = false; blocker.classList.remove('on'); api.open('first'); bus.emit('ui:pause', { on: false, by: 'tutorial-wait' }); }, opts.delay ?? 450);
     }),
     bus.on('ui:build:open', () => { if (st.open && step().id === 'build') api.next(); }),
+    // BUGFIX P39: APPLY on the jars step is the step's action — it now advances the tutorial (Next stays, since APPLY is disabled at 0 ✦)
+    bus.on('ui:jar:apply', () => { if (st.open && step().id === 'jars') setTimeout(() => { if (st.open && step().id === 'jars') api.next(); }, 350); }),
     bus.on('game:title', () => { clearTimeout(st.waitT); if (st.waiting) { st.waiting = false; blocker.classList.remove('on'); bus.emit('ui:pause', { on: false, by: 'tutorial-wait' }); } api.close('title'); lockOff(); }),
     bus.on('eco:lose', () => api.close('lose')),
   );
