@@ -99,12 +99,13 @@ export class Game {
 
   _frame(now) {
     let dtReal = (now - this._last) / 1000; this._last = now;
+    const dtRaw = Math.max(0, Math.min(dtReal, 1));   // BUGFIX P05: fps is measured on the UNclamped frame time (was clamped → never read below 20)
     if (dtReal > this.maxDt) dtReal = this.maxDt;
     if (dtReal < 0) dtReal = 0;
     this.realTime += dtReal;
 
     // stats
-    const st = this.stats; st.frames++; st.acc += dtReal;
+    const st = this.stats; st.frames++; st.acc += dtRaw;
     if (st.acc >= 0.5) { st.fps = Math.round(st.frames / st.acc); st.frames = 0; st.acc = 0; }
 
     this.hitStop.update(dtReal); // may restore timeScales
