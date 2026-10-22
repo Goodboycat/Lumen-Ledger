@@ -625,7 +625,10 @@ function installRunWires(lg) {
     let wDown = 0;
     const MOVE_KEYS = ['KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
     const onKey = (e) => {
-      if (e.repeat) return; const name = ABILITY_KEYS[e.code]; if (!name || ui?.isModal?.()) return;
+      if (e.repeat) return;
+      // BUGFIX P33: U = upgrade the stall next to Pip (the tutorial / README said so, but U was debug-only) — same handler as touch ✋
+      if (e.code === 'KeyU' && !ui?.isModal?.() && lg.sb && lg.sb.build.mode !== 'place') { lg.interact(); return; }
+      const name = ABILITY_KEYS[e.code]; if (!name || ui?.isModal?.()) return;
       if (e.code === 'KeyW') { const k = lg.game.input?.keys; wDown = (k && MOVE_KEYS.some((c) => k.has(c))) ? 0 : (performance.now?.() || Date.now()); return; }
       if (e.code === 'KeyR' && lg.sb?.build?.mode === 'place') return;
       lg.ability(name);
