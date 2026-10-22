@@ -102,6 +102,12 @@ export function createAudio(opts = {}) {
       if (sfxGain) ramp(sfxGain.gain, state.volumes.sfx, 0.08); if (musicGain) ramp(musicGain.gain, state.volumes.music, 0.08);
       return api;
     },
+    /** 15: MediaStream of everything the player hears (sfx + music, after volume/duck) — for ui/recorder.js. null until unlock(). */
+    captureStream() {
+      if (!state.ctx) return null; ensureGraph();
+      if (!state.capDest) { try { state.capDest = state.ctx.createMediaStreamDestination(); sfxGain.connect(state.capDest); musicDuck.connect(state.capDest); } catch (e) { state.log.push('captureStream: ' + (e.message || e)); return null; } }
+      return state.capDest.stream;
+    },
     duck(on) { state.ducked = !!on; if (musicDuck) ramp(musicDuck.gain, on ? 0.35 : 1, 0.2); return api; },
     destroy() { for (const off of offs) off(); offs.length = 0; stopMusic(0); if (state.ctx && typeof window !== 'undefined' && state.ctx !== window.lumenAudioCtx) state.ctx.close?.(); },
     _now: null,

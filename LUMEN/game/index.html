@@ -94,7 +94,7 @@ try {
   // the title opened before the manifest arrived → queue its music now (plays once 'input:first' unlocks the context)
   audio.load('./audio/manifest.json').then(() => { if (ui.title?.isOpen && !audio.state.currentMusic) audio.music('title'); }).catch(() => {});
   // invisible QA recorder (ui/recorder.js): ?rec autostarts, Ctrl+Shift+F9 toggles, window.lumenRec.save()/dump() writes webm + timeline JSON
-  window.lumenRec = installRecorder({ game, bus: game.bus, lg, canvas: game.renderer.domElement, autostart: params.has('rec') });
+  window.lumenRec = installRecorder({ game, bus: game.bus, lg, canvas: game.renderer.domElement, audio, autostart: params.has('rec') ? (params.get('rec') || true) : false });
   if (params.has('mute')) audio.setVolume({ sfx: 0, music: 0 });                           // ?mute (QA / trailer capture)
   // 10D: save slot for the Flutter WebView (14) — copy the text out before storage is cleared, paste it back in: LUMEN1:<base64>
   window.lumenSave = { export: () => lg.save.exportText(), import: (t) => lg.save.importText(t), clear: () => lg.save.clear(), has: () => lg.save.has(), describe: () => lg.save.describe() };
