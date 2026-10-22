@@ -215,8 +215,8 @@ export class HeroController {
   /** BUGFIX P11: furthest distance ≤ dist along dir (from the current position) that is still land, in 0.05 u steps. No isLand dep → dist. */
   landReach(dir, dist, step = 0.05) {
     const isLand = this.deps && this.deps.isLand; if (!isLand) return dist;
-    const o = this.root.position; let ok = 0;
-    for (let d = step; d <= dist + 1e-6; d += step) { if (!isLand(o.x + dir.x * d, o.z + dir.z * d)) break; ok = d; }
+    const o = this.root.position; let ok = 0, m = 0.04;   // BUGFIX P20: margin keeps the reach off the exact cell edge
+    for (let d = step; d <= dist + 1e-6; d += step) { if (!isLand(o.x + dir.x * d, o.z + dir.z * d) || !isLand(o.x + dir.x * (d + m), o.z + dir.z * (d + m))) break; ok = d; }
     return Math.min(ok, dist);
   }
 
@@ -246,6 +246,7 @@ export class HeroController {
   /** Trigger attack (from input). Returns true if started. */
   doAttack() {
     if (this.state === 'attack' && !this.attack.canCancel) return false;
+    if (this.state !== 'attack') this.recoverToLand();      // BUGFIX P21: never start a swing from a water coordinate
     this.state = 'attack';
     this.game.sequences.play(this.attack, this.attack.ctx);
     return true;
@@ -255,13 +256,13 @@ export class HeroController {
   update(dt) {
     this.t += dt;
     const inp = this.game.input, p = this.p;
+    if (this.state !== 'attack') this.recoverToLand();     // BUGFIX P11/P21: runs BEFORE the attack press so mashing ⚔ on a shore edge cannot skip it
     if (inp.pressed('attack')) this.doAttack();
 
     if (this.state === 'attack') {
       // allow steering input to be buffered as facing only
       this.vel.set(0, 0, 0);
     } else {
-      this.recoverToLand();                                   // BUGFIX P11: never stay stuck on a water cell
       const mv = inp.move;
       const wantMove = mv.lengthSq() > 0.001;
       // Camera-relative: screen up = -z world (camera looks toward -z from +z offset)

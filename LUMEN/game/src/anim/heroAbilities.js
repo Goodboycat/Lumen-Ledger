@@ -22,7 +22,7 @@ import { Easing, lerp } from './Easing.js';
 import { G, mesh } from '../assets/geo.js';
 import { PALETTE as P, toonMat, flatMat } from '../core/Toon.js';
 import { addOutline } from '../core/Outline.js';
-import { HERO_MOVES, registerMoves, attachMoves, REST, POSE, snapPose, lerpPose, facingDir, lungeReach } from './heroAnims.js';
+import { HERO_MOVES, registerMoves, attachMoves, REST, POSE, snapPose, lerpPose, facingDir, lungeReach, LAND_MARGIN } from './heroAnims.js';
 
 const V = () => new THREE.Vector3();
 const _a = V(), _b = V(), _c = V(), _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = V(), _e = new THREE.Euler();
@@ -33,10 +33,15 @@ const dtOf = (M) => (M.dtLast > 0 && M.dtLast < 0.25 ? M.dtLast : 1 / 60);
 // ───────────────────────────── shared helpers (same shape as 3A's private ones) ─────────────────────────────
 function targetPos(t) { return !t ? null : t.isVector3 ? t : t.position || (t.root && t.root.position) || null; }
 function faceTo(hero, pos) { if (!pos) return; const yaw = Math.atan2(pos.x - hero.root.position.x, pos.z - hero.root.position.z); hero.facing = yaw; hero.root.rotation.y = yaw; }
-function landDist(hero, dir, dist) {
+// BUGFIX P22: 0.05 u steps (was 0.25 — skipped water tiles across narrow bays) + LAND_MARGIN so the dash never ends on a cell edge.
+function landDist(hero, dir, dist, step = 0.05) {
   const isLand = hero.deps && hero.deps.isLand; if (!isLand) return dist;
-  let ok = 0; for (let d = 0.25; d <= dist + 1e-6; d += 0.25) { _a.copy(hero.root.position).addScaledVector(dir, d); if (!isLand(_a.x, _a.z)) break; ok = d; }
-  return ok;
+  const o = hero.root.position; let ok = 0;
+  for (let d = step; d <= dist + 1e-6; d += step) {
+    if (!isLand(o.x + dir.x * d, o.z + dir.z * d) || !isLand(o.x + dir.x * (d + LAND_MARGIN), o.z + dir.z * (d + LAND_MARGIN))) break;
+    ok = d;
+  }
+  return Math.min(ok, dist);
 }
 /** Two-pose phase: lerps from the pose snapshotted at phase start to `to`; `fn` layers extra motion on top. */
 function tw(seq, name, ms, ease, to, o = {}) {

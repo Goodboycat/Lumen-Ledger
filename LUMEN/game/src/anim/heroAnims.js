@@ -57,9 +57,16 @@ export function facingDir(hero, out = V()) { return out.set(Math.sin(hero.facing
 function faceTo(hero, pos) { if (!pos) return; const yaw = Math.atan2(pos.x - hero.root.position.x, pos.z - hero.root.position.z); hero.facing = yaw; hero.root.rotation.y = yaw; }
 function targetPos(t) { return !t ? null : t.isVector3 ? t : t.position || (t.root && t.root.position) || null; }
 /** Furthest point ≤ dist along dir that is still land (steps of `step`, default 0.25). */
-function landDist(hero, dir, dist, step = 0.25) {
+// BUGFIX P20/P22: every sample is also tested LAND_MARGIN further along, so the returned reach never ends exactly on a cell edge
+// (x.5 — where IEEE rounding of start+reach can flip the cell) and the default step is 0.05 u, so narrow bays mid-dash are seen.
+export const LAND_MARGIN = 0.04;
+function landDist(hero, dir, dist, step = 0.05) {
   const isLand = hero.deps && hero.deps.isLand; if (!isLand) return dist;
-  let ok = 0; for (let d = step; d <= dist + 1e-6; d += step) { _a.copy(hero.root.position).addScaledVector(dir, d); if (!isLand(_a.x, _a.z)) break; ok = d; }
+  const o = hero.root.position; let ok = 0;
+  for (let d = step; d <= dist + 1e-6; d += step) {
+    if (!isLand(o.x + dir.x * d, o.z + dir.z * d) || !isLand(o.x + dir.x * (d + LAND_MARGIN), o.z + dir.z * (d + LAND_MARGIN))) break;
+    ok = d;
+  }
   return Math.min(ok, dist);
 }
 /** BUGFIX P11: small lunge/hop clamp — how far (≤ dist) the hero may shift along dir from M.start and stay on land (0.05 u steps). */
