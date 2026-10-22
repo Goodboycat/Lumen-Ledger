@@ -522,7 +522,7 @@ function installRunWires(lg) {
       const hp = hero.root.position, e = [...build.placed.values()].filter((x) => x.id === p.id && !x.scenery).sort((x, y) => ((x.level || 1) - (y.level || 1)) || (x.group.position.distanceToSquared(hp) - y.group.position.distanceToSquared(hp)))[0] || null;
       if (e) build.demolish(e); else bus.emit('build:denied', { id: p.id, why: 'nothing of that type to sell' });
     }
-    else if (a === 'buy') lg.buyOffer(p.id);   // BUGFIX B24: Crew & Land tab (helpers + zones) — was debug H/Z only
+    else if (a === 'buy') { lg.demolishMode = false; lg.buyOffer(p.id); }   // BUGFIX B24 · P30: buying also leaves demolish mode in the integrator: Crew & Land tab (helpers + zones) — was debug H/Z only
   });
   // BUGFIX B24: player-facing hire / unlock / price. offers() feeds the tray's Crew & Land tab; buyOffer pays through the economy
   // (prereqs + cost enforced by buyUpgrade, C03) and then does the world side (helper creature / zone rise). ui:price nudges the per-type
@@ -550,7 +550,7 @@ function installRunWires(lg) {
   offs.push(() => { if (ui?.build) { ui.build.offers = null; ui.build.priceOf = null; } });
   // BUGFIX B13: closing the tray never leaves a live ghost. BUGFIX P13: demolish mode SURVIVES closing the tray (the player closes it to see the
   // island and tap a stall) — the tray's own close() keeps st.demolish, the HUD toast says how to leave it, and Esc / re-open ✕ / a pick ends it.
-  on('ui:build:close', () => { if (build.mode === 'place') build.exit(); if (lg.demolishMode) bus.emit('ui:toast', { text: 'Demolish mode: tap a building to sell it (50 % refund) · Esc to stop', kind: 'warn', icon: '💥', id: 'demolish-mode' }); });
+  on('ui:build:close', () => { if (build.mode === 'place') build.exit(); if (lg.demolishMode) bus.emit('ui:toast', { text: 'Demolish mode: tap a building to sell it (50 % refund) · ' + (lg.game.input?.isTouch ? '🔨 or STOP to leave' : 'Esc to stop'), kind: 'warn', icon: '💥', id: 'demolish-mode', duration: 6000, action: { label: 'Stop', emit: 'ui:demolish:stop' } }); });   // BUGFIX P28: touch has a tappable Stop
   // BUGFIX B13: a placed STALL ends placement in both layers (no accidental second purchase on the next click); cheap decor/nature stay
   // armed for quick fences/paths and Esc / ✕ cancel them. build.exit() emits build:exit → the tray leaves placing.
   on('build:placed', (p) => { if (!p?.silent && build.mode === 'place' && String(p?.id).startsWith('stall_')) build.exit(); });
@@ -571,7 +571,10 @@ function installRunWires(lg) {
   on('ui:repay', (p) => lg.repay(p?.amount));
   // ability keys — only while playing/endless and no modal owns the screen (dialogue keys 1–4, ledger Enter, pause Esc)
   lg.ability = (name) => { if (!lg.sb || (lg.state !== 'playing' && lg.state !== 'endless') || lg.game.paused) return null; return sb.ability(name); };
-  on('ui:touch', (p) => { if (p?.action === 'build' && !lg.game.paused) ui?.build?.toggle?.(); });
+  // BUGFIX P27: 🔨 on the touch pad while a ghost is up CONFIRMS placement (BuildSystem._onAction already did via input.press) — it must
+  //   not toggle (= close) the tray, which emitted ui:build:close → build.exit() and cancelled the placement. In demolish mode 🔨 leaves it (P28).
+  on('ui:touch', (p) => { if (p?.action !== 'build' || lg.game.paused) return; if (build.mode === 'place') return; if (lg.demolishMode) { lg.demolishMode = false; ui?.build?.cancel?.(); bus.emit('ui:toast', { text: 'Demolish mode off', kind: 'info', icon: '💥', id: 'demolish-mode', duration: 1500 }); return; } ui?.build?.toggle?.(); });
+  bus.on('ui:demolish:stop', () => { lg.demolishMode = false; ui?.build?.cancel?.(); });
   // tap on the island while in demolish mode → demolish what is there (10B's onTap handles place mode)
   const prevTap = lg.game.input?.onTap;
   // BUGFIX (mobile): with debugKeys off (the real game) nothing handled a tap while PLACING → the ghost never moved on phones.

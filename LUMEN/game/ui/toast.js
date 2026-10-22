@@ -56,6 +56,12 @@ export function mountToast(root, opts = {}) {
       const badge = el('span', 'll-toast-badge', ''); badge.style.display = 'none';
       const bar = el('i', 'll-toast-bar'); bar.style.animationDuration = duration + 'ms';
       node.append(icon, txt, badge, bar);
+      // BUGFIX P28: optional tappable action button (touch has no Esc) — o.action = { label, emit: 'bus:event' | fn }
+      if (o.action && (o.action.emit || typeof o.action === 'function' || typeof o.action.fn === 'function')) {
+        const a = o.action, btn = el('button', 'll-toast-act', a.label || 'Stop'); btn.type = 'button';
+        btn.addEventListener('click', (ev) => { ev.stopPropagation(); if (typeof a === 'function') a(); else if (a.fn) a.fn(); else if (a.emit && bus) bus.emit(a.emit, a.payload || {}); remove(t); });
+        node.insertBefore(btn, bar);
+      }
       node.addEventListener('click', () => remove(t));
       const hold = () => { clearTimeout(t.timer); t.bar.style.animationPlayState = 'paused'; };
       const release = () => { if (live.includes(t)) { t.bar.style.animationPlayState = ''; restart(t, Math.max(2000, duration * 0.5)); } };

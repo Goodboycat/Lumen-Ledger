@@ -107,7 +107,7 @@ export function mountBuildMenu(root, opts = {}) {
         if (o.owned) { footTxt.innerHTML = iconize(`${o.name}: already yours`); return; }
         if (o.blocker && o.blocker !== 'cost') { retrigger(card, 'denied'); footTxt.innerHTML = iconize(`${o.name}: ${o.blocker}`); return; }
         if (o.blocker === 'cost') { retrigger(card, 'denied'); footTxt.innerHTML = iconize(`need ${o.cost} ✦ (have ${st.spark})`); return; }
-        footTxt.innerHTML = iconize(`${o.icon || OFFER_ICONS[o.id] || ''} ${o.text || o.name}`); bus.emit('ui:build', { id: o.id, cost: o.cost, action: 'buy', kind: o.kind });
+        footTxt.innerHTML = iconize(`${o.icon || OFFER_ICONS[o.id] || ''} ${o.text || o.name}`); st.demolish = false; demolishBtn.classList.remove('on'); bus.emit('ui:build', { id: o.id, cost: o.cost, action: 'buy', kind: o.kind });   // BUGFIX P30: buying an offer leaves demolish mode
       });
       card._offer = o; grid.append(card); cards.set(o.id, card);
     });
@@ -235,7 +235,7 @@ export function mountBuildMenu(root, opts = {}) {
     setUnlocked(ids) { for (const id of ids || []) st.locked.delete(id); refreshCards(); return api; },
     lockAllExcept(ids) { st.locked = new Set(Object.keys(catalog).filter((k) => !ids.includes(k))); refreshCards(); return api; },
     setCounts(map) { Object.assign(st.counts, map || {}); refreshCards(); return api; },
-    setCategory(c) { if (cats.includes(c)) { st.cat = c; renderGrid(); } return api; },
+    setCategory(c) { if (cats.includes(c)) { st.cat = c; if (st.selected && (!catalog[st.selected] || (catalog[st.selected].category || 'prop') !== c)) st.selected = null; renderGrid(); } return api; },   // BUGFIX P29: a card from another tab no longer leaves its detail bar open
     destroy() { offs.forEach((f) => f()); window.removeEventListener('keydown', onKey); wrap.remove(); },
   };
 

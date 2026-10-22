@@ -6,6 +6,8 @@
 .ll-toast.bump { animation: ll-toast-bump .26s cubic-bezier(.34,1.56,.64,1); }
 .ll-toast-icon { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; border: 2px solid var(--ink); background: #fff; }
 .ll-toast-text { flex: 1; line-height: 1.25; }
+.ll-toast-act { flex: none; font: inherit; font-size: 11px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; background: var(--ink, #222); color: #fff; border: 0; border-radius: 999px; padding: 4px 10px; margin-left: 6px; cursor: pointer; pointer-events: auto; }
+.ll-toast-act:active { transform: scale(.94); }
 .ll-toast-badge { flex: none; font-size: 10px; font-weight: 900; background: var(--ink); color: #fff; border-radius: 999px; padding: 1px 6px; }
 .ll-toast-bar { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--ink); opacity: .35; width: 100%; transform-origin: left; animation: ll-toast-bar linear both; }
 .ll-toast.ok { background: #e3f7d6; } .ll-toast.ok .ll-toast-icon { background: var(--grass); }
