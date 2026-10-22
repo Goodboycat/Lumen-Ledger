@@ -554,7 +554,7 @@ function installRunWires(lg) {
   // BUGFIX B13: a placed STALL ends placement in both layers (no accidental second purchase on the next click); cheap decor/nature stay
   // armed for quick fences/paths and Esc / ✕ cancel them. build.exit() emits build:exit → the tray leaves placing.
   on('build:placed', (p) => { if (!p?.silent && build.mode === 'place' && String(p?.id).startsWith('stall_')) build.exit(); });
-  if (ui?.build) { ui.build.reset?.(); ui.build.costOf = (id) => build.cost(id); ui.build.upgradeCost = (lvl) => build.upgradeCost(lvl); ui.build.placedInfo = (id) => [...build.placed.values()].filter((x) => x.id === id).map((x) => ({ level: x.level })); ui.build.refresh?.(); }
+  if (ui?.build) { ui.build.reset?.(); ui.build.costOf = (id) => build.cost(id); ui.build.upgradeCost = (lvl) => build.upgradeCost(lvl); ui.build.placedInfo = (id) => [...build.placed.values()].filter((x) => x.id === id).map((x) => ({ level: x.level, cost: x.cost })); /* BUGFIX P24: cost → real refund label */ ui.build.refresh?.(); }
   offs.push(() => { if (ui?.build) { ui.build.upgradeCost = null; ui.build.placedInfo = null; ui.build.costOf = null; ui.build.reset?.(); } });
   // jars APPLY {pct}: move the whole pouch into the 4 jars by pct (spend stays as pouch → its share is the amount NOT moved)
   lg.applyJars = (pct = {}) => {

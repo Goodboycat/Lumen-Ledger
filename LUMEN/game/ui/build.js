@@ -158,7 +158,9 @@ export function mountBuildMenu(root, opts = {}) {
     const poor = !affordable(cost);
     deployBtn.disabled = poor; deployBtn.classList.toggle('poor', poor); deployBtn.innerHTML = iconize(poor ? `🚀 need ${cost} ✦` : '🚀 Deploy');
     const isStall = e.category === 'stall';
-    sellBtn.style.display = n ? '' : 'none'; sellBtn.innerHTML = iconize(`💰 Sell${n > 1 ? ' 1' : ''} · +${Math.round(cost * 0.5)} ✦`); sellBtn.title = `sell your ${n > 1 ? 'lowest-level ' : ''}${e.name || id} for half its cost (upgrades refunded too)`;
+    // BUGFIX P24: the refund is 50 % of the ACTUAL entry cost (base + upgrades) of the stall that would be sold (lowest level first, like Game.js)
+    const sellTarget = n ? placedOf(id).slice().sort((a, b) => (a.level || 1) - (b.level || 1))[0] : null; const sellCost = sellTarget && sellTarget.cost != null ? sellTarget.cost : cost;
+    sellBtn.style.display = n ? '' : 'none'; sellBtn.innerHTML = iconize(`💰 Sell${n > 1 ? ' 1' : ''} · +${Math.round(sellCost * 0.5 + 1e-9)} ✦`); sellBtn.title = `sell your ${n > 1 ? 'lowest-level ' : ''}${e.name || id} for half its cost (upgrades refunded too)`;
     upBtn.style.display = isStall ? '' : 'none'; priceBox.style.display = isStall && n && typeof api.priceOf === 'function' ? '' : 'none';
     if (isStall && n && typeof api.priceOf === 'function') {   // B24: price control for a placed stall type (CustomerSystem.setPrice via ui:price)
       const pr = api.priceOf(id) || {}; const p = pr.price ?? 0, f = pr.fair ?? p; const tag = p > f * 1.25 ? ' · greedy?' : p < f * 0.75 ? ' · cheap' : ' · fair';

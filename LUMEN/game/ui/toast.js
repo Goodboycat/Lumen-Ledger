@@ -94,7 +94,7 @@ export function mountToast(root, opts = {}) {
       api.push({ text, kind: 'bad', id: 'denied', duration: 3200 });
     });
     on('eco:loan', (p) => p && api.push(p.kind === 'repay' ? { text: `Repaid ${p.delta} — debt ${p.debt}`, kind: 'ok', icon: '💸', id: 'loan' } : { text: `Loan +${p.delta} — the Baron smiles. Debt ${p.debt}`, kind: 'bad', icon: '🎩', id: 'loan' }));
-    on('cust:angry', (p) => api.push({ text: 'A Glimmer left angry' + (p && p.reason ? ` (${p.reason})` : ''), kind: 'warn', icon: '😠', id: 'angry', duration: 3500 }));
+    on('cust:angry', (p) => api.push({ text: 'A Glimmer left angry' + (p && (p.why || p.reason) ? ` (${p.why || p.reason})` : ''), kind: 'warn', icon: '😠', id: 'angry', duration: 3500 }));
     on('island:unlock', (p) => api.push({ text: `New zone unlocked${p && p.zone ? ': ' + nice(p.zone) : ''}!`, kind: 'gold', icon: '🗺', duration: 5000 }));
     on('eco:win', () => api.push({ text: 'The Lighthouse is lit! ✦', kind: 'gold', duration: 5000 }));
     on('eco:lose', () => api.push({ text: 'The Debt Fog took the island…', kind: 'bad', duration: 5000 }));

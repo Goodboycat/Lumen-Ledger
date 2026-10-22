@@ -236,8 +236,10 @@ export class BuildSystem {
   place(id, cx, cz, rot = this.rot, opts = {}) {
     const animate = opts.animate !== false, pay = opts.pay !== false;
     if (!this.canPlace(id, cx, cz, rot)) { this._deny('blocked', { id, cx, cz }); return null; }
-    const cost = pay ? this.cost(id) : 0;
+    // BUGFIX P24: a stall placed without paying (starter / restore) still has a resale value — its catalog price (+ later upgrades).
+    // opts.cost overrides (save/load passes the accumulated cost). Only the ECONOMY charge depends on `pay`.
     const e = this.entry(id);
+    const cost = opts.cost != null ? opts.cost : this.cost(id);
     if (pay && this.economy) {
       if (!this.canAfford(cost)) { this._deny('cannot afford', { id, cost, spark: this.economy.state && this.economy.state.spark }); return null; }
       const ok = (e.category === 'stall' && this.economy.buyStall) ? this.economy.buyStall(id) : this.economy.spend(cost, 'build:' + id);
@@ -247,13 +249,13 @@ export class BuildSystem {
     const group = this._build(id, { level: opts.level || 1 });
     group.rotation.y = rot * Math.PI / 2;
     group.position.copy(this.anchorToWorld(id, cx, cz, rot));
-    const entry = { id, group, level: group.userData.level || opts.level || 1, cells: this.cellsFor(id, cx, cz, rot), rot, cost, cx, cz, category: group.userData.category || e.category || 'prop', uid: ++this._counter };
+    const entry = { id, group, level: group.userData.level || opts.level || 1, cells: this.cellsFor(id, cx, cz, rot), rot, cost: cost + (opts.level > 1 && opts.cost == null ? [2, 3].slice(0, opts.level - 1).reduce((a, l) => a + this.upgradeCost(l), 0) : 0), cx, cz, category: group.userData.category || e.category || 'prop', uid: ++this._counter };
     this.placed.set(key(cx, cz), entry);
     for (const c of entry.cells) this.cells.set(key(c.x, c.z), entry);
     this.parent.add(group);
     if (animate && this.game && this.game.sequences) {
       this.busy.add(group);
-      const seq = this.makePlaceSequence(entry, cost);
+      const seq = this.makePlaceSequence(entry, pay ? cost : 0);
       seq.then(() => this.busy.delete(group));
       this.game.sequences.play(seq, entry);
       entry.seq = seq;
@@ -288,7 +290,7 @@ export class BuildSystem {
     const entry = this._resolve(at);
     if (!entry) { this._deny('nothing to demolish', { at }); return false; }
     if (entry.scenery || !this.placed.has(key(entry.cx, entry.cz))) { this._deny('not yours to demolish', { id: entry.id, scenery: !!entry.scenery }); return false; }   // BUGFIX P19
-    if (this.busy.has(entry.group)) return false;
+    if (this.busy.has(entry.group) || entry.group.userData.swapping) { this._deny('still building — wait a moment', { id: entry.id }); return false; }   // BUGFIX P26: no demolish mid level-up
     const animate = opts.animate !== false;
     const refund = opts.refund === false ? 0 : Math.round(entry.cost * REFUND_RATIO + 1e-9);
     // bookkeeping first (so the cells are free immediately for the ghost)
@@ -330,7 +332,7 @@ export class BuildSystem {
     if (entry.scenery) { this._deny('not upgradable', { id: entry.id }); return false; }   // BUGFIX P19
     if (entry.category !== 'stall' || typeof entry.group.userData.setLevel !== 'function') { this._deny('not upgradable', { id: entry.id }); return false; }
     if (entry.level >= 3) { this._deny('max level', { id: entry.id, level: entry.level }); return false; }
-    if (entry.group.userData.swapping) return false;
+    if (entry.group.userData.swapping || this.busy.has(entry.group)) { this._deny('still upgrading — wait a moment', { id: entry.id, level: entry.level }); return false; }   // BUGFIX P25: tell the UI instead of a silent false
     const to = entry.level + 1, cost = this.upgradeCost(to);
     if (this.economy) {
       if (!this.canAfford(cost)) { this._deny('cannot afford', { id: entry.id, cost, spark: this.economy.state && this.economy.state.spark }); return false; }
@@ -339,6 +341,8 @@ export class BuildSystem {
     const canAnim = !!(this.game && this.game.sequences);
     const seq = entry.group.userData.setLevel(to, { animate: canAnim, game: this.game, sequences: this.game && this.game.sequences, vfx: this.vfx });
     entry.level = to; entry.cost += cost;   // cost accumulates → 50 % refund includes upgrades
+    // BUGFIX P26: the group is busy (not pickable / demolishable) until the level-up sequence ends.
+    if (seq && typeof seq.then === 'function') { this.busy.add(entry.group); seq.then(() => { this.busy.delete(entry.group); this.bus.emit('build:upgraded:done', { id: entry.id, level: to, entry }); }); }
     if (this.vfx && cost > 0) { const p = entry.group.position.clone(); p.y = 2.2; this.vfx.pop.show(p, `L${to}  −${cost}`, { color: '#FFD54F', dur: 1, size: 1 }); }
     this.bus.emit('build:upgraded', { id: entry.id, group: entry.group, level: to, cost, entry });
     return seq || true;
@@ -390,7 +394,7 @@ export class BuildSystem {
   /** Re-place saved props instantly, no cost, no events per item. Returns count. */
   load(list = []) {
     let n = 0;
-    for (const s of list) { const e = this.place(s.id, s.cx, s.cz, s.rot || 0, { animate: false, pay: false, level: s.level || 1, silent: true }); if (e) { e.cost = s.cost ?? this.cost(s.id); n++; } }
+    for (const s of list) { const e = this.place(s.id, s.cx, s.cz, s.rot || 0, { animate: false, pay: false, level: s.level || 1, silent: true, cost: s.cost }); if (e) n++; }
     this.bus.emit('build:loaded', { count: n });
     return n;
   }
