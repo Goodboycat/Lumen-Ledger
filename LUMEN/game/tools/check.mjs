@@ -1227,13 +1227,25 @@ if (doEnemies) {
     // hero's own sword picks enemies: spawn one in front and attack
     E.waveSeason = 0; sb.eco.state.season = 3; sb.sched.wave = false; sb.eco.state.day01 = 0.71; step(); if (E.list.length !== 3) throw new Error('S3 wave size ' + E.list.length);
     const tgt = sb.hero.deps.targets(); if (!tgt.some((t) => t.enemy)) throw new Error('hero targets lack enemies');
-    // 5. season end clears the wave
-    sb.keys.endSeason(); if (E.list.length !== 0) throw new Error('season end did not clear'); if (E.heroSpeedMul !== 1 || sb.hero.speed !== 5.2) throw new Error('hero speed not reset');
+    // 5. S16b: season end → everyone WALKS back to the pier (state 'home', no longer a target, no coin), steps off within homeTimeout; hero speed reset
+    const defB = E.stats.defeated, exitP = E._exit; const dHome0 = E.list.map((e) => Math.hypot(e.g.position.x - exitP.x, e.g.position.z - exitP.z));
+    sb.keys.endSeason(); if (E.list.length !== 3 || E.active.length !== 0 || E.leaving.length !== 3 || E.targets().length !== 0) throw new Error(`season end: list ${E.list.length} active ${E.active.length} leaving ${E.leaving.length}`);
+    if (E.heroSpeedMul !== 1 || sb.hero.speed !== 5.2) throw new Error('hero speed not reset');
+    run(1); const dHome1 = E.list.map((e) => Math.hypot(e.g.position.x - exitP.x, e.g.position.z - exitP.z)); if (!dHome1.every((d, i) => d < dHome0[i] - 0.5)) throw new Error(`not walking to the pier ${dHome0.map((d) => d.toFixed(1))} → ${dHome1.map((d) => d.toFixed(1))}`);
+    sb.eco.state.spark = 7; for (const e of E.list) { e.g.position.copy(sb.hero.root.position); e.hitAt = -99; } step(); if (sb.eco.state.spark !== 7) throw new Error('leaving enemy still hits');
+    for (const e of E.list) e.g.position.set(exitP.x, 0, exitP.z); run(ENEMY_RULES.homeTimeout + 1);
+    const defEv = (ev['enemy:defeated'] || []).length; if (E.list.length !== 0 || E.stats.defeated !== defB || defEv !== 1 || !ev['enemy:gone'].some((g) => g.why === 'home')) throw new Error(`walk-home not finished: ${E.list.length} left, defeated ${E.stats.defeated}/${defB}`);   // (sb.coins also grows from customer tips while the clock runs → not compared)
+    // 5b. the new season's wave still spawns normally after a walk-home
+    E.waveSeason = 0; sb.eco.state.season = 4; sb.sched.wave = false; sb.sched.season = 4; sb.eco.state.day01 = 0.71; step(); if (E.list.length !== 4) throw new Error('S4 wave after walk-home ' + E.list.length); E.clear();
     // 6. Season 6: Baron + 0 minions; S9: Baron + 3 minions with fogSlow/levy/summon; cap 5  (clock frozen: a 30 s season would end mid-probe)
     sb.eco.config.seasonSeconds = 1e9;
     E.waveSeason = 0; sb.eco.state.season = 6; sb.sched.wave = false; sb.sched.season = 6; sb.eco.state.day01 = 0.71; step();
     if (E.list.length !== 1 || E.list[0].kind !== 'baron' || E.list[0].powers.length !== 0 || !ev['enemy:wave'].at(-1).boss) throw new Error('S6 baron wave');
     const b = E.baron; b.g.position.copy(sb.hero.root.position); b.hitAt = -99; sb.eco.state.spark = 10; run(0.2); if (sb.eco.state.spark !== 10 - ENEMY_RULES.baron.hitSpark) throw new Error('baron contact ' + sb.eco.state.spark);
+    // S16b: Baron hit at 0 ✦ → the shortfall becomes DEBT (a Collector at 0 ✦ does nothing — probed in step 2)
+    sb.eco.state.spark = 1; const debtB = sb.eco.state.debt; b.hitAt = -99; run(0.2);
+    if (sb.eco.state.spark !== 0 || sb.eco.state.debt !== debtB + ENEMY_RULES.baron.hitSpark - 1 || !ev['enemy:heroHit'].at(-1).debt) throw new Error(`baron bill: spark ${sb.eco.state.spark} debt ${debtB} → ${sb.eco.state.debt}`);
+    b.hitAt = -99; run(0.2); if (sb.eco.state.debt !== debtB + ENEMY_RULES.baron.hitSpark - 1 + ENEMY_RULES.baron.hitSpark) throw new Error('baron bill at 0 ✦ ' + sb.eco.state.debt);
     for (let i = 0; i < ENEMY_RULES.baron.hp; i++) E.hitEnemy(b, dir, 1); if (b.state !== 'flee' || E.stats.baronDefeats !== 1 || sb.coins.at(-1).value !== ENEMY_RULES.baron.reward) throw new Error('baron defeat');
     E.clear(); E.waveSeason = 0; sb.eco.state.season = 9; sb.sched.wave = false; sb.sched.season = 9; sb.eco.state.day01 = 0.71; step();
     const b9 = E.baron; if (!b9 || E.list.length !== 4 || b9.powers.join() !== 'fogSlow,levy,summon') throw new Error('S9 wave ' + E.list.length + ' ' + (b9?.powers || []).join());
@@ -1246,7 +1258,7 @@ if (doEnemies) {
     for (let i = 0; i < (BARON_POWERS[3].every + 0.5) * 30 && !ev['enemy:charge']; i++) { b12.g.position.copy(sb.hero.root.position).add(new THREE.Vector3(5, 0, 0)); step(); } if (!ev['enemy:charge'] || !(b12.charging > 0)) throw new Error('charge');
     for (const e of E.list) if (!isFinite(e.g.position.x) || !isFinite(e.g.scale.y)) throw new Error('enemy NaN');
     E.clear(); if (game.scene.children.some((o) => o.userData?.type === 'baron' || o.userData?.type === 'collector')) throw new Error('clear left meshes');
-    console.log(`  S1 wave 1 · chase ${d0.toFixed(1)}→${d1.toFixed(1)} u · contact −1 ✦ pouch only (jars untouched, floor 0) · Bubble Shield BLOCKED · 2 sword hits → flee + 1 ✦ coin → gone · hero targets merged · S3 wave 3 · season end clears · S6 Baron (hp 6, −2 ✦) → 5 ✦ · S9 Baron+3 fogSlow(×${BARON_POWERS[0].mul})/levy/summon(cap ${ENEMY_RULES.minionCap}) · S12 Baron+5 charge · stats ${JSON.stringify(E.stats)}  OK`);
+    console.log(`  S1 wave 1 · chase ${d0.toFixed(1)}→${d1.toFixed(1)} u · contact −1 ✦ pouch only (jars untouched, floor 0) · Bubble Shield BLOCKED · 2 sword hits → flee + 1 ✦ coin → gone · hero targets merged · S3 wave 3 · season end → walk home to pier → off (no coin) · S4 re-lands · S6 Baron (hp 6, −2 ✦; at 0 ✦ → DEBT) → 5 ✦ · S9 Baron+3 fogSlow(×${BARON_POWERS[0].mul})/levy/summon(cap ${ENEMY_RULES.minionCap}) · S12 Baron+5 charge · stats ${JSON.stringify(E.stats)}  OK`);
   } catch (err) { bad++; console.log('  enemies FAIL →', err.message); }
 }
 

@@ -18,6 +18,9 @@
 //     Baron powers unlock one per season (BARON_POWERS): S7 fogSlow (Pip walks at 60 % within 3 u of the Baron) · S8 levy (every 9 s, if ≥ 4 u away,
 //     he raises his cane and takes 1 ✦ remotely — "a bill by post") · S9 summon (every 14 s, calls one more Collector while below the minion cap) ·
 //     S10 charge (every 8 s dashes at Pip, 2 ✦ on contact). Defeating the Baron pays 5 ✦ and ends the wave for the season.
+//   • S16b: a Collector hit at 0 ✦ does nothing ("empty!"), but a BARON hit at 0 ✦ bills the shortfall as DEBT (state.debt += missing, eco:loan kind 'forced').
+//   • S16b: at season end nobody vanishes in place — sendHome() makes everyone turn and WALK back to the pier (deps.exitPoint = spawnPoint)
+//     and step off the island there (state 'home'); not a defeat: no coin, no stats. clear() is still the instant teardown (win / lose / dispose).
 //   • Transient: never saved. A season end / CONTINUE just clears the wave; the next season's scam re-spawns it.
 //   • Pure data + Three transforms. Works headless with the mock vfx (every vfx call is optional-chained).
 import * as THREE from '../../vendor/three.module.js';
@@ -26,6 +29,7 @@ export const ENEMY_RULES = {
   collector: { hp: 2, speed: 2.9, radius: 0.75, hitSpark: 1, hitCooldown: 1.1, reward: 1 },
   baron:     { hp: 6, speed: 2.4, radius: 0.95, hitSpark: 2, hitCooldown: 1.4, reward: 5 },
   waveCap: 5, bossFrom: 6, minionCap: 5, knockback: 1.6, fleeSeconds: 2.2, approachMin: 0.55,
+  homeSpeedMul: 1.25, homeRadius: 0.6, homeTimeout: 14,   // S16b walk-home: a bit brisk, arrive within 0.6 u of the exit, hard cap so nobody is stuck forever
 };
 /** Baron powers by the season he FIRST has them (cumulative). */
 export const BARON_POWERS = [
@@ -50,11 +54,13 @@ export class EnemySystem {
     this.heroSpeedMul = 1;             // fogSlow writes this; Game.js applies it to hero.speed
     this.enabled = true;
     this._spawn = deps.spawnPoint ? { x: deps.spawnPoint.x, z: deps.spawnPoint.z } : { x: 0, z: -10 };
+    this._exit = deps.exitPoint ? { x: deps.exitPoint.x, z: deps.exitPoint.z } : this._spawn;   // S16b: where they walk back to
     this._baseHeroSpeed = this.hero?.speed ?? 5.2;
   }
 
   get baron() { return this.list.find((e) => e.kind === 'baron' && e.state !== 'flee') || null; }
-  get active() { return this.list.filter((e) => e.state !== 'flee'); }
+  get active() { return this.list.filter((e) => e.state === 'chase'); }
+  get leaving() { return this.list.filter((e) => e.state === 'home'); }
 
   // ------------------------------------------------------------------ spawning
   /** Spawn the wave for `season`. Returns the enemies created (empty when the wave already ran this season). */
@@ -88,11 +94,11 @@ export class EnemySystem {
   }
 
   /** Targets for the hero's sword (HeroController deps.targets shape). */
-  targets() { return this.list.filter((e) => e.state !== 'flee').map((e) => ({ root: e.g, enemy: e, hit: (dir, power) => this.hitEnemy(e, dir, power) })); }
+  targets() { return this.list.filter((e) => e.state === 'chase').map((e) => ({ root: e.g, enemy: e, hit: (dir, power) => this.hitEnemy(e, dir, power) })); }
 
   /** Pip's hit landed on `e`: knockback + flinch; hp 0 → defeated (flee + reward coin). */
   hitEnemy(e, dir, power = 1) {
-    if (e.state === 'flee') return false;
+    if (e.state !== 'chase') return false;
     e.hp -= 1; e.knock.copy(dir).setY(0).normalize().multiplyScalar(ENEMY_RULES.knockback * power); e.charging = 0;
     e.anim.hit?.(dir, power);
     if (e.hp <= 0) this._defeat(e); else { e.anim.play?.('flee'); e._fleeAnimT = 0.45; }
@@ -105,7 +111,7 @@ export class EnemySystem {
     const p = e.g.position; this.deps.onCoin?.(p.x, p.z, R.reward);
     this.vfx?.pop?.show?.(_v.set(p.x, 1.4, p.z).clone(), e.kind === 'baron' ? 'HARRUMPH!' : 'EEK!', { color: '#CE93D8' });
     this.vfx?.sparks?.burst?.(_v.set(p.x, 0.9, p.z).clone(), 12, 4);
-    if (e.kind === 'baron') { this.stats.baronDefeats++; for (const m of this.list) if (m !== e && m.state !== 'flee') { m.state = 'flee'; m.fleeT = ENEMY_RULES.fleeSeconds; m.anim.play?.('flee'); } }
+    if (e.kind === 'baron') { this.stats.baronDefeats++; for (const m of this.list) if (m !== e && m.state === 'chase') { m.state = 'flee'; m.fleeT = ENEMY_RULES.fleeSeconds; m.anim.play?.('flee'); } }
     this.bus?.emit('enemy:defeated', { kind: e.kind, reward: R.reward, season: e.season });
   }
 
@@ -114,12 +120,19 @@ export class EnemySystem {
     if (this.deps.isShielded?.()) { this.vfx?.pop?.show?.(_v.copy(this.hero.root.position).setY(1.6).clone(), 'BLOCKED', { color: '#80DEEA' }); this.bus?.emit('enemy:blocked', { kind: e.kind }); return 0; }
     const have = this.eco?.state?.spark || 0; const take = Math.min(spark, Math.max(0, have));
     if (take > 0) { this.eco._addSpark(-take, 'enemy:' + e.kind); this.eco.ledger.expenses += take; }
+    // S16b: the Baron bills what the pouch cannot pay — it becomes debt (a Collector just finds an empty pouch)
+    let billed = 0;
+    if (e.kind === 'baron' && take < spark && this.eco?.state) {
+      billed = spark - take; this.eco.state.debt += billed; this.eco.ledger.expenses += billed; this.stats.debtBilled = (this.stats.debtBilled || 0) + billed;
+      this.bus?.emit('eco:loan', { debt: this.eco.state.debt, delta: billed, kind: 'forced', source: 'baron' });
+    }
     this.stats.hitsTaken++; this.stats.sparkLost += take;
-    this.hero.anim?.hit?.(); this.game.camera?.shake?.(0.15);
-    this.vfx?.pop?.show?.(_v.copy(this.hero.root.position).setY(1.6).clone(), take ? `−${take} ✦` : 'empty!', { color: '#EF5350' });
-    this.vfx?.debtPulse?.(0.25);
-    this.bus?.emit('enemy:heroHit', { kind: e.kind, spark: take });
-    return take;
+    this.hero.anim?.hit?.(); this.game.camera?.shake?.(billed ? 0.22 : 0.15);
+    const label = take && billed ? `−${take} ✦ +${billed} debt` : take ? `−${take} ✦` : billed ? `+${billed} DEBT` : 'empty!';
+    this.vfx?.pop?.show?.(_v.copy(this.hero.root.position).setY(1.6).clone(), label, { color: billed ? '#CE93D8' : '#EF5350' });
+    this.vfx?.debtPulse?.(billed ? 0.5 : 0.25);
+    this.bus?.emit('enemy:heroHit', { kind: e.kind, spark: take, debt: billed });
+    return take + billed;
   }
 
   // ------------------------------------------------------------------ loop
@@ -131,6 +144,19 @@ export class EnemySystem {
       // knockback decays
       if (e.knock.lengthSq() > 1e-4) { const nx = p.x + e.knock.x * dt * 4, nz = p.z + e.knock.z * dt * 4; if (this.island?.isLand?.(nx, nz) ?? true) p.set(nx, 0, nz); e.knock.multiplyScalar(Math.max(0, 1 - 6 * dt)); }
       if (e._fleeAnimT > 0) { e._fleeAnimT -= dt; if (e._fleeAnimT <= 0) e.anim.play?.(e.kind === 'baron' ? 'strut' : 'walk'); }
+      if (e.state === 'home') {                                   // S16b: walking back to the pier, then stepping off
+        _d.set(this._exit.x - p.x, 0, this._exit.z - p.z); const dd = _d.length(); if (dd > 1e-4) _d.divideScalar(dd);
+        e.homeT += dt;
+        if (dd > ENEMY_RULES.homeRadius && e.homeT < ENEMY_RULES.homeTimeout) {
+          const sp = R.speed * ENEMY_RULES.homeSpeedMul; const nx = p.x + _d.x * sp * dt, nz = p.z + _d.z * sp * dt;
+          if (this.island?.isLand?.(nx, nz) ?? true) p.set(nx, 0, nz); else { p.x += _d.x * sp * dt * 0.5; p.z += _d.z * sp * dt * 0.5; }   // the pier itself is off the land grid: keep going
+          e.anim.faceTo?.(_v.set(p.x + _d.x, 0, p.z + _d.z));
+        } else {                                                  // arrived (or timed out): fade out over 0.6 s — no coin, no stats
+          e.offT = (e.offT || 0) + dt; const s = Math.max(0.001, 1 - e.offT / 0.6); e.g.scale.setScalar(s);
+          if (e.offT >= 0.6) { this._remove(i, 'home'); continue; }
+        }
+        e.anim.update?.(dt); continue;
+      }
       if (e.state === 'flee') {
         _d.set(p.x - hp.x, 0, p.z - hp.z); if (_d.lengthSq() < 1e-4) _d.set(0, 0, -1); _d.normalize();
         p.x += _d.x * R.speed * 1.6 * dt; p.z += _d.z * R.speed * 1.6 * dt; e.anim.faceTo?.(_v.set(p.x + _d.x, 0, p.z + _d.z));
@@ -162,9 +188,17 @@ export class EnemySystem {
   }
   _setHeroSpeed(mul) { this.heroSpeedMul = mul; if (this.hero) this.hero.speed = this._baseHeroSpeed * mul; }
 
-  _remove(i) { const e = this.list[i]; this.list.splice(i, 1); e.anim.dispose?.(); e.g.removeFromParent?.(); this.bus?.emit('enemy:gone', { kind: e.kind }); }
-  /** Everyone goes home now (no coins). */
-  clear() { for (let i = this.list.length - 1; i >= 0; i--) this._remove(i); this._setHeroSpeed(1); }
+  _remove(i, why = 'flee') { const e = this.list[i]; this.list.splice(i, 1); e.anim.dispose?.(); e.g.removeFromParent?.(); this.bus?.emit('enemy:gone', { kind: e.kind, why }); }
+  /** S16b: season is over — everyone still chasing turns around and WALKS back to the pier, then steps off (not a defeat). Returns how many were sent. */
+  sendHome() {
+    let n = 0;
+    for (const e of this.list) if (e.state === 'chase') { e.state = 'home'; e.homeT = 0; e.offT = 0; e.knock.set(0, 0, 0); e.charging = 0; e.anim.play?.(e.kind === 'baron' ? 'strut' : 'walk'); n++; }
+    this._setHeroSpeed(1);
+    if (n) { const h = this.hero?.root?.position; if (h) this.vfx?.pop?.show?.(_v.set(h.x, 2.1, h.z).clone(), 'season over — they leave', { color: '#B0BEC5', dur: 1.4 }); this.bus?.emit('enemy:home', { count: n }); }
+    return n;
+  }
+  /** Everyone vanishes now (no coins). Used on win / lose / teardown; season end uses sendHome(). */
+  clear() { for (let i = this.list.length - 1; i >= 0; i--) this._remove(i, 'clear'); this._setHeroSpeed(1); }
   dispose() { this.clear(); this.fogPool?.mesh?.removeFromParent?.(); this.fogPool = null; }
 }
 
