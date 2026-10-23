@@ -595,7 +595,7 @@ function installRunWires(lg) {
   // BUGFIX B11: ↩ on a jar → Spark back into the pouch. BUGFIX B01: PAY BARON → economy.repay (the only way to clear principal; isWin needs debt 0).
   on('ui:jar:withdraw', (p) => { if (!p?.jar) return; const a = eco.withdraw(p.jar, p.amount); if (a > 0) bus.emit('game:withdrew', { jar: p.jar, amount: a, spark: eco.state.spark }); });
   lg.repay = (amount) => { const a = eco.repay(amount != null ? amount : eco.state.debt); if (a > 0) { bus.emit('game:repaid', { amount: a, debt: eco.state.debt, spark: eco.state.spark }); ui?.hud?.sync?.(eco.state); } return a; };
-  on('ui:repay', (p) => lg.repay(p?.amount));
+  on('ui:repay', (p) => { const a = lg.repay(p?.amount); if (a > 0 && p?.source === 'hud') bus.emit('ui:toast', { text: eco.state.debt > 0 ? `Paid the Baron ${a} ✦ — ${eco.state.debt} ✦ left` : `Paid the Baron ${a} ✦ — DEBT FREE!`, kind: eco.state.debt > 0 ? 'ok' : 'gold', icon: '💸', id: 'repay', duration: 2400 }); });   // S05: HUD PAY gets a toast (the jars panel shows its own debt row)
   // ability keys — only while playing/endless and no modal owns the screen (dialogue keys 1–4, ledger Enter, pause Esc)
   lg.ability = (name) => { if (!lg.sb || (lg.state !== 'playing' && lg.state !== 'endless') || lg.game.paused) return null; return sb.ability(name); };
   // BUGFIX P27: 🔨 on the touch pad while a ghost is up CONFIRMS placement (BuildSystem._onAction already did via input.press) — it must

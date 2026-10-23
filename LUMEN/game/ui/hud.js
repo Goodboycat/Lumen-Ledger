@@ -35,7 +35,11 @@ export function mountHUD(root, opts = {}) {
   const sparkSub = el('span', 'll-spark-sub', 'SPARK');
   sparkCol.append(sparkVal, sparkSub);
   const debtChip = el('span', 'll-spark-debt', 'debt 0');
-  spark.append(sparkCol, debtChip);
+  // S05: quick PAY button inside the debt chip — repaying the Baron is the win path, and the jars panel (with PAY BARON) is collapsed
+  //   on phones during dialogue. Emits the same 'ui:repay' {amount} the jars button does (Game.js caps it by the pouch).
+  const payBtn = el('button', 'll-spark-pay', 'PAY'); payBtn.type = 'button'; payBtn.title = 'Pay the Baron from your pouch (stops the interest, lifts the Fog)'; payBtn.disabled = true;
+  spark.append(sparkCol, debtChip, payBtn);
+  payBtn.addEventListener('click', (e) => { e.stopPropagation && e.stopPropagation(); api.pay(); });
 
   const mid = el('div', 'll-mid');
   const season = el('div', 'll-season');
@@ -60,6 +64,7 @@ export function mountHUD(root, opts = {}) {
 
   // ---------------------------------------------------------------- state
   const st = { spark: 0, shown: 0, season: 1, day01: 0, fog01: 0.35, debt: 0, rep: 0.5, fpsT: 0 };
+  const refreshPay = () => { const can = st.debt > 0 && st.spark > 0; payBtn.disabled = !can; payBtn.textContent = can ? 'PAY ' + Math.min(st.debt, Math.floor(st.spark)) : 'PAY'; };
 
   const floatText = (txt, cls) => {
     const f = el('span', 'll-float ' + cls, txt); spark.appendChild(f);
@@ -81,9 +86,16 @@ export function mountHUD(root, opts = {}) {
         clearTimeout(st.colorT); st.colorT = setTimeout(() => spark.classList.remove('is-up', 'is-down'), 700);
       }
       if (silent) { st.shown = n; sparkVal.textContent = String(n); }
+      refreshPay();
       return api;
     },
-    setDebt(n) { st.debt = Math.round(+n || 0); debtChip.textContent = 'debt ' + st.debt; spark.classList.toggle('has-debt', st.debt > 0); return api; },
+    setDebt(n) { st.debt = Math.round(+n || 0); debtChip.textContent = 'debt ' + st.debt; spark.classList.toggle('has-debt', st.debt > 0); refreshPay(); return api; },
+    /** S05: repay what the pouch can cover (amount defaults to min(debt, spark)). Emits 'ui:repay' {amount, source:'hud'}; returns the amount asked. */
+    pay(amount) {
+      const a = Math.min(Math.round(amount != null ? amount : st.debt), Math.floor(st.spark));
+      if (!(st.debt > 0) || !(a > 0)) { retrigger(spark, 'shake'); return 0; }
+      bus.emit('ui:repay', { amount: a, source: 'hud' }); retrigger(spark, 'pulse'); return a;
+    },
     setSeason(n, day01) {
       if (n !== st.season) { st.season = n; retrigger(season, 'pop'); }
       seasonTxt.textContent = n > seasonsToWin ? `Endless · S${n}` : `Season ${n} / ${seasonsToWin}`;

@@ -59,3 +59,10 @@
 @media (orientation: portrait) and (max-width: 640px) {
   .ll-hud { flex-wrap: wrap; } .ll-mid { order: 3; flex-basis: 100%; max-width: none; flex-direction: row; } .ll-mid .ll-fog { flex: 1; }
 }
+
+/* S05: quick PAY button in the debt chip (same 'ui:repay' as the jars panel's PAY BARON) */
+.ll-spark-pay { display: none; font: inherit; font-size: 10px; font-weight: 900; letter-spacing: .3px; color: #fff; background: #7B5EA7; border: 2px solid var(--ink); border-radius: 8px; padding: 2px 7px; margin-left: 2px; box-shadow: 0 2px 0 var(--ink); cursor: pointer; white-space: nowrap; transition: transform .12s, box-shadow .12s, opacity .2s; }
+.ll-spark.has-debt .ll-spark-pay { display: inline-block; }
+.ll-spark-pay:hover:not(:disabled) { background: #4a148c; }
+.ll-spark-pay:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 0 0 var(--ink); }
+.ll-spark-pay:disabled { opacity: .45; cursor: default; }

@@ -917,6 +917,11 @@ if (doUI) {
     const q = (s) => hud.el.querySelector(s);
     if (q('.ll-spark-val').textContent !== '120') throw new Error('initial spark ' + q('.ll-spark-val').textContent);
     if (!hud.el.querySelector('.ll-spark').classList.contains('has-debt')) throw new Error('debt chip');
+    // S05: PAY button in the debt chip → ui:repay {amount = min(debt, spark)}; disabled when pouch 0 or debt 0
+    { const pay = q('.ll-spark-pay'); if (!pay || pay.disabled || pay.textContent !== 'PAY 120') throw new Error('S05 pay label ' + (pay && pay.textContent));
+      const got = []; const off = bus.on('ui:repay', (p) => got.push(p)); pay.dispatchEvent({ type: 'click' });
+      if (got.length !== 1 || got[0].amount !== 120 || got[0].source !== 'hud') throw new Error('S05 ui:repay ' + JSON.stringify(got)); off();
+      hud.setSpark(0, { silent: true }); if (!pay.disabled) throw new Error('S05 pay should disable at pouch 0'); hud.setSpark(120, { silent: true }); }
     bus.emit('eco:spark', { spark: 180, delta: 60, reason: 'sale' });
     if (hud.state.spark !== 180 || !q('.ll-float')) throw new Error('eco:spark → state/float');
     for (let i = 0; i < 60; i++) hud.update(1 / 60);
