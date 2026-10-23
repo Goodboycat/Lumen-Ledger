@@ -47,7 +47,7 @@ export class Game {
     this.realTime = 0;
     this.timeScale = 1;               // slow-mo etc.
     this.paused = false;
-    this.maxDt = 1 / 20;              // clamp hitches
+    this.maxDt = 1 / 10;              // clamp hitches — S02/P06: was 1/20; below 20 fps the whole game ran in slow motion. 1/10 keeps seasons on wall-clock down to 10 fps
     this.followTarget = null;         // Vector3 the camera follows
     this.stats = { fps: 0, frames: 0, acc: 0, drawCalls: 0, triangles: 0 };
     this._last = performance.now();
