@@ -65,7 +65,7 @@ export function mountSeasonInfo(root, opts = {}) {
   root.append(banner, back);
   // P34: Esc closes the card (capture phase, so the pause menu's window listener never sees that press).
   const onEsc = (e) => { if (e.key === 'Escape' && st.open) { e.preventDefault?.(); e.stopImmediatePropagation?.(); api.close(); } };
-  if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('keydown', onEsc, true);
+  if (!opts.noEsc && typeof window !== 'undefined' && window.addEventListener) window.addEventListener('keydown', onEsc, true);   // S11: ui/index.js owns Esc in the real game (noEsc)
 
   const fmt = (s) => { s = Math.max(0, Math.round(s)); const m = Math.floor(s / 60); return m ? `${m} min ${String(s % 60).padStart(2, '0')} s` : `${s} s`; };
   function renderCard() {

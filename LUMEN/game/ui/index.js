@@ -35,20 +35,36 @@ export function mountUI(root, opts = {}) {
   add('hud', mountHUD(root, { bus, stats: opts.stats || null, seasonsToWin, selfDrive: false }));
   add('jars', mountJars(root, { bus, pct: opts.jarPct }));
   // 7A's own B hotkey is not modal-aware (it would open the tray under the title / dialogue / pause) → it is off and re-owned below, gated by ui.isModal().
-  add('build', mountBuildMenu(root, { bus, catalog: opts.catalog || {}, spark: opts.spark || 0, categories: opts.categories || ['stall', 'decor', 'nature'], noHotkey: true }));
+  add('build', mountBuildMenu(root, { bus, catalog: opts.catalog || {}, spark: opts.spark || 0, categories: opts.categories || ['stall', 'decor', 'nature'], noHotkey: true, noEsc: true }));
   add('ledger', mountLedger(root, { bus, seasonsToWin, autoOpen: false, selfDrive: false }));
   add('dialogue', mountDialogue(root, { bus, pauseGame: opts.pauseGame !== false, selfDrive: false, cps: opts.cps }));
   add('toast', mountToast(root, { bus, max: 3 }));
-  // Esc is shared: 7A's tray closes / cancels placing on it and 7C's pause toggles on it, and both listen on window. A capture-phase
-  // listener marks the keypress as "owned by the tray" when the tray is open (or placing) so the pause menu skips that one press.
-  let escOwned = false;
+  // S11: ONE Escape dispatcher. Panels no longer listen for Escape themselves (hotkey:false / noEsc) — a single capture-phase window
+  // listener walks a priority stack and the FIRST layer that owns the screen consumes the press:
+  //   tutorial → season card → dialogue (swallowed: Enter/tap advance, Esc never opens pause over a line) → build (placing/demolish →
+  //   cancel · tray open → close) → pause (toggle; never while title / ledger own the screen).
+  // P34/P35 regressions (Esc opened the pause menu on top of the season card / dialogue) cannot come back: pause is the last layer.
+  ui.escStack = () => [
+    { id: 'tutorial', open: () => !!ui.tutorial?.isOpen, act: () => ui.tutorial.close('skip') },
+    { id: 'seasons', open: () => !!ui.seasons?.isOpen, act: () => ui.seasons.close() },
+    { id: 'dialogue', open: () => !!ui.dialogue?.isOpen, act: () => {} },
+    { id: 'build', open: () => !!(ui.build?.isOpen || ui.build?.state?.placing || ui.build?.state?.demolish), act: () => { const st = ui.build.state; if (st.placing || st.demolish) ui.build.cancel(); else ui.build.close(); } },
+    { id: 'pause', open: () => !(ui.title?.isOpen || ui.ledger?.isOpen), act: () => ui.pause.toggle() },
+  ];
+  /** S11: dispatch one Escape press through the stack. Returns the id of the layer that took it (null = nothing open). */
+  ui.escape = () => { for (const L of ui.escStack()) { if (L.open()) { L.act(); bus.emit('ui:escape', { layer: L.id }); return L.id; } } return null; };
   if (typeof window !== 'undefined' && window.addEventListener) {
-    const onEscCapture = (e) => { if (e.key === 'Escape' && (ui.build?.isOpen || ui.build?.state?.placing || ui.build?.state?.demolish)) { escOwned = true; setTimeout(() => { escOwned = false; }, 0); } };
+    const onEscCapture = (e) => {
+      if (e.key !== 'Escape' || e.repeat) return;
+      if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+      e.preventDefault?.(); e.stopImmediatePropagation?.(); e.stopPropagation?.();
+      ui.escape();
+    };
     window.addEventListener('keydown', onEscCapture, true); ui._offEsc = () => window.removeEventListener('keydown', onEscCapture, true);
   }
-  add('pause', mountPause(root, { bus, onOutline: opts.onOutline, canOpen: () => !escOwned && !(ui.title?.isOpen) && !(ui.ledger?.isOpen) && !(ui.tutorial?.isOpen) && !(ui.dialogue?.isOpen) && !(ui.seasons?.isOpen), storageKey: opts.storageKey }));
+  add('pause', mountPause(root, { bus, onOutline: opts.onOutline, hotkey: false, canOpen: () => !(ui.title?.isOpen) && !(ui.ledger?.isOpen) && !(ui.tutorial?.isOpen) && !(ui.dialogue?.isOpen) && !(ui.seasons?.isOpen), storageKey: opts.storageKey }));
   // mobile bugfix: season info (HUD lesson tag + tap-the-pill card + new-season banner) — explains what a season is and what it teaches
-  add('seasons', mountSeasonInfo(root, { bus, seasonsToWin, lessons: opts.storyData?.lessons, seasons: opts.storyData?.seasons, isModal: () => !!(ui.title?.isOpen || ui.ledger?.isOpen || ui.dialogue?.isOpen || ui.pause?.isOpen || ui.tutorial?.isOpen) }));
+  add('seasons', mountSeasonInfo(root, { bus, seasonsToWin, noEsc: true, lessons: opts.storyData?.lessons, seasons: opts.storyData?.seasons, isModal: () => !!(ui.title?.isOpen || ui.ledger?.isOpen || ui.dialogue?.isOpen || ui.pause?.isOpen || ui.tutorial?.isOpen) }));
   if (opts.touch !== false && opts.input) add('touch', mountTouch(root, opts.input, { bus, force: opts.forceTouch }));
   // guided tutorial: hand pointer + input lock, opens on the first PLAY (opts.autoTutorial — index.html turns it on; headless checks leave it off) and from the pause menu's 📖 TUTORIAL (mounted last = on top)
   if (opts.tutorial !== false) add('tutorial', mountTutorial(root, { bus, ui, input: opts.input, auto: !!opts.autoTutorial, storageKey: opts.tutorialKey }));

@@ -272,7 +272,7 @@ export function mountBuildMenu(root, opts = {}) {
     const k = e.key.toLowerCase();
     if (k === 'b' && !e.repeat && !st.placing && !opts.noHotkey) api.toggle();
     if (k === 'r' && !e.repeat && st.placing) bus.emit('ui:build', { action: 'rotate' });   // BUGFIX B21: the advertised R rotate
-    if (e.key === 'Escape') { if (st.placing || st.demolish) api.cancel(); else if (st.open) api.close(); }   // P13: Esc leaves demolish mode even with the tray closed
+    if (e.key === 'Escape' && !opts.noEsc) { if (st.placing || st.demolish) api.cancel(); else if (st.open) api.close(); }   // P13: Esc leaves demolish mode even with the tray closed · S11: ui/index.js owns Esc (noEsc) in the real game
   };
   window.addEventListener('keydown', onKey);
 

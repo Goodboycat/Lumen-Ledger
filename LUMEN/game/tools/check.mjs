@@ -1382,6 +1382,14 @@ if (doGame) {
     pressKey('Escape'); if (!ui.pause.isOpen || !game.paused || !ui.isModal()) throw new Error('Esc → pause menu');
     if (lg.ability('coinMagnetDash') !== null) throw new Error('ability while paused should be refused');
     pressKey('Escape'); if (ui.pause.isOpen || game.paused) throw new Error('Esc → resume');
+    // S11: one Esc dispatcher — priority stack seasons → dialogue → build → pause. Each press is consumed by exactly one layer.
+    { const esc = []; const offE = bus.on('ui:escape', (p) => esc.push(p.layer));
+      ui.seasons.open(1); pressKey('Escape'); if (ui.seasons.isOpen || ui.pause.isOpen || esc.at(-1) !== 'seasons') throw new Error(`S11: Esc on season card → ${JSON.stringify(esc)} pause ${ui.pause.isOpen}`);
+      ui.dialogue.queue([{ who: 'Pip', text: 'S11 line' }]); pressKey('Escape'); if (!ui.dialogue.isOpen || ui.pause.isOpen || esc.at(-1) !== 'dialogue') throw new Error('S11: Esc over dialogue must be swallowed (no pause)'); ui.dialogue.hide();
+      ui.build.open(); ui.build.select('stall_fruit'); pressKey('Escape'); if (ui.build.isOpen || ui.pause.isOpen || esc.at(-1) !== 'build') throw new Error('S11: Esc closes the tray, nothing else');
+      ui.seasons.open(1); ui.build.open(); pressKey('Escape'); if (ui.seasons.isOpen || !ui.build.isOpen) throw new Error('S11: season card outranks the tray'); pressKey('Escape'); if (ui.build.isOpen || ui.pause.isOpen) throw new Error('S11: 2nd Esc closes tray');
+      pressKey('Escape'); if (!ui.pause.isOpen || esc.at(-1) !== 'pause') throw new Error('S11: Esc with nothing open → pause'); pressKey('Escape'); if (ui.pause.isOpen) throw new Error('S11: Esc → resume');
+      if (ui.escape() !== 'pause' || !ui.pause.isOpen) throw new Error('S11: ui.escape() API'); ui.escape(); offE(); }
     run(1); if (!lg.ability('bubbleShield')) throw new Error(`ability while playing refused: hero ${lg.sb.hero.state}/${lg.sb.hero.currentMove?.name} cd ${JSON.stringify(lg.sb.cooldown)}`); run(2); if (!ev['sandbox:ability'] || !(lg.sb.shield.until > game.time)) throw new Error('ability did not resolve (sandbox:ability / shield)');
     console.log(`  3. ui:build select/rotate/confirm → stall ${placed0}→${lg.sb.build.placed.size}, spark ${spark0}→${eco.state.spark + moved} · ui:jar:apply 40/30/20/10 → moved ${moved} into save/invest/protect · Esc → pause (modal, ability refused) → Esc resume → ability fired  OK`);
     // 4. WIN: fake the last season being over (season 10, fog 0, debt 0) → endSeason → eco:win → 'ending' → 8B ending lines → story:finale
