@@ -42,6 +42,7 @@ const doPerf = args.includes('--perf');            // 11A src/systems/perf.js: B
 const doIcons = args.includes('--icons');          // icons: ui/icons.js procedural set covers every emoji in src/ ui/ data/ index.html; SVG is strict-XML clean; ui/icons/*.png baked + manifest in sync
 const doAudio = args.includes('--audio');          // 12 src/core/Audio.js headless (no AudioContext → inert): manifest ids ↔ DEFAULT_EVENTS, bus walk counts, cooldown, duck, unknown id, destroy
 const doEnemies = args.includes('--enemies');      // S16 src/systems/enemies.js: Collector waves (size = season ≤ 5), contact −1 ✦ pouch only, Bubble Shield blocks, 2 sword hits → flee + 1 ✦ coin, Baron boss S6+ with powers, season end clears
+const doStorm = args.includes('--storm');          // S17 src/vfx/storm.js: StormWeather headless — warn at day 0.30 (target 0.45), hit at 0.45 (→1, sky/fog/lights/wind gain ×3), auto-clear 4 s later, season end clears, shield absorb clears, dispose restores
 const doWorld = args.includes('--world');          // 10A integrated world: bakeStatic batches + Island v2 + every content pack placed headless (mirrors demo_world.html), counts meshes ≤ budget              // 9A/9B VFX packs: installPack1/installPack2 on a mock VFX+scene, fire every effect, step headless, check pools drain, 0 NaN, draw calls
 let files = args.filter((a) => !a.startsWith('--'));
 if (!files.length) { files = []; (function walk(d) { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (p.endsWith('.js') && !p.endsWith('main.js')) files.push(p); } })('src'); }  // main.js is the DOM entry; skipped
@@ -1619,6 +1620,53 @@ if (doSave) {
     if (TUTORIAL_GATES.length !== 5) throw new Error('TUTORIAL_GATES');
   } catch (err) { bad++; console.log('  save FAIL →', err.message, process.env.STACK ? err.stack : ''); }
 }
+if (doStorm) {
+  // S17: headless sandbox; force the pre-rolled event to 'storm' and walk the scheduler through warn → hit → clear.
+  try {
+    const THREE = await import(pathToFileURL(resolve('vendor/three.module.js')).href);
+    const { SequencePlayer, HitStop } = await import(pathToFileURL(resolve('src/anim/Sequencer.js')).href);
+    const { EventBus } = await import(pathToFileURL(resolve('src/core/EventBus.js')).href);
+    const { tweens } = await import(pathToFileURL(resolve('src/anim/Tween.js')).href);
+    const { createSandbox } = await import(pathToFileURL(resolve('src/Game.js')).href);
+    const { STORM, StormWeather } = await import(pathToFileURL(resolve('src/vfx/storm.js')).href);
+    console.log('\nSTORM (S17):');
+    const bus = new EventBus(); const ev = {}; for (const n of ['storm:warn', 'storm:hit', 'storm:clear', 'eco:event', 'eco:absorbed']) bus.on(n, (p) => { (ev[n] ??= []).push(p); });
+    const scene = new THREE.Scene(); scene.background = new THREE.Color(0x9fd3f5); scene.fog = new THREE.Fog(0x9fd3f5, 30, 70);
+    const lights = { key: { intensity: 1.6 }, hemi: { intensity: 0.75 } };
+    const game = { scene, bus, lights, sequences: new SequencePlayer(), tweens, hitStop: new HitStop(), input: { pointerWorld: new THREE.Vector3(), hasPointerWorld: false, move: new THREE.Vector2(), actions: {}, pressed: () => false }, camera: { zoom: 1, shake() {} }, time: 0, timeScale: 1, followTarget: null, systems: [], add(s) { this.systems.push(s); return s; }, hitstop() {} };
+    const sb = createSandbox(game, { headless: true, seasonSeconds: 120, seed: 3 })   // 120 s season: warn window 0.30→0.45 = 18 s ≥ 12 s ramp;
+    const dt = 1 / 30; const step = () => { game.time += dt; game.sequences.update(dt); game.tweens.update(dt); for (const s of game.systems) s.update?.(dt); };
+    const run = (sec) => { for (let i = 0; i < sec * 30; i++) step(); };
+    const W = sb.storm; if (!(W instanceof StormWeather)) throw new Error('sb.storm not a StormWeather');
+    const base = { sky: scene.background.getHex(), key: lights.key.intensity, fogNear: scene.fog.near };
+    // 1. force a storm; before day 0.30 nothing happens
+    run(5); sb.nextEvent = 'storm'; /* after the scheduler's first tick re-rolled it */ run(1); if (W.phase !== 'clear' || W.intensity !== 0 || ev['storm:warn']) throw new Error('storm started early');
+    // 2. day 0.30 → warn: clouds gather towards 0.45 over ~12 s, sky darkens, wind gain rises, no event yet
+    sb.eco.state.day01 = 0.31; step(); if (W.phase !== 'warn' || ev['storm:warn']?.length !== 1) throw new Error('no warn at 0.30');
+    run(13); if (Math.abs(W.intensity - STORM.warnTarget) > 1e-3) throw new Error('warn plateau ' + W.intensity.toFixed(3) + ' phase ' + W.phase + ' day ' + sb.eco.state.day01.toFixed(2) + ' S' + sb.eco.state.season);
+    if (scene.background.getHex() === base.sky || !(lights.key.intensity < base.key) || !(W.windGain > 1.5) || !(scene.fog.near < base.fogNear)) throw new Error('warn did not darken the sky / dim / raise wind');
+    if (ev['eco:event']) throw new Error('event fired during warn');
+    // 3. day 0.45 → hit: intensity → 1 quickly, eco:event storm fired, auto-clear scheduled 4 s later
+    sb.eco.state.day01 = 0.46; step(); if (W.phase !== 'storm' || ev['storm:hit']?.length !== 1 || ev['eco:event']?.[0]?.id !== 'storm') throw new Error('storm did not hit (' + W.phase + ')');
+    run(2); if (Math.abs(W.intensity - 1) > 1e-3 || Math.abs(W.windGain - STORM.windGainMax) > 1e-3) throw new Error('storm not at full intensity ' + W.intensity.toFixed(3));
+    run(3); if (W.phase !== 'clear' || !ev['storm:clear']) throw new Error('storm did not auto-clear after 4 s (' + W.phase + ')');
+    run(4); if (W.intensity !== 0 || scene.background.getHex() !== base.sky || Math.abs(lights.key.intensity - base.key) > 1e-6 || Math.abs(W.windGain - 1) > 1e-6) throw new Error('sky/lights/wind not restored after clear');
+    console.log(`  warn→0.45 plateau, hit→1.0, auto-clear 4 s, restored  OK  (stats ${JSON.stringify(W.stats)})`);
+    // 4. season end mid-storm clears; a Bubble-Shield absorb also clears instead of hitting
+    sb.eco.state.day01 = 0.99; run(3); // → next season
+    if (sb.eco.state.season < 2) throw new Error('season did not advance'); 
+    sb.nextEvent = 'storm'; sb.sched.warn = false; sb.sched.event = false; sb.eco.state.day01 = 0.31; step(); run(2); if (W.phase !== 'warn') throw new Error('S2 warn missing');
+    bus.emit('eco:season', { season: 99 }); step(); if (W.phase !== 'clear') throw new Error('eco:season did not clear the storm');
+    sb.sched.warn = false; sb.sched.event = false; sb.eco.state.day01 = 0.31; sb.nextEvent = 'storm'; step(); run(1);
+    sb.shield.until = game.time + 60; sb.eco.state.day01 = 0.46; step(); if (!ev['eco:absorbed'] || W.phase !== 'clear' || ev['storm:hit'].length !== 1) throw new Error('shield absorb should clear, not hit');
+    // 5. reduceMotion flag honoured; dispose restores everything
+    sb.reduceMotion = true; if (!W.reduceMotion) throw new Error('reduceMotion not read from sb');
+    const nMesh = scene.children.length; W.dispose(); if (W.intensity !== 0 || scene.background.getHex() !== base.sky) throw new Error('dispose did not restore');
+    console.log(`  season-end clear, shield absorb → clear, reduceMotion, dispose  OK  (scene children ${nMesh} → ${scene.children.length})`);
+    sb.destroy?.();
+  } catch (e) { bad++; console.log('FAIL storm →', e.stack?.split('\n').slice(0, 3).join(' | ') || e.message); }
+}
+
 if (doWorld) {
   // 10A integrated world: real Three in Node. (1) src/assets/props/bake.js: bakeStatic merges N placed props into ≤ 4 meshes
   // (toon + flat + 2 hulls), keeps vertex colors of already-merged props, bakes in the parent's space (zone group offset),
