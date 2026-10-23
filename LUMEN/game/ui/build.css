@@ -45,6 +45,13 @@
 .ll-build-placing .ll-btn { background: #fff; border: 2px solid var(--ink); border-radius: 8px; padding: 1px 8px; font: inherit; font-weight: 900; font-size: 11px; cursor: pointer; color: var(--ink); }
 .ll-build-placing .ll-btn.ok { background: var(--grass); }
 .ll-build-placing .ll-btn.no { background: #ffcdd2; }
+/* S09: demolish pill — replaces the 🔨 BUILD toggle while demolish mode is armed with the tray closed; ✕ Done ends it (touch has no Esc) */
+.ll-build-demolishing { display: none; background: #ffcdd2; border: 3px solid var(--ink); border-radius: 999px; padding: 4px 6px 4px 14px; font-weight: 900; font-size: 12px; box-shadow: var(--shadow); gap: 8px; align-items: center; pointer-events: auto; }
+.ll-build.demolishing .ll-build-demolishing { display: flex; animation: ll-bounce-in .3s cubic-bezier(.34,1.56,.64,1) both, ll-demolish-pulse 1.2s ease-in-out .3s infinite; }
+.ll-build.demolishing .ll-build-toggle { display: none; }
+.ll-build-demolishing .ll-btn { background: #fff; border: 2px solid var(--ink); border-radius: 8px; padding: 3px 10px; min-height: 32px; font: inherit; font-weight: 900; font-size: 11px; cursor: pointer; color: var(--ink); }
+.ll-build-demolishing .ll-btn.no { background: var(--gold); }
+@keyframes ll-demolish-pulse { 0%, 100% { box-shadow: var(--shadow), 0 0 0 0 rgba(229,57,53,.5); } 50% { box-shadow: var(--shadow), 0 0 0 8px rgba(229,57,53,0); } }
 
 @keyframes ll-tray-in { 0% { transform: translateY(40px) scaleY(.6); opacity: 0; } 100% { transform: none; opacity: 1; } }
 @keyframes ll-tray-out { to { transform: translateY(30px) scaleY(.7); opacity: 0; } }

@@ -1360,6 +1360,10 @@ if (doGame) {
     { const dBtn = ui.build.el.querySelector('.ll-build-foot .ll-btn.warn'); ui.build.open(); dBtn.click();
       if (!lg.demolishMode || !ui.build.state.demolish || !dBtn.classList.contains('on')) throw new Error('P13: demolish arm');
       ui.build.close(); if (!lg.demolishMode || !ui.build.state.demolish || !dBtn.classList.contains('on')) throw new Error('P13: closing the tray dropped demolish mode');
+      // S09: with the tray closed the floating pill shows; ✕ Done ends demolish mode in both layers (touch has no Esc)
+      if (!ui.build.demolishPillVisible || !ui.build.el.classList.contains('demolishing')) throw new Error('S09: demolish pill should show while armed + tray closed');
+      ui.build.el.querySelector('.ll-build-demolishing .ll-btn.no').click(); if (lg.demolishMode || ui.build.state.demolish || ui.build.demolishPillVisible) throw new Error('S09: ✕ Done did not end demolish mode');
+      ui.build.open(); dBtn.click(); if (ui.build.demolishPillVisible) throw new Error('S09: pill must not show while the tray is open'); ui.build.close(); if (!ui.build.demolishPillVisible) throw new Error('S09: pill after close');
       ui.build.open(); ui.build.select('stall_fruit'); if (lg.demolishMode || ui.build.state.demolish || dBtn.classList.contains('on')) throw new Error('P16: pick left demolish armed');
       dBtn.click(); ui.build.close(); pressKey('Escape'); if (lg.demolishMode || ui.build.state.demolish || ui.pause.isOpen) throw new Error(`P13: Esc should end demolish (lg ${lg.demolishMode} ui ${ui.build.state.demolish} pause ${ui.pause.isOpen})`);
       await new Promise((r) => setTimeout(r, 2)); }   // let the shared-Esc "owned by tray" flag (setTimeout 0) clear

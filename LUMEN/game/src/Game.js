@@ -580,7 +580,7 @@ function installRunWires(lg) {
   offs.push(() => { if (ui?.build) { ui.build.offers = null; ui.build.priceOf = null; } });
   // BUGFIX B13: closing the tray never leaves a live ghost. BUGFIX P13: demolish mode SURVIVES closing the tray (the player closes it to see the
   // island and tap a stall) — the tray's own close() keeps st.demolish, the HUD toast says how to leave it, and Esc / re-open ✕ / a pick ends it.
-  on('ui:build:close', () => { if (build.mode === 'place') build.exit(); if (lg.demolishMode) bus.emit('ui:toast', { text: 'Demolish mode: tap a building to sell it (50 % refund) · ' + (lg.game.input?.isTouch ? '🔨 or STOP to leave' : 'Esc to stop'), kind: 'warn', icon: '💥', id: 'demolish-mode', duration: 6000, action: { label: 'Stop', emit: 'ui:demolish:stop' } }); });   // BUGFIX P28: touch has a tappable Stop
+  on('ui:build:close', () => { if (build.mode === 'place') build.exit(); if (lg.demolishMode) bus.emit('ui:toast', { text: 'Demolish mode: tap a building to sell it (50 % refund) · ' + (lg.game.input?.isTouch ? '✕ Done or 🔨 to leave' : 'Esc or ✕ Done to stop'), kind: 'warn', icon: '💥', id: 'demolish-mode', duration: 6000, action: { label: 'Stop', emit: 'ui:demolish:stop' } }); });   // BUGFIX P28: touch has a tappable Stop
   // BUGFIX B13: a placed STALL ends placement in both layers (no accidental second purchase on the next click); cheap decor/nature stay
   // armed for quick fences/paths and Esc / ✕ cancel them. build.exit() emits build:exit → the tray leaves placing.
   on('build:placed', (p) => { if (!p?.silent && build.mode === 'place' && String(p?.id).startsWith('stall_')) build.exit(); });
@@ -617,7 +617,7 @@ function installRunWires(lg) {
   // BUGFIX P27: 🔨 on the touch pad while a ghost is up CONFIRMS placement (BuildSystem._onAction already did via input.press) — it must
   //   not toggle (= close) the tray, which emitted ui:build:close → build.exit() and cancelled the placement. In demolish mode 🔨 leaves it (P28).
   on('ui:touch', (p) => { if (p?.action !== 'build' || lg.game.paused) return; if (build.mode === 'place') return; if (lg.demolishMode) { lg.demolishMode = false; ui?.build?.cancel?.(); bus.emit('ui:toast', { text: 'Demolish mode off', kind: 'info', icon: '💥', id: 'demolish-mode', duration: 1500 }); return; } ui?.build?.toggle?.(); });
-  bus.on('ui:demolish:stop', () => { lg.demolishMode = false; ui?.build?.cancel?.(); });
+  on('ui:demolish:stop', () => { lg.demolishMode = false; ui?.build?.cancel?.(); });   // S09: also fired by the floating ✕ Done pill (was bus.on → leaked one listener per run)
   // BUGFIX P43: the season ends (ledger review) / the run ends → drop the build ghost, demolish mode and the open tray so nothing stays armed
   //   behind the Ledger modal or into the next season. ui.build.cancel() emits ui:build {action:'cancel'} → build.exit() + lg.demolishMode=false.
   const disarm = () => { if (!lg.sb) return; const armed = build.mode === 'place' || lg.demolishMode || ui?.build?.isOpen || ui?.build?.state?.demolish; if (!armed) return; lg.demolishMode = false; ui?.build?.cancel?.(); if (build.mode === 'place') build.exit(); if (ui?.build?.isOpen) ui.build.close(); };

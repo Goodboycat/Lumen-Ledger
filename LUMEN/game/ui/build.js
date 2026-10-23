@@ -51,6 +51,13 @@ export function mountBuildMenu(root, opts = {}) {
   const placingTxt = el('span', null, 'Placing…');
   const rotBtn = el('button', 'll-btn', '⟳ R'); const okBtn = el('button', 'll-btn ok', '✓ place'); const noBtn = el('button', 'll-btn no', '✕ cancel');
   placing.append(placingTxt, rotBtn, okBtn, noBtn);
+  // S09: demolish pill — shown INSTEAD of the 🔨 BUILD toggle while demolish mode is armed with the tray closed (the state P13 keeps).
+  //   Touch players have no Esc: the ✕ Done button ends demolish mode in both layers (api.cancel → ui:build {action:'cancel'}).
+  const demolishPill = el('div', 'll-build-demolishing');
+  const demolishTxt = el('span', null, '💥 Demolish mode · tap a building');
+  const demolishDone = el('button', 'll-btn no', '✕ Done');
+  demolishPill.append(demolishTxt, demolishDone);
+  const syncDemolishPill = () => wrap.classList.toggle('demolishing', !!(st.demolish && !st.open && !st.placing));
   const tray = el('div', 'll-build-tray');
   const tabs = el('nav', 'll-build-tabs');
   const sparkEl = el('span', 'll-build-spark', '✦ 0');
@@ -58,6 +65,7 @@ export function mountBuildMenu(root, opts = {}) {
   const foot = el('div', 'll-build-foot');
   const footTxt = el('span', null, 'pick a card → B / tap to place · R rotate');
   const demolishBtn = el('button', 'll-btn warn', '💥 demolish');
+  demolishPill.dataset.role = 'demolish-pill';
   const upgradeBtn = el('button', 'll-btn', '⬆ upgrade');
   foot.append(footTxt, upgradeBtn, demolishBtn);
   // BUGFIX (mobile): tapping a card used to DEPLOY it at once (ghost + placing banner), so there was no way to pick a stall type to
@@ -72,7 +80,7 @@ export function mountBuildMenu(root, opts = {}) {
   priceBox.append(el('small', null, 'price'), priceDown, priceVal, priceUp); priceBox.style.display = 'none';
   detail.append(detIcon, detInfo, priceBox, deployBtn, upBtn, sellBtn, detClose);
   tray.append(tabs, grid, detail, foot);
-  wrap.append(placing, tray, toggle);
+  wrap.append(placing, demolishPill, tray, toggle);
   root.appendChild(wrap);
 
   // tabs
@@ -176,12 +184,12 @@ export function mountBuildMenu(root, opts = {}) {
   const api = {
     el: wrap, state: st, cards,
     get isOpen() { return st.open; },
-    open() { if (st.open) return api; st.open = true; wrap.classList.remove('closing'); wrap.classList.add('open'); renderGrid(); if (st.demolish) footTxt.textContent = 'demolish: tap a building (50 % refund)'; bus.emit('ui:build:open', {}); return api; },
+    open() { if (st.open) return api; st.open = true; wrap.classList.remove('closing'); wrap.classList.add('open'); renderGrid(); if (st.demolish) footTxt.textContent = 'demolish: tap a building (50 % refund)'; syncDemolishPill(); bus.emit('ui:build:open', {}); return api; },
     // BUGFIX P13: close() keeps st.demolish (the player closes the tray to tap a stall on the island) — the 💥 button stays `.on` and
     // the integrator keeps lg.demolishMode; Esc / a card pick / 💥 again / cancel() end it in both layers.
     close() {
       if (!st.open) return api; st.open = false; wrap.classList.remove('open'); wrap.classList.add('closing');
-      setTimeout(() => wrap.classList.remove('closing'), 220); st.selected = null; refreshCards(); bus.emit('ui:build:close', {}); return api;
+      setTimeout(() => wrap.classList.remove('closing'), 220); st.selected = null; refreshCards(); syncDemolishPill(); bus.emit('ui:build:close', {}); return api;
     },
     toggle() { return st.open ? api.close() : api.open(); },
     select(id) {
@@ -221,9 +229,11 @@ export function mountBuildMenu(root, opts = {}) {
     placedInfo: opts.placedInfo || null,     // (id) => [{ level }] · set by the integrator so silently-loaded starter stalls count too
     costOf: opts.costOf || null,             // (id) => Spark · set by the integrator (BuildSystem.cost) — BUGFIX B09
     /** BUGFIX B02: forget everything about the previous run (badges, tracked entries, selection, placing). */
-    reset() { st.counts = {}; st.placedById.clear(); st.selected = null; st.demolish = false; demolishBtn.classList.remove('on'); api.setPlacing(null); refreshCards(); return api; },
+    reset() { st.counts = {}; st.placedById.clear(); st.selected = null; st.demolish = false; demolishBtn.classList.remove('on'); api.setPlacing(null); refreshCards(); syncDemolishPill(); return api; },
     refresh() { refreshCards(); return api; },
-    cancel() { st.selected = null; st.demolish = false; demolishBtn.classList.remove('on'); api.setPlacing(null); refreshCards(); bus.emit('ui:build', { action: 'cancel' }); return api; },
+    cancel() { st.selected = null; st.demolish = false; demolishBtn.classList.remove('on'); api.setPlacing(null); refreshCards(); syncDemolishPill(); bus.emit('ui:build', { action: 'cancel' }); return api; },
+    /** S09: true while the floating demolish pill is shown (demolish armed, tray closed). */
+    get demolishPillVisible() { return wrap.classList.contains('demolishing'); },
     setPlacing(id) {
       const was = st.placing; st.placing = id; wrap.classList.toggle('placing', !!id);
       // BUGFIX P40: while placing, the open tray is only hidden by CSS — so it popped back up over the island the moment the stall was
@@ -251,6 +261,7 @@ export function mountBuildMenu(root, opts = {}) {
   rotBtn.addEventListener('click', () => bus.emit('ui:build', { action: 'rotate' }));
   okBtn.addEventListener('click', () => bus.emit('ui:build', { action: 'confirm' }));
   noBtn.addEventListener('click', () => api.cancel());
+  demolishDone.addEventListener('click', () => { api.cancel(); bus.emit('ui:demolish:stop', { source: 'pill' }); });   // S09
   demolishBtn.addEventListener('click', () => { st.demolish = !st.demolish; st.selected = null; demolishBtn.classList.toggle('on', st.demolish); refreshCards(); footTxt.textContent = st.demolish ? 'demolish: tap a building (50 % refund)' : 'pick a card'; bus.emit('ui:build', { action: st.demolish ? 'demolish' : 'cancel' }); });
   upgradeBtn.addEventListener('click', () => bus.emit('ui:build', { action: 'upgrade' }));
   const onKey = (e) => {
