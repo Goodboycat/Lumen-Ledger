@@ -17,7 +17,7 @@ S9–S10 for most seeds, so the last 1–2 seasons are the "almost there" push, 
 ## What changed vs 4A `BALANCE` and why
 | Key | 4A | 4B | Why |
 |---|---|---|---|
-| startSpark | 120 | **100** | one stall + nothing left: the first choice (build vs repay) matters |
+| startSpark | 120 | **150** (was 100 until 2026-10-23, S01) | 100 left a first-time player at 0 Spark in S1 (income 66 vs expenses 221 in recording run 2). 150 = one stall + a buffer for the first repay; debt 260 and 20 % interest stay untouched so the Baron's scam still bites. Sweep at 150: sensible win@10 ×20/20, borrow lose@3–5, hoarder lose ≥ 8/10 |
 | startDebt | 200 | **260** | sensible clears it at S3–4 instead of S2; S1–S3 lessons (budgeting, needs vs wants, emergency fund) happen *under* debt |
 | startFog | 0.35 | **0.40** | with 4A values the sensible run hit fog 0 at S6–7 and waited |
 | fogPerDebtSeason | 0.08 | **0.07** | hoarder lose moved from S7 to S8–10 (slower, visibly "drifting"), borrow still loses by S5 |
@@ -103,7 +103,7 @@ Point at S8–9, which is when fog is 0.1–0.2 — the lighthouse unlock and th
 
 ## Seed-1 tables (`node tests/economy.sim.mjs 1`)
 ```
-sensible · start spark 100 debt 260 fog 0.40
+sensible · start spark 150 debt 260 fog 0.40
  S  income  expens    +int    -int    debt    save  invest    prot   spark     fog stars  events / lesson
  1     177     107       2      26     158      36      13       8      11    0.47    ★★  - / budgeting
  2     208      52       3       9      52      70      25       7       8    0.52    ★★  leakyRoof / needsVsWants

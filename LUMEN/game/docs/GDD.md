@@ -36,7 +36,7 @@ You are **Pip**, a young *Channeler* who inherits a bankrupt island market, **Gl
 | Thing | Value |
 |---|---|
 | Season length | 150 s (10 seasons ≈ 25 min + dialogue) |
-| Start | 100 Spark · 260 debt · fog 0.40 |
+| Start | 150 Spark · 260 debt · fog 0.40 |
 | Good interest | Save jar +5 %/season |
 | Bad interest | Baron loan 20 %/season, compounding, max principal 500 |
 | Invest jar | +8 % ± 4 %/season (can be negative in a storm) |

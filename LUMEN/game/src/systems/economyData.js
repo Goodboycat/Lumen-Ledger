@@ -103,7 +103,8 @@ export const UPGRADES = {
 // ---------------------------------------------------------------- BALANCE_TUNED — see docs/balance.md for the reasoning + sim tables
 export const BALANCE_TUNED = {
   ...BALANCE,
-  startSpark: 100,
+  startSpark: 150,           // S01 (2026-10-23): 100 → 150. Recording run 2 showed S1 income 66 vs expenses 221 — a first-time kid lost ground in the tutorial
+                             //   season. Debt/interest stay (the Baron's scam core); the pouch gets 1 stall + a buffer instead. Sweep: sensible win@10 ×20/20.
   startDebt: 260,            // the inherited debt is the first-season antagonist (sensible clears it by S3–4)
   startFog: 0.40,
   fogPerDebtSeason: 0.07,    // each season ended in debt: +0.07 (borrow-everything hits 1.0 at S3–5, hoarder at S8–10)
