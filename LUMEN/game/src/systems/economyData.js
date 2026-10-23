@@ -10,10 +10,11 @@ import { Economy, BALANCE } from './economy.js';
 // ---------------------------------------------------------------- EVENTS (≥ 8) — effect keys: spark, investPct, fog, reputation, debt, jars
 // `insurable: true` → the loss goes through the Protect jar (4A applyLoss). `season` = earliest season it may fire (story pacing).
 export const EVENTS = {
+  // S15: `exposeJars` — the share of the damage Protect does NOT cover also scatters that fraction of Save + Invest (economy._applyEffect).
   storm: { id: 'storm', title: 'Spark Storm', lesson: 'insurance', season: 2, insurable: true, weight: 3,
-    effect: { spark: -45, fog: +0.03 },
-    text: 'A squall tears through the Glowmarket. Awning repairs: 45 Spark.',
-    finlit: 'Emergencies happen on a schedule you do not control. A Protect jar turns a disaster into a receipt.' },
+    effect: { spark: -45, fog: +0.03, exposeJars: 0.10 },
+    text: 'A squall tears through the Glowmarket. Awning repairs: 45 Spark — and uncovered damage scatters 10 % of Save & Invest.',
+    finlit: 'Emergencies happen on a schedule you do not control. A Protect jar turns a disaster into a receipt — and shields the rest of your savings.' },
   festival: { id: 'festival', title: 'Glow Festival', lesson: 'budgeting', season: 1, weight: 3,
     effect: { spark: +35, reputation: +0.08 },
     text: 'Lantern boats fill the bay. Glimmers everywhere! +35 Spark in tips.',
@@ -31,7 +32,7 @@ export const EVENTS = {
     text: 'The Spark Exchange glows bright. Invest jar +20 %!',
     finlit: 'Growth on top of growth is compounding. The earlier you start, the bigger the snowball.' },
   leakyRoof: { id: 'leakyRoof', title: 'Leaky Roof', lesson: 'emergencyFund', season: 2, insurable: true, weight: 3,
-    effect: { spark: -30 },
+    effect: { spark: -30, exposeJars: 0.05 },
     text: 'Drip. Drip. The cottage roof gives up. 30 Spark to patch it.',
     finlit: 'An emergency fund of 3 seasons of upkeep means a leak is annoying, not ruinous.' },
   touristBoat: { id: 'touristBoat', title: 'Tourist Boat', lesson: 'needsVsWants', season: 3, weight: 2,

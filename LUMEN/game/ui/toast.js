@@ -86,7 +86,15 @@ export function mountToast(root, opts = {}) {
     const on = (n, f) => offs.push(bus.on(n, f));
     on('ui:toast', (p) => p && api.push(p));
     on('story:toast', (p) => p && api.push({ kind: 'info', icon: '🦉', ...(typeof p === 'string' ? { text: p } : p), duration: Math.max(7000, (p && p.duration) || 0) }));   // tutorial tips: ≥ 7 s
-    on('eco:event', (p) => { const e = (p && p.event) || p || {}; if (e.title || e.text) api.push({ text: e.title ? `${e.title}: ${e.text || ''}`.trim() : e.text, kind: 'warn', icon: '📜', duration: 7000, id: 'event' }); });
+    on('eco:event', (p) => {
+      const e = (p && p.event) || p || {}; if (!(e.title || e.text)) return;
+      // S15: say what really happened to the player's money (Protect absorbed / Save+Invest scattered) so the insurance lesson lands
+      const fx = (p && p.effect) || {}; const tail = [];
+      if (fx.absorbed > 0) tail.push(`🛡 Protect absorbed ${fx.absorbed} ✦`);
+      if (fx.exposed > 0) tail.push(`💨 ${fx.exposed} ✦ scattered from Save & Invest`);
+      else if (e.effect && e.effect.exposeJars && fx.absorbed > 0 && !fx.debt && fx.spark === 0) tail.push('Save & Invest untouched');
+      api.push({ text: (e.title ? `${e.title}: ${e.text || ''}`.trim() : e.text) + (tail.length ? ' — ' + tail.join(' · ') : ''), kind: 'warn', icon: '📜', duration: 8000, id: 'event' });
+    });
     on('eco:scam', (o) => o && api.push({ text: `Baron's deal: ${o.title || 'too good to be true'}…`, kind: 'bad', icon: '🎩', duration: 7000, id: 'scam' }));
     on('build:placed', (p) => p && api.push({ text: `${nice(p.id)} built`, kind: 'ok', icon: '🔨', id: 'placed' }));
     on('build:upgraded', (p) => p && api.push({ text: `${nice(p.id)} → level ${p.level}`, kind: 'gold', icon: '⬆', id: 'upgraded' }));

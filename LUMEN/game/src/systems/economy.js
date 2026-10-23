@@ -169,7 +169,7 @@ export class Economy {
     this.pendingOffer = null;
   }
 
-  _freshLedger() { return { income: 0, expenses: 0, interestEarned: 0, interestPaid: 0, saved: 0, invested: 0, protected: 0, absorbed: 0, loansTaken: 0, repaid: 0, sales: 0, units: 0, events: [], scamsAccepted: 0, scamsRefused: 0 }; }
+  _freshLedger() { return { income: 0, expenses: 0, interestEarned: 0, interestPaid: 0, saved: 0, invested: 0, protected: 0, absorbed: 0, exposed: 0, loansTaken: 0, repaid: 0, sales: 0, units: 0, events: [], scamsAccepted: 0, scamsRefused: 0 }; }
 
   // ------------------------------------------------ time
   /** Advance the season clock. dt in SECONDS. Auto-ends the season at day01 ≥ 1 when autoSeason. */
@@ -367,8 +367,18 @@ export class Economy {
 
   // ------------------------------------------------ events & scams (P3 skeleton — 4B fills content)
   _applyEffect(effect = {}, reason = 'event') {
-    const r = { spark: 0, absorbed: 0, debt: 0, fog: 0, reputation: 0, investPct: 0 };
-    if (effect.spark < 0) { const o = this.applyLoss(-effect.spark, reason); r.spark = -(o.paid); r.absorbed = o.absorbed; r.debt = o.debt; }
+    const r = { spark: 0, absorbed: 0, debt: 0, fog: 0, reputation: 0, investPct: 0, exposed: 0 };
+    if (effect.spark < 0) {
+      const o = this.applyLoss(-effect.spark, reason); r.spark = -(o.paid); r.absorbed = o.absorbed; r.debt = o.debt;
+      // S15: "exposure" — the share of the damage Protect did NOT cover also scatters Save/Invest by exposeJars × uncovered/damage.
+      //   Full Protect ⇒ 0 lost from the jars; empty Protect ⇒ the full exposeJars fraction. Spend/Protect semantics unchanged.
+      if (effect.exposeJars > 0) {
+        const damage = -effect.spark, uncovered01 = Math.max(0, Math.min(1, (damage - o.absorbed) / damage));
+        const pct = effect.exposeJars * uncovered01, j = this.state.jars, deltas = {};
+        for (const k of ['save', 'invest']) { const d = round(j[k] * pct); if (d > 0) { j[k] -= d; deltas[k] = -d; r.exposed += d; } }
+        if (r.exposed) { this.ledger.exposed = (this.ledger.exposed || 0) + r.exposed; this.ledger.expenses += r.exposed; this.bus.emit('eco:jar', { jars: { ...j }, deltas, reason: 'exposed' }); }
+      }
+    }
     else if (effect.spark > 0) { this.earn(effect.spark, reason); r.spark = effect.spark; }
     if (effect.investPct) { const d = round(this.state.jars.invest * effect.investPct); this.state.jars.invest += d; r.investPct = effect.investPct; r.investDelta = d; this.bus.emit('eco:jar', { jars: { ...this.state.jars }, deltas: { invest: d } }); }
     if (effect.fog) { this._setFog(this.state.fog01 + effect.fog, reason); r.fog = effect.fog; }

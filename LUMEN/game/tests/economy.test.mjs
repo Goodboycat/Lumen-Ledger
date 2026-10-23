@@ -132,6 +132,19 @@ ok(typeof Economy === 'function' && BALANCE && EVENTS && SCAMS && UPGRADES, 'exp
   const res = ev.applyEvent('storm');
   ok(res && evEv && evEv.id === 'storm' && res.effect.absorbed === 40 && ev.state.spark === 60 && ev.ledger.events[0] === 'storm', 'applyEvent(storm): Protect absorbs 40, pouch pays 0 (spark −40 → 60), fog +0.03, eco:event emitted');
   ok(ev.applyEvent('nope') === null, 'applyEvent unknown id → null');
+  // S15: exposure — uncovered share of an insurable loss scatters exposeJars × that share from Save + Invest
+  const EXPO = { gust: { id: 'gust', title: 'Gust', effect: { spark: -40, exposeJars: 0.10 }, insurable: true } };
+  const x0 = mk({ startDebt: 0, startSpark: 300 }, { events: EXPO }); x0.allocate({ save: 100, invest: 50 });                 // Protect empty → full 10 %
+  const rx0 = x0.applyEvent('gust');
+  ok(rx0.effect.exposed === 15 && x0.state.jars.save === 90 && x0.state.jars.invest === 45 && x0.ledger.exposed === 15, 'exposure: empty Protect → 10 % of Save (−10) and Invest (−5) scattered');
+  const x1 = mk({ startDebt: 0, startSpark: 300 }, { events: EXPO }); x1.allocate({ save: 100, invest: 50, protect: 40 });    // Protect covers all → 0 %
+  const rx1 = x1.applyEvent('gust');
+  ok(rx1.effect.exposed === 0 && x1.state.jars.save === 100 && x1.state.jars.invest === 50, 'exposure: full Protect → Save/Invest untouched');
+  const x2 = mk({ startDebt: 0, startSpark: 300 }, { events: EXPO }); x2.allocate({ save: 100, invest: 50, protect: 20 });    // half covered → 5 %
+  const rx2 = x2.applyEvent('gust');
+  ok(rx2.effect.exposed === 8 && x2.state.jars.save === 95 && x2.state.jars.invest === 47, 'exposure: half Protect → 5 % (Save −5, Invest −3 rounded)');
+  const x3 = mk({ startDebt: 0, startSpark: 300 }, { events: { plain: { id: 'plain', effect: { spark: -40 } } } }); x3.allocate({ save: 100 }); x3.applyEvent('plain');
+  ok(x3.state.jars.save === 100, 'events without exposeJars never touch Save/Invest');
   const f = mk(); f.applyEvent('festival'); ok(f.state.spark === 150 && f.state.reputation > 0.5, 'applyEvent(festival): +30 Spark, reputation up');
 }
 

@@ -101,7 +101,7 @@
         { "speaker": "narrator", "text": "Season 3 — The Storm Season" },
         { "speaker": "owl", "text": "There are grey clouds gathering over the Far Point, and Spark Storms tend to arrive at this time of year without sending an invitation first." },
         { "speaker": "pip", "text": "What do storms do to a market?" },
-        { "speaker": "owl", "text": "They break things, and broken things cost Spark. If that Spark is already sitting in Protect, a storm is just a bill; if it is not, a storm becomes a loan, and the lender will be him." },
+        { "speaker": "owl", "text": "They break things, and broken things cost Spark. If that Spark is already sitting in Protect, a storm is just a bill; if it is not, the wind scatters a tenth of whatever sits in Save and Invest, and what is still owed becomes a loan — and the lender will be him." },
         { "speaker": "baron", "text": "Did somebody say loan? Terrible weather we are having. Wonderful weather for lending!", "mood": "happy" },
         { "speaker": "pip", "text": "Protect jar. Three seasons of upkeep. On it.", "mood": "shout" }
       ],
@@ -429,7 +429,7 @@
   },
 
   "events": {
-    "storm":             [ { "speaker": "owl", "text": "There is a Spark Storm over the stalls. If Protect is full, this is only a bill; if it is not, brace yourself." } ],
+    "storm":             [ { "speaker": "owl", "text": "There is a Spark Storm over the stalls. If Protect is full, this is only a bill; if it is not, brace yourself — the wind does not spare Save and Invest." } ],
     "festival":          [ { "speaker": "glimmer", "text": "Glow Festival! Everybody to Glowmarket!", "mood": "happy" }, { "speaker": "owl", "text": "A windfall is a test rather than a reward, so put it in a jar before you spend any of it." } ],
     "collectorVisit":    [ { "speaker": "collector", "text": "Routine levy! Nothing personal. Entirely personal." } ],
     "sparkDip":          [ { "speaker": "owl", "text": "That was a Spark Dip, and Invest wobbled downwards. This is exactly why Invest is one jar out of four rather than all four." } ],
