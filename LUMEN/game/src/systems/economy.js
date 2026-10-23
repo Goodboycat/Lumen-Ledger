@@ -33,6 +33,7 @@ export const BALANCE = {
 
   savingsRate: 0.05,             // GOOD interest: Save jar earns 5 %/season
   loanRate: 0.20,                // BAD interest: Baron loan costs 20 %/season, compounding
+  season1RateMul: 1,             // S01/P03: multiplier on the Baron's rate in Season 1 only (BALANCE_TUNED halves it — the tutorial season should not bury a first-time kid)
   investMean: 0.08,              // Invest jar: 8 % ± 4 % per season (can be negative in bad seasons w/ events)
   investSpread: 0.04,
   maxLoan: 600,                  // Baron will not lend more than this total principal
@@ -469,7 +470,7 @@ export class Economy {
     const investReturn = round(s.jars.invest * investRate);
     s.jars.invest += investReturn;
     // BAD interest, compounding (scam loans use the hidden higher rate)
-    const rate = s.scamRate ? Math.max(c.loanRate, s.scamRate) : c.loanRate;
+    const rate = (s.scamRate ? Math.max(c.loanRate, s.scamRate) : c.loanRate) * (s.season === 1 ? (c.season1RateMul ?? 1) : 1);   // S01: gentler S1
     const interestPaid = round(s.debt * rate);
     s.debt += interestPaid;
     // upkeep (routine cost: pouch → Spend jar → forced debt; the Protect jar is for shocks, NOT rent)

@@ -106,6 +106,9 @@ export const BALANCE_TUNED = {
   startSpark: 150,           // S01 (2026-10-23): 100 → 150. Recording run 2 showed S1 income 66 vs expenses 221 — a first-time kid lost ground in the tutorial
                              //   season. Debt/interest stay (the Baron's scam core); the pouch gets 1 stall + a buffer instead. Sweep: sensible win@10 ×20/20.
   startDebt: 260,            // the inherited debt is the first-season antagonist (sensible clears it by S3–4)
+  season1RateMul: 0.75,      // S01/P03 (2026-10-23): Season 1 interest 52 → 39 ✦ (15 %). Recording run 2: S1 income 66 vs expenses 221 (interest 52 + upkeep 49)
+                             //   → debt 260 → 315 even with careful play. 0.5 broke the 'hoarder loses ≥ 8/10' gate (never repays → S1 interest is its clock);
+                             //   0.75 keeps every sweep gate (sensible win@10 ×20/20, borrow lose S3–5, hoarder lose 8/10) and still softens the tutorial season.
   startFog: 0.40,
   fogPerDebtSeason: 0.07,    // each season ended in debt: +0.07 (borrow-everything hits 1.0 at S3–5, hoarder at S8–10)
   fogRelief: 0.12,           // debt-free + Save ≥ saveThreshold: −0.12 (+0.02 with a Protect jar) → fog 0 lands at S9–10, win at S10 (17/20 seeds) or S11

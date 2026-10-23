@@ -125,6 +125,7 @@ export function mountLedger(root, opts = {}) {
       LEDGER_ROWS.forEach(([key], i) => {
         const r = rows[key]; const v = +report[key] || 0; r.target = v * (r.sign < 0 ? -1 : 1); r.shown = 0; r.t = -1; r.val.textContent = '0';
         r.row.classList.remove('in', 'hidden-zero'); r.row.style.setProperty('--i', i); netSum += r.target;
+        if (key === 'interestPaid') { const pct = report.debtBefore > 0 && v > 0 ? Math.round(v / report.debtBefore * 100) : null; r.row.firstChild.textContent = pct != null ? `Loan interest  ${pct} %` : (season === 1 ? 'Loan interest  15 %' : 'Loan interest  20 %'); }   // S01: S1 shows the real (half) rate
         later(ROW_STAGGER * i, () => { r.row.classList.add('in'); r.t = 0; });
       });
       rows.net.target = netSum; rows.net.shown = 0; rows.net.t = -1; rows.net.val.textContent = '0'; rows.net.row.classList.remove('in', 'pos', 'neg');
