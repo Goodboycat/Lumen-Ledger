@@ -41,6 +41,7 @@ const doSave = args.includes('--save');            // 10D save/load + tutorial: 
 const doPerf = args.includes('--perf');            // 11A src/systems/perf.js: BlobShadows (N discs → 1 InstancedMesh), CreatureLOD tiers + hysteresis, PixelRatioGovernor steps, countGeometries
 const doIcons = args.includes('--icons');          // icons: ui/icons.js procedural set covers every emoji in src/ ui/ data/ index.html; SVG is strict-XML clean; ui/icons/*.png baked + manifest in sync
 const doAudio = args.includes('--audio');          // 12 src/core/Audio.js headless (no AudioContext → inert): manifest ids ↔ DEFAULT_EVENTS, bus walk counts, cooldown, duck, unknown id, destroy
+const doEnemies = args.includes('--enemies');      // S16 src/systems/enemies.js: Collector waves (size = season ≤ 5), contact −1 ✦ pouch only, Bubble Shield blocks, 2 sword hits → flee + 1 ✦ coin, Baron boss S6+ with powers, season end clears
 const doWorld = args.includes('--world');          // 10A integrated world: bakeStatic batches + Island v2 + every content pack placed headless (mirrors demo_world.html), counts meshes ≤ budget              // 9A/9B VFX packs: installPack1/installPack2 on a mock VFX+scene, fire every effect, step headless, check pools drain, 0 NaN, draw calls
 let files = args.filter((a) => !a.startsWith('--'));
 if (!files.length) { files = []; (function walk(d) { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (p.endsWith('.js') && !p.endsWith('main.js')) files.push(p); } })('src'); }  // main.js is the DOM entry; skipped
@@ -1186,6 +1187,67 @@ if (doUI) {
     pause.destroy(); if (pause.el.parentNode) throw new Error('destroy'); localStorage.removeItem('t.settings'); document.body.classList.remove('ll-reduce-motion');
     console.log(`  pause: normalize/load/save pure (clamp, broken JSON → defaults) · Esc → ui:pause{on,menu} · RESUME → off · SETTINGS expand · quality high → ui:settings + localStorage · outline 0.06 → onOutline "thick" · reduce motion body class · no emit on unchanged · RESTART/TITLE double-tap → ui:restart / ui:title · ui:title:open force-close · ui:pause:request · canOpen · destroy (${ev['ui:settings'].length} ui:settings)  OK`);
   } catch (err) { bad++; console.log('  pause FAIL →', err.message); }
+}
+
+if (doEnemies) {
+  // S16: headless sandbox (same harness as --sandbox). Drives the scheduler to day 0.7, checks the wave, walks a Collector into Pip,
+  // swings the sword, checks the coin + flee, the shield block, season-end clear, and a Season-6 Baron wave with powers.
+  try {
+    const THREE = await import(pathToFileURL(resolve('vendor/three.module.js')).href);
+    const { SequencePlayer, HitStop } = await import(pathToFileURL(resolve('src/anim/Sequencer.js')).href);
+    const { EventBus } = await import(pathToFileURL(resolve('src/core/EventBus.js')).href);
+    const { tweens } = await import(pathToFileURL(resolve('src/anim/Tween.js')).href);
+    const { createSandbox } = await import(pathToFileURL(resolve('src/Game.js')).href);
+    const { ENEMY_RULES, BARON_POWERS, baronPowersFor } = await import(pathToFileURL(resolve('src/systems/enemies.js')).href);
+    console.log('\nENEMIES (S16):');
+    const bus = new EventBus(); const ev = {}; for (const n of ['enemy:wave', 'enemy:spawn', 'enemy:hit', 'enemy:defeated', 'enemy:heroHit', 'enemy:blocked', 'enemy:gone', 'enemy:levy', 'enemy:charge', 'enemy:summon', 'eco:scam']) bus.on(n, (p) => { (ev[n] ??= []).push(p); });
+    const game = { scene: new THREE.Scene(), bus, sequences: new SequencePlayer(), tweens, hitStop: new HitStop(), input: { pointerWorld: new THREE.Vector3(), hasPointerWorld: false, move: new THREE.Vector2(), actions: {}, pressed: () => false }, camera: { zoom: 1, shake() {} }, time: 0, timeScale: 1, followTarget: null, systems: [], add(s) { this.systems.push(s); return s; }, hitstop() {} };
+    const sb = createSandbox(game, { headless: true, seasonSeconds: 30, seed: 3 });
+    const dt = 1 / 30; const step = () => { game.time += dt; game.sequences.update(dt); game.tweens.update(dt); for (const s of game.systems) s.update?.(dt); };
+    const run = (sec) => { for (let i = 0; i < sec * 30; i++) step(); };
+    const E = sb.enemies; if (!E || sb.villains !== E.list) throw new Error('sb.enemies / sb.villains not wired');
+    // 1. no enemies before day 0.7; wave of 1 at S1
+    run(10); if (E.list.length) throw new Error('enemies before day 0.7');
+    sb.eco.state.day01 = 0.71; step(); if (E.list.length !== 1 || E.list[0].kind !== 'collector' || !ev['enemy:wave'] || ev['enemy:wave'][0].season !== 1) throw new Error('S1 wave ' + E.list.length);
+    if (!game.scene.children.includes(E.list[0].g)) throw new Error('enemy not in scene');
+    // 2. chase: it closes in on Pip; contact costs 1 ✦ from the pouch, never below 0, never from jars
+    const c = E.list[0]; const d0 = c.g.position.distanceTo(sb.hero.root.position); run(3); const d1 = c.g.position.distanceTo(sb.hero.root.position);
+    if (!(d1 < d0)) throw new Error(`collector not chasing (${d0.toFixed(1)} → ${d1.toFixed(1)})`);
+    sb.eco.state.spark = 3; sb.eco.state.jars.save = 50; c.g.position.copy(sb.hero.root.position); c.hitAt = -99; run(0.2);
+    if (!ev['enemy:heroHit'] || sb.eco.state.spark !== 2 || sb.eco.state.jars.save !== 50) throw new Error(`contact hit spark ${sb.eco.state.spark} jars.save ${sb.eco.state.jars.save}`);
+    sb.eco.state.spark = 0; c.hitAt = -99; run(0.2); if (sb.eco.state.spark !== 0 || sb.eco.state.debt < 0) throw new Error('hit below 0');
+    // 3. Bubble Shield blocks
+    sb.shield.until = game.time + 5; c.hitAt = -99; sb.eco.state.spark = 5; run(0.2); if (!ev['enemy:blocked'] || sb.eco.state.spark !== 5) throw new Error('shield did not block'); sb.shield.until = -1;
+    // 4. sword: 2 hits → defeat → flee → coin (1 ✦) → gone
+    const coins0 = sb.coins.length; const hp0 = c.hp; const dir = new THREE.Vector3(1, 0, 0);
+    E.hitEnemy(c, dir, 1); if (c.hp !== hp0 - 1 || c.state === 'flee') throw new Error('first hit'); E.hitEnemy(c, dir, 1);
+    if (c.state !== 'flee' || !ev['enemy:defeated'] || sb.coins.length !== coins0 + 1 || sb.coins.at(-1).value !== ENEMY_RULES.collector.reward) throw new Error(`defeat: state ${c.state} coins ${sb.coins.length}/${coins0 + 1}`);
+    if (E.targets().length !== 0) throw new Error('fleeing enemy still a target');
+    run(ENEMY_RULES.fleeSeconds + 0.5); if (E.list.length !== 0 || !ev['enemy:gone'] || game.scene.children.includes(c.g)) throw new Error('fleeing enemy not removed');
+    // hero's own sword picks enemies: spawn one in front and attack
+    E.waveSeason = 0; sb.eco.state.season = 3; sb.sched.wave = false; sb.eco.state.day01 = 0.71; step(); if (E.list.length !== 3) throw new Error('S3 wave size ' + E.list.length);
+    const tgt = sb.hero.deps.targets(); if (!tgt.some((t) => t.enemy)) throw new Error('hero targets lack enemies');
+    // 5. season end clears the wave
+    sb.keys.endSeason(); if (E.list.length !== 0) throw new Error('season end did not clear'); if (E.heroSpeedMul !== 1 || sb.hero.speed !== 5.2) throw new Error('hero speed not reset');
+    // 6. Season 6: Baron + 0 minions; S9: Baron + 3 minions with fogSlow/levy/summon; cap 5  (clock frozen: a 30 s season would end mid-probe)
+    sb.eco.config.seasonSeconds = 1e9;
+    E.waveSeason = 0; sb.eco.state.season = 6; sb.sched.wave = false; sb.sched.season = 6; sb.eco.state.day01 = 0.71; step();
+    if (E.list.length !== 1 || E.list[0].kind !== 'baron' || E.list[0].powers.length !== 0 || !ev['enemy:wave'].at(-1).boss) throw new Error('S6 baron wave');
+    const b = E.baron; b.g.position.copy(sb.hero.root.position); b.hitAt = -99; sb.eco.state.spark = 10; run(0.2); if (sb.eco.state.spark !== 10 - ENEMY_RULES.baron.hitSpark) throw new Error('baron contact ' + sb.eco.state.spark);
+    for (let i = 0; i < ENEMY_RULES.baron.hp; i++) E.hitEnemy(b, dir, 1); if (b.state !== 'flee' || E.stats.baronDefeats !== 1 || sb.coins.at(-1).value !== ENEMY_RULES.baron.reward) throw new Error('baron defeat');
+    E.clear(); E.waveSeason = 0; sb.eco.state.season = 9; sb.sched.wave = false; sb.sched.season = 9; sb.eco.state.day01 = 0.71; step();
+    const b9 = E.baron; if (!b9 || E.list.length !== 4 || b9.powers.join() !== 'fogSlow,levy,summon') throw new Error('S9 wave ' + E.list.length + ' ' + (b9?.powers || []).join());
+    if (baronPowersFor(12).length !== 4 || baronPowersFor(6).length !== 0) throw new Error('baronPowersFor');
+    b9.g.position.copy(sb.hero.root.position).add(new THREE.Vector3(1, 0, 0)); step(); if (E.heroSpeedMul !== BARON_POWERS[0].mul || sb.hero.speed >= 5.2) throw new Error('fogSlow not applied');
+    sb.eco.state.spark = 20; for (let i = 0; i < (BARON_POWERS[1].every + 1) * 30; i++) { b9.g.position.copy(sb.hero.root.position).add(new THREE.Vector3(6, 0, 0)); step(); }   // Pip keeps his distance → the bill comes by post if (!ev['enemy:levy'] || sb.eco.state.spark >= 20) throw new Error('levy'); if (E.heroSpeedMul !== 1) throw new Error('fogSlow not released');
+    run(BARON_POWERS[2].every + 1); if (!ev['enemy:summon'] || E.list.filter((e) => e.kind === 'collector').length < 4) throw new Error('summon');
+    for (let i = 0; i < 6; i++) { b9.timers.summon = 99; step(); } if (E.list.filter((e) => e.kind === 'collector' && e.state !== 'flee').length > ENEMY_RULES.minionCap) throw new Error('minion cap');
+    E.waveSeason = 0; E.clear(); sb.eco.state.season = 12; sb.sched.wave = false; sb.sched.season = 12; sb.eco.state.day01 = 0.71; step(); const b12 = E.baron; if (E.list.length !== 6 || b12.powers.length !== 4) throw new Error('S12 cap');
+    for (let i = 0; i < (BARON_POWERS[3].every + 0.5) * 30 && !ev['enemy:charge']; i++) { b12.g.position.copy(sb.hero.root.position).add(new THREE.Vector3(5, 0, 0)); step(); } if (!ev['enemy:charge'] || !(b12.charging > 0)) throw new Error('charge');
+    for (const e of E.list) if (!isFinite(e.g.position.x) || !isFinite(e.g.scale.y)) throw new Error('enemy NaN');
+    E.clear(); if (game.scene.children.some((o) => o.userData?.type === 'baron' || o.userData?.type === 'collector')) throw new Error('clear left meshes');
+    console.log(`  S1 wave 1 · chase ${d0.toFixed(1)}→${d1.toFixed(1)} u · contact −1 ✦ pouch only (jars untouched, floor 0) · Bubble Shield BLOCKED · 2 sword hits → flee + 1 ✦ coin → gone · hero targets merged · S3 wave 3 · season end clears · S6 Baron (hp 6, −2 ✦) → 5 ✦ · S9 Baron+3 fogSlow(×${BARON_POWERS[0].mul})/levy/summon(cap ${ENEMY_RULES.minionCap}) · S12 Baron+5 charge · stats ${JSON.stringify(E.stats)}  OK`);
+  } catch (err) { bad++; console.log('  enemies FAIL →', err.message); }
 }
 
 if (doSandbox) {
