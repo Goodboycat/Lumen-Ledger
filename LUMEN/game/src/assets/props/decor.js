@@ -47,6 +47,10 @@ export const JAR_LABELS = { spend: 'Spend', save: 'Save', invest: 'Invest', prot
 
 // Every swaying decor prop built so far (banner strings, hanging signs/lanterns) → swayDecor(t) drives all.
 const _swayers = new Set();
+// S17 storm: wind gain scales flag/sign swing (1 calm · 3 storm). Each sway closure reads _decorGain.
+let _decorGain = 1;
+export function setDecorWindGain(g) { _decorGain = Math.max(0, +g || 0); }
+export function getDecorWindGain() { return _decorGain; }
 /** Drive wind on every decor prop that sways. Call once per frame with game.time (seconds). Pure fn of t. */
 export function swayDecor(t) { for (const s of _swayers) s(t); }
 
@@ -268,7 +272,7 @@ export function makeLanternHanging(opts = {}) {
   const swingPos = swing.position.clone(); swing.position.set(0, 0, 0);
   const swingM = mergeGroup(swing, { keep: (m) => m === glass }); swingM.position.copy(swingPos); swingM.name = 'swing';
   const wrap = new THREE.Group(); wrap.add(base, swingM);
-  const sway = (t) => { swingM.rotation.z = Math.sin(t * 1.7 + phase) * 0.08; swingM.rotation.x = Math.cos(t * 1.2 + phase) * 0.05; };
+  const sway = (t) => { const g = _decorGain; swingM.rotation.z = Math.sin(t * 1.7 * (1 + (g - 1) * 0.3) + phase) * 0.08 * g; swingM.rotation.x = Math.cos(t * 1.2 + phase) * 0.05 * g; };
   const out = finish(wrap, 'lantern_hanging', opts, { name: 'Hanging Lantern', premerged: true, sway });
   litApi(out, glass, opts);
   return out;
@@ -315,7 +319,7 @@ export function makeSignHanging(opts = {}) {
   const sp = swing.position.clone(); swing.position.set(0, 0, 0);
   const sw = mergeGroup(swing); sw.position.copy(sp); sw.name = 'swing';
   const wrap = new THREE.Group(); wrap.add(base, sw);
-  const sway = (t) => { sw.rotation.x = Math.sin(t * 1.5 + phase) * 0.07; };
+  const sway = (t) => { const g = _decorGain; sw.rotation.x = Math.sin(t * 1.5 * (1 + (g - 1) * 0.3) + phase) * 0.07 * g; };
   return finish(wrap, 'sign_hanging', opts, { name: 'Hanging Sign', premerged: true, sway });
 }
 export function makeBench(opts = {}) {
@@ -376,7 +380,7 @@ export function makeBannerString(opts = {}) {
   // wave: rotate the whole flag row around the rope axis (X) + tiny z lean, pure fn of time
   flagsM.position.set(0, 1.47, 0); flagsM.children.forEach((m) => { m.position.y -= 1.47; });
   const wrap = new THREE.Group(); wrap.add(base, flagsM);
-  const sway = (t) => { flagsM.rotation.x = Math.sin(t * 2.2 + phase) * 0.22; flagsM.rotation.z = Math.cos(t * 1.3 + phase) * 0.03; };
+  const sway = (t) => { const g = _decorGain; flagsM.rotation.x = Math.sin(t * 2.2 * (1 + (g - 1) * 0.4) + phase) * Math.min(0.5, 0.22 * g); flagsM.rotation.z = Math.cos(t * 1.3 + phase) * 0.03 * g; };
   return finish(wrap, 'banner_string', opts, { footprint: [2, 1], name: 'Banner String', premerged: true, sway });
 }
 export function makeFlowerPot(opts = {}) {

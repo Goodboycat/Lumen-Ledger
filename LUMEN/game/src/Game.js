@@ -22,6 +22,7 @@ import { G } from './assets/geo.js';
 import { PALETTE as P, flatMat } from './core/Toon.js';
 import { makeGlimmerAny, CreatureAnimator, HelperAnimator, makeHelper, HELPER_TYPES, registerVariants, makeFogCollector, makeBaronGilt, VillainAnimator, FogPuffPool } from './assets/creatures/index.js';
 import { EnemySystem, ENEMY_RULES } from './systems/enemies.js';   // S16
+import { StormWeather } from './vfx/storm.js';   // S17
 import { makeEconomy, UPGRADES, pickEvent } from './systems/economyData.js';
 import { BuildSystem } from './systems/build.js';
 import { CustomerSystem } from './systems/customers.js';
@@ -77,6 +78,8 @@ export function createSandbox(game, opts = {}) {
     creatures: headless ? {} : { makeFogCollector, makeBaronGilt, VillainAnimator, FogPuffPool },
     spawnPoint: sb.world.pierSpawn || { x: 0, z: -10 }, exitPoint: sb.world.pierSpawn || { x: 0, z: -10 }, onCoin: (x, z, v) => sb.dropTip?.(x, z, v), isShielded: () => game.time < (sb.shield?.until ?? -1) });
   sb.villains = sb.enemies.list;                                 // perf LOD / blob shadows / destroySandbox already walk sb.villains
+  // S17: storm weather look (sky/fog slate, dim lights, wind ×3, streaks, DOM rain). Scheduler: warn at day 0.30 when the pre-rolled event is a storm, hit at 0.45, clear 3 s later.
+  sb.storm = new StormWeather(game, { lights: game.lights, container: game.container, headless, reduceMotion: () => !!sb.reduceMotion });
   attachMoves(sb.hero); attachAbilities(sb.hero);
   game.followTarget = sb.hero.root.position;
   if (game.camera?.snapTo) { game.camera.zoom = 1.25; game.camera.snapTo(sb.hero.root.position); }
@@ -99,6 +102,7 @@ export function createSandbox(game, opts = {}) {
     if (!headless) { swayAll(game.time); swayDecor(game.time); updateLandmarks(dt); }
     sb.hero.update(dt);
     sb.enemies.update(dt);
+    sb.storm.update(dtReal ?? dt);
     sb.build.update(dt);
     sb.cust.update(dt);
     sb.eco.tick(dt);
@@ -224,6 +228,7 @@ function wireEconomy(sb) {
   off.push(bus.on('eco:win', () => { world.lighthouse?.userData.setState?.('lit'); vfx.lighthouseBeam?.show?.(world.lighthouse); vfx.fogRecede?.(); }));
   off.push(bus.on('eco:lose', () => { vfx.fog?.setCoverage?.(1); vfx.debtPulse?.(1); }));
   off.push(bus.on('eco:win', () => sb.enemies?.clear())); off.push(bus.on('eco:lose', () => sb.enemies?.clear()));   // S16
+  off.push(bus.on('eco:season', () => { sb._stormClearAt = null; sb.storm?.clear(2); })); off.push(bus.on('eco:win', () => sb.storm?.clear(1.5)));   // S17: a new season always starts under a clear sky
   off.push(bus.on('eco:upgrade', (p) => { const u = p?.upgrade; if (u?.kind === 'zone') { const z = island.zones[u.effect.zone]; if (z && !z.unlocked) island.unlockZone(z.index, { game: sb.game, vfx }); } }));
   sb.cust.spawnWave(eco.state.season);                                                             // first wave at start (6A note)
   installScheduler(sb);
@@ -233,18 +238,21 @@ function wireEconomy(sb) {
 //   day01 ≥ 0.70 on odd seasons → Baron Gilt offers a Too-Good Deal (eco.offerScam) → player ledgerFlashes (refuse) or it is auto-refused at
 //   season end (sandbox never auto-accepts). sb.nextEvent is pre-rolled so bubbleShield can name it.
 function installScheduler(sb) {
-  const { eco } = sb, bus = sb.game.bus; const S = sb.sched = { season: 0, event: false, scam: false, wave: false };
+  const { eco } = sb, bus = sb.game.bus; const S = sb.sched = { season: 0, event: false, scam: false, wave: false, warn: false };
   sb.nextEvent = pickEvent(eco, Math.max(1, eco.state.season));
   sb.updateScheduler = () => {
     const s = eco.state; if (s.ended) return;
-    if (S.season !== s.season) { S.season = s.season; S.event = false; S.scam = false; S.wave = false; sb.nextEvent = pickEvent(eco, s.season); }
+    if (S.season !== s.season) { S.season = s.season; S.event = false; S.scam = false; S.wave = false; S.warn = false; sb.nextEvent = pickEvent(eco, s.season); }
+    // S17: clouds gather from day 0.30 when a storm is coming (the player has ~15 s to fill Protect)
+    if (!S.warn && s.day01 >= 0.3 && sb.nextEvent === 'storm' && !S.event) { S.warn = true; sb.storm?.warn(); sb.log.push(`S${s.season} storm clouds gather`); }
     if (!S.event && s.day01 >= 0.45 && sb.nextEvent) {
       S.event = true; const id = sb.nextEvent;
-      if (sb.game.time < sb.shield.until) { sb.shield.until = -1; sb.stats.absorbed = (sb.stats.absorbed || 0) + 1; bus.emit('eco:absorbed', { id, event: eco.events[id] }); sb.log.push(`S${s.season} ${id} ABSORBED by Bubble Shield`); }
-      else { eco.applyEvent(id); sb.log.push(`S${s.season} event ${id}`); }
+      if (sb.game.time < sb.shield.until) { sb.shield.until = -1; sb.stats.absorbed = (sb.stats.absorbed || 0) + 1; bus.emit('eco:absorbed', { id, event: eco.events[id] }); sb.log.push(`S${s.season} ${id} ABSORBED by Bubble Shield`); if (id === 'storm') sb.storm?.clear(2); }
+      else { if (id === 'storm') { sb.storm?.hit(); sb._stormClearAt = sb.game.time + 4; } eco.applyEvent(id); sb.log.push(`S${s.season} event ${id}`); }
     }
     if (!S.scam && s.day01 >= 0.7 && s.season % 2 === 1) { S.scam = true; if (!eco.pendingOffer) eco.offerScam(); }
     // S16: the Baron's Debt Collectors land right after the Too-Good Deal moment (day 0.7, EVERY season — even seasons too, else no fight on S2/S4)
+    if (sb._stormClearAt != null && sb.game.time >= sb._stormClearAt) { sb._stormClearAt = null; sb.storm?.clear(3); }   // S17: the storm blows over 4 s after it hit
     if (!S.wave && s.day01 >= 0.7 && sb.enemies?.enabled !== false) { S.wave = true; const w = sb.enemies.spawnWave(s.season); if (w.length) sb.log.push(`S${s.season} wave ${w.length} (${w.map((e) => e.kind).join(',')})`); }
   };
   sb._offs.push(bus.on('eco:season', () => { if (eco.pendingOffer) { eco.refuseOffer(); sb.log.push('deal expired → refused'); } }));
@@ -538,6 +546,7 @@ export function destroySandbox(sb) {
   for (const h of sb.helpers || []) { h.anim?.dispose?.(); freeMerged(h.g); game.scene.remove(h.g); }
   for (const v of (sb.villains || []).slice()) { const g = v.g || v.root || v; freeMerged(g); g.removeFromParent?.(); }
   sb.enemies?.dispose?.();                                                            // S16: fog puff pool + list
+  sb.storm?.dispose?.();                                                              // S17: streak mesh + DOM overlay, sky/lights restored
   // customers: active roots are released into the pool first (keeps their state machine consistent), then every pooled root is freed
   for (const c of sb.cust?.active?.slice?.() || []) sb.cust._release(c);
   for (const list of sb.cust?.pool?.values?.() || []) { for (const c of list) sb.cust._dispose(c); list.length = 0; }

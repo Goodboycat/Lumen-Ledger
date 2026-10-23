@@ -43,6 +43,10 @@ const _swayers = new Set();
 let _windOn = true;
 export function setWindEnabled(on) { _windOn = !!on; }
 export function isWindEnabled() { return _windOn; }
+// S17 storm: wind gain multiplies every sway amplitude (crowns + field shader). 1 = calm baseline, 3 = Spark Storm.
+let _windGain = 1;
+export function setWindGain(g) { _windGain = Math.max(0, +g || 0); _windGainUniform.value = _windGain; }
+export function getWindGain() { return _windGain; }
 /** Drive wind on every nature prop + instanced field. Call once per frame with game.time (seconds). */
 export function swayAll(t) {
   _windUniform.value = _windOn ? t : 0;
@@ -73,8 +77,9 @@ function finish(raw, kind, opts, { crown = null, footprint = [1, 1], name = kind
     out.add(base, crownMerged);
     const amp = opts.swayAmp ?? 0.03;
     const sway = (t) => {
-      crownMerged.rotation.z = crownRot.z + Math.sin(t * 1.6 + phase) * amp;
-      crownMerged.rotation.x = crownRot.x + Math.cos(t * 1.1 + phase * 1.3) * amp * 0.6;
+      const a = amp * _windGain, tt = t * (1 + (_windGain - 1) * 0.35);   // S17: storms sway wider and a little faster
+      crownMerged.rotation.z = crownRot.z + Math.sin(tt * 1.6 + phase) * a;
+      crownMerged.rotation.x = crownRot.x + Math.cos(tt * 1.1 + phase * 1.3) * a * 0.6;
     };
     out.userData.sway = sway;
     out.userData.crown = crownMerged;
@@ -428,19 +433,20 @@ export function makeBushTallGrass(opts = {}) {
 // outline hull would double the draw calls for no visible gain at game-camera distance).
 // ---------------------------------------------------------------------------------------
 const _windUniform = { value: 0 };
+const _windGainUniform = { value: 1 };   // S17
 let _fieldToonMat = null, _fieldFlatMat = null;
 function windPatch(mat) {
   mat.onBeforeCompile = (sh) => {
-    sh.uniforms.uWind = _windUniform;
+    sh.uniforms.uWind = _windUniform; sh.uniforms.uWindGain = _windGainUniform;
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nuniform float uWind;')
+      .replace('#include <common>', '#include <common>\nuniform float uWind;\nuniform float uWindGain;')
       .replace('#include <begin_vertex>',
         `#include <begin_vertex>
         {
           // bend the top of the blade/stem; strength grows with local height (y01)
           vec4 wp = instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
           float h01 = clamp(position.y / 0.45, 0.0, 1.0);
-          float w = sin(uWind * 2.0 + wp.x * 0.8 + wp.z * 0.5) * 0.12 * h01 * h01;
+          float w = sin(uWind * (1.0 + uWindGain) + wp.x * 0.8 + wp.z * 0.5) * 0.12 * uWindGain * h01 * h01;
           transformed.x += w; transformed.z += w * 0.4;
         }`);
   };
