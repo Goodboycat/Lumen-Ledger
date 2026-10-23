@@ -43,6 +43,7 @@ export function snapshot(lg) {
     story: lg.story && typeof lg.story.serialize === 'function' ? lg.story.serialize() : null,
     helpers: (sb.helpers || []).map((h) => 'helper_' + h.type),
     jars: lg.ui?.jars?.getPct?.() || lg.jarPct || null,
+    autoApply: !!lg.autoApply,                                        // S03: the ⚡ AUTO jars toggle
     hero: heroPos(sb),
     cust: typeof sb.cust?.serialize === 'function' ? sb.cust.serialize() : null,     // BUGFIX B16: per-stall prices + sale totals
     // BUGFIX P41: mid-season saves (⌂ TITLE while playing) resume at the same day01 with the scheduler's "event / scam already fired" flags,

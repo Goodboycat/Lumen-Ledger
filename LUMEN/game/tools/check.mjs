@@ -959,6 +959,12 @@ if (doUI) {
     bus.emit('eco:jar', { jars: { spend: 10, save: 150, invest: 20, protect: 5 } }); if (!/150/.test(jars.el.querySelector('.ll-jar.save .ll-jar-bal').textContent)) throw new Error('balances');
     jars.lock('invest', true); const before = jars.pct.invest; jars.setPct({ invest: 99 }); if (jars.pct.invest !== before) throw new Error('lock ignored');
     jars.setPreset('saver'); if (jars.pct.save !== 50) throw new Error('preset');
+    // S03: ⚡ AUTO toggle → ui:jar:auto {on, pct}; aria-pressed + .on class follow
+    const autoEv = []; const offAuto = bus.on('ui:jar:auto', (p) => autoEv.push(p));
+    const autoBtn = jars.el.querySelector('.ll-jars-foot .ll-btn.auto'); if (!autoBtn || autoBtn.getAttribute('aria-pressed') !== 'false') throw new Error('S03: AUTO button missing / pressed by default');
+    autoBtn.click(); if (!jars.auto || autoEv.length !== 1 || autoEv[0].on !== true || autoEv[0].pct.save !== 50 || !autoBtn.classList.contains('on')) throw new Error('S03: AUTO on ' + JSON.stringify(autoEv));
+    jars.setAuto(true); if (autoEv.length !== 1) throw new Error('S03: setAuto(same) must not re-emit');
+    autoBtn.click(); if (jars.auto || autoEv.length !== 2 || autoEv[1].on !== false) throw new Error('S03: AUTO off'); offAuto();
     jars.destroy();
     console.log(`  jars: rebalance pure ×200 drags sum=100 · proportional/max/locked · drag save→70 → ui:jar (${ev['ui:jar'].length} events) · APPLY → ui:jar:apply · eco:jar balances · lock · preset  OK`);
   } catch (err) { bad++; console.log('  jars FAIL →', err.message); }
@@ -1297,6 +1303,13 @@ if (doGame) {
     bus.emit('ui:jar:apply', { pct: { spend: 40, save: 30, invest: 20, protect: 10 } });
     if (!ev['game:allocated'] || eco.state.spark >= pouch || eco.state.jars.save <= j0.save || eco.state.jars.protect <= j0.protect) throw new Error(`jars APPLY: spark ${pouch}→${eco.state.spark} jars ${JSON.stringify(eco.state.jars)}`);
     const moved = ev['game:allocated'][0].moved; if (Math.abs(moved - Math.floor(pouch * 0.3) - Math.floor(pouch * 0.2) - Math.floor(pouch * 0.1)) > 1) throw new Error('jars moved ' + moved);
+    // S03: AUTO on → a sale of 20 ✦ at 30/20/10 moves 6/4/2 into the jars the moment it lands; carry-over keeps fractions; off → nothing moves; survives the save
+    { const ja = { ...eco.state.jars }, sp = eco.state.spark; bus.emit('ui:jar:auto', { on: true, pct: { spend: 40, save: 30, invest: 20, protect: 10 } });
+      eco.earn(20, 'sale'); if (eco.state.jars.save !== ja.save + 6 || eco.state.jars.invest !== ja.invest + 4 || eco.state.jars.protect !== ja.protect + 2 || eco.state.spark !== sp + 8) throw new Error(`S03 auto split: jars ${JSON.stringify(eco.state.jars)} spark ${sp}→${eco.state.spark}`);
+      eco.earn(5, 'sale'); eco.earn(5, 'sale'); if (eco.state.jars.save !== ja.save + 9) throw new Error('S03 carry-over: save ' + (eco.state.jars.save - ja.save) + ' expected 9');   // 1.5 + 1.5 → 1 + 2
+      eco.earn(50, 'loan'); if (eco.state.jars.save !== ja.save + 9) throw new Error('S03: a loan must NOT be auto-split');
+      const snap = lg.save.snapshot(); if (snap.autoApply !== true) throw new Error('S03: autoApply missing from the snapshot');
+      bus.emit('ui:jar:auto', { on: false }); const s2 = eco.state.jars.save; eco.earn(20, 'sale'); if (eco.state.jars.save !== s2 || lg.autoApply) throw new Error('S03: AUTO off still splits'); }
     // B11 withdraw ↩ + B01 PAY BARON through the jars panel's real buttons → economy.withdraw / economy.repay
     const sv0 = eco.state.jars.save, sp1 = eco.state.spark; ui.jars.el.querySelector('.ll-jar.save .ll-jar-wd').click();
     if (!ev['game:withdrew'] || eco.state.jars.save >= sv0 || eco.state.spark <= sp1) throw new Error(`jars withdraw: save ${sv0}→${eco.state.jars.save} spark ${sp1}→${eco.state.spark}`);

@@ -592,6 +592,19 @@ function installRunWires(lg) {
     const ok = eco.allocate(d); if (ok) bus.emit('game:allocated', { moved, deltas: d, spark: eco.state.spark }); return ok;
   };
   on('ui:jar:apply', (p) => lg.applyJars(p?.pct));
+  // S03: AUTO ("pay yourself first") — while on, every SALE (eco:spark reason 'sale' / tips) is split by the current sliders the moment it lands.
+  //   The fractional remainder is carried over (lg.autoCarry) so 7 ✦ sales at 30 % still fill the Save jar over time. Persisted in the save (autoApply).
+  lg.autoApply = !!lg.autoApply; lg.autoCarry = { save: 0, invest: 0, protect: 0 };
+  lg.autoSplit = (delta) => {
+    if (!lg.autoApply || !(delta > 0) || !lg.sb) return 0;
+    const pct = lg.jarPct || ui?.jars?.pct || {}; const d = {}; let moved = 0;
+    for (const k of ['save', 'invest', 'protect']) { const want = delta * ((+pct[k] || 0) / 100) + (lg.autoCarry[k] || 0); const v = Math.floor(want); lg.autoCarry[k] = want - v; if (v > 0) { d[k] = v; moved += v; } }
+    if (!moved || moved > eco.state.spark) return 0;
+    const ok = eco.allocate(d); if (ok) bus.emit('game:allocated', { moved, deltas: d, spark: eco.state.spark, auto: true }); return ok ? moved : 0;
+  };
+  on('eco:spark', (p) => { if (p && p.delta > 0 && (p.reason === 'sale' || String(p.reason || '').startsWith('tip:'))) lg.autoSplit(p.delta); });
+  on('ui:jar:auto', (p) => { lg.autoApply = !!p?.on; if (p?.pct) lg.jarPct = { ...p.pct }; if (p?.source !== 'restore') bus.emit('ui:toast', { text: lg.autoApply ? 'Pay yourself first: every sale is split into your jars automatically' : 'AUTO off — use APPLY to move Spark into the jars', kind: lg.autoApply ? 'ok' : 'info', icon: '⚡', id: 'jar-auto', duration: 2600 }); });
+  if (ui?.jars?.setAuto && ui.jars.auto !== lg.autoApply) ui.jars.setAuto(lg.autoApply, 'restore');
   // BUGFIX B11: ↩ on a jar → Spark back into the pouch. BUGFIX B01: PAY BARON → economy.repay (the only way to clear principal; isWin needs debt 0).
   on('ui:jar:withdraw', (p) => { if (!p?.jar) return; const a = eco.withdraw(p.jar, p.amount); if (a > 0) bus.emit('game:withdrew', { jar: p.jar, amount: a, spark: eco.state.spark }); });
   lg.repay = (amount) => { const a = eco.repay(amount != null ? amount : eco.state.debt); if (a > 0) { bus.emit('game:repaid', { amount: a, debt: eco.state.debt, spark: eco.state.spark }); ui?.hud?.sync?.(eco.state); } return a; };
@@ -755,6 +768,7 @@ function applySnapshot(lg, sb, snap) {
   // BUGFIX P18: a restored position on water (old save, zone that is no longer unlocked) is pulled back to the nearest land cell (or the plaza)
   if (snap.hero && sb.hero?.root) { sb.hero.root.position.set(snap.hero.x, 0, snap.hero.z); if (!sb.island.isLand(snap.hero.x, snap.hero.z) && !sb.hero.recoverToLand?.()) sb.hero.root.position.set(0, 0, 1); lg.game.camera?.snapTo?.(sb.hero.root.position); }
   if (snap.jars) { lg.jarPct = { ...snap.jars }; lg.ui?.jars?.setPct?.(snap.jars); }
+  if (snap.autoApply != null) { lg.autoApply = !!snap.autoApply; lg.ui?.jars?.setAuto?.(lg.autoApply, 'restore'); }   // S03
   if (snap.cust && sb.cust?.load) sb.cust.load(snap.cust);                               // BUGFIX B16: per-stall prices (+ sale totals) survive CONTINUE
   lg.ui?.hud?.sync?.(eco.state); lg.ui?.jars?.setBalances?.(eco.state.jars); lg.ui?.jars?.setDebt?.(eco.state.debt, eco.state.spark); lg.ui?.build?.setSpark?.(eco.state.spark);
   if (lg.story && lg.state === 'playing') lg.story.onSeasonStart?.(eco.state.season);   // 8B: no-op if this season's opening already played (saved mid-season); plays it if the save was taken at the review
