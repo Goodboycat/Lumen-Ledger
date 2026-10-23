@@ -52,7 +52,14 @@ export class Sequence {
     return this;
   }
   setLoop(v = true) { this.loop = v; return this; }
-  then(fn) { this.onComplete = fn; return this; }
+  /** Register a completion callback. Chains: a second then() runs AFTER the first (it used to replace it, which
+   *  silently dropped the stall's own `swapping = false` reset when build.js added its busy-tracking then() — P26). */
+  then(fn) {
+    if (typeof fn !== 'function') return this;
+    const prev = this.onComplete;
+    this.onComplete = prev ? (ctx) => { prev(ctx); fn(ctx); } : fn;
+    return this;
+  }
 
   get current() { return this.index >= 0 && this.index < this.phases.length ? this.phases[this.index] : null; }
   get currentName() { const p = this.current; return p ? p.name : null; }
