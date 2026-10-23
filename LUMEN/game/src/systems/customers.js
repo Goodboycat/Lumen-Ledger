@@ -115,7 +115,23 @@ export class CustomerSystem {
   price(stallId) { if (this.prices.has(stallId)) return this.prices.get(stallId); const i = this.economy && this.economy.stallInfo ? this.economy.stallInfo(stallId) : null; return i ? i.fair : 5; }
   fair(stallId) { const i = this.economy && this.economy.stallInfo ? this.economy.stallInfo(stallId) : null; return i ? i.fair : this.price(stallId); }
   setSpawnPoint(x, z) { const c = this.flow.nearestWalkable(x, z, 6) || { x, z }; this.spawn = { x: c.x, z: c.z }; return this; }
-  reroute() { this.flow.invalidate(); for (const c of this.active) c.field = null; }
+  reroute() {
+    this.flow.invalidate();
+    for (const c of this.active) {
+      c.field = null;
+      // BUGFIX P51: a build/sell changes which queue slots are walkable → re-aim every walker/queuer at its (possibly new) slot
+      if (c.stall && (c.state === 'walk' || c.state === 'queue')) { this._retarget(c); if (c.state === 'queue') this._set(c, 'walk'); }
+    }
+  }
+  /** BUGFIX P47/P52: queue slots of a stall that are actually reachable (rounded to 1e-6 first so −4.5000…01 does not flip cells). */
+  _usableSlots(s) {
+    const e = s.entry || s; if (e._usable && e._usable.v === this.flow.version) return e._usable.list;
+    const list = [];
+    for (const q of s.slots.queue) { const x = Math.round(q.x * 1e6) / 1e6, z = Math.round(q.z * 1e6) / 1e6; if (this.flow.walkable(x, z)) list.push({ x, z }); else break; }   // stop at the first blocked slot → the line stays contiguous
+    if (!list.length) { const n = this.flow.nearestWalkable(s.slots.counter.x, s.slots.counter.z, 2); if (n) list.push(n); }
+    e._usable = { v: this.flow.version, list };
+    return list;
+  }
 
   // ------------------------------------------------------------------ spawning
   /** Spawn a wave for `season` (P3 table) or exactly `n` customers; spaced 0.45 s apart. Returns the number queued. */
@@ -141,7 +157,7 @@ export class CustomerSystem {
     const jx = (this.rng() - 0.5) * 0.6, jz = (this.rng() - 0.5) * 0.6;
     c.root.position.set(sp.x + jx, 0, sp.z + jz);
     c.root.visible = true; c.root.scale.setScalar(0.001);
-    c.state = 'spawn'; c.t = 0; c.waited = 0; c.stall = null; c.slot = -1; c.field = null; c.result = null;
+    c.state = 'spawn'; c.t = 0; c.waited = 0; c.stall = null; c.slot = -1; c.field = null; c.result = null; c.stuck = 0; c.stuckCount = 0;
     c.speed = BASE_SPEED * (0.85 + 0.3 * this.rng()) * c.speedMul;
     if (c.anim) { c.anim.moodTint(0.6); c.anim.play('idle'); }
     this.active.push(c); this.count = this.active.length; this.totals.spawned++;
@@ -206,7 +222,7 @@ export class CustomerSystem {
     let best = null, bw = -1;
     for (const s of stalls) {
       const q = this._queue(s.entry);
-      if (q.length >= s.slots.queue.length) continue;                    // full → not an option
+      if (q.length >= this._usableSlots(s).length) continue;             // full (only WALKABLE slots count, P47) → not an option
       const kind = String(s.id).replace(/^stall_/, '');
       const pref = prefs[kind] ?? 1;
       const d = Math.hypot(s.slots.counter.x - c.root.position.x, s.slots.counter.z - c.root.position.z);
@@ -223,8 +239,9 @@ export class CustomerSystem {
   _retarget(c) {
     if (!c.stall) return;
     const q = this._queue(c.stall.entry); c.slot = q.indexOf(c);
-    const slot = c.stall.slots.queue[Math.min(c.slot, c.stall.slots.queue.length - 1)] || c.stall.slots.counter;
-    c.target.x = slot.x; c.target.z = slot.z; c.field = null;
+    const slots = this._usableSlots(c.stall);
+    const slot = slots[Math.min(c.slot, slots.length - 1)] || c.stall.slots.counter;
+    c.target.x = slot.x; c.target.z = slot.z; c.field = null; c.stuck = 0;
   }
   _stallAlive(c) { const live = this._stallList(); return live.some((s) => s.entry === c.stall.entry) ? true : false; }
 
@@ -259,7 +276,19 @@ export class CustomerSystem {
           break;
         }
         case 'walk': {
+          // BUGFIX P49: walkers follow queue shifts too (the stall record is re-read so a rebuilt stall's slots are used)
+          if (c.stall) { const q = this._queue(c.stall.entry); const idx = q.indexOf(c); if (idx >= 0 && idx !== c.slot) this._retarget(c); }
+          const px = c.root.position.x, pz = c.root.position.z;
           const arrived = this._steer(c, dt);
+          // BUGFIX P48: no progress toward the target for 2.5 s → the slot is unreachable; re-pick a stall (or leave after the 2nd time)
+          if (!arrived && c.stall) {
+            if (Math.hypot(c.root.position.x - px, c.root.position.z - pz) < 0.25 * dt) c.stuck = (c.stuck || 0) + dt; else c.stuck = 0;   // < 0.25 u/s of real movement = parked
+            if (c.stuck > 2.5) {
+              c.stuck = 0; c.stuckCount = (c.stuckCount || 0) + 1; this._leaveQueue(c);
+              if (c.stuckCount >= 2) { this.totals.gaveUp++; this._react(c, 'sad', 'blocked'); } else this._set(c, 'pickStall');
+              break;
+            }
+          }
           if (arrived) {
             if (c.slot === 0) { c.anim && c.anim.faceToNow(c.stall.group.position); this._set(c, 'browse'); }
             else { c.anim && c.anim.faceTo(c.stall.slots.counter); this._set(c, 'queue'); }

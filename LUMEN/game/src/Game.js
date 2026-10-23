@@ -175,6 +175,10 @@ function placeClutter(sb) {
 export const STARTER_STALLS = [{ id: 'stall_fruit', cx: -4, cz: -3, rot: 1, level: 1 }, { id: 'stall_bread', cx: 3, cz: -3, rot: 3, level: 1 }, { id: 'stall_tea', cx: -3, cz: -6, rot: 0, level: 1 }];
 function placeStarterStalls(sb) {
   for (const s of STARTER_STALLS) {
+    // BUGFIX P46: buildScenery() reserved this footprint (so scatter avoids it) and createSandbox copied every reserved cell into
+    // build.cells as SCENERY → load() always hit its own reservation, the B07 ring fallback moved the stall, and the planned 2×2 stayed
+    // an invisible blocker forever (Glimmers froze against it after a sale). Un-reserve the planned cells first, like placeClutter().
+    freeStarterCells(sb, s);
     if (sb.build.load([s])) continue;
     // BUGFIX B07 fallback: if the anchor is still blocked, try the nearest free spot (ring search) so every run starts with 3 stalls
     let done = false;
@@ -185,6 +189,10 @@ function placeStarterStalls(sb) {
   }
   sb.syncStalls();
   sb.cust.reroute();
+}
+/** P46: drop the SCENERY reservation of a starter stall footprint (rotation-aware) so BuildSystem can actually take the cells. */
+function freeStarterCells(sb, s) {
+  for (const c of sb.build.cellsFor(s.id, s.cx, s.cz, s.rot)) { const k = `${c.x},${c.z}`; if (sb.build.cells.get(k) === sb.SCENERY) sb.build.cells.delete(k); }
 }
 
 // Economy ↔ world glue on the bus. Economy is PURE (4A); this is where its events touch the island.
