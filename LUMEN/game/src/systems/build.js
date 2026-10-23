@@ -306,7 +306,8 @@ export class BuildSystem {
     if (entry.scenery || !this.placed.has(key(entry.cx, entry.cz))) { this._deny('not yours to demolish', { id: entry.id, scenery: !!entry.scenery }); return false; }   // BUGFIX P19
     if (this.busy.has(entry.group) || entry.group.userData.swapping) { this._deny('still building — wait a moment', { id: entry.id }); return false; }   // BUGFIX P26: no demolish mid level-up
     const animate = opts.animate !== false;
-    const refund = opts.refund === false ? 0 : Math.round(entry.cost * REFUND_RATIO + 1e-9);
+    // S07: pre-spawned clutter (cost 0, entry.salvage set) pays a small flat salvage bonus instead of 50 % of nothing
+    const refund = opts.refund === false ? 0 : this.refundOf(entry);
     // bookkeeping first (so the cells are free immediately for the ghost)
     this.placed.delete(key(entry.cx, entry.cz));
     for (const c of entry.cells) if (this.cells.get(key(c.x, c.z)) === entry) this.cells.delete(key(c.x, c.z));
@@ -326,6 +327,8 @@ export class BuildSystem {
     if (this.mode === 'place' && this.ghost) this._placeGhost(this.lastPointer.x, this.lastPointer.z, true);
     return true;
   }
+  /** What demolishing `entry` pays: 50 % of its accumulated cost, or its flat `salvage` bonus for pre-spawned clutter (S07). */
+  refundOf(entry) { if (!entry) return 0; if (entry.salvage && !(entry.cost > 0)) return Math.round(entry.salvage); return Math.round((entry.cost || 0) * REFUND_RATIO + 1e-9); }
   makeDemolishSequence(entry, refund) {
     const g = entry.group, vfx = this.vfx;
     return new Sequence('buildDemolish')
@@ -404,11 +407,11 @@ export class BuildSystem {
   }
 
   // --------------------------------------------------------------- save / load (for Chat 10D)
-  serialize() { return [...this.placed.values()].map((e) => ({ id: e.id, cx: e.cx, cz: e.cz, rot: e.rot, level: e.level, cost: e.cost })); }
+  serialize() { return [...this.placed.values()].map((e) => { const s = { id: e.id, cx: e.cx, cz: e.cz, rot: e.rot, level: e.level, cost: e.cost }; if (e.salvage) s.salvage = e.salvage; return s; }); }
   /** Re-place saved props instantly, no cost, no events per item. Returns count. */
   load(list = []) {
     let n = 0;
-    for (const s of list) { const e = this.place(s.id, s.cx, s.cz, s.rot || 0, { animate: false, pay: false, level: s.level || 1, silent: true, cost: s.cost }); if (e) n++; }
+    for (const s of list) { const e = this.place(s.id, s.cx, s.cz, s.rot || 0, { animate: false, pay: false, level: s.level || 1, silent: true, cost: s.cost }); if (e) { n++; if (s.salvage) e.salvage = s.salvage; } }
     this.bus.emit('build:loaded', { count: n });
     return n;
   }

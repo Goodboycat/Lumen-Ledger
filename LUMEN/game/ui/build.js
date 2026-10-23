@@ -168,7 +168,10 @@ export function mountBuildMenu(root, opts = {}) {
     const isStall = e.category === 'stall';
     // BUGFIX P24: the refund is 50 % of the ACTUAL entry cost (base + upgrades) of the stall that would be sold (lowest level first, like Game.js)
     const sellTarget = n ? placedOf(id).slice().sort((a, b) => (a.level || 1) - (b.level || 1))[0] : null; const sellCost = sellTarget && sellTarget.cost != null ? sellTarget.cost : cost;
-    sellBtn.style.display = n ? '' : 'none'; sellBtn.innerHTML = iconize(`💰 Sell${n > 1 ? ' 1' : ''} · +${Math.round(sellCost * 0.5 + 1e-9)} ✦`); sellBtn.title = `sell your ${n > 1 ? 'lowest-level ' : ''}${e.name || id} for half its cost (upgrades refunded too)`;
+    // S07: pre-spawned clutter (cost 0 + salvage) sells for its flat salvage bonus → label says "Salvage"
+    const isSalvage = !!(sellTarget && sellTarget.salvage && !(sellTarget.cost > 0));
+    const refund = isSalvage ? Math.round(sellTarget.salvage) : Math.round(sellCost * 0.5 + 1e-9);
+    sellBtn.style.display = n ? '' : 'none'; sellBtn.innerHTML = iconize(`${isSalvage ? '🧹 Salvage' : '💰 Sell'}${n > 1 ? ' 1' : ''} · +${refund} ✦`); sellBtn.title = isSalvage ? `clear this ${e.name || id} off the island for a ${refund} ✦ salvage bonus (frees its tiles)` : `sell your ${n > 1 ? 'lowest-level ' : ''}${e.name || id} for half its cost (upgrades refunded too)`;
     upBtn.style.display = isStall ? '' : 'none'; priceBox.style.display = isStall && n && typeof api.priceOf === 'function' ? '' : 'none';
     if (isStall && n && typeof api.priceOf === 'function') {   // B24: price control for a placed stall type (CustomerSystem.setPrice via ui:price)
       const pr = api.priceOf(id) || {}; const p = pr.price ?? 0, f = pr.fair ?? p; const tag = p > f * 1.25 ? ' · greedy?' : p < f * 0.75 ? ' · cheap' : ' · fair';

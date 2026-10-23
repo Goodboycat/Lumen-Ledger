@@ -1216,8 +1216,20 @@ if (doSandbox) {
     sb.eco.state.spark = 400; const spark0 = sb.eco.state.spark;
     const id = sb.keys.pick(1); if (id !== 'stall_' + STALL_PICKS[1]) throw new Error('pick');
     if (!sb.keys.build() || sb.build.mode !== 'place') throw new Error('build enter'); sb.keys.rotate(); sb.build.moveTo(1, 1);
-    if (!sb.keys.confirm() || sb.build.placed.size !== 4 || sb.eco.state.spark >= spark0) throw new Error('confirm/charge');
+    const placedBefore = sb.build.placed.size;   // S07: 3 starter stalls + 6 salvageable clutter props
+    if (!sb.keys.confirm() || sb.build.placed.size !== placedBefore + 1 || sb.eco.state.spark >= spark0) throw new Error('confirm/charge');
     if (sb.eco.state.stalls !== 4) throw new Error('eco.stalls not synced ' + sb.eco.state.stalls);
+    // S07 probe: plaza clutter is real owned decor (cost 0, salvage 6) → sells for the flat salvage bonus, frees its cells, never counts as a stall
+    {
+      const clutter = [...sb.build.placed.values()].filter((e) => e.salvage);
+      if (clutter.length !== 6 || clutter.some((e) => e.cost !== 0 || e.category === 'stall')) throw new Error('S07: clutter ' + clutter.length + ' ' + clutter.map((e) => e.id + ':' + e.cost).join(','));
+      const crate = clutter.find((e) => e.id === 'crate'); const sp = sb.eco.state.spark, st = sb.eco.state.stalls;
+      if (sb.build.refundOf(crate) !== 6) throw new Error('S07: refundOf ' + sb.build.refundOf(crate));
+      if (!sb.build.demolish(crate, { animate: false }) || sb.eco.state.spark !== sp + 6 || sb.build.occupied(crate.cx, crate.cz) || sb.eco.state.stalls !== st) throw new Error(`S07: salvage spark ${sb.eco.state.spark}/${sp + 6} stalls ${sb.eco.state.stalls}`);
+      if (!sb.build.canPlace('crate', crate.cx, crate.cz, 0)) throw new Error('S07: cell not freed');
+      const snap = sb.build.serialize(); if (!snap.some((s) => s.salvage === 6) || snap.some((s) => s.id === 'crate')) throw new Error('S07: serialize salvage');
+      console.log(`  S07 clutter: 6 salvageable props (bench/sign/crate/barrel/pot/trough, cost 0) → crate salvaged +6 ✦, cell freed, stalls unchanged, salvage persists in serialize()  OK`);
+    }
     sb.keys.exit(); if (sb.build.mode === 'place') throw new Error('exit');
     // 3. two seasons (auto end) + E (manual end) → 3 reports
     run(65); if (sb.stats.seasons !== 2 || sb.stats.reports.length !== 2) throw new Error('seasons ' + sb.stats.seasons);

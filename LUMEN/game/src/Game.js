@@ -62,6 +62,7 @@ export function createSandbox(game, opts = {}) {
   const SCENERY = { id: 'scenery', category: 'scenery', group: new THREE.Group(), cells: [], cx: 0, cz: 0, rot: 0, level: 0, cost: 0, scenery: true };
   sb.SCENERY = SCENERY;
   for (const k of sb.world.occupied) if (!sb.island.pathCells.has(k)) sb.build.cells.set(k, SCENERY);
+  placeClutter(sb);                                             // S07: salvageable plaza clutter (real BuildSystem entries, cost 0 → SALVAGE refund)
   sb.cust = new CustomerSystem(game, { island: sb.island, build: sb.build, economy: sb.eco, vfx: sb.vfx, seed: opts.seed ?? 5, maxActive: opts.maxActive ?? 20,
     creatures: { makeGlimmer: (t) => makeGlimmerAny(t, { seed: (rnd() * 1e6) | 0 }), CreatureAnimator } });
   if (sb.world.pierSpawn) sb.cust.setSpawnPoint(sb.world.pierSpawn.x, sb.world.pierSpawn.z);
@@ -135,8 +136,12 @@ function buildScenery(sb, rnd) {
   W.live.push(place(makeProp('sign_hanging'), -5, -6), place(makeProp('banner_string'), -1, -4.5, { w: 2 }));
   // static decor + nature → baked per zone
   const stat = [cliff];
-  for (let i = 0; i < 4; i++) stat.push(place(makeProp('fence_rail'), 4 + i, 6)); stat.push(place(makeProp('fence_gate'), 5, 7.5, { w: 2 }), place(makeProp('bench'), -2.5, 7, { w: 2 }), place(makeProp('sign_board'), 2, 7));
-  stat.push(place(makeProp('crate'), 6, -5), place(makeProp('barrel'), 7, -5), place(makeProp('flower_pot'), -4, 7), place(makeProp('water_trough'), 5.5, -7.5, { w: 2 }));
+  for (let i = 0; i < 4; i++) stat.push(place(makeProp('fence_rail'), 4 + i, 6)); stat.push(place(makeProp('fence_gate'), 5, 7.5, { w: 2 }));
+  // S07 "Clear Clutter": the plaza clutter (bench, sign, crate, barrel, flower pot, trough) is NOT baked any more — it is loaded into
+  // BuildSystem as real owned decor (cost 0 → the sell refund is the small SALVAGE bonus), so players can sell it from the tray / by tap
+  // to free prime market tiles. Its cells are reserved here (take) so the scatter below avoids them; placeClutter() loads them after build exists.
+  W.clutter = [{ id: 'bench', cx: -3, cz: 7, rot: 0 }, { id: 'sign_board', cx: 2, cz: 7, rot: 0 }, { id: 'crate', cx: 6, cz: -5, rot: 0 }, { id: 'barrel', cx: 7, cz: -5, rot: 0 }, { id: 'flower_pot', cx: -4, cz: 7, rot: 0 }, { id: 'water_trough', cx: 5, cz: -8, rot: 0 }];
+  for (const c of W.clutter) { const fp = PROP_CATALOG[c.id]?.footprint || [1, 1]; take(c.cx, c.cz, fp[0], fp[1]); }
   const TREES = ['tree_round', 'tree_cone', 'tree_double', 'tree_palm', 'tree_blossom', 'tree_tall'], ROCKS = ['rock_small', 'rock_medium', 'rock_flat', 'rock_mossy'], BUSHES = ['bush_round', 'bush_berry', 'bush_flower', 'bush_fern'];
   const scatter = (zone, n, pool, minR) => { let placed = 0, tries = 0; while (placed < n && tries++ < 300) { const c = zone.cells[(rnd() * zone.cells.length) | 0]; if (Math.hypot(c.x - zone.center.x, c.z - zone.center.z) < minR || !free(c.x, c.z)) continue; stat.push(place(makeProp(pool[(rnd() * pool.length) | 0], { seed: (rnd() * 1e6) | 0, scale: 0.85 + rnd() * 0.35 }), c.x, c.z, { rot: rnd() * Math.PI * 2, parent: zone.group })); placed++; } };
   scatter(start, 8, TREES, 7); scatter(start, 4, ROCKS, 7); scatter(start, 4, BUSHES, 6.5);
@@ -151,6 +156,20 @@ function buildScenery(sb, rnd) {
     const tu = makeGrassTufts(z.index === 0 ? 100 : 50, area, { seed: 21 + z.index, radius: z.radius + 1 }); tu.position.set(z.center.x, 0, z.center.z); z.group.add(tu);
   }
   return W;
+}
+/** S07: pre-spawned plaza clutter → owned decor entries. Fresh runs only (a restored save re-places whatever the player kept via snap.build).
+ *  cost 0 → BuildSystem pays SALVAGE_BONUS on demolish instead of the 50 % refund (see build.js demolish). */
+export const CLUTTER_SALVAGE = 6;
+function placeClutter(sb) {
+  if (sb.opts?.starterStalls === false || sb.opts?.clutter === false) { for (const c of sb.world.clutter || []) { const fp = PROP_CATALOG[c.id]?.footprint || [1, 1]; for (let i = 0; i < fp[0]; i++) for (let j = 0; j < fp[1]; j++) sb.build.cells.delete(`${c.cx + i},${c.cz + j}`); } return 0; }
+  let n = 0;
+  for (const c of sb.world.clutter || []) {
+    const fp = PROP_CATALOG[c.id]?.footprint || [1, 1];
+    for (let i = 0; i < fp[0]; i++) for (let j = 0; j < fp[1]; j++) { const k = `${c.cx + i},${c.cz + j}`; if (sb.build.cells.get(k) === sb.SCENERY) sb.build.cells.delete(k); }   // un-reserve → place() can take it
+    const e = sb.build.place(c.id, c.cx, c.cz, c.rot || 0, { animate: false, pay: false, level: 1, silent: true, cost: 0 });
+    if (e) { e.salvage = CLUTTER_SALVAGE; n++; }
+  }
+  return n;
 }
 // 3 starter stalls (fruit / bread / tea) via build.load → no Spark charged; counts as owned stalls for upkeep.
 export const STARTER_STALLS = [{ id: 'stall_fruit', cx: -4, cz: -3, rot: 1, level: 1 }, { id: 'stall_bread', cx: 3, cz: -3, rot: 3, level: 1 }, { id: 'stall_tea', cx: -3, cz: -6, rot: 0, level: 1 }];
@@ -584,7 +603,7 @@ function installRunWires(lg) {
   // BUGFIX B13: a placed STALL ends placement in both layers (no accidental second purchase on the next click); cheap decor/nature stay
   // armed for quick fences/paths and Esc / ✕ cancel them. build.exit() emits build:exit → the tray leaves placing.
   on('build:placed', (p) => { if (!p?.silent && build.mode === 'place' && String(p?.id).startsWith('stall_')) build.exit(); });
-  if (ui?.build) { ui.build.reset?.(); ui.build.costOf = (id) => build.cost(id); ui.build.upgradeCost = (lvl) => build.upgradeCost(lvl); ui.build.placedInfo = (id) => [...build.placed.values()].filter((x) => x.id === id).map((x) => ({ level: x.level, cost: x.cost })); /* BUGFIX P24: cost → real refund label */ ui.build.refresh?.(); }
+  if (ui?.build) { ui.build.reset?.(); ui.build.costOf = (id) => build.cost(id); ui.build.upgradeCost = (lvl) => build.upgradeCost(lvl); ui.build.placedInfo = (id) => [...build.placed.values()].filter((x) => x.id === id).map((x) => ({ level: x.level, cost: x.cost, salvage: x.salvage || 0 })); /* BUGFIX P24: cost → real refund label */ ui.build.refresh?.(); }
   offs.push(() => { if (ui?.build) { ui.build.upgradeCost = null; ui.build.placedInfo = null; ui.build.costOf = null; ui.build.reset?.(); } });
   // jars APPLY {pct}: move the whole pouch into the 4 jars by pct (spend stays as pouch → its share is the amount NOT moved)
   lg.applyJars = (pct = {}) => {
