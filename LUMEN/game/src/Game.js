@@ -641,8 +641,23 @@ function installRunWires(lg) {
     if (build.mode === 'place') { if (ui?.isModal?.()) return; build.moveTo(world.x, world.z); if (ev?.pointerType === 'mouse') build.confirm(); return; }
     // BUGFIX P17: prefer the prop under the cursor in 3D (roof / sign / awning) — the ground-plane point sits ~1.9 u behind a 2.2 u tall stall
     if (lg.demolishMode) { const e = build.pick(lg.game.input?._ray?.ray) || build.nearest(world.x, world.z, 1.2); if (e && !e.scenery) build.demolish(e); else if (e && e.scenery) bus.emit('ui:toast', { text: 'That is part of the island — only things YOU built can be sold', kind: 'info', icon: '🌿', id: 'scenery-sell', duration: 2200 }); return; }   // P23: explain instead of silent refusal
-    if (lg.selectTap?.(world)) return;
+    if (lg.selectTap?.(world, ev)) return;
     prevTap?.(world, ev);
+  };
+  // S06: tap / click a stall (or any prop YOU built) on the island → inspect it: the Build Tray opens on its tab with its card selected,
+  //   so 🚀 Deploy another · ⬆ Upgrade · 💰 Sell · price −/+ are one tap away. The 3D pick (roof / sign) comes first, then the ground cell.
+  //   Scenery is "part of the island" (P23) and only gets a toast. Returns true when a prop was selected (the tap is consumed).
+  lg.selectTap = (world) => {
+    if (!lg.sb || lg.game.paused || ui?.isModal?.() || build.mode === 'place' || lg.demolishMode) return false;
+    const e = build.pick(lg.game.input?._ray?.ray) || build.nearest(world.x, world.z, 1.0);
+    if (!e) return false;
+    if (e.scenery) { bus.emit('ui:toast', { text: 'That is part of the island — tap a stall you built to inspect it', kind: 'info', icon: '🌿', id: 'scenery-sell', duration: 1800 }); return true; }
+    const cat = e.category || build.entry?.(e.id)?.category || 'stall';
+    ui?.build?.setCategory?.(cat); ui?.build?.open?.(); ui?.build?.select?.(e.id);
+    lg.inspected = { id: e.id, level: e.level || 1, at: lg.game.time };
+    bus.emit('ui:inspect', { id: e.id, level: e.level || 1, category: cat, cost: e.cost });
+    bus.emit('ui:toast', { text: `${(build.entry?.(e.id)?.name) || e.id.replace(/^stall_/, '')}${cat === 'stall' ? ` · L${e.level || 1}` : ''} — Deploy, Upgrade or Sell it from the tray`, kind: 'info', icon: '🔍', id: 'inspect', duration: 2000 });
+    return true;
   };
   offs.push(() => { if (lg.game.input) lg.game.input.onTap = prevTap; });
   if (typeof window !== 'undefined' && window.addEventListener && !lg.opts.headless) {

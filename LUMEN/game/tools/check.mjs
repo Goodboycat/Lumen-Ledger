@@ -1310,6 +1310,14 @@ if (doGame) {
       eco.earn(50, 'loan'); if (eco.state.jars.save !== ja.save + 9) throw new Error('S03: a loan must NOT be auto-split');
       const snap = lg.save.snapshot(); if (snap.autoApply !== true) throw new Error('S03: autoApply missing from the snapshot');
       bus.emit('ui:jar:auto', { on: false }); const s2 = eco.state.jars.save; eco.earn(20, 'sale'); if (eco.state.jars.save !== s2 || lg.autoApply) throw new Error('S03: AUTO off still splits'); }
+    // S06: tapping a placed stall on the island (ground tap on its anchor cell) → inspect: tray opens on its tab with the card selected (ui:inspect)
+    { const stall = [...lg.sb.build.placed.values()].find((x) => x.category === 'stall' && !x.scenery); if (!stall) throw new Error('S06: no stall to tap');
+      const insp = []; const offI = bus.on('ui:inspect', (p) => insp.push(p)); const g = stall.group.position;
+      const consumed = lg.selectTap({ x: g.x, z: g.z }); offI();
+      if (consumed !== true || insp.length !== 1 || insp[0].id !== stall.id || !lg.inspected || lg.inspected.id !== stall.id) throw new Error('S06: selectTap ' + consumed + ' ' + JSON.stringify(insp));
+      if (lg.ui?.build && (!lg.ui.build.isOpen || lg.ui.build.state.selected !== stall.id)) throw new Error('S06: tray not open on the tapped stall (' + lg.ui.build.state.selected + ')');
+      if (lg.selectTap({ x: 40, z: 40 }) !== false) throw new Error('S06: empty water tap must not be consumed');
+      lg.ui?.build?.close?.(); }
     // B11 withdraw ↩ + B01 PAY BARON through the jars panel's real buttons → economy.withdraw / economy.repay
     const sv0 = eco.state.jars.save, sp1 = eco.state.spark; ui.jars.el.querySelector('.ll-jar.save .ll-jar-wd').click();
     if (!ev['game:withdrew'] || eco.state.jars.save >= sv0 || eco.state.spark <= sp1) throw new Error(`jars withdraw: save ${sv0}→${eco.state.jars.save} spark ${sp1}→${eco.state.spark}`);
