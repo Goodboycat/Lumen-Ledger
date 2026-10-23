@@ -62,3 +62,12 @@ Browser (10B/10D smoke, before 11A): index.html title 162 dc, in play 169–253 
   (camera ~22 u, 1–2 zones visible) the typical count is in the 100–150 band. The ≤ 150 line is **not** asserted in check.mjs because the
   `--world` test places all four zones in view (rule 9: an unreachable budget is a measurement, not a gate). `WORLD_BUDGET` stays 320.
 - 60 fps on 4× CPU throttle: not measurable headless; the governor is the safety net (drops to 0.85 dpr within 3 s).
+
+
+## S02 — 60 fps floor on every phone (2026-10-23)
+`Game.maxDt` stays at 1/20 (a phone that renders < 20 fps is not a target; slowing the clock there is the honest behaviour). Instead the
+`PixelRatioGovernor` now has a second ladder below the DPR floor: fps < 50 for 3 s → DPR 1.5 → 1.25 → 1.0 → 0.85 (as before, threshold
+was 45) → still slow → quality preset high → medium → low (`game.setQuality`: shadows off, smaller maps) → still slow at low → DPR 0.7.
+Presets are never re-promoted automatically (no shadow flicker); DPR climbs back to the preset cap at > 58 fps as before. Each demotion
+emits `perf:quality {from,to,fps,ratio}`; `src/Game.js` mirrors it into the pause-menu setting (`pause.setSetting('quality', to)`, persisted)
+and shows a ⚡ toast. `check.mjs --perf` covers the whole ladder. Opt out per governor with `{ demote: false }`.

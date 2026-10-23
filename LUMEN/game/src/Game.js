@@ -448,6 +448,15 @@ function installMenu(lg) {
     if (p.key === 'quality') applyQuality(lg, p.value);
     if (p.key === 'reduceMotion') applyReduceMotion(lg, !!p.value);
   });
+  // S02 (2026-10-23): the PixelRatioGovernor demoted the preset (high → medium → low) because the phone could not hold 50+ fps at the DPR
+  //   floor. Mirror it into the pause-menu setting (so it persists and the menu shows it) and tell the player once per step.
+  on('perf:quality', (p) => {
+    if (!p?.to) return; lg.stats.demotions = (lg.stats.demotions || 0) + 1;
+    // pause.setSetting renders the segmented control + persists; its ui:settings echo re-calls setQuality with the SAME preset — a no-op
+    // (governor.recap ignores an unchanged cap, so the DPR floor is kept).
+    if (ui?.pause?.setSetting) ui.pause.setSetting('quality', p.to); else if (ui?.pause?.settings) ui.pause.settings.quality = p.to;
+    bus.emit('ui:toast', { text: `Graphics set to ${p.to} to keep 60 fps (change it in ⏸ Settings)`, kind: 'info', icon: '⚡', id: 'perf-quality', duration: 3500 });
+  });
   applyReduceMotion(lg, !!ui?.pause?.settings?.reduceMotion);
   // BUGFIX B22: the stored quality setting is applied on boot too (was: only on a menu click, and then only the DPR).
   if (ui?.pause?.settings?.quality) applyQuality(lg, ui.pause.settings.quality);

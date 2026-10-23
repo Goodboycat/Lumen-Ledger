@@ -1640,7 +1640,7 @@ if (doPerf) {
     const feed = (fps, sec) => { for (let i = 0; i < sec * 60; i++) gov.update(1 / 60, fps); };
     feed(30, 2.9); if (gov.ratio !== 1.5) throw new Error('dropped too early');
     feed(30, 0.2); if (gov.ratio !== 1.25 || evs.at(-1)?.why !== 'drop') throw new Error('no drop at 3 s ' + gov.ratio);
-    feed(50, 20); if (gov.ratio !== 1.25) throw new Error('45–58 band must hold');
+    feed(54, 20); if (gov.ratio !== 1.25) throw new Error('50–58 band must hold');
     feed(30, 3.1); feed(30, 3.1); feed(30, 3.1); if (gov.ratio !== 0.85) throw new Error('floor ' + gov.ratio);
     feed(30, 10); if (gov.ratio !== 0.85) throw new Error('went below the last step');
     feed(60, 9.9); if (gov.ratio !== 0.85) throw new Error('raised too early');
@@ -1649,7 +1649,7 @@ if (doPerf) {
     const gov2 = new PF.PixelRatioGovernor({ ...game, quality: { pixelRatio: 1.0 } }, { dpr: 2 }); if (gov2.ratio !== 1.0) throw new Error('cap start ' + gov2.ratio);
     for (let i = 0; i < 60 * 30; i++) gov2.update(1 / 60, 60); if (gov2.ratio !== 1.0) throw new Error('rose above quality cap ' + gov2.ratio);
     for (let i = 0; i < 60 * 4; i++) gov.update(1 / 60, 20); gov.dispose(); if (gov.ratio !== 1.5 || evs.at(-1)?.why !== 'reset') throw new Error('dispose reset');
-    console.log(`  governor: 1.5 → drop @3 s <45 fps → 1.25 → … → floor 0.85 · band 45–58 holds · raise @10 s >58 fps → … → cap 1.5 · cap 1.0 respected · ${evs.length} perf:pixelRatio events · dispose → ${gov.ratio}  OK`);
+    console.log(`  governor: 1.5 → drop @3 s <50 fps → 1.25 → … → floor 0.85 · band 45–58 holds · raise @10 s >58 fps → … → cap 1.5 · cap 1.0 respected · ${evs.length} perf:pixelRatio events · dispose → ${gov.ratio}  OK`);
     // 1b. BUGFIX B22: Game.setQuality (run on a stub `this` — no WebGL here) + governor re-cap through game:quality
     {
       const { EventBus } = await import(pathToFileURL(resolve('src/core/EventBus.js')).href);
@@ -1667,6 +1667,27 @@ if (doPerf) {
       if (CG.Game.prototype.setQuality.call(stub, 'ultra').name !== 'medium') throw new Error('unknown preset must be a no-op');
       gov3.dispose(); CG.Game.prototype.setQuality.call(stub, 'high'); if (gov3.cap !== 1.25) throw new Error('disposed governor still listening');
       console.log(`  B22 setQuality: high → low (DPR 1, shadows off, antialias pending reload) → medium (shadows on, map 1024, map disposed) · unknown = no-op · governor re-caps via game:quality, unsubscribes on dispose  OK`);
+    }
+    // 1c. S02 (2026-10-23): below the DPR floor the governor demotes the preset high → medium → low, then unlocks DPR 0.7; never re-promotes.
+    {
+      const { EventBus } = await import(pathToFileURL(resolve('src/core/EventBus.js')).href);
+      const CG = await import(pathToFileURL(resolve('src/core/Game.js')).href);
+      const qbus = new EventBus(); const log = []; qbus.on('perf:quality', (p) => log.push(p.from + '>' + p.to));
+      const key = { castShadow: true, shadow: { mapSize: { x: 2048, y: 2048, set(x, y) { this.x = x; this.y = y; } }, map: null } };
+      const g = { quality: { ...CG.QUALITY.high, name: 'high', antialiasRendered: true }, stats: { fps: 30 }, renderer: { setPixelRatio() {}, shadowMap: { enabled: true, needsUpdate: false } }, scene: new THREE.Scene(), lights: { key }, bus: qbus, resize() {} };
+      g.setQuality = (n) => CG.Game.prototype.setQuality.call(g, n);
+      const gov = new PF.PixelRatioGovernor(g, { dpr: 2 });
+      const feed = (fps, sec) => { for (let i = 0; i < sec * 60; i++) gov.update(1 / 60, fps); };
+      feed(30, 3.1); feed(30, 3.1); feed(30, 3.1); if (gov.ratio !== 0.85 || g.quality.name !== 'high') throw new Error('S02 should walk the DPR steps first ' + gov.ratio + ' ' + g.quality.name);
+      feed(30, 3.1); if (g.quality.name !== 'medium' || log.at(-1) !== 'high>medium' || gov.ratio !== 0.85) throw new Error('S02 no demote to medium ' + g.quality.name + ' ' + gov.ratio);
+      feed(30, 3.1); if (g.quality.name !== 'low' || g.renderer.shadowMap.enabled !== false || gov.ratio !== 0.85) throw new Error('S02 no demote to low ' + g.quality.name);
+      feed(30, 3.1); if (gov.ratio !== 0.7) throw new Error('S02 last-resort DPR 0.7 missing ' + gov.ratio);
+      feed(30, 10); if (gov.ratio !== 0.7 || log.length !== 2) throw new Error('S02 must stop at the floor ' + gov.ratio + ' ' + log.length);
+      feed(60, 60); if (g.quality.name !== 'low' || gov.ratio !== 1.0) throw new Error('S02 DPR may climb back to the low cap (1.0) but the preset must not re-promote ' + g.quality.name + ' ' + gov.ratio);
+      const gov2 = new PF.PixelRatioGovernor({ ...g, quality: { ...CG.QUALITY.high, name: 'high' }, setQuality: g.setQuality }, { dpr: 2, demote: false });
+      for (let i = 0; i < 60 * 20; i++) gov2.update(1 / 60, 30); if (gov2.ratio !== 0.85 || gov2.demotions !== 0) throw new Error('S02 demote:false must stay on the DPR ladder only');
+      gov.dispose(); gov2.dispose();
+      console.log(`  S02 governor ladder: DPR 1.5 → 0.85 · then high → medium → low (shadows off) → DPR 0.7 · floor holds · 60 fps → DPR back to the low cap, preset stays low · demote:false respected · ${log.length} perf:quality events  OK`);
     }
     // 2. memory probe on the real sandbox
     const { SequencePlayer, HitStop } = await import(pathToFileURL(resolve('src/anim/Sequencer.js')).href);

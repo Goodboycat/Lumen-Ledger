@@ -7,8 +7,12 @@
 //   CreatureLOD(camera, opts)        distance LOD with hysteresis: beyond `near` (18 u) hide accessory outline hulls
 //                                    (kit / hat / tool / tail / cape), beyond `far` (26 u) hide ALL hulls + tiny flat bits
 //                                    (eyes / mouth / core). Hull lists are cached per root on first sight (root.userData.lod).
-//   PixelRatioGovernor(game, opts)   fps < 45 for 3 s → drop one pixelRatio step (1.5 → 1.25 → 1.0 → 0.85);
+//   PixelRatioGovernor(game, opts)   fps < 50 for 3 s → drop one pixelRatio step (1.5 → 1.25 → 1.0 → 0.85);
 //                                    fps > 58 for 10 s → raise one step (never above the quality cap / devicePixelRatio).
+//                                    S02 (2026-10-23, "every phone runs at 60 fps"): at the DPR floor and STILL < 50 fps for 3 s →
+//                                    demote the quality preset (high → medium → low: shadows off, smaller maps) via game.setQuality;
+//                                    at 'low' one extra DPR step (0.7) is unlocked. Emits perf:quality {from, to, fps} so the
+//                                    integrator can toast + persist it. Presets are never re-promoted automatically (no flicker).
 //   countGeometries(scene)           unique BufferGeometry count under a scene (memory-growth check, P3).
 //
 // Budget maths (measured with check.mjs --world, visible meshes = draw calls):
@@ -162,7 +166,8 @@ export class PixelRatioGovernor {
   constructor(game, opts = {}) {
     this.game = game;
     this.steps = opts.steps || [1.5, 1.25, 1.0, 0.85];
-    this.low = opts.low ?? 45; this.lowS = opts.lowS ?? 3;
+    this.low = opts.low ?? 50; this.lowS = opts.lowS ?? 3;
+    this.demote = opts.demote !== false; this.demotions = 0;   // S02: preset ladder below the DPR floor
     this.high = opts.high ?? 58; this.highS = opts.highS ?? 10;
     this.enabled = opts.enabled !== false;
     this.lowT = 0; this.highT = 0; this.changes = 0;
@@ -178,7 +183,10 @@ export class PixelRatioGovernor {
   /** Move the cap to a new quality preset and jump to its step. */
   recap(pixelRatio) {
     if (!(pixelRatio > 0)) return;
-    this.cap = Math.min(pixelRatio, this._dpr);
+    const cap = Math.min(pixelRatio, this._dpr);
+    const r0 = this.game.renderer;
+    if (cap === this.cap) { if (r0?.setPixelRatio) r0.setPixelRatio(this.ratio); return; }   // S02: same preset re-applied → keep OUR step (setQuality just reset the renderer to the cap)
+    this.cap = cap;
     this.index = Math.max(0, this.steps.findIndex((s) => s <= this.cap + 1e-6)); if (this.index < 0) this.index = this.steps.length - 1;
     this.lowT = this.highT = 0;
     const r = this.game.renderer; if (r?.setPixelRatio) r.setPixelRatio(this.ratio);
@@ -189,8 +197,23 @@ export class PixelRatioGovernor {
     if (!this.enabled || !fps) return this.ratio;
     if (fps < this.low) { this.lowT += dtReal; this.highT = 0; } else if (fps > this.high) { this.highT += dtReal; this.lowT = 0; } else { this.lowT = this.highT = 0; }
     if (this.lowT >= this.lowS && this.index < this.steps.length - 1) { this.index++; this.lowT = 0; this._apply('drop'); }
+    else if (this.lowT >= this.lowS && this.demote) { this.lowT = 0; this._demote(fps); }
     else if (this.highT >= this.highS && this.index > 0 && this.steps[this.index - 1] <= this.cap + 1e-6) { this.index--; this.highT = 0; this._apply('raise'); }
     return this.ratio;
+  }
+  /** S02: DPR floor reached and still slow → step the preset down (high → medium → low). At 'low' unlock one more DPR step (0.7). */
+  _demote(fps) {
+    const g = this.game, order = ['high', 'medium', 'low'], cur = g.quality?.name, i = order.indexOf(cur);
+    if (i < 0 || typeof g.setQuality !== 'function') return;                                   // no preset ladder on this game (tests / stubs)
+    if (i === order.length - 1) {                                                             // already 'low' → last resort: DPR 0.7
+      if (this.steps[this.steps.length - 1] > 0.7) { this.steps = [...this.steps, 0.7]; this.index = this.steps.length - 1; this._apply('drop'); }
+      return;
+    }
+    const to = order[i + 1];
+    g.setQuality(to);                                                                          // emits game:quality → recap (cap moves down)
+    this.index = this.steps.length - 1; this.demotions++; this.last = 'demote';                // stay at the DPR floor; shadows off is the win
+    const r = g.renderer; if (r?.setPixelRatio) { r.setPixelRatio(this.ratio); g.resize?.(); }
+    g.bus?.emit?.('perf:quality', { from: cur, to, fps, ratio: this.ratio });
   }
   _apply(why) {
     this.changes++; this.last = why;
