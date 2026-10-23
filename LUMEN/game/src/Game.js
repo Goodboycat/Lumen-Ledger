@@ -272,7 +272,10 @@ function wireAbilities(sb) {
   sb.ability = (name) => {
     if (!CTX[name] || !ABILITY_NAMES().includes(name)) return null;
     if ((sb.cooldown[name] || -1) > game.time) { bus.emit('sandbox:denied', { name, why: 'cooldown' }); return null; }
-    const seq = hero.playMove(name, CTX[name]()); if (seq) sb.cooldown[name] = game.time + COOLDOWN_S; return seq;
+    const seq = hero.playMove(name, CTX[name]());
+    if (seq) { sb.cooldown[name] = game.time + COOLDOWN_S; bus.emit('sandbox:ability:start', { name, cooldown: COOLDOWN_S }); }   // S08: touch strip starts its sweep here
+    else bus.emit('sandbox:denied', { name, why: 'busy' });
+    return seq;
   };
 }
 // Debug keys (prompt P1): B build mode for the current pick · 1–9 pick a stall type · E end season (LedgerReport → console)
@@ -632,6 +635,12 @@ function installRunWires(lg) {
     ui?.build?.open?.(); return 'tray';
   };
   on('ui:touch', (p) => { if (p?.action === 'interact') lg.interact(); });
+  // S08: touch ability strip → same gate as the Q W E R F G keys (playing / endless, not paused, no modal, tray closed, not placing)
+  on('ui:touch', (p) => {
+    if (p?.action !== 'ability' || !p.name) return;
+    if (ui?.isModal?.() || ui?.build?.isOpen || build.mode === 'place' || lg.game.paused) { bus.emit('sandbox:denied', { name: p.name, why: 'blocked' }); return; }
+    lg.ability(p.name);
+  });
   // tap on the island while in demolish mode → demolish what is there (10B's onTap handles place mode)
   const prevTap = lg.game.input?.onTap;
   // BUGFIX (mobile): with debugKeys off (the real game) nothing handled a tap while PLACING → the ghost never moved on phones.

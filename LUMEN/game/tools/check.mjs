@@ -1128,6 +1128,18 @@ if (doUI) {
     bus.emit('build:enter', {}); if (!bAtk.disabled) throw new Error('build:enter disables attack'); bus.emit('build:exit', {}); if (bAtk.disabled) throw new Error('build:exit re-enables');
     touch.hide(); if (touch.visible) throw new Error('hide'); touch.destroy(); if (touch.el.parentNode) throw new Error('destroy');
     const forced = mountTouch(root, input, { bus, force: true }); if (!forced.visible) throw new Error('force show'); forced.destroy();
+    // S08: ability strip — 6 chips, tap → ui:touch {action:'ability', name}, sandbox:ability:start → cooling sweep (tap while cooling = deny shake, no emit), sandbox:denied → shake, hidden while placing / tray open
+    const { TOUCH_ABILITIES } = await import(pathToFileURL(resolve('ui/touch.js')).href);
+    const t2 = mountTouch(root, input, { bus, force: true }); const abN = Object.keys(t2.abilities).length; if (abN !== 6 || TOUCH_ABILITIES.length !== 6 || !t2.abilities.fogSweep) throw new Error('ability chips ' + abN);
+    const before = (ev['ui:touch'] || []).length; t2.simulateAbility('coinMagnetDash'); const last = ev['ui:touch'][ev['ui:touch'].length - 1]; if ((ev['ui:touch'] || []).length !== before + 1 || last.action !== 'ability' || last.name !== 'coinMagnetDash') throw new Error('ability tap emit ' + JSON.stringify(last));
+    bus.emit('sandbox:ability:start', { name: 'coinMagnetDash', cooldown: 0.3 }); if (!t2.abilities.coinMagnetDash.el.classList.contains('cooling')) throw new Error('cooldown class');
+    const b2 = ev['ui:touch'].length; t2.simulateAbility('coinMagnetDash'); if (ev['ui:touch'].length !== b2 || !t2.abilities.coinMagnetDash.el.classList.contains('deny')) throw new Error('tap while cooling must shake, not emit');
+    await sleep(450); if (t2.abilities.coinMagnetDash.el.classList.contains('cooling')) throw new Error('cooldown should have ended');
+    bus.emit('sandbox:denied', { name: 'fogSweep', why: 'busy' }); if (!t2.abilities.fogSweep.el.classList.contains('deny')) throw new Error('denied shake');
+    bus.emit('build:enter', {}); if (!t2.strip.classList.contains('placing')) throw new Error('strip hidden while placing'); bus.emit('build:exit', {}); if (t2.strip.classList.contains('placing')) throw new Error('strip back after placing');
+    bus.emit('ui:build:open', {}); if (!t2.strip.classList.contains('tray')) throw new Error('strip hidden under tray'); bus.emit('ui:build:close', {});
+    t2.destroy();
+    console.log(`  touch S08: 6 ability chips · tap → ui:touch{ability,name} · sandbox:ability:start → cooling sweep · tap while cooling = shake/no emit · sandbox:denied → shake · hidden while placing / tray open  OK`);
     console.log(`  touch: joyVector clamp/deadzone/half · simulate 56 px → vec (1,0) + onJoystick ×${joyCalls} · release → (0,0) spring · press → input.press + ui:touch · hold → actions.attack + ${n} repeats/0.5 s · setEnabled off · badge pulse · modal hide on ui:ledger:open · build:enter disables attack · force:true · destroy  OK`);
   } catch (err) { bad++; console.log('  touch FAIL →', err.message); }
   try {

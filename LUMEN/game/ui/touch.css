@@ -59,3 +59,26 @@ body.is-touch .ll-jars { max-height: calc(100vh - max(10px, env(safe-area-inset-
 @media (orientation: landscape) and (max-height: 420px) { body.is-touch .ll-jars { max-height: calc(100dvh - max(10px, env(safe-area-inset-top)) - 64px - 152px); } }
 /* hide Foundation's inline help line while touch controls are shown */
 body.is-touch .help { display: none; }
+
+/* S08: FinLit ability strip — 6 chips in a row above the button pad (touch only). Radial cooldown sweep via conic-gradient (--cd 1→0). */
+.ll-touch-abilities { position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: max(22px, calc(env(safe-area-inset-bottom) + 22px + 72px + 72px + 12px + 14px)); display: flex; gap: 6px; z-index: 25; pointer-events: none; touch-action: none; }
+.ll-touch-abilities.hidden, .ll-touch-abilities.placing, .ll-touch-abilities.tray { display: none; }
+.ll-touch-ab { position: relative; width: 48px; height: 52px; min-width: 44px; border-radius: 14px; border: 3px solid var(--ink); background: var(--paper, #FFF8E7); color: var(--ink); box-shadow: 0 4px 0 var(--ink); font: inherit; font-weight: 900; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0; cursor: pointer; pointer-events: auto; touch-action: none; -webkit-user-select: none; user-select: none; overflow: hidden; transition: transform .14s cubic-bezier(.34,1.56,.64,1), box-shadow .14s; }
+.ll-touch-ab.down { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); transition: none; }
+.ll-touch-ab-ico { font-size: 22px; line-height: 1; position: relative; z-index: 1; }
+.ll-touch-ab-lab { font-size: 8px; letter-spacing: .4px; text-transform: uppercase; opacity: .7; margin-top: 2px; position: relative; z-index: 1; }
+.ll-touch-ab-cd { position: absolute; inset: 0; --cd: 0; background: conic-gradient(rgba(38,50,56,.45) calc(var(--cd) * 100%), transparent 0); opacity: 0; transition: opacity .15s; pointer-events: none; }
+.ll-touch-ab.cooling .ll-touch-ab-cd { opacity: 1; }
+.ll-touch-ab.cooling { filter: saturate(.5); }
+.ll-touch-ab.cooling::after { content: attr(data-left); position: absolute; right: 3px; top: 1px; font-size: 10px; font-weight: 900; color: #fff; text-shadow: 0 0 2px var(--ink), 0 0 2px var(--ink); z-index: 2; }
+.ll-touch-ab.deny { animation: ll-ab-deny .32s ease-in-out; }
+@keyframes ll-ab-deny { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 50% { transform: translateX(4px); } 75% { transform: translateX(-3px); } }
+@media (orientation: portrait) {
+  .ll-touch-abilities { bottom: max(26px, calc(env(safe-area-inset-bottom) + 26px + 64px + 64px + 10px + 14px)); gap: 5px; }
+  .ll-touch-ab { width: 44px; height: 48px; } .ll-touch-ab-ico { font-size: 20px; }
+}
+@media (orientation: landscape) and (max-height: 420px) {
+  .ll-touch-abilities { right: max(16px, calc(env(safe-area-inset-right) + 60px + 60px + 8px + 16px)); bottom: max(12px, calc(env(safe-area-inset-bottom) + 12px)); flex-direction: row; gap: 4px; }
+  .ll-touch-ab { width: 42px; height: 42px; } .ll-touch-ab-ico { font-size: 18px; } .ll-touch-ab-lab { display: none; }
+}
+@media (max-width: 360px) { .ll-touch-ab { width: 40px; height: 46px; min-width: 40px; } .ll-touch-abilities { gap: 4px; } }
