@@ -252,11 +252,11 @@ function installScheduler(sb) {
     if (!S.event && s.day01 >= 0.45 && sb.nextEvent) {
       S.event = true; const id = sb.nextEvent;
       if (sb.game.time < sb.shield.until) { sb.shield.until = -1; sb.stats.absorbed = (sb.stats.absorbed || 0) + 1; bus.emit('eco:absorbed', { id, event: eco.events[id] }); sb.log.push(`S${s.season} ${id} ABSORBED by Bubble Shield`); if (id === 'storm') sb.storm?.clear(2); }
-      else { if (id === 'storm') { sb.storm?.hit(); sb._stormClearAt = sb.game.time + STORM.holdSeconds; } eco.applyEvent(id); sb.log.push(`S${s.season} event ${id}`); }
+      else { if (id === 'storm') { sb.storm?.hit(); sb._stormClearAt = STORM.holdSeconds > 0 ? sb.game.time + STORM.holdSeconds : null; /* S21: holdSeconds 0 → rains until the season ends */ } eco.applyEvent(id); sb.log.push(`S${s.season} event ${id}`); }
     }
     if (!S.scam && s.day01 >= 0.7 && s.season % 2 === 1) { S.scam = true; if (!eco.pendingOffer) eco.offerScam(); }
     // S16: the Baron's Debt Collectors land right after the Too-Good Deal moment (day 0.7, EVERY season — even seasons too, else no fight on S2/S4)
-    if (sb._stormClearAt != null && sb.game.time >= sb._stormClearAt) { sb._stormClearAt = null; sb.storm?.clear(3); }   // S17/S21: the storm blows over STORM.holdSeconds (11 s GAME time) after it hit — paused dialogue does not count
+    if (sb._stormClearAt != null && sb.game.time >= sb._stormClearAt) { sb._stormClearAt = null; sb.storm?.clear(3); }   // S17/S21: only when STORM.holdSeconds > 0 (default 0 = whole season; eco:season clears it)
     // P62: the wave waits while the Baron's deal (or any dialogue) is on screen — Collectors land the moment the box closes, not frozen behind it
     if (!S.wave && s.day01 >= 0.7 && sb.enemies?.enabled !== false && !eco.pendingOffer && !(sb.modalOpen?.())) { S.wave = true; const w = sb.enemies.spawnWave(s.season); if (w.length) sb.log.push(`S${s.season} wave ${w.length} (${w.map((e) => e.kind).join(',')})`); }
   };

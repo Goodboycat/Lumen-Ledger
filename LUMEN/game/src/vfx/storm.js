@@ -22,7 +22,7 @@ import { setDecorWindGain } from '../assets/props/decor.js';
 
 const hasDOM = typeof document !== 'undefined' && typeof document.createElement === 'function' && typeof document.getElementById === 'function' && !!document.head;
 export const STORM = { warnTarget: 0.45, warnRamp: 12, hitRamp: 1.2, clearRamp: 3, windGainMax: 3, streaks: 90, streakRadius: 16, slate: 0x5c6b7a, fogNear: 14, fogFar: 40, keyDim: 0.75, hemiDim: 0.45,
-  holdSeconds: 11,      // S21: how long the full storm stays on screen (GAME time → paused dialogue does not eat it; was 4 s)
+  holdSeconds: 0,       // S21 (revised 2026-10-24): 0 = the storm stays for the WHOLE season (cleared by eco:season / win / shield absorb). >0 = auto-clear after that many GAME seconds (old 4 → 11 s behaviour)
   flashMs: 90 };        // S21: thunder flash on hit() — one white full-screen fade (off under reduceMotion)
 
 export class StormWeather {

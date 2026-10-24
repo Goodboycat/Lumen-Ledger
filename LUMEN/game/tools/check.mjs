@@ -1700,10 +1700,10 @@ if (doStorm) {
     // 3. day 0.45 → hit: intensity → 1 quickly, eco:event storm fired, auto-clear scheduled 4 s later
     sb.eco.state.day01 = 0.46; step(); if (W.phase !== 'storm' || ev['storm:hit']?.length !== 1 || ev['eco:event']?.[0]?.id !== 'storm') throw new Error('storm did not hit (' + W.phase + ')');
     run(2); if (Math.abs(W.intensity - 1) > 1e-3 || Math.abs(W.windGain - STORM.windGainMax) > 1e-3) throw new Error('storm not at full intensity ' + W.intensity.toFixed(3));
-    run(STORM.holdSeconds - 2 - 1); if (W.phase !== 'storm' || ev['storm:clear']) throw new Error('S21: storm cleared before holdSeconds (' + W.phase + ')');   // S21: still raining 1 s before the hold ends
-    run(2); if (W.phase !== 'clear' || !ev['storm:clear']) throw new Error('storm did not auto-clear after holdSeconds (' + W.phase + ')');
-    run(4); if (W.intensity !== 0 || scene.background.getHex() !== base.sky || Math.abs(lights.key.intensity - base.key) > 1e-6 || Math.abs(W.windGain - 1) > 1e-6) throw new Error('sky/lights/wind not restored after clear');
-    console.log(`  warn→0.45 plateau, hit→1.0, auto-clear ${STORM.holdSeconds} s (S21), restored  OK  (stats ${JSON.stringify(W.stats)})`);
+    // S21 (revised): holdSeconds 0 → the storm stays for the WHOLE season; 20 s later it is still raining, and eco:season clears it
+    if (STORM.holdSeconds > 0) { run(STORM.holdSeconds - 2 - 1); if (W.phase !== 'storm' || ev['storm:clear']) throw new Error('S21: storm cleared before holdSeconds (' + W.phase + ')'); run(2); if (W.phase !== 'clear' || !ev['storm:clear']) throw new Error('storm did not auto-clear after holdSeconds (' + W.phase + ')'); }
+    else { run(20); if (W.phase !== 'storm' || ev['storm:clear'] || sb._stormClearAt != null) throw new Error('S21: season-long storm cleared early (' + W.phase + ')'); bus.emit('eco:season', { season: 98 }); step(); if (W.phase !== 'clear' || !ev['storm:clear']) throw new Error('S21: eco:season did not clear the season-long storm'); }
+    console.log(`  warn→0.45 plateau, hit→1.0, ${STORM.holdSeconds > 0 ? 'auto-clear ' + STORM.holdSeconds + ' s' : 'holds the whole season → eco:season clears'} (S21), restored  OK  (stats ${JSON.stringify(W.stats)})`);
     // 4. season end mid-storm clears; a Bubble-Shield absorb also clears instead of hitting
     sb.eco.state.day01 = 0.99; run(3); // → next season
     if (sb.eco.state.season < 2) throw new Error('season did not advance'); 
