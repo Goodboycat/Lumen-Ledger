@@ -1260,7 +1260,7 @@ if (doEnemies) {
     for (let i = 0; i < (BARON_POWERS[3].every + 0.5) * 30 && !ev['enemy:charge']; i++) { b12.g.position.copy(sb.hero.root.position).add(new THREE.Vector3(5, 0, 0)); step(); } if (!ev['enemy:charge'] || !(b12.charging > 0)) throw new Error('charge');
     for (const e of E.list) if (!isFinite(e.g.position.x) || !isFinite(e.g.scale.y)) throw new Error('enemy NaN');
     E.clear(); if (game.scene.children.some((o) => o.userData?.type === 'baron' || o.userData?.type === 'collector')) throw new Error('clear left meshes');
-    console.log(`  S1 wave 1 · chase ${d0.toFixed(1)}→${d1.toFixed(1)} u · contact −1 ✦ pouch only (jars untouched, floor 0) · Bubble Shield BLOCKED · 2 sword hits → flee + 1 ✦ coin → gone · hero targets merged · S3 wave 3 · season end → walk home to pier → off (no coin) · S4 re-lands · S6 Baron (hp 6, −2 ✦; at 0 ✦ → DEBT) → 5 ✦ · S9 Baron+3 fogSlow(×${BARON_POWERS[0].mul})/levy/summon(cap ${ENEMY_RULES.minionCap}) · S12 Baron+5 charge · stats ${JSON.stringify(E.stats)}  OK`);
+    console.log(`  S1 wave 1 · chase ${d0.toFixed(1)}→${d1.toFixed(1)} u · contact −1 ✦ pouch only (jars untouched, floor 0) · Bubble Shield BLOCKED · 2 sword hits → flee + 1 ✦ coin → gone · hero targets merged · S3 wave 3 · season end → walk home to pier → off (no coin) · S4 re-lands · S6 Baron (hp 6, −2 ✦; at 0 ✦ → DEBT) → ${ENEMY_RULES.baron.reward} ✦ (P60) · S9 Baron+3 fogSlow(×${BARON_POWERS[0].mul})/levy/summon(cap ${ENEMY_RULES.minionCap}) · S12 Baron+5 charge · stats ${JSON.stringify(E.stats)}  OK`);
   } catch (err) { bad++; console.log('  enemies FAIL →', err.message); }
 }
 
@@ -1650,9 +1650,10 @@ if (doStorm) {
     // 3. day 0.45 → hit: intensity → 1 quickly, eco:event storm fired, auto-clear scheduled 4 s later
     sb.eco.state.day01 = 0.46; step(); if (W.phase !== 'storm' || ev['storm:hit']?.length !== 1 || ev['eco:event']?.[0]?.id !== 'storm') throw new Error('storm did not hit (' + W.phase + ')');
     run(2); if (Math.abs(W.intensity - 1) > 1e-3 || Math.abs(W.windGain - STORM.windGainMax) > 1e-3) throw new Error('storm not at full intensity ' + W.intensity.toFixed(3));
-    run(3); if (W.phase !== 'clear' || !ev['storm:clear']) throw new Error('storm did not auto-clear after 4 s (' + W.phase + ')');
+    run(STORM.holdSeconds - 2 - 1); if (W.phase !== 'storm' || ev['storm:clear']) throw new Error('S21: storm cleared before holdSeconds (' + W.phase + ')');   // S21: still raining 1 s before the hold ends
+    run(2); if (W.phase !== 'clear' || !ev['storm:clear']) throw new Error('storm did not auto-clear after holdSeconds (' + W.phase + ')');
     run(4); if (W.intensity !== 0 || scene.background.getHex() !== base.sky || Math.abs(lights.key.intensity - base.key) > 1e-6 || Math.abs(W.windGain - 1) > 1e-6) throw new Error('sky/lights/wind not restored after clear');
-    console.log(`  warn→0.45 plateau, hit→1.0, auto-clear 4 s, restored  OK  (stats ${JSON.stringify(W.stats)})`);
+    console.log(`  warn→0.45 plateau, hit→1.0, auto-clear ${STORM.holdSeconds} s (S21), restored  OK  (stats ${JSON.stringify(W.stats)})`);
     // 4. season end mid-storm clears; a Bubble-Shield absorb also clears instead of hitting
     sb.eco.state.day01 = 0.99; run(3); // → next season
     if (sb.eco.state.season < 2) throw new Error('season did not advance'); 

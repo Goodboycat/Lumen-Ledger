@@ -21,7 +21,9 @@ import { setWindGain } from '../assets/props/nature.js';
 import { setDecorWindGain } from '../assets/props/decor.js';
 
 const hasDOM = typeof document !== 'undefined' && typeof document.createElement === 'function' && typeof document.getElementById === 'function' && !!document.head;
-export const STORM = { warnTarget: 0.45, warnRamp: 12, hitRamp: 1.2, clearRamp: 3, windGainMax: 3, streaks: 90, streakRadius: 16, slate: 0x5c6b7a, fogNear: 14, fogFar: 40, keyDim: 0.75, hemiDim: 0.45 };
+export const STORM = { warnTarget: 0.45, warnRamp: 12, hitRamp: 1.2, clearRamp: 3, windGainMax: 3, streaks: 90, streakRadius: 16, slate: 0x5c6b7a, fogNear: 14, fogFar: 40, keyDim: 0.75, hemiDim: 0.45,
+  holdSeconds: 11,      // S21: how long the full storm stays on screen (GAME time → paused dialogue does not eat it; was 4 s)
+  flashMs: 90 };        // S21: thunder flash on hit() — one white full-screen fade (off under reduceMotion)
 
 export class StormWeather {
   constructor(game, deps = {}) {
@@ -46,7 +48,14 @@ export class StormWeather {
   /** Clouds gather: a storm is coming (pre-rolled). Gives the player ~15 s to fill Protect. */
   warn() { if (this.phase === 'storm') return; this.phase = 'warn'; this.target = STORM.warnTarget; this.rate = STORM.warnTarget / STORM.warnRamp; this.stats.warns++; this.bus?.emit('storm:warn', {}); }
   /** The storm lands. */
-  hit() { this.phase = 'storm'; this.target = 1; this.rate = (1 - this.intensity) / STORM.hitRamp || 1; this.stats.hits++; this._gust = 1.5; this.bus?.emit('storm:hit', {}); }
+  hit() { this.phase = 'storm'; this.target = 1; this.rate = (1 - this.intensity) / STORM.hitRamp || 1; this.stats.hits++; this._gust = 1.5; this._thunderFlash(); this.bus?.emit('storm:hit', {}); }
+  /** S21: one white flash (90 ms) so the storm's landing reads even while a toast is on screen. Skipped under reduceMotion / headless. */
+  _thunderFlash() {
+    if (!this._flash || this.reduceMotion) return;
+    this.stats.flashes = (this.stats.flashes || 0) + 1;
+    const f = this._flash; f.style.transition = 'none'; f.style.opacity = '0.85';
+    setTimeout(() => { f.style.transition = `opacity ${STORM.flashMs * 3}ms ease-out`; f.style.opacity = '0'; }, STORM.flashMs);
+  }
   /** Back to sunshine over `seconds`. */
   clear(seconds = STORM.clearRamp) { if (this.phase === 'clear' && this.target === 0) return; this.phase = 'clear'; this.target = 0; this.rate = Math.max(1e-3, this.intensity) / Math.max(0.1, seconds); this.stats.clears++; this.bus?.emit('storm:clear', {}); }
   /** Snap (new run / teardown). */
@@ -134,14 +143,17 @@ export class StormWeather {
     Object.assign(rain.style, { position: 'absolute', inset: '-20%', pointerEvents: 'none', opacity: '0',
       backgroundImage: 'repeating-linear-gradient(112deg, rgba(220,235,250,0) 0px, rgba(220,235,250,0) 9px, rgba(220,235,250,0.55) 10px, rgba(220,235,250,0) 12px, rgba(220,235,250,0) 23px)',
       backgroundSize: '160px 420px', animation: 'lumenRain 0.55s linear infinite', animationPlayState: 'paused', mixBlendMode: 'screen' });
-    el.appendChild(rain); container.appendChild(el);
-    this._el = el; this._rain = rain;
+    const flash = document.createElement('div'); flash.className = 'storm-flash';
+    Object.assign(flash.style, { position: 'absolute', inset: '0', pointerEvents: 'none', zIndex: 40, opacity: '0', background: '#f4f8ff' });
+    el.appendChild(rain); container.appendChild(el); container.appendChild(flash);
+    this._el = el; this._rain = rain; this._flash = flash;
   }
 
   dispose() {
     this.reset();
     if (this._streaks) { this._streaks.mesh.removeFromParent?.(); this._streaks.geo.dispose?.(); this._streaks.mat.dispose?.(); this._streaks = null; }
     if (this._el) { this._el.remove?.(); this._el = null; this._rain = null; }
+    if (this._flash) { this._flash.remove?.(); this._flash = null; }
   }
 }
 const _X = new THREE.Vector3(1, 0, 0);

@@ -17,7 +17,7 @@
 //   • Season ≥ 6: the five Collectors stay home; BARON GILT comes as the boss (hp 6, speed 2.4, contact 2 ✦) plus (season − 6) minions, max 5.
 //     Baron powers unlock one per season (BARON_POWERS): S7 fogSlow (Pip walks at 60 % within 3 u of the Baron) · S8 levy (every 9 s, if ≥ 4 u away,
 //     he raises his cane and takes 1 ✦ remotely — "a bill by post") · S9 summon (every 14 s, calls one more Collector while below the minion cap) ·
-//     S10 charge (every 8 s dashes at Pip, 2 ✦ on contact). Defeating the Baron pays 5 ✦ and ends the wave for the season.
+//     S10 charge (every 8 s dashes at Pip, 2 ✦ on contact). Defeating the Baron pays 3 ✦ (P60) and ends the wave for the season.
 //   • S16b: a Collector hit at 0 ✦ does nothing ("empty!"), but a BARON hit at 0 ✦ bills the shortfall as DEBT (state.debt += missing, eco:loan kind 'forced').
 //   • S16b: at season end nobody vanishes in place — sendHome() makes everyone turn and WALK back to the pier (deps.exitPoint = spawnPoint)
 //     and step off the island there (state 'home'); not a defeat: no coin, no stats. clear() is still the instant teardown (win / lose / dispose).
@@ -27,7 +27,7 @@ import * as THREE from '../../vendor/three.module.js';
 
 export const ENEMY_RULES = {
   collector: { hp: 2, speed: 2.9, radius: 0.75, hitSpark: 1, hitCooldown: 1.1, reward: 1 },
-  baron:     { hp: 6, speed: 2.4, radius: 0.95, hitSpark: 2, hitCooldown: 1.4, reward: 5 },
+  baron:     { hp: 6, speed: 2.4, radius: 0.95, hitSpark: 2, hitCooldown: 1.4, reward: 3 },   // P60: reward 5 → 3
   waveCap: 5, bossFrom: 6, minionCap: 5, knockback: 1.6, fleeSeconds: 2.2, approachMin: 0.55,
   homeSpeedMul: 1.25, homeRadius: 0.6, homeTimeout: 14,   // S16b walk-home: a bit brisk, arrive within 0.6 u of the exit, hard cap so nobody is stuck forever
 };
