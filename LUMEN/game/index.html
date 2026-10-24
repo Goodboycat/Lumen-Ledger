@@ -85,7 +85,7 @@ try {
     version: `jam build · ${GAME_VERSION}`,
     autoTutorial: !params.has('autoplay') && !params.has('notutorial'),                   // guided tutorial on the first PLAY (?notutorial / ?autoplay skip it)
   });
-  const lg = createLumenGame(game, { ui, storyData, seasonSeconds, seed: +params.get('seed') || undefined, debugKeys: params.has('debug') });
+  const lg = createLumenGame(game, { ui, storyData, seasonSeconds, seed: +params.get('seed') || undefined, debugKeys: params.has('debug'), cinematics: !params.has('nocine') });   // S18: ?nocine = no title orbit / arrival / victory shots
   window.ui = ui; window.lg = lg; window.sb = () => lg.sb; window.eco = () => lg.sb?.eco;
   // 12: audio — bus→SFX map + music; AudioContext is created only inside the first gesture (bus 'input:first' below). Missing
   // Ludo.ai files fall back to the manifest's synth sketches, so the build is never silent. Volumes follow the 7C settings sliders.
@@ -134,6 +134,8 @@ try {
 
   // ?autoplay (smoke / trailer): skip the title. ?endless: start in Endless.
   if (params.has('autoplay') || params.has('endless')) setTimeout(() => game.bus.emit('ui:start', { mode: params.has('endless') ? 'endless' : 'story' }), 300);
+  // S18 smoke: ?cinelog prints cine:begin / cine:end / cine:showcase to the console (tools smoke + PlaywrightConsoleCapture read it)
+  if (params.has('cinelog')) for (const n of ['cine:showcase', 'cine:begin', 'cine:end', 'cine:lamp', 'game:start']) game.bus.on(n, (p) => console.log('[cine]', n, JSON.stringify(p || {}), 'active=' + (lg.cine?.active ?? 'none'), 'meshes=' + game.scene.children.length));
   game.start();
   requestAnimationFrame(() => requestAnimationFrame(hideLoading));                      // 11B P3: first real frame is on screen → fade the loading layer
 } catch (e) { showError(e); }
