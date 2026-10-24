@@ -37,7 +37,6 @@ export const DEFAULT_EVENTS = {
   'eco:scamResult':    { sfx: 'scam_refuse', cooldown: 1, pick: (p) => p?.accepted ? { sfx: 'scam_fell' } : null },
   'eco:upgrade':       { sfx: 'level_up',    cooldown: 0.3 },
   'eco:win':           { sfx: 'fanfare',     cooldown: 2, music: 'victory' },
-  'eco:lose':          { sfx: 'lose_sting',  cooldown: 2, music: 'fog_lose' },
   'story:line':        { sfx: null },                                                              // voice blurb plays on ui:dialogue:say instead (when the box really starts the line)
   // Character voice blurbs (short cartoon hums, Zelda-style): the dialogue box emits ui:dialogue:say when a line starts typing →
   // voice_<speaker> (pip / owl / baron / glimmer / collector). Narrator / unknown speakers keep the neutral dlg_blip.
@@ -52,7 +51,6 @@ export const DEFAULT_EVENTS = {
   'ui:pause:open':     { sfx: 'tray_open',   cooldown: 0.2, duck: true },
   'ui:pause:close':    { sfx: 'tray_close',  cooldown: 0.2, duck: false },
   'ui:title:open':     { music: 'title' },
-  'game:start':        { sfx: 'start',       cooldown: 1, music: 'island_day' },
   'game:endless':      { music: 'island_endless' },
   'sandbox:ability':   { sfx: 'ability',     cooldown: 0.2, pick: (p) => ({ sfx: ABILITY_SFX[p?.name] || 'ability' }) },
   'sandbox:hired':     { sfx: 'hire',        cooldown: 0.5 },
@@ -63,19 +61,25 @@ export const DEFAULT_EVENTS = {
   'enemy:wave':        { sfx: 'enemy_wave',  cooldown: 1, pick: (p) => p?.boss ? { sfx: 'baron_arrive' } : null },
   'enemy:hit':         { sfx: 'enemy_hit',   cooldown: 0.08 },
   'enemy:heroHit':     { sfx: 'hero_hit',    cooldown: 0.2, pick: (p) => p?.debt ? { sfx: 'loan_stamp' } : null },
-  'enemy:blocked':     { sfx: 'shield',      cooldown: 0.2, vol: 0.6, pitch: 1.4 },
-  'enemy:defeated':    { sfx: 'enemy_flee',  cooldown: 0.2, pick: (p) => p?.kind === 'baron' ? { sfx: 'fanfare', vol: 0.7 } : null },
+  'enemy:blocked':     { sfx: 'hit_shield',  cooldown: 0.2, vol: 0.8 },
+  'enemy:defeated':    { sfx: 'enemy_flee',  cooldown: 0.2, pick: (p) => p?.kind === 'baron' ? { sfx: 'baron_defeated', vol: 0.9 } : null },
   'enemy:home':        { sfx: 'toast',       cooldown: 1, vol: 0.5 },
   'enemy:baronWarn':   { sfx: 'baron_warn',  cooldown: 0.3, pick: (p) => p?.kind === 'stomp' ? { sfx: 'baron_warn', pitch: 0.7 } : p?.kind === 'umbrella' ? { sfx: 'baron_warn', pitch: 1.3 } : null },
-  'enemy:cannon':      { sfx: 'fog_cannon',  cooldown: 0.2 },
+  'enemy:cannon':      { sfx: 'fog_cannon',  cooldown: 0.2, pick: (p) => p?.hit ? { sfx: 'fog_impact' } : null },
   'enemy:stomp':       { sfx: 'baron_stomp', cooldown: 0.3 },
   'enemy:minigun':     { sfx: 'fog_minigun', cooldown: 0.5 },
-  'enemy:dash':        { sfx: 'sweep',       cooldown: 0.5, pitch: 0.8 },
-  'enemy:dashEnd':     { sfx: 'crumble',     cooldown: 0.5, vol: 0.7 },
+  'enemy:dash':        { sfx: 'baron_dash',  cooldown: 0.5 },
+  'enemy:dashEnd':     { sfx: 'crumble',     cooldown: 0.5, vol: 0.7, pick: (p) => p?.hit ? { sfx: 'hero_hit', vol: 0.8 } : null },
   'enemy:baronInterrupted': { sfx: 'deny',   cooldown: 0.2, vol: 0.5, pitch: 0.8 },
   // S17 storm weather
   'storm:warn':        { sfx: 'storm_warn',  cooldown: 2 },
-  'storm:hit':         { sfx: 'thunder',     cooldown: 2 },
+  'storm:hit':         { sfx: 'thunder',     cooldown: 2, ambience: 'storm' },      // rain + wind beds fade in (manifest ambience `when: 'storm'`), birds duck
+  'storm:clear':       { ambience: 'calm' },
+  // Ambience beds (2026-10-24 user pack): surf + island birds always on while a run is live; everything off on the title.
+  'game:start':        { sfx: 'start',       cooldown: 1, music: 'island_day', ambience: 'always' },
+  'game:resumed':      { ambience: 'always' },
+  'game:title':        { ambience: 'off' },
+  'eco:lose':          { sfx: 'lose_sting',  cooldown: 2, music: 'fog_lose', ambience: 'off' },
   // S18 cinematics: a soft chime when a shot begins (not the title orbit), the lighthouse lamp lighting on the victory shot
   'cine:begin':        { sfx: 'cine_sting',  cooldown: 1, vol: 0.7, pick: (p) => p?.shot === 'title' ? { sfx: null } : null },
   'cine:lamp':         { sfx: 'lamp_light',  cooldown: 2 },
@@ -89,9 +93,11 @@ export function createAudio(opts = {}) {
     unlocked: false, silent: !AC, ctx: null, manifest: null, buffers: new Map(), missing: new Set(),
     volumes: { sfx: +(opts.settings?.sfx ?? DEFAULT_VOLUMES.sfx), music: +(opts.settings?.music ?? DEFAULT_VOLUMES.music) },
     played: {}, lastPlay: {}, currentMusic: null, musicNode: null, ducked: false, log: [], solo: {},
+    // ambience beds (manifest "ambience"): mode 'off' | 'always' | 'storm' | 'calm' (= back to always). `beds` = id → { s, g, vol } live loops.
+    ambMode: 'off', ambOn: {}, beds: {}, ambLog: [],
   };
   const offs = [];
-  let sfxGain = null, musicGain = null, musicDuck = null;
+  let sfxGain = null, musicGain = null, musicDuck = null, ambGain = null;
 
   // seconds clock for cooldowns: AudioContext time when live, wall clock when inert; `api._now` can override it (check.mjs drives cooldowns deterministically)
   const now = () => (api._now ? api._now() : state.ctx ? state.ctx.currentTime : (typeof performance !== 'undefined' ? performance.now() / 1000 : Date.now() / 1000));
@@ -102,6 +108,7 @@ export function createAudio(opts = {}) {
     sfxGain = state.ctx.createGain(); musicGain = state.ctx.createGain(); musicDuck = state.ctx.createGain();
     sfxGain.gain.value = state.volumes.sfx; musicGain.gain.value = state.volumes.music; musicDuck.gain.value = 1;
     sfxGain.connect(state.ctx.destination); musicGain.connect(musicDuck); musicDuck.connect(state.ctx.destination);
+    ambGain = state.ctx.createGain(); ambGain.gain.value = 1; ambGain.connect(sfxGain);                    // beds follow the SFX slider
   }
 
   const api = {
@@ -134,7 +141,10 @@ export function createAudio(opts = {}) {
       return state.capDest.stream;
     },
     duck(on) { state.ducked = !!on; if (musicDuck) ramp(musicDuck.gain, on ? 0.35 : 1, 0.2); return api; },
-    destroy() { for (const off of offs) off(); offs.length = 0; stopMusic(0); if (state.ctx && typeof window !== 'undefined' && state.ctx !== window.lumenAudioCtx) state.ctx.close?.(); },
+    /** Ambience beds. mode: 'off' (title / lose) · 'always' (surf + birds) · 'storm' (+ rain + wind, birds ducked) · 'calm' (storm → always).
+     *  Headless-safe: state.ambMode / state.ambOn record the intent so check.mjs can gate the bus wiring without an AudioContext. */
+    ambience(mode = 'always', fade = 1.5) { return setAmbience(mode, fade); },
+    destroy() { for (const off of offs) off(); offs.length = 0; stopMusic(0); setAmbience('off', 0); if (state.ctx && typeof window !== 'undefined' && state.ctx !== window.lumenAudioCtx) state.ctx.close?.(); },
     _now: null,
   };
 
@@ -185,6 +195,39 @@ export function createAudio(opts = {}) {
     const n = state.musicNode; state.musicNode = null; state.currentMusic = state.currentMusic && fade === 0 ? null : state.currentMusic;
     if (!n) return; if (fade > 0 && n.gain) { ramp(n.gain.gain, 0, fade); setTimeout(() => n.stop(), fade * 1000 + 50); } else n.stop();
   }
+  // ---- ambience beds: manifest.ambience { id: { file, vol, when: 'always'|'storm', stormDuck } } → gapless loops on ambGain ----
+  const ambDefs = () => state.manifest?.ambience || {};
+  function setAmbience(mode, fade) {
+    if (mode === 'calm') mode = 'always';
+    const prev = state.ambMode; state.ambMode = mode; if (prev !== mode) state.ambLog.push(`${prev} → ${mode}`);
+    const on = {};
+    for (const [id, d] of Object.entries(ambDefs())) {
+      if (id.startsWith('_') || !d || typeof d !== 'object') continue;
+      const want = mode === 'off' ? false : d.when === 'storm' ? mode === 'storm' : true;
+      const vol = want ? (d.vol ?? 0.4) * (mode === 'storm' && d.stormDuck != null ? d.stormDuck : 1) : 0;
+      on[id] = want; bed(id, d, want, vol, fade);
+    }
+    state.ambOn = on; return api;
+  }
+  function bed(id, d, want, vol, fade) {
+    const live = state.beds[id];
+    if (!want) { if (live) { state.beds[id] = null; try { ramp(live.g.gain, 0, fade); setTimeout(() => { try { live.s.stop(); } catch {} }, fade * 1000 + 60); } catch {} } return; }
+    if (!state.ctx || !state.unlocked || !fetchOK() || !d.file) return;                            // headless / before gesture: intent recorded only
+    if (live) { ramp(live.g.gain, vol, fade); live.vol = vol; return; }
+    const g = state.ctx.createGain(); g.gain.value = 0; g.connect(ambGain); const holder = { s: null, g, vol, id };
+    state.beds[id] = holder;
+    (async () => {
+      const key = 'amb:' + id; let b = state.buffers.get(key);
+      if (!b) { try { const r = await fetch(base() + d.file); if (!r.ok) throw new Error('HTTP ' + r.status); b = await state.ctx.decodeAudioData(await r.arrayBuffer()); state.buffers.set(key, b); } catch (e) { state.log.push(`missing ambience ${id}`); if (state.beds[id] === holder) state.beds[id] = null; return; } }
+      if (b instanceof Promise) b = await b;
+      if (state.beds[id] !== holder) return;                                                           // switched off while loading
+      const s = state.ctx.createBufferSource(); s.buffer = b; s.loop = true; s.connect(g); s.start(state.ctx.currentTime, Math.random() * Math.max(0, b.duration - 0.5)); holder.s = s;
+      ramp(g.gain, holder.vol, fade);
+    })();
+  }
+  // when the context unlocks after the mode was already set (PLAY before the first gesture is impossible in practice, but resume() paths exist) → re-apply
+  const _unlock = api.unlock; api.unlock = () => { const r = _unlock(); if (r && state.ambMode !== 'off') setAmbience(state.ambMode, 1); return r; };
+
   // ---- P1.3 bus → SFX map. Manifest "events": { "<bus event>": { sfx | music | duck | fn, cooldown, vol, when: "<payload key>" } } merged over DEFAULT_EVENTS ----
   function wireBus() {
     for (const off of offs) off(); offs.length = 0;
@@ -197,6 +240,7 @@ export function createAudio(opts = {}) {
         const r = typeof rule.pick === 'function' ? rule.pick(payload) || rule : rule;        // per-payload variant (e.g. win vs lose ledger)
         if (r.duck !== undefined) api.duck(!!r.duck);
         if (r.music !== undefined) { if (r.music) api.music(r.music); else api.stopMusic(); }
+        if (r.ambience) setAmbience(r.ambience, r.ambience === 'off' ? 1 : r.ambience === 'storm' ? 2 : 2.5);
         if (!r.sfx) return;
         const cd = r.cooldown ?? 0.05, last = state.lastFire[ev] ?? -1e9, t = now();
         if (t - last < cd) { state.throttled = (state.throttled || 0) + 1; return; }
