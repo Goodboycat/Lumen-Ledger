@@ -93,6 +93,9 @@ export function createSandbox(game, opts = {}) {
   sb.pick = 0;                                                   // current stall pick index (keys 1–9)
   wireEconomy(sb);
   wireAbilities(sb);
+  // BUGFIX P65: the starter footprints' SCENERY reservation must go even when starterStalls:false (CONTINUE) — otherwise build.load(snap.build)
+  //   rejects the 3 saved starter stalls ("scenery" cell) and a resumed run silently loses them (check.mjs --save: stalls 9/12).
+  for (const s of STARTER_STALLS) freeStarterCells(sb, s);
   if (opts.starterStalls !== false) placeStarterStalls(sb);
   sb.syncWorld();
   installDebugKeys(sb);
