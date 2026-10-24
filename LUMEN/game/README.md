@@ -16,6 +16,10 @@ Useful URL flags: `?autoplay` skip the title · `?endless` start in Endless · `
 
 **Controls** — WASD/arrows move · Space/J/Enter hammer/confirm · E/F interact · **B** build menu · Q W E R F G abilities (**tap** W = Bubble Shield, **hold** W = walk; R rotates the ghost while placing) · jars panel: ↩ withdraws half a jar, **PAY BARON** repays debt from the pouch · Esc/P pause · Enter/click advances dialogue, 1–4 picks a choice. Touch: left virtual joystick, A / B / 🔨 buttons, ⏸ in the HUD. Full table in `docs/GDD.md §6`.
 
+## Enemies (S16–S20)
+From day 0.7 of each season (right after the Baron's Too-Good Deal), **Debt Collectors** (wave = season, max 5) land at spread shore points and chase Pip: a touch takes 1 ✦ from the pouch (never from jars, never below 0); two sword hits make one flee and drop 1 ✦. Bubble Shield (W) blocks. At season end they walk back to the shore and leave.
+From **Season 6, Baron Gilt** comes himself: a **very slow chaser** (1.1 u/s — you can always walk away) who stops every 2–4 s to attack, always with a **0.8 s red ring warning** first: **Debt-Fog Cannon** (S6, 1 ✦ if you stay in the ring, leaves a slowing puddle — longer from S7) · **Big Stomp** (S8, he leaps to where you *were* — 2 ✦ and a shove inside the big ring, then he is dazed 2.5 s: hit him) · **Fog Minigun** (S9, 2 s of pellets whose aim lags behind you) · **Umbrella Dash** (S10, sidestep the line — he ends paralysed 4 s). A Baron hit at 0 ✦ is billed as debt. Six hits defeat him for 3 ✦ and end the wave. Headless gate: `node tools/check.mjs --enemies`.
+
 ## What's in the box
 ```
 game/
@@ -25,7 +29,7 @@ game/
     core/               Game loop, Toon material + Outline, Camera, Input, EventBus, Audio (WebAudio + synth fallback)   [frozen foundation]
     anim/               Easing, Tween, Sequencer, SquashStretch · heroAnims (9 moves) · heroAbilities (6 FinLit abilities)
     assets/             geo.js primitives · hero.js (Pip) · props/ (12 stalls × 3 levels, nature, landmarks, decor, merge + bake) · creatures/ (12 Glimmers, 6 helpers, Baron + 3 Collectors)
-    systems/            economy.js + economyData.js (pure JS, 4 jars, loans, events, scams) · build.js · customers.js + flowfield.js · story.js · save.js · perf.js
+    systems/            economy.js + economyData.js (pure JS, 4 jars, loans, events, scams) · build.js · customers.js + flowfield.js · story.js · save.js · perf.js · enemies.js (S16–S20: Debt Collectors + Baron Gilt boss)
     vfx/                VFX.js base · pack1 (coins, confetti, rings, trails) · pack2 (Debt Fog ring, vignette, lighthouse beam, fogRecede) · storm.js · cinematics.js (S18: title orbit, arrival walk-in, victory lighthouse)
     world/Island.js     three-lobe island, zones, grid, isLand, pier edge
     Game.js             createSandbox (world + systems on one loop) · createLumenGame (state machine, UI + story wiring, save, tutorial, perf)
