@@ -30,7 +30,7 @@ export const DEFAULT_EVENTS = {
   'ui:build:open':     { sfx: 'tray_open',   cooldown: 0.2 },
   'ui:build:close':    { sfx: 'tray_close',  cooldown: 0.2 },
   'eco:season':        { sfx: 'season_bell', cooldown: 1 },
-  'eco:loan':          { sfx: 'loan_stamp',  cooldown: 0.3 },
+  'eco:loan':          { sfx: 'loan_stamp',  cooldown: 0.3, pick: (p) => p?.kind === 'forced' ? { sfx: 'debt_fall', vol: 0.8 } : null },   // forced debt (event / Baron bill) = the heavier fall sting
   'eco:jar':           { sfx: 'jar_fill',    cooldown: 0.15 },
   'ui:jar:apply':      { sfx: 'jar_apply',   cooldown: 0.3 },
   'eco:scam':          { sfx: 'scam_sting',  cooldown: 1 },
@@ -42,6 +42,8 @@ export const DEFAULT_EVENTS = {
   // voice_<speaker> (pip / owl / baron / glimmer / collector). Narrator / unknown speakers keep the neutral dlg_blip.
   'ui:dialogue:say':   { sfx: 'dlg_blip',    cooldown: 0.05, pick: (p) => ({ sfx: VOICE_SFX[p?.speaker] || 'dlg_blip' }) },
   'story:toast':       { sfx: 'toast',       cooldown: 0.4, vol: 0.6 },
+  'story:lesson':      { sfx: 'quest_complete', cooldown: 2, vol: 0.7 },                          // lesson card earned
+  'game:unlock':       { sfx: 'chest',       cooldown: 2 },                                           // S25 endless unlocked
   'ui:choice':         { sfx: 'click',       cooldown: 0.1 },
   'ui:continue':       { sfx: 'click',       cooldown: 0.1 },
   'ui:ledger:open':    { sfx: 'ledger_open', cooldown: 0.5, duck: true },
