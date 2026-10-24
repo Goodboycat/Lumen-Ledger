@@ -1,0 +1,19 @@
+/* LUMEN LEDGER — S18 cinematics layer (src/vfx/cinematics.js). Letterbox bars + SKIP for 'arrival' / 'victory'; nothing for 'title'. */
+.ll-cine { position: absolute; inset: 0; z-index: 57; display: none; pointer-events: none; }
+.ll-cine.on { display: block; pointer-events: auto; }
+.ll-cine-bar { position: absolute; left: 0; right: 0; height: 0; background: #0e1420; transition: height .6s cubic-bezier(.2,.8,.2,1); }
+.ll-cine-bar.top { top: 0; } .ll-cine-bar.bot { bottom: 0; }
+.ll-cine.letterbox .ll-cine-bar { height: clamp(28px, 9vh, 90px); }
+.ll-cine-skip { position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: calc(clamp(28px, 9vh, 90px) + 12px); padding: 8px 14px; border-radius: 12px;
+  border: 3px solid var(--ink, #1e2430); background: rgba(255,255,255,.88); color: var(--ink, #1e2430); font: 900 13px/1 inherit; letter-spacing: .6px; cursor: pointer;
+  opacity: 0; transform: translateY(6px); transition: opacity .3s ease .8s, transform .3s ease .8s; box-shadow: 0 3px 0 var(--ink, #1e2430); }
+.ll-cine.on .ll-cine-skip { opacity: .92; transform: none; }
+.ll-cine-skip:active { transform: translateY(3px); box-shadow: 0 0 0 var(--ink, #1e2430); }
+/* while a cinematic owns the screen the HUD / touch pad / toasts fade so the shot is clean (body class set by Game.js) */
+body.ll-cine-on .ll-hud, body.ll-cine-on .ll-touch, body.ll-cine-on .ll-touch-pad, body.ll-cine-on .ll-joy-zone, body.ll-cine-on .ll-touch-abilities, body.ll-cine-on .ll-toasts, body.ll-cine-on .ll-pause-fab { opacity: 0 !important; pointer-events: none !important; transition: opacity .35s ease; }
+/* title backdrop: the live 3D island orbits behind the title → the DOM sky becomes a translucent wash and the painted isle/sea hide */
+body.ll-title-3d .ll-title-sky { background: linear-gradient(180deg, rgba(126,200,255,.35) 0%, rgba(191,232,255,.18) 55%, rgba(255,243,196,.35) 100%); }
+body.ll-title-3d .ll-title-sea, body.ll-title-3d .ll-title-isle { display: none; }
+body.ll-title-3d .ll-title-clouds { opacity: .55; }
+body.ll-title-3d .ll-title-card { background: rgba(255,255,255,.66); border-radius: 22px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); box-shadow: 0 6px 24px rgba(20,30,50,.18); }
+@media (prefers-reduced-motion: reduce) { .ll-cine-bar, .ll-cine-skip { transition: none; } }
