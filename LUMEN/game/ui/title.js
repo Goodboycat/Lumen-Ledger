@@ -5,9 +5,11 @@
 //   title.show() · title.hide() · title.isOpen · title.setHasSave(bool) · title.setBusy(bool) · title.destroy()
 //
 // What it does
-//   • Full-screen sky panel: logo "LUMEN LEDGER" (letters pop in, 60 ms stagger, outBack), lantern glyph swing, tagline "Make FinLit Fun",
-//     three chunky buttons: ▶ PLAY (new story run) · ⟳ CONTINUE (only when a save exists) · ∞ ENDLESS (free play, no Baron story).
-//     Footer: credits line + version + "Zoud GameLab jam".
+//   • Full-screen sky panel: logo image (icon.png, lettered h1 kept hidden for a11y), the 3D island orbit behind it (S18) and
+//     three chunky buttons: ▶ PLAY (new story run) · ⟳ CONTINUE (only when a save exists) · ∞ ENDLESS (free play — HIDDEN until the
+//     player has won the story once: `opts.hasWon` fn / `title.setUnlocked({endless:true})`, persisted by Game.js under `lumen.unlocks`).
+//     S24 (2026-10-24): no tagline / no sub-line / no footer by default — the menu is only the logo + buttons; the version sits as a
+//     tiny corner tag. `opts.chrome: true` restores the old texts (tests). Button labels use the toon style of the logo (title.css).
 //   • Emits `ui:title:open` / `ui:title:close` (touch pad hides itself while the title owns the screen) and
 //     `ui:start { mode: 'story' | 'continue' | 'endless' }` when a button is pressed (10C starts the game, then calls title.hide()).
 //     `title.hide()` is NOT automatic on press — the integrator decides (e.g. fade only after the world is built). `opts.hideOnStart: true` flips that.
@@ -33,6 +35,8 @@ export function mountTitle(root, opts = {}) {
   const bus = opts.bus || defaultBus;
   const hasSaveFn = typeof opts.hasSave === 'function' ? opts.hasSave : () => !!opts.hasSave;
   const version = opts.version || 'jam build';
+  const hasWonFn = typeof opts.hasWon === 'function' ? opts.hasWon : () => !!opts.hasWon;
+  const chrome = !!opts.chrome;   // S24: tagline / sub-line / footer are off by default (clean menu)
 
   // ---------------------------------------------------------------- DOM
   const wrap = el('section', 'll-title'); wrap.id = 'll-title'; wrap.setAttribute('aria-label', 'Title screen');
@@ -45,7 +49,9 @@ export function mountTitle(root, opts = {}) {
   const logo = el('h1', 'll-title-logo'); logo.setAttribute('aria-label', 'Lumen Ledger');
   const words = ['LUMEN', 'LEDGER']; let li = 0;
   for (const w of words) { const row = el('span', 'll-title-word'); for (const ch of w) { const s = el('span', 'll-title-ch', ch); s.style.animationDelay = (li++ * 60) + 'ms'; row.append(s); } logo.append(row); }
-  const tag = el('p', 'll-title-tag'); tag.append('Make ', el('b', null, 'FinLit'), ' Fun'); const sub = el('p', 'll-title-sub', 'Relight the Lighthouse. Push back the Debt Fog.');
+  const tag = el('p', 'll-title-tag'); tag.append('Make ', el('b', null, 'FinLit'), ' Fun'); const sub = el('p', 'll-title-sub', '');
+  if (!chrome) { tag.hidden = true; tag.style.display = 'none'; sub.hidden = true; sub.style.display = 'none'; }
+  else sub.textContent = 'Relight the Lighthouse. Push back the Debt Fog.';
   const menu = el('nav', 'll-title-menu'); menu.setAttribute('aria-label', 'Main menu');
   const buttons = {}; let bi = 0;
   for (const [mode, def] of Object.entries(TITLE_MODES)) {
@@ -53,19 +59,21 @@ export function mountTitle(root, opts = {}) {
     b.append(el('span', 'll-title-btn-ico', def.icon), el('span', 'll-title-btn-lab', def.label), el('span', 'll-title-btn-sub', def.sub));
     menu.append(b); buttons[mode] = b;
   }
-  const foot = el('footer', 'll-title-foot', `<span>Zoud GameLab · “Make FinLit Fun”</span><span class="ll-title-ver">${version}</span>`);
-  card.append(lantern, logo, tag, sub, menu, foot);
-  wrap.append(sky, card);
+  const foot = el('footer', 'll-title-foot', chrome ? `<span>Zoud GameLab · “Make FinLit Fun”</span><span class="ll-title-ver">${version}</span>` : `<span class="ll-title-ver">${version}</span>`);
+  if (!chrome) foot.classList.add('corner');
+  card.append(lantern, logo, tag, sub, menu);
+  wrap.append(sky, card, foot);
   root.appendChild(wrap);
 
   // ---------------------------------------------------------------- state
-  const st = { open: false, busy: false, hasSave: false, focus: 0, lastMode: null };
-  const order = () => Object.keys(TITLE_MODES).filter((m) => m !== 'continue' || st.hasSave);
+  const st = { open: false, busy: false, hasSave: false, endless: false, focus: 0, lastMode: null };
+  const order = () => Object.keys(TITLE_MODES).filter((m) => (m !== 'continue' || st.hasSave) && (m !== 'endless' || st.endless));
   const setFocus = (i) => { const o = order(); st.focus = (i + o.length) % o.length; o.forEach((m, k) => buttons[m].classList.toggle('focus', k === st.focus)); };
 
   const start = (mode) => {
     if (!st.open || st.busy) return;
     if (mode === 'continue' && !st.hasSave) mode = 'story';
+    if (mode === 'endless' && !st.endless) return;   // locked until the first story win
     st.lastMode = mode; buttons[mode].classList.add('down'); setTimeout(() => buttons[mode].classList.remove('down'), 160);
     bus.emit('ui:start', { mode, hasSave: st.hasSave });
     if (opts.hideOnStart) api.hide();
@@ -88,11 +96,14 @@ export function mountTitle(root, opts = {}) {
     get isOpen() { return st.open; },
     get lastMode() { return st.lastMode; },
     setHasSave(v) { st.hasSave = !!v; buttons.continue.style.display = st.hasSave ? '' : 'none'; wrap.classList.toggle('has-save', st.hasSave); setFocus(0); return api; },
+    /** S25: unlock flags. `{ endless: true }` shows the ∞ ENDLESS button (after the first story win). */
+    setUnlocked(u = {}) { if ('endless' in u) { st.endless = !!u.endless; buttons.endless.style.display = st.endless ? '' : 'none'; wrap.classList.toggle('has-endless', st.endless); setFocus(Math.min(st.focus, order().length - 1)); } return api; },
+    get unlocked() { return { endless: st.endless }; },
     setBusy(v) { st.busy = !!v; wrap.classList.toggle('busy', st.busy); for (const b of Object.values(buttons)) b.disabled = st.busy; return api; },
     setSub(text) { sub.textContent = text; return api; },
     show(o = {}) {
       if (st.open) return api;
-      st.open = true; api.setHasSave(hasSaveFn()); if (o.sub) api.setSub(o.sub); clearTimeout(st.goneT); wrap.classList.remove('hide', 'gone'); wrap.classList.add('open');
+      st.open = true; api.setHasSave(hasSaveFn()); api.setUnlocked({ endless: hasWonFn() }); if (o.sub) { api.setSub(o.sub); sub.hidden = false; sub.style.display = ''; } else if (!chrome) { sub.hidden = true; sub.style.display = 'none'; } clearTimeout(st.goneT); wrap.classList.remove('hide', 'gone'); wrap.classList.add('open');
       wrap.classList.toggle('replay', !!o.replay); document.body && document.body.classList && document.body.classList.add('ll-title-open');
       bus.emit('ui:title:open', { hasSave: st.hasSave, replay: !!o.replay }); return api;
     },
@@ -113,6 +124,7 @@ export function mountTitle(root, opts = {}) {
     offs.push(bus.on('ui:continue', (p) => { if (p && p.outcome === 'lose') api.show({ sub: 'The Fog won this time… Try again?', replay: true }); }));
   }
 
+  api.setUnlocked({ endless: hasWonFn() });
   setFocus(0);
   if (opts.autoShow !== false) api.show();
   return api;

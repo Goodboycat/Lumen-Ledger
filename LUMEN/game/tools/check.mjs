@@ -1149,11 +1149,21 @@ if (doUI) {
   } catch (err) { bad++; console.log('  touch FAIL →', err.message); }
   try {
     const { mountTitle, TITLE_MODES } = await import(pathToFileURL(resolve('ui/title.js')).href);
-    let save = false;
-    const title = mountTitle(root, { bus, hasSave: () => save, version: 'test' });
+    let save = false, won = false;
+    // S24/S25: clean menu by default — tagline / sub / footer texts hidden, version in a corner tag; ENDLESS hidden until hasWon()
+    const clean = mountTitle(root, { bus, hasSave: () => save, hasWon: () => won, version: 'test' });
+    if (clean.el.querySelector('.ll-title-tag').style.display !== 'none' || clean.el.querySelector('.ll-title-sub').style.display !== 'none') throw new Error('S24 tagline/sub must be hidden');
+    if (/FinLit|Zoud/.test(clean.el.querySelector('.ll-title-foot').textContent) || !clean.el.querySelector('.ll-title-foot.corner .ll-title-ver')) throw new Error('S24 footer text ' + clean.el.querySelector('.ll-title-foot').textContent);
+    if (clean.buttons.endless.style.display !== 'none' || clean.unlocked.endless || clean.el.classList.contains('has-endless')) throw new Error('S25 ENDLESS must be hidden before a win');
+    const n0 = (ev['ui:start'] || []).length; pressKey('e'); clean.buttons.endless.click(); if ((ev['ui:start'] || []).length !== n0) throw new Error('S25 locked endless must not start');
+    pressKey('ArrowDown'); pressKey('ArrowDown'); pressKey('Enter'); if (ev['ui:start'][n0].mode !== 'story') throw new Error('S25 arrows skip the hidden ENDLESS: ' + ev['ui:start'][n0].mode);
+    clean.setUnlocked({ endless: true }); if (clean.buttons.endless.style.display === '' && clean.unlocked.endless && clean.el.classList.contains('has-endless')) { pressKey('e'); if (ev['ui:start'].at(-1).mode !== 'endless') throw new Error('S25 unlocked → E starts endless'); } else throw new Error('S25 setUnlocked');
+    clean.hide(); won = true; clean.show(); if (clean.buttons.endless.style.display !== '') throw new Error('S25 show() re-reads hasWon'); clean.hide(); won = false; clean.show(); if (clean.buttons.endless.style.display !== 'none') throw new Error('S25 show() re-locks'); clean.destroy();
+    delete ev['ui:start']; delete ev['ui:title:open']; delete ev['ui:title:close'];
+    const title = mountTitle(root, { bus, hasSave: () => save, hasWon: () => true, chrome: true, version: 'test' });
     if (!title.isOpen || !ev['ui:title:open'] || !title.el.classList.contains('open') || !document.body.classList.contains('ll-title-open')) throw new Error('autoShow');
     if (Object.keys(TITLE_MODES).length !== 3 || title.buttons.continue.style.display !== 'none' || title.el.querySelectorAll('.ll-title-ch').length !== 11) throw new Error('buttons/logo letters');
-    if (!/Make\s*FinLit\s*Fun/.test(title.el.querySelector('.ll-title-tag').textContent)) throw new Error('tagline ' + title.el.querySelector('.ll-title-tag').textContent);
+    if (!/Make\s*FinLit\s*Fun/.test(title.el.querySelector('.ll-title-tag').textContent)) throw new Error('chrome tagline ' + title.el.querySelector('.ll-title-tag').textContent);
     title.buttons.story.click(); if (!ev['ui:start'] || ev['ui:start'][0].mode !== 'story' || ev['ui:start'][0].hasSave !== false || !title.isOpen) throw new Error('PLAY → ui:start story (title stays open until hide())');
     pressKey('e'); if (ev['ui:start'][1].mode !== 'endless') throw new Error('E → endless');
     pressKey('c'); if (ev['ui:start'][2].mode !== 'story') throw new Error('C w/o save → story');
@@ -1163,8 +1173,8 @@ if (doUI) {
     title.setBusy(true); const k = ev['ui:start'].length; title.buttons.story.click(); if (ev['ui:start'].length !== k || !title.buttons.story.disabled) throw new Error('busy blocks'); title.setBusy(false);
     title.hide(); bus.emit('eco:lose', { reason: 'fog' }); if (!title.isOpen || !title.el.classList.contains('replay') || !/Fog won/.test(title.el.querySelector('.ll-title-sub').textContent)) throw new Error('eco:lose re-show');
     title.destroy(); if (title.el.parentNode) throw new Error('destroy');
-    const quiet = mountTitle(root, { bus, autoShow: false, hideOnStart: true }); if (quiet.isOpen) throw new Error('autoShow:false'); quiet.show(); quiet.start('endless'); if (quiet.isOpen) throw new Error('hideOnStart'); quiet.destroy();
-    console.log('  title: autoShow → ui:title:open · 11 logo letters · "Make FinLit Fun" · CONTINUE hidden w/o save · PLAY → ui:start{story} (stays open) · E/C keys · hide → ui:title:close · save → CONTINUE + ↓ Enter · busy · eco:lose → replay sub · autoShow:false + hideOnStart · destroy  OK');
+    const quiet = mountTitle(root, { bus, autoShow: false, hideOnStart: true, hasWon: true }); if (quiet.isOpen) throw new Error('autoShow:false'); quiet.show(); quiet.start('endless'); if (quiet.isOpen) throw new Error('hideOnStart'); quiet.destroy();
+    console.log('  title: S24 clean menu (no tagline/sub/footer text, corner version) · S25 ENDLESS hidden until hasWon / setUnlocked (E + click + arrows blocked, show() re-reads) · chrome:true → autoShow → ui:title:open · 11 logo letters · "Make FinLit Fun" · CONTINUE hidden w/o save · PLAY → ui:start{story} (stays open) · E/C keys · hide → ui:title:close · save → CONTINUE + ↓ Enter · busy · eco:lose → replay sub · autoShow:false + hideOnStart · destroy  OK');
   } catch (err) { bad++; console.log('  title FAIL →', err.message); }
   try {
     const { mountPause, normalizeSettings, loadSettings, saveSettings, DEFAULT_SETTINGS } = await import(pathToFileURL(resolve('ui/pause.js')).href);

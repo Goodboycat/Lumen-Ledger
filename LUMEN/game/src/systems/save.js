@@ -88,6 +88,22 @@ export function parseSnapshot(raw) {
 
 export function hasSave(storage) { return load(storage) != null; }
 
+// S25 — persistent unlocks, separate from the run slot (a lost run clears `lumen.save` but never the unlocks).
+//   unlocks()            → { endless: bool }   · setUnlock('endless', true) → persisted · hasWon() = unlocks().endless
+//   Endless mode stays hidden on the title until the player has won the story once (eco:win → Game.js installSave sets it).
+export const UNLOCKS_KEY = 'lumen.unlocks';
+export function unlocks(storage) {
+  const st = storageOf(storage); if (!st) return { endless: false };
+  try { const raw = st.getItem(UNLOCKS_KEY); const u = raw ? JSON.parse(raw) : null; return { endless: !!(u && u.endless) }; } catch (_) { return { endless: false }; }
+}
+export function setUnlock(key, value = true, storage) {
+  const st = storageOf(storage); if (!st) return false;
+  const u = unlocks(storage); u[key] = !!value;
+  try { st.setItem(UNLOCKS_KEY, JSON.stringify(u)); return true; } catch (_) { return false; }
+}
+export function hasWon(storage) { return unlocks(storage).endless; }
+export function clearUnlocks(storage) { const st = storageOf(storage); if (!st) return false; try { st.removeItem(UNLOCKS_KEY); return true; } catch (_) { return false; } }
+
 export function clear(storage) { const st = storageOf(storage); if (!st) return false; try { st.removeItem(SAVE_KEY); return true; } catch (_) { return false; } }
 
 // ------------------------------------------------------------------------------------------------------- P3 export / import as text

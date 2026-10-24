@@ -857,7 +857,11 @@ function installSave(lg) {
     exportText: () => Save.exportText(Save.load(storage) || Save.snapshot(lg)),
     importText: (t) => { const s = Save.importText(t); if (!s) return false; Save.save(s, storage); ui?.title?.setHasSave?.(true); return true; },
     describe: () => Save.describe(Save.load(storage)),
+    // S25: persistent unlocks (lumen.unlocks) — ∞ ENDLESS on the title only after the first story win
+    unlocks: () => Save.unlocks(storage), hasWon: () => Save.hasWon(storage),
+    unlock: (key, v = true) => { const ok = Save.setUnlock(key, v, storage); if (key === 'endless') ui?.title?.setUnlocked?.({ endless: !!v }); return ok; },
   };
+  ui?.title?.setUnlocked?.({ endless: Save.hasWon(storage) });
   lg.resume = (snap = Save.load(storage)) => {
     if (!snap) return false;
     lg._resuming = snap;
@@ -880,6 +884,7 @@ function installSave(lg) {
   on('game:state', (p) => { if (p.prev === 'review' && (p.state === 'playing' || p.state === 'endless')) checkpoint(); });
   on('game:endless', checkpoint);
   on('eco:lose', () => lg.save.clear());
+  on('eco:win', () => { if (lg.sb && !lg.save.hasWon()) { lg.save.unlock('endless', true); bus.emit('game:unlock', { key: 'endless' }); } });   // S25: first victory unlocks Endless
   on('game:start', () => { if (!lg._resuming) ui?.title?.setHasSave?.(lg.save.has()); });
   on('ui:jar', (p) => { if (p?.pct) lg.jarPct = { ...p.pct }; });
   installTutorialGates(lg);
