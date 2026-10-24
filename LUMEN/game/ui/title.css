@@ -45,19 +45,21 @@
 .ll-title-btn.play { background: var(--orange); }
 .ll-title-btn.cont { background: var(--blue); }
 .ll-title-btn.endless { background: var(--grass); }
-/* S24 toon labels: same look as the logo letters — warm gradient fill, thick ink outline, hard ink drop, a touch of top shine */
-.ll-title-btn-ico { grid-row: 1 / 3; font-size: 32px; font-weight: 900; text-align: center; color: var(--paper); -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 0 3px 0 var(--ink); }
-.ll-title-btn-lab { font-size: 26px; font-weight: 900; letter-spacing: 2px; line-height: 1.05; color: #FFB74D; background: linear-gradient(180deg, #FFF3C4 0%, #FFD54F 38%, #FFA726 62%, #F57C00 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 2.5px var(--ink); paint-order: stroke fill; filter: drop-shadow(0 3px 0 var(--ink)); transform: rotate(-1.5deg); transform-origin: 0 100%; }
-.ll-title-btn.cont .ll-title-btn-lab { background-image: linear-gradient(180deg, #ffffff 0%, #BFE8FF 40%, #4FC3F7 65%, #1E88E5 100%); }
-.ll-title-btn.endless .ll-title-btn-lab { background-image: linear-gradient(180deg, #F4FFE0 0%, #C5F08A 40%, #7ED957 65%, #43A047 100%); }
-.ll-title-btn-sub { font-size: 11px; font-weight: 800; letter-spacing: .3px; color: var(--ink); opacity: .72; }
-.ll-title-btn.play { background: linear-gradient(180deg, #FFB74D, #FB8C00); }
-.ll-title-btn.cont { background: linear-gradient(180deg, #81D4FA, #29B6F6); }
-.ll-title-btn.endless { background: linear-gradient(180deg, #A5E882, #66BB6A); }
-.ll-title-btn::after { content: ''; position: absolute; left: 10px; right: 10px; top: 5px; height: 9px; border-radius: 999px; background: rgba(255,255,255,.45); pointer-events: none; }
-.ll-title-btn:hover, .ll-title-btn.focus { filter: brightness(1.06); transform: translateY(-2px); box-shadow: 0 8px 0 var(--ink); }
-.ll-title-btn.focus::before { content: '▸'; position: absolute; left: -22px; top: 50%; transform: translateY(-50%); font-size: 20px; animation: ll-swing 1s ease-in-out infinite; }
-.ll-title-btn.down, .ll-title-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--ink); transition: none; }
+/* S24 toon labels: the logo look — a dark navy plate, warm gradient letters with a thick ink outline and a hard ink drop, a top shine */
+.ll-title-btn { background: linear-gradient(180deg, #3b4760 0%, #2a3447 100%); border-color: #1b2230; box-shadow: 0 6px 0 #141a26; }
+.ll-title-btn.play, .ll-title-btn.cont, .ll-title-btn.endless { background: linear-gradient(180deg, #3b4760 0%, #2a3447 100%); }
+.ll-title-btn::after { content: ''; position: absolute; left: 12px; right: 12px; top: 5px; height: 8px; border-radius: 999px; background: rgba(255,255,255,.14); pointer-events: none; }
+.ll-title-btn::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 6px; border-radius: 0 6px 6px 0; background: var(--orange); }
+.ll-title-btn.cont::before { background: var(--blue); } .ll-title-btn.endless::before { background: var(--grass); }
+.ll-title-btn-ico { grid-row: 1 / 3; font-size: 32px; font-weight: 900; text-align: center; color: #FFD54F; -webkit-text-stroke: 1.5px #141a26; paint-order: stroke fill; text-shadow: 0 3px 0 #141a26; }
+.ll-title-btn.cont .ll-title-btn-ico { color: #81D4FA; } .ll-title-btn.endless .ll-title-btn-ico { color: #A5E882; }
+.ll-title-btn-lab { font-size: 30px; font-weight: 900; letter-spacing: 1px; line-height: 1.05; color: #FFB74D; font-family: "Arial Rounded MT Bold", "Baloo 2", "Nunito", Arial Black, Arial, sans-serif; background: linear-gradient(180deg, #FFF3C4 0%, #FFD54F 35%, #FFA726 60%, #F57C00 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 1.5px #141a26; paint-order: stroke fill; filter: drop-shadow(0 3px 0 #141a26) drop-shadow(0 0 1px #141a26); transform: rotate(-1.5deg); transform-origin: 0 100%; }
+.ll-title-btn.cont .ll-title-btn-lab { background-image: linear-gradient(180deg, #ffffff 0%, #BFE8FF 38%, #4FC3F7 62%, #1E88E5 100%); }
+.ll-title-btn.endless .ll-title-btn-lab { background-image: linear-gradient(180deg, #F4FFE0 0%, #C5F08A 38%, #7ED957 62%, #43A047 100%); }
+.ll-title-btn-sub { font-size: 11px; font-weight: 800; letter-spacing: .3px; color: var(--paper); opacity: .8; }
+.ll-title-btn.focus::before { content: '▸'; left: -22px; top: 50%; bottom: auto; width: auto; border-radius: 0; background: none; color: var(--paper); text-shadow: 0 2px 0 var(--ink); transform: translateY(-50%); font-size: 20px; animation: ll-swing 1s ease-in-out infinite; }
+.ll-title-btn:hover, .ll-title-btn.focus { filter: brightness(1.08); transform: translateY(-2px); box-shadow: 0 8px 0 #141a26; }
+.ll-title-btn.down, .ll-title-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #141a26; transition: none; }
 .ll-title-btn:disabled, .ll-title.busy .ll-title-btn { opacity: .5; filter: grayscale(.4); pointer-events: none; }
 
 .ll-title-foot { display: flex; gap: 14px; justify-content: space-between; width: min(320px, 86vw); margin-top: 16px; font-size: 10px; font-weight: 700; opacity: .6; }
@@ -70,7 +72,7 @@
   .ll-title-card { flex-direction: row; flex-wrap: wrap; justify-content: center; column-gap: 24px; padding: 8px; }
   .ll-title-lantern { order: 1; animation: none; }
   .ll-title-icon { width: min(300px, 44vw); } .ll-title-tag { order: 2; } .ll-title-sub { order: 3; width: 100%; } .ll-title-menu { order: 4; margin-top: 4px; width: min(280px, 60vw); gap: 8px; }
-  .ll-title-btn { min-height: 48px; padding: 4px 10px; } .ll-title-btn-lab { font-size: 16px; } .ll-title-btn-sub { display: none; } .ll-title-btn-ico { font-size: 22px; }
+  .ll-title-btn { min-height: 50px; padding: 4px 10px; } .ll-title-btn-lab { font-size: 24px; } .ll-title-btn-sub { display: none; } .ll-title-btn-ico { font-size: 24px; }
   .ll-title-ch { font-size: clamp(30px, 7vw, 56px); } .ll-title-word:nth-child(2) .ll-title-ch { font-size: clamp(24px, 5.5vw, 44px); }
   .ll-title-foot { display: none; } .ll-title-isle { display: none; }
 }
