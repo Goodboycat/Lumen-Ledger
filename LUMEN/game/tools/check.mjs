@@ -43,6 +43,7 @@ const doIcons = args.includes('--icons');          // icons: ui/icons.js procedu
 const doAudio = args.includes('--audio');          // 12 src/core/Audio.js headless (no AudioContext → inert): manifest ids ↔ DEFAULT_EVENTS, bus walk counts, cooldown, duck, unknown id, destroy
 const doEnemies = args.includes('--enemies');      // S16 src/systems/enemies.js: Collector waves (size = season ≤ 5), contact −1 ✦ pouch only, Bubble Shield blocks, 2 sword hits → flee + 1 ✦ coin, Baron boss S6+ with powers, season end clears
 const doStorm = args.includes('--storm');          // S17 src/vfx/storm.js: StormWeather headless — warn at day 0.30 (target 0.45), hit at 0.45 (→1, sky/fog/lights/wind gain ×3), auto-clear 4 s later, season end clears, shield absorb clears, dispose restores
+const doCine = args.includes('--cinematics');    // S18 src/vfx/cinematics.js: CinematicDirector headless through createLumenGame — title showcase orbit (sandbox reused by PLAY), arrival walk-in (inputOverride, story held, tutorial waits for cine:end), SKIP, victory lighthouse (lamp lit by the shot, ending lines held), reduceMotion cut, ?nocine off
 const doWorld = args.includes('--world');          // 10A integrated world: bakeStatic batches + Island v2 + every content pack placed headless (mirrors demo_world.html), counts meshes ≤ budget              // 9A/9B VFX packs: installPack1/installPack2 on a mock VFX+scene, fire every effect, step headless, check pools drain, 0 NaN, draw calls
 let files = args.filter((a) => !a.startsWith('--'));
 if (!files.length) { files = []; (function walk(d) { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (p.endsWith('.js') && !p.endsWith('main.js')) files.push(p); } })('src'); }  // main.js is the DOM entry; skipped
@@ -1665,6 +1666,110 @@ if (doStorm) {
     console.log(`  season-end clear, shield absorb → clear, reduceMotion, dispose  OK  (scene children ${nMesh} → ${scene.children.length})`);
     sb.destroy?.();
   } catch (e) { bad++; console.log('FAIL storm →', e.stack?.split('\n').slice(0, 3).join(' | ') || e.message); }
+}
+
+if (doCine) {
+  // S18: headless createLumenGame with cinematics:true + showcase:true (both default OFF headless so --game/--save keep their timings).
+  //   1. boot: title open → showcase sandbox built, cine.active 'title', camera rig set (blend 1), follow target released, body.ll-title-3d
+  //   2. PLAY → showcase sandbox REUSED (no second build) → 'arrival' plays: hero on the pier, inputOverride set, story held (no dialogue yet),
+  //      tutorial waits (pendingFirst deferred) · Pip walks toward the plaza · ends (arrive or 9 s) → cine:end, override cleared, hold off,
+  //      S1 opening lines now in the box, tutorial opens after cine:end
+  //   3. restart → arrival again → SKIP → cine:end {skipped} within blendOut; Esc key path
+  //   4. forced win → 'victory': story held, lamp lit by the shot (cine:lamp), ending lines after cine:end
+  //   5. reduceMotion → arrival is a ~0.6 s cut; opts.cinematics:false → lg.cine null; teardown disposes the showcase (0 meshes)
+  console.log('\nCINEMATICS (S18):');
+  try {
+    const { installDomShim } = await import(pathToFileURL(resolve('tools/domshim.mjs')).href); installDomShim();
+    const THREE = await import(pathToFileURL(resolve('vendor/three.module.js')).href);
+    const { SequencePlayer, HitStop } = await import(pathToFileURL(resolve('src/anim/Sequencer.js')).href);
+    const { EventBus } = await import(pathToFileURL(resolve('src/core/EventBus.js')).href);
+    const { tweens } = await import(pathToFileURL(resolve('src/anim/Tween.js')).href);
+    const { GameCamera } = await import(pathToFileURL(resolve('src/core/Camera.js')).href);
+    const { createLumenGame } = await import(pathToFileURL(resolve('src/Game.js')).href);
+    const { CinematicDirector, CINE } = await import(pathToFileURL(resolve('src/vfx/cinematics.js')).href);
+    const { mountUI } = await import(pathToFileURL(resolve('ui/index.js')).href);
+    const { PROP_CATALOG } = await import(pathToFileURL(resolve('src/assets/props.js')).href);
+    const { readFileSync } = await import('node:fs'); const storyData = JSON.parse(readFileSync(resolve('data/story.json'), 'utf8'));
+    const bus = new EventBus(); const ev = {}; for (const n of ['cine:begin', 'cine:end', 'cine:lamp', 'cine:showcase', 'game:start', 'story:line', 'ui:pause', 'ui:tutorial:open']) bus.on(n, (p) => { (ev[n] ??= []).push(p); });
+    const camera = new GameCamera(16 / 9); camera.shake = camera.shake || (() => {});
+    const game = { scene: new THREE.Scene(), bus, sequences: new SequencePlayer(), tweens, hitStop: new HitStop(), input: { pointerWorld: new THREE.Vector3(), hasPointerWorld: false, move: new THREE.Vector2(), joystick: new THREE.Vector2(), actions: {}, pressed: () => false, press() {} }, camera, time: 0, timeScale: 1, paused: false, followTarget: null, systems: [], stats: { fps: 60, drawCalls: 0 }, add(s) { this.systems.push(s); return s; }, hitstop() {} };
+    const ui = mountUI(document.body, { bus, stats: () => game.stats, input: game.input, catalog: PROP_CATALOG, seasonsToWin: 10, touch: false, version: 'check' });
+    const lg = createLumenGame(game, { ui, storyData, headless: true, seasonSeconds: 30, seed: 3, cinematics: true, showcase: true });
+    const dt = 1 / 30;
+    const step = () => { game.time += dt; game.sequences.update(dt); game.tweens.update(dt); for (const s of game.systems) s.update?.(game.paused ? 0 : dt, game, dt); camera.update(game.followTarget, dt); };
+    const run = (sec) => { for (let i = 0; i < sec * 30; i++) step(); };
+    const meshes = () => { let n = 0; game.scene.traverse((o) => { if (o.isMesh || o.isInstancedMesh) n++; }); return n; };
+    const drain = () => { let n = 0; while (ui.dialogue.isOpen && n < 40) { if (ui.dialogue.line?.choices) ui.dialogue.choose(1); else { ui.dialogue.skip(); ui.dialogue.advance(); } step(); n++; } return n; };
+    const body = document.body, has = (c) => body.classList.contains(c);
+    // 1. boot showcase
+    const C = lg.cine; if (!(C instanceof CinematicDirector)) throw new Error('lg.cine missing');
+    if (!lg.showcaseSb || C.active !== 'title' || !ev['cine:showcase']) throw new Error('showcase not started on boot (active ' + C.active + ')');
+    if (camera.cine !== C.rig || camera.cineBlend !== 1 || game.followTarget !== null || !has('ll-title-3d')) throw new Error('title orbit did not own the camera');
+    const mShow = meshes(); if (mShow < 20) throw new Error('showcase meshes ' + mShow);
+    const p0 = camera.cam.position.clone(); run(2); const moved = camera.cam.position.distanceTo(p0);
+    if (!(moved > 0.5) || Math.abs(C.rig.pos.y - CINE.titleHeight) > 1.5) throw new Error('orbit not moving (' + moved.toFixed(2) + ')');
+    if (!game.paused) throw new Error('title should be paused under the orbit');
+    console.log(`  1. boot → showcase sandbox ${mShow} meshes · title orbit owns the camera (blend 1, moved ${moved.toFixed(1)} m in 2 s, paused)  OK`);
+    // 2. PLAY → reuse + arrival
+    const show = lg.showcaseSb; ui.title.buttons.story.click();
+    if (lg.sb !== show || lg.showcaseSb || lg.stats.showcaseReused !== 1) throw new Error('PLAY did not reuse the showcase sandbox');
+    if (C.active !== 'arrival' || has('ll-title-3d') || !has('ll-cine-on')) throw new Error('arrival not playing after PLAY (' + C.active + ')');
+    const sb = lg.sb, hero = sb.hero; if (!hero.inputOverride) throw new Error('hero.inputOverride not set');
+    if (!lg.story?.held) throw new Error('story not held during arrival');
+    const pier = sb.world.pierSpawn, startD = Math.hypot(hero.root.position.x - pier.x, hero.root.position.z - pier.z); if (startD > 3) throw new Error('hero not at the pier (' + startD.toFixed(1) + ')');
+    step(); if (ui.dialogue.isOpen) throw new Error('S1 opening leaked during the arrival shot');
+    if (ui.tutorial?.isOpen) throw new Error('tutorial opened during the arrival shot');
+    run(1.5); const d1 = hero.root.position.distanceTo(new THREE.Vector3(0, 0, 1)); if (!(d1 < startD - 0.5 || startD < 2)) throw new Error('Pip is not walking in (' + d1.toFixed(1) + ' vs ' + startD.toFixed(1) + ')');
+    if (game.paused) throw new Error('arrival should run unpaused');
+    let n = 0; while (C.active && n < 15 * 30) { step(); n++; }
+    if (C.active || !ev['cine:end'] || ev['cine:end'][0].shot !== 'arrival' || ev['cine:end'][0].skipped) throw new Error('arrival did not end (' + (n / 30).toFixed(1) + ' s)');
+    if (hero.inputOverride || lg.story.held || has('ll-cine-on') || camera.cine) throw new Error('arrival did not release hero/story/camera');
+    const dEnd = hero.root.position.distanceTo(new THREE.Vector3(0, 0, 1)); if (!(dEnd < 3)) throw new Error('Pip did not reach the plaza (' + dEnd.toFixed(1) + ')');
+    run(1); if (!ui.dialogue.isOpen && !ui.tutorial?.isOpen) throw new Error('neither S1 opening nor the tutorial after cine:end');
+    const tutFirst = !!ui.tutorial?.isOpen;
+    if (ui.tutorial?.isOpen) ui.tutorial.close('skip');
+    step(); const dl = drain(); if (!dl && !tutFirst) throw new Error('no opening lines after arrival');
+    console.log(`  2. PLAY → showcase reused (no rebuild) · arrival: Pip pier→plaza (${startD.toFixed(1)} → ${dEnd.toFixed(1)} m) in ${(n / 30).toFixed(1)} s, override + story hold + HUD fade released · tutorial${tutFirst ? ' opened after cine:end' : ' deferred'} · S1 opening ${dl} lines  OK`);
+    // 3. restart → arrival → SKIP
+    bus.emit('ui:restart'); step(); if (C.active) throw new Error('ui:restart must NOT replay the arrival (' + C.active + ')');
+    bus.emit('ui:title'); step(); if (!lg.showcaseSb || C.active !== 'title') throw new Error('ui:title: showcase not rebuilt (' + C.active + ')');
+    ui.title.buttons.story.click(); step(); if (C.active !== 'arrival' || lg.stats.showcaseReused !== 2) throw new Error('title → PLAY: no arrival (' + C.active + ')');
+    run(0.5); const ends = ev['cine:end'].length; if (!C.skip()) throw new Error('skip refused');
+    let m = 0; while (C.active && m < 90) { step(); m++; }
+    if (C.active || ev['cine:end'].length !== ends + 1 || !ev['cine:end'][ends].skipped) throw new Error('SKIP did not end the shot');
+    if (lg.sb.hero.inputOverride || lg.story.held) throw new Error('skip did not release');
+    const sbW = lg.sb; if (ui.tutorial?.isOpen) ui.tutorial.close('skip'); run(0.2); drain();
+    console.log(`  3. ui:restart → no replay · ui:title → showcase again → PLAY → arrival → SKIP → cine:end {skipped} after ${(m / 30).toFixed(2)} s blend-out, released  OK`);
+    // 4. victory
+    const lampStates = []; const lh = sbW.world.lighthouse; const origSet = lh?.userData?.setState; if (lh?.userData) lh.userData.setState = (s) => { lampStates.push(s); origSet?.call(lh.userData, s); };
+    sbW.eco.state.season = 10; sbW.eco.state.spark = 9999; bus.emit('eco:win', { season: 10 }); step();
+    if (C.active !== 'victory' || lg.state !== 'ending') throw new Error('victory not playing on eco:win (' + C.active + ' ' + lg.state + ')');
+    if (!lg.story.held || ui.dialogue.isOpen) throw new Error('ending lines not held during victory');
+    if (lampStates.includes('lit')) throw new Error('lamp lit before the shot');
+    run(CINE.victoryFly + 1.2); if (!lampStates.includes('lit') || !ev['cine:lamp']) throw new Error('shot did not light the lamp');
+    const lookD = C.rig.look.distanceTo(lh.getWorldPosition(new THREE.Vector3())); if (!(lookD < 8)) throw new Error('camera not looking at the lighthouse (' + lookD.toFixed(1) + ')');
+    let k = 0; while (C.active && k < 20 * 30) { step(); k++; }
+    if (C.active || lg.story.held) throw new Error('victory did not end');
+    run(0.5); if (!ui.dialogue.isOpen) throw new Error('ending lines did not start after the victory shot');
+    const dv = drain();
+    console.log(`  4. eco:win → victory ${((CINE.victoryFly + CINE.victoryHold + CINE.victoryReturn)).toFixed(1)} s: ending held, lamp lit by the shot at fly+hold·0.15, look ${lookD.toFixed(1)} m from the lamp, ended → ${dv} ending lines  OK`);
+    // 5. reduceMotion cut · ?nocine · teardown
+    bus.emit('ui:title'); step(); if (!lg.showcaseSb || C.active !== 'title') throw new Error('back to title: showcase not rebuilt');
+    bus.emit('ui:settings', { key: 'reduceMotion', value: true }); lg.reduceMotion = true; step();
+    const e0 = ev['cine:end'].length; ui.title.buttons.story.click();
+    if (C.active !== 'arrival') throw new Error('rm: arrival missing (' + C.active + ')'); const dur = C._shot.dur; if (dur > CINE.reduceCut + 1e-6) throw new Error('reduceMotion arrival not a cut (' + dur + ')');
+    let r = 0; while (C.active && r < 60) { step(); r++; } if (C.active || ev['cine:end'].length !== e0 + 1) throw new Error('rm arrival did not cut');
+    if (r > 30) throw new Error('rm cut took ' + (r / 30).toFixed(2) + ' s');
+    lg.reduceMotion = false; bus.emit('ui:settings', { key: 'reduceMotion', value: false });
+    if (ui.tutorial?.isOpen) ui.tutorial.close('skip'); drain();
+    bus.emit('ui:title'); step(); const before = meshes(); lg.destroy(); const after = meshes();
+    if (after !== 0 || C._el !== null && !lg.cine === false) throw new Error('teardown left ' + after + ' meshes');
+    const ui2 = mountUI(document.body, { bus: new EventBus(), stats: () => game.stats, input: game.input, catalog: PROP_CATALOG, seasonsToWin: 10, touch: false, version: 'check' });
+    const g2 = { ...game, bus: ui2.bus || new EventBus(), scene: new THREE.Scene(), systems: [] }; g2.bus = g2.bus; 
+    const lg2 = createLumenGame(g2, { ui: ui2, storyData, headless: true, seasonSeconds: 30, seed: 3, cinematics: false });
+    if (lg2.cine !== null && lg2.cine !== undefined) throw new Error('cinematics:false still built a director'); lg2.destroy(); ui2.destroy?.();
+    console.log(`  5. reduceMotion → arrival cut ${dur} s (${(r / 30).toFixed(2)} s real) · title showcase rebuilt on ui:title · destroy → ${before} → ${after} meshes · cinematics:false → lg.cine null  OK  (stats ${JSON.stringify(C.stats)})`);
+  } catch (e) { bad++; console.log('FAIL cinematics →', e.stack?.split('\n').slice(0, 3).join(' | ') || e.message); }
 }
 
 if (doWorld) {

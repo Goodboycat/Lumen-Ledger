@@ -303,19 +303,26 @@ export function mountTutorial(root, opts = {}) {
   for (const sh of shades) { sh.addEventListener('click', () => { card.classList.remove('nudge'); void card.offsetWidth; card.classList.add('nudge'); }); }
   if (typeof window !== 'undefined') window.addEventListener?.('resize', layout);
 
+  // pause at once (so the season-1 opening lines wait), then show once the HUD / pad have laid out
+  const firstOpen = () => {
+    st.waiting = true; blocker.classList.add('on'); lockOn(); bus.emit('ui:pause', { on: true, by: 'tutorial-wait' });
+    st.waitT = setTimeout(() => { st.waiting = false; blocker.classList.remove('on'); api.open('first'); bus.emit('ui:pause', { on: false, by: 'tutorial-wait' }); }, opts.delay ?? 450);
+  };
   st.offs.push(
     bus.on('ui:tutorial', (p) => api.open((p && p.from) || 'menu')),
     bus.on('ui:start', (p) => { st.pendingFirst = opts.auto !== false && (p?.mode || 'story') !== 'continue' && !done(); }),
+    // S18: a cinematic (arrival walk-in) that begins before game:start owns the screen → the first-play guide waits for cine:end.
+    bus.on('cine:begin', (p) => { if (p?.shot && p.shot !== 'title') st.cine = p.shot; }),
+    bus.on('cine:end', () => { st.cine = null; if (st.cinePending) { st.cinePending = false; firstOpen(); } }),
     bus.on('game:start', () => {
       if (!st.pendingFirst) return; st.pendingFirst = false;
-      // pause at once (so the season-1 opening lines wait), then show once the HUD / pad have laid out
-      st.waiting = true; blocker.classList.add('on'); lockOn(); bus.emit('ui:pause', { on: true, by: 'tutorial-wait' });
-      st.waitT = setTimeout(() => { st.waiting = false; blocker.classList.remove('on'); api.open('first'); bus.emit('ui:pause', { on: false, by: 'tutorial-wait' }); }, opts.delay ?? 450);
+      if (st.cine) { st.cinePending = true; return; }                                   // S18: arrival walk-in plays first (unpaused, HUD faded)
+      firstOpen();
     }),
     bus.on('ui:build:open', () => { if (st.open && step().id === 'build') api.next(); }),
     // BUGFIX P39: APPLY on the jars step is the step's action — it now advances the tutorial (Next stays, since APPLY is disabled at 0 ✦)
     bus.on('ui:jar:apply', () => { if (st.open && step().id === 'jars') setTimeout(() => { if (st.open && step().id === 'jars') api.next(); }, 350); }),
-    bus.on('game:title', () => { clearTimeout(st.waitT); if (st.waiting) { st.waiting = false; blocker.classList.remove('on'); bus.emit('ui:pause', { on: false, by: 'tutorial-wait' }); } api.close('title'); lockOff(); }),
+    bus.on('game:title', () => { clearTimeout(st.waitT); st.cine = null; st.cinePending = false; if (st.waiting) { st.waiting = false; blocker.classList.remove('on'); bus.emit('ui:pause', { on: false, by: 'tutorial-wait' }); } api.close('title'); lockOff(); }),
     bus.on('eco:lose', () => api.close('lose')),
   );
   return api;

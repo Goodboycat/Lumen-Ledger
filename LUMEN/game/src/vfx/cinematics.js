@@ -24,7 +24,7 @@ const hasDOM = typeof document !== 'undefined' && typeof document.createElement 
 export const CINE = {
   blendIn: 0.9, blendOut: 1.1,                                    // s — camera hand-over ramps
   titleRadius: 24, titleHeight: 13, titleSpeed: 0.11,            // orbit: metres, metres, rad/s (≈ 57 s per lap)
-  arrivalMax: 9, arriveDist: 1.2, arrivalWideDist: 22, arrivalWideHeight: 14, arrivalCloseDist: 9, arrivalCloseHeight: 7,
+  arrivalMax: 9, arriveDist: 1.2, arrivalWalk: 0.55,                // walk: stick magnitude during the walk-in (a stroll, not a sprint) arrivalWideDist: 22, arrivalWideHeight: 14, arrivalCloseDist: 9, arrivalCloseHeight: 7,
   victoryFly: 2.2, victoryHold: 3.2, victoryReturn: 1.6, victoryDist: 11, victoryHeight: 8,
   reduceCut: 0.6,
 };
@@ -50,7 +50,7 @@ export class CinematicDirector {
     if (this.active) this.stop(true);
     const S = this._shot = { name: shot, sb: o.sb || null, story: o.story || null, onDone: o.onDone || null, done: false, skipped: false };
     this.active = shot; this.t = 0; this.blend = 0; this.phase = 'in'; this.stats.played++;
-    const rm = this.reduceMotion;
+    const rm = this.reduceMotion; S.rm = rm;
     S.dur = shot === 'title' ? Infinity : rm ? CINE.reduceCut : shot === 'arrival' ? CINE.arrivalMax : CINE.victoryFly + CINE.victoryHold + CINE.victoryReturn;
     S.blendIn = shot === 'title' || rm ? 0.001 : CINE.blendIn; S.blendOut = rm ? 0.001 : CINE.blendOut;
     if (shot !== 'title') S.story?.hold?.(true);
@@ -83,7 +83,7 @@ export class CinematicDirector {
     this._compute(S, this.t);
     this.game?.camera?.setCine?.(this.rig, this.blend);
     if (this.phase !== 'out' && S.name !== 'title') {
-      if (this.t >= S.dur || (S.name === 'arrival' && S.hero && S.target && S.hero.root.position.distanceTo(S.target) < CINE.arriveDist)) this._end();
+      if (this.t >= S.dur || (S.name === 'arrival' && S.hero && S.target && !S.rm && S.hero.root.position.distanceTo(S.target) < CINE.arriveDist)) this._end();
     }
   }
   _end() { const S = this._shot; if (!S || this.phase === 'out') return; this.phase = 'out'; this._release(S); if (S.blendOut <= 0.01) this.stop(false); }
@@ -123,7 +123,7 @@ export class CinematicDirector {
       // walk: steer the stick toward the target (screen space: x = world x, y = −world z)
       if (S.heroOwned && this.phase !== 'out') {
         _v.copy(S.target).sub(hp); _v.y = 0; const d = _v.length();
-        const sp = d < 2.5 ? Math.max(0.25, d / 2.5) : 1;
+        const sp = (d < 2.5 ? Math.max(0.25, d / 2.5) : 1) * CINE.arrivalWalk;
         if (d > 0.05) { _v.multiplyScalar(1 / d); S.hero.inputOverride.move.x = _v.x * sp; S.hero.inputOverride.move.y = -_v.z * sp; }
         else { S.hero.inputOverride.move.x = 0; S.hero.inputOverride.move.y = 0; }
       }
