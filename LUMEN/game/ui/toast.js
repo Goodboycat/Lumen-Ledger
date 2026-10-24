@@ -109,6 +109,14 @@ export function mountToast(root, opts = {}) {
     });
     on('eco:loan', (p) => p && api.push(p.kind === 'repay' ? { text: `Repaid ${p.delta} — debt ${p.debt}`, kind: 'ok', icon: '💸', id: 'loan' } : { text: `Loan +${p.delta} — the Baron smiles. Debt ${p.debt}`, kind: 'bad', icon: '🎩', id: 'loan' }));
     on('cust:angry', (p) => api.push({ text: 'A Glimmer left angry' + (p && (p.why || p.reason) ? ` (${p.why || p.reason})` : ''), kind: 'warn', icon: '😠', id: 'angry', duration: 3500 }));
+    // S16/S20: Debt Collectors + Baron Gilt. The wave toast names the Baron's NEW power this season (BARON_POWERS text lives in enemies.js; the bus payload carries ids).
+    on('enemy:wave', (p) => {
+      if (!p) return;
+      if (p.boss) { const n = (p.powers || []).length; api.push({ text: `Baron Gilt lands on the plaza${p.count > 1 ? ` with ${p.count - 1} Collector${p.count > 2 ? 's' : ''}` : ''} — watch the red rings, step out before they land!`, kind: 'bad', icon: '🎩', id: 'wave', duration: 6500 }); if (n) api.push({ text: BARON_HINT[(p.powers || []).at(-1)] || '', kind: 'warn', icon: '⚠', id: 'wavehint', duration: 7000 }); }
+      else api.push({ text: `${p.count} Debt Collector${p.count > 1 ? 's' : ''} landed — hit them twice (⚔) or walk away (they are slower)`, kind: 'warn', icon: '🌫', id: 'wave', duration: 6000 });
+    });
+    on('enemy:defeated', (p) => p && p.kind === 'baron' && api.push({ text: `Baron Gilt retreats! +${p.reward} ✦`, kind: 'gold', icon: '🎩', id: 'baron', duration: 4500 }));
+    on('enemy:stomp', (p) => p && p.hit === false && api.push({ text: 'Dodged the stomp — he is dazed, hit him now!', kind: 'ok', icon: '⚔', id: 'stomp', duration: 2500 }));
     on('island:unlock', (p) => api.push({ text: `New zone unlocked${p && p.zone ? ': ' + nice(p.zone) : ''}!`, kind: 'gold', icon: '🗺', duration: 5000 }));
     on('eco:win', () => api.push({ text: 'The Lighthouse is lit! ✦', kind: 'gold', duration: 5000 }));
     on('eco:lose', () => api.push({ text: 'The Debt Fog took the island…', kind: 'bad', duration: 5000 }));
@@ -118,4 +126,11 @@ export function mountToast(root, opts = {}) {
   }
   return api;
 }
+const BARON_HINT = {
+  cannon: 'Debt-Fog Cannon: a ring marks where you stand — step out before the fog ball lands (−1 ✦, slowing puddle).',
+  puddle: 'Fog puddles linger longer now — Pip walks at 60 % inside them.',
+  stomp: 'Big Stomp: when he crouches, a wide ring grows — get out, then hit him while he is dazed!',
+  summon: 'The Baron can now call extra Collectors.',
+  cannon3: 'Triple Cannon: three fog balls — your cell and both flanks. Move sideways AND forward.',
+};
 const nice = (id) => String(id || '').replace(/^stall_/, '').replace(/_/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^\w/, (c) => c.toUpperCase());

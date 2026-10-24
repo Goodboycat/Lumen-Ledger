@@ -376,7 +376,7 @@ export class EnemySystem {
         this.hero.recoverToLand?.();
       }
     } else { this.stats.attacksDodged++; this.vfx?.pop?.show?.(_v.copy(hp).setY(1.6).clone(), 'DODGED', { color: '#A5D6A7' }); }
-    this.vfx?.rings?.burst?.(_v.set(s.x, 0.1, s.z).clone(), s.r); this.vfx?.sparks?.burst?.(_v.set(s.x, 0.4, s.z).clone(), 16, 5);
+    this.vfx?.rings?.show?.(_v.set(s.x, 0.1, s.z).clone(), { radius: s.r, color: 0xE53970, dur: 0.6 }); this.vfx?.sparks?.burst?.(_v.set(s.x, 0.4, s.z).clone(), 16, 5);
     this.game.camera?.shake?.(0.35); this.game.hitstop?.(0.06);
     e.attack = null; e.phase = 'dazed'; e.dazed = R.dazed; e.timers.attack = 0; e.anim.play?.('slipOnCoin');
     this.vfx?.pop?.show?.(_v.set(e.g.position.x, 2.0, e.g.position.z).clone(), 'DAZED!', { color: '#80DEEA' });
