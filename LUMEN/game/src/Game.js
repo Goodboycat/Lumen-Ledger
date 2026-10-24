@@ -257,7 +257,8 @@ function installScheduler(sb) {
     if (!S.scam && s.day01 >= 0.7 && s.season % 2 === 1) { S.scam = true; if (!eco.pendingOffer) eco.offerScam(); }
     // S16: the Baron's Debt Collectors land right after the Too-Good Deal moment (day 0.7, EVERY season — even seasons too, else no fight on S2/S4)
     if (sb._stormClearAt != null && sb.game.time >= sb._stormClearAt) { sb._stormClearAt = null; sb.storm?.clear(3); }   // S17/S21: the storm blows over STORM.holdSeconds (11 s GAME time) after it hit — paused dialogue does not count
-    if (!S.wave && s.day01 >= 0.7 && sb.enemies?.enabled !== false) { S.wave = true; const w = sb.enemies.spawnWave(s.season); if (w.length) sb.log.push(`S${s.season} wave ${w.length} (${w.map((e) => e.kind).join(',')})`); }
+    // P62: the wave waits while the Baron's deal (or any dialogue) is on screen — Collectors land the moment the box closes, not frozen behind it
+    if (!S.wave && s.day01 >= 0.7 && sb.enemies?.enabled !== false && !eco.pendingOffer && !(sb.modalOpen?.())) { S.wave = true; const w = sb.enemies.spawnWave(s.season); if (w.length) sb.log.push(`S${s.season} wave ${w.length} (${w.map((e) => e.kind).join(',')})`); }
   };
   sb._offs.push(bus.on('eco:season', () => { if (eco.pendingOffer) { eco.refuseOffer(); sb.log.push('deal expired → refused'); } }));
 }
@@ -477,6 +478,7 @@ function installStart(lg) {
     const balance = lg.mode === 'endless' ? { ...(opts.balance || {}), winRequiresSeasons: false, endless: true } : opts.balance;
     const sb = lg.sb = reuse || createSandbox(game, { headless: !!opts.headless, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, starterStalls: lg._resuming ? false : undefined });
     if (reuse) { lg.stats.showcaseReused = (lg.stats.showcaseReused || 0) + 1; game.followTarget = sb.hero.root.position; }
+    sb.modalOpen = () => !!(ui?.dialogue?.isOpen || ui?.ledger?.isOpen);                 // P62: the Collector wave waits for the dialogue box to close
     if (lg.mode === 'endless') sb.updateScheduler = wrapNoScam(sb);                      // endless: events yes, Baron's deals no
     lg.story = (lg.mode === 'story' && opts.storyData) ? new StorySystem(sb.eco, { data: opts.storyData, bus, ledgerLinesBeforeReview: true, autoAdvance: !!opts.autoAdvance, lineGap: opts.lineGap }) : null;
     if (lg._resuming?.story && lg.story) Object.assign(lg.story.state, StorySystem.deserialize(lg._resuming.story, sb.eco, { data: opts.storyData, autoplay: false }).state);   // 10D: before title.hide() → no toast replay

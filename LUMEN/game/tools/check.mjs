@@ -1205,11 +1205,15 @@ if (doEnemies) {
     const bus = new EventBus(); const ev = {}; for (const n of ['enemy:wave', 'enemy:spawn', 'enemy:hit', 'enemy:defeated', 'enemy:heroHit', 'enemy:blocked', 'enemy:gone', 'enemy:baronWarn', 'enemy:cannon', 'enemy:stomp', 'enemy:baronInterrupted', 'enemy:summon', 'enemy:home', 'eco:scam']) bus.on(n, (p) => { (ev[n] ??= []).push(p); });
     const game = { scene: new THREE.Scene(), bus, sequences: new SequencePlayer(), tweens, hitStop: new HitStop(), input: { pointerWorld: new THREE.Vector3(), hasPointerWorld: false, move: new THREE.Vector2(), actions: {}, pressed: () => false }, camera: { zoom: 1, shake() {} }, time: 0, timeScale: 1, followTarget: null, systems: [], add(s) { this.systems.push(s); return s; }, hitstop() {} };
     const sb = createSandbox(game, { headless: true, seasonSeconds: 30, seed: 3 });
-    const dt = 1 / 30; const step = () => { game.time += dt; game.sequences.update(dt); game.tweens.update(dt); for (const s of game.systems) s.update?.(dt); };
+    // P62: the wave now waits for the Baron's deal box to close → the headless 'player' refuses every offer at once (no dialogue UI here)
+    const dt = 1 / 30; const step = () => { game.time += dt; game.sequences.update(dt); game.tweens.update(dt); for (const s of game.systems) s.update?.(dt); if (sb.eco.pendingOffer) { sb.eco.refuseOffer(); step(); } };
     const run = (sec) => { for (let i = 0; i < sec * 30; i++) step(); };
     const E = sb.enemies; if (!E || sb.villains !== E.list) throw new Error('sb.enemies / sb.villains not wired');
-    // 1. no enemies before day 0.7; wave of 1 at S1
+    // 1. no enemies before day 0.7; wave of 1 at S1 — P62: not while the Baron's deal is open; the wave lands right after the refuse
     run(10); if (E.list.length) throw new Error('enemies before day 0.7');
+    { const raw = () => { game.time += dt; for (const s of game.systems) s.update?.(dt); }; sb.eco.state.day01 = 0.71; raw(); raw();
+      if (!sb.eco.pendingOffer) throw new Error('P62: S1 day 0.7 should open the Too-Good Deal'); if (E.list.length || sb.sched.wave) throw new Error('P62: wave spawned behind the deal dialogue');
+      sb.eco.refuseOffer(); raw(); if (E.list.length !== 1) throw new Error('P62: wave did not land after the deal closed ' + E.list.length); E.clear(); E.waveSeason = 0; sb.sched.wave = false; }
     sb.eco.state.day01 = 0.71; step(); if (E.list.length !== 1 || E.list[0].kind !== 'collector' || !ev['enemy:wave'] || ev['enemy:wave'][0].season !== 1) throw new Error('S1 wave ' + E.list.length);
     if (!game.scene.children.includes(E.list[0].g)) throw new Error('enemy not in scene');
     // 2. chase: it closes in on Pip; contact costs 1 ✦ from the pouch, never below 0, never from jars
