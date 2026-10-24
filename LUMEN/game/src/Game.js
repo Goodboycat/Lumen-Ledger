@@ -23,6 +23,7 @@ import { PALETTE as P, flatMat } from './core/Toon.js';
 import { makeGlimmerAny, CreatureAnimator, HelperAnimator, makeHelper, HELPER_TYPES, registerVariants, makeFogCollector, makeBaronGilt, VillainAnimator, FogPuffPool } from './assets/creatures/index.js';
 import { EnemySystem, ENEMY_RULES } from './systems/enemies.js';   // S16
 import { StormWeather } from './vfx/storm.js';   // S17
+import { CinematicDirector } from './vfx/cinematics.js';   // S18
 import { makeEconomy, UPGRADES, pickEvent } from './systems/economyData.js';
 import { BuildSystem } from './systems/build.js';
 import { CustomerSystem } from './systems/customers.js';
@@ -99,7 +100,7 @@ export function createSandbox(game, opts = {}) {
   // ---- loop ------------------------------------------------------------------------------------------------------
   sb.update = (dt, _g, dtReal) => {
     sb.island.update(dt);
-    if (!headless) { swayAll(game.time); swayDecor(game.time); updateLandmarks(dt); }
+    if (!headless) { const tw = game.realTime ?? game.time; swayAll(tw); swayDecor(tw); updateLandmarks(dt); }   // S18: wind keeps blowing on the (paused) title backdrop
     sb.hero.update(dt);
     sb.enemies.update(dt);
     sb.storm.update(dtReal ?? dt);
@@ -225,7 +226,7 @@ function wireEconomy(sb) {
     if (sb.enemies?.active.length) { const n = sb.enemies.sendHome(); sb.log.push(`S${r.season} collectors walk home (${n})`); }   // S16b: season over → they turn and walk back to the pier (not a defeat)
     sb.log.push(`S${r.season} income ${r.income} exp ${r.expenses} debt ${r.debt} fog ${(r.fog01 * 100) | 0}% ★${r.stars}`);
   }));
-  off.push(bus.on('eco:win', () => { world.lighthouse?.userData.setState?.('lit'); vfx.lighthouseBeam?.show?.(world.lighthouse); vfx.fogRecede?.(); }));
+  off.push(bus.on('eco:win', () => { if (!sb._cineLamp) { world.lighthouse?.userData.setState?.('lit'); vfx.lighthouseBeam?.show?.(world.lighthouse); } vfx.fogRecede?.(); }));   // S18: the victory cinematic lights the lamp itself
   off.push(bus.on('eco:lose', () => { vfx.fog?.setCoverage?.(1); vfx.debtPulse?.(1); }));
   off.push(bus.on('eco:win', () => sb.enemies?.clear())); off.push(bus.on('eco:lose', () => sb.enemies?.clear()));   // S16
   off.push(bus.on('eco:season', () => { sb._stormClearAt = null; sb.storm?.clear(2); })); off.push(bus.on('eco:win', () => sb.storm?.clear(1.5)));   // S17: a new season always starts under a clear sky
@@ -439,14 +440,16 @@ export function createLumenGame(game, opts = {}) {
   installSeasonLoop(lg);
   installMenu(lg);
   installSave(lg);                                                                  // 10D: autosave + ui:start {mode:'continue'} + tutorial gates
+  installCinematics(lg);                                                            // S18: title orbit showcase · arrival walk-in · victory lighthouse
 
   // ---- loop: UI clock + story clock + HUD day bar -------------------------------------------------------------------------
   lg.update = (dt, _g, dtReal) => {
     ui?.update?.(dtReal ?? dt);                                                       // UI animates even while the game is paused
+    lg.cine?.update(dtReal ?? dt);                                                    // S18: cinematics run on the real clock (title is paused)
     if (lg.sb && !game.paused) { lg.story?.update?.(dt); emitTick(lg); lg.tut?.update?.(dt); }
   };
   game.add({ update: (dt, g, dtReal) => lg.update(dt, g, dtReal) });
-  lg.destroy = () => { for (const f of offs) f(); offs.length = 0; lg.teardown?.(); };
+  lg.destroy = () => { for (const f of offs) f(); offs.length = 0; lg.teardown?.(); lg.cine?.dispose?.(); lg.cine = null; };
   bus.emit('game:ready', { version: GAME_VERSION });
   return lg;
 }
@@ -460,10 +463,17 @@ function emitTick(lg) {
 function installStart(lg) {
   const { game, bus, ui, opts } = lg;
   lg.start = (mode = 'story') => {
-    lg.teardown?.();
+    const fresh = !!lg._freshPlay; lg._freshPlay = false;                               // S18: set by the ui:start handler (PLAY button) only
+    lg.cine?.stop(true);                                                                // S18: title orbit ends (silent — no cine:end)
     lg.mode = mode === 'endless' ? 'endless' : 'story';
+    // S18: a fresh story PLAY re-uses the island that was already built for the title backdrop (same seed/balance, starter stalls) —
+    //   no second build, no visual pop. Resume (starterStalls:false) / endless (other balance) tear it down and build their own.
+    const reuse = lg.showcaseSb && !lg._resuming && lg.mode === 'story' && !lg.sb ? lg.showcaseSb : null;
+    if (reuse) lg.showcaseSb = null;                                                   // keep it out of teardown's way
+    lg.teardown?.();
     const balance = lg.mode === 'endless' ? { ...(opts.balance || {}), winRequiresSeasons: false, endless: true } : opts.balance;
-    const sb = lg.sb = createSandbox(game, { headless: !!opts.headless, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, starterStalls: lg._resuming ? false : undefined });
+    const sb = lg.sb = reuse || createSandbox(game, { headless: !!opts.headless, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, starterStalls: lg._resuming ? false : undefined });
+    if (reuse) { lg.stats.showcaseReused = (lg.stats.showcaseReused || 0) + 1; game.followTarget = sb.hero.root.position; }
     if (lg.mode === 'endless') sb.updateScheduler = wrapNoScam(sb);                      // endless: events yes, Baron's deals no
     lg.story = (lg.mode === 'story' && opts.storyData) ? new StorySystem(sb.eco, { data: opts.storyData, bus, ledgerLinesBeforeReview: true, autoAdvance: !!opts.autoAdvance, lineGap: opts.lineGap }) : null;
     if (lg._resuming?.story && lg.story) Object.assign(lg.story.state, StorySystem.deserialize(lg._resuming.story, sb.eco, { data: opts.storyData, autoplay: false }).state);   // 10D: before title.hide() → no toast replay
@@ -472,17 +482,21 @@ function installStart(lg) {
     lg.stats.starts++;
     ui?.title?.hide?.(); lg.pause('title', false);
     lg.setState('playing');
+    // S18: the arrival walk-in (pier → plaza) plays on a FRESH story PLAY only — before game:start so the tutorial sees cine:begin first.
+    if (lg.cine && fresh && !lg._resuming && lg.mode === 'story') lg.cine.play('arrival', { sb, story: lg.story });
     bus.emit('game:start', { mode: lg.mode, seasonsToWin: sb.eco.config.seasonsToWin, seasonSeconds: sb.eco.config.seasonSeconds });
     return sb;
   };
   lg.teardown = () => {
+    if (lg.showcaseSb) { destroySandbox(lg.showcaseSb); lg.showcaseSb = null; }      // S18: title backdrop island
     if (!lg.sb) return;
+    if (lg.cine?.active && lg.cine.active !== 'title') lg.cine.stop(true);
     lg.story?.destroy?.(); lg.story = null;
     for (const f of lg._runOffs || []) f(); lg._runOffs = [];
     destroySandbox(lg.sb); lg.sb = null;
     lg.pauseBy.clear(); lg.pause('none', false);
   };
-  lg._offs.push(bus.on('ui:start', (p) => { if (lg.state !== 'title') return; if (p?.mode === 'continue' && lg.resume?.()) return; lg.start(p?.mode === 'continue' ? 'story' : p?.mode); }));
+  lg._offs.push(bus.on('ui:start', (p) => { if (lg.state !== 'title') return; if (p?.mode === 'continue' && lg.resume?.()) return; lg._freshPlay = p?.mode !== 'continue'; lg.start(p?.mode === 'continue' ? 'story' : p?.mode); }));
 }
 // P3 — pause menu + settings (7C): ui:restart → same mode from season 1 (10D will restart from its save point) · ui:title → teardown →
 // title · ui:settings quality → game.setQuality?.() / pixel ratio (11A owns presets; outline is already wired by 7C's onOutline).
@@ -510,6 +524,43 @@ function installMenu(lg) {
   applyReduceMotion(lg, !!ui?.pause?.settings?.reduceMotion);
   // BUGFIX B22: the stored quality setting is applied on boot too (was: only on a menu click, and then only the DPR).
   if (ui?.pause?.settings?.quality) applyQuality(lg, ui.pause.settings.quality);
+}
+// =====================================================================================================================
+// S18 — cinematics glue. One CinematicDirector per lg (lg.cine). Three shots:
+//   • title showcase: while the title is open and no run exists, a "showcase" sandbox (same seed/balance a fresh PLAY would get,
+//     starter stalls) is built and the camera orbits it (shot 'title'). body.ll-title-3d turns the DOM sky translucent. PLAY reuses
+//     that sandbox (lg.start), so there is no second build; CONTINUE / ENDLESS tear it down. Headless (opts.headless) → no showcase
+//     unless opts.showcase === true (check.mjs); opts.cinematics === false → nothing at all (?nocine).
+//   • arrival: lg.start plays it on a fresh story PLAY (see installStart). cine:begin → body.ll-cine-on (HUD fades), cine:end → removed.
+//   • victory: installSeasonLoop plays it on eco:win; the ending lines wait (story.hold) until the shot ends.
+export function installCinematics(lg) {
+  const { game, bus, ui, opts } = lg, on = (n, f) => lg._offs.push(bus.on(n, f));
+  // default: on in the browser, off headless (check.mjs --game/--save keep their timings; --cinematics passes cinematics:true)
+  if (!(opts.cinematics ?? !opts.headless)) { lg.cine = null; return; }
+  lg.cine = new CinematicDirector(game, { container: game.container, headless: !!opts.headless, reduceMotion: () => !!lg.reduceMotion });
+  lg.showcaseSb = null;
+  const body = typeof document !== 'undefined' ? document.body : null;
+  const wantShowcase = () => (opts.showcase ?? !opts.headless) && lg.state === 'title' && !lg.sb && !lg.showcaseSb && game.scene;
+  lg.showcase = () => {
+    if (!wantShowcase()) return null;
+    try { lg.showcaseSb = createSandbox(game, { headless: !!opts.headless, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance: opts.balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys }); }
+    catch (err) { console.warn('[cine] showcase build failed:', err?.message || err); lg.showcaseSb = null; return null; }
+    const sb = lg.showcaseSb; sb.showcase = true;
+    sb.reduceMotion = !!lg.reduceMotion; if (sb.vfx) sb.vfx.reduceMotion = !!lg.reduceMotion;
+    game.followTarget = null;                                                           // the follow cam must not chase Pip under the orbit
+    lg.cine.play('title', { sb });
+    body?.classList.add('ll-title-3d'); lg.stats.showcases = (lg.stats.showcases || 0) + 1;
+    bus.emit('cine:showcase', { on: true });
+    return sb;
+  };
+  const endShowcase = () => { if (lg.cine?.active === 'title') lg.cine.stop(true); body?.classList.remove('ll-title-3d'); };
+  on('cine:begin', (p) => { if (p?.shot !== 'title') body?.classList.add('ll-cine-on'); });
+  on('cine:end', () => body?.classList.remove('ll-cine-on'));
+  on('game:start', () => { endShowcase(); body?.classList.remove('ll-title-3d'); });
+  on('game:title', () => { if (lg.cine?.active) lg.cine.stop(true); body?.classList.remove('ll-cine-on'); lg.showcase(); });
+  on('ui:settings', (p) => { if (p?.key === 'reduceMotion' && lg.showcaseSb) { lg.showcaseSb.reduceMotion = !!p.value; if (lg.showcaseSb.vfx) lg.showcaseSb.vfx.reduceMotion = !!p.value; } });
+  // boot: the title is already open when createLumenGame runs (index.html mounts the UI first) → start the showcase right away
+  if (lg.state === 'title' && (ui?.title?.isOpen ?? true)) lg.showcase();
 }
 // BUGFIX B22: one quality path — Core Game.setQuality applies DPR cap + shadows + shadow-map size (antialias needs a reload: Game reports
 // quality.antialiasPending). Headless Game stubs without setQuality fall back to the DPR-only cap.
@@ -756,7 +807,15 @@ function installSeasonLoop(lg) {
     if (!lg.story) showLedger(r, { outcome: 'season' });                                // 8B emits story:review after its ledger lines
   });
   on('story:review', (p) => { if (lg.state === 'review') showLedger(p?.report || lg.lastReport, { outcome: 'season' }); });
-  on('eco:win', () => { if (!lg.sb) return; lg.pendingOutcome = 'win'; lg.setState('ending'); if (!lg.story) finale(lg, 'win'); });
+  // S18: the victory cinematic (fly to the lighthouse, lamp lights, return) plays first; the story's ending lines are held until cine:end.
+  //   No story (endless-like run forced to win in tests) → the ledger waits for the shot too. Listener order: this runs BEFORE the
+  //   StorySystem's eco:win (registered per run), so hold(true) is in place when onWin() queues its lines.
+  on('eco:win', () => {
+    if (!lg.sb) return; lg.pendingOutcome = 'win'; lg.setState('ending');
+    const sb = lg.sb;
+    if (lg.cine) { sb._cineLamp = true; lg.cine.play('victory', { sb, story: lg.story, onDone: () => { if (!lg.story && lg.sb === sb && lg.state === 'ending') finale(lg, 'win'); } }); }
+    else if (!lg.story) finale(lg, 'win');
+  });
   on('eco:lose', () => { if (!lg.sb) return; lg.pendingOutcome = 'lose'; lg.setState('ending'); if (!lg.story) finale(lg, 'lose'); });
   on('story:finale', (p) => { if (lg.state === 'ending') finale(lg, p?.outcome || lg.pendingOutcome || 'win'); });
   on('ui:continue', (p) => {
@@ -886,6 +945,7 @@ function installTutorialGates(lg) {
     const sb = lg.sb; if (!T.enabled || !sb || lg.mode !== 'story' || lg.state !== 'playing' || lg.game.paused) return;
     const s = sb.eco.state; if (s.season > 2) return;
     T.t += dt; if (T.sinceSale != null) T.sinceSale += dt;
+    if (lg.cine?.active) { T.spawn = null; return; }                                     // S18: the arrival walk-in is not the player moving
     const h = sb.hero?.root?.position; if (h) { if (!T.spawn) T.spawn = { x: h.x, z: h.z }; else if (!T.fired.has('tut:move') && Math.hypot(h.x - T.spawn.x, h.z - T.spawn.z) > 2) fire('tut:move'); }
     if (s.season === 1) {
       if (T.t > 12 && T.built === 0) fire('tut:build');
