@@ -1619,7 +1619,7 @@ if (doSave) {
       const bus = new EventBus(); const ev = {}; for (const n of ['game:saved', 'game:resumed', 'story:toast', 'story:line', 'ui:start']) bus.on(n, (p) => { (ev[n] ??= []).push(p); });
       const game = { scene: new THREE.Scene(), bus, sequences: new SequencePlayer(), tweens, hitStop: new HitStop(), input: { pointerWorld: new THREE.Vector3(), hasPointerWorld: false, move: new THREE.Vector2(), joystick: new THREE.Vector2(), actions: {}, pressed: () => false, press() {} }, camera: { zoom: 1, shake() {}, snapTo() {} }, time: 0, timeScale: 1, paused: false, followTarget: null, systems: [], stats: { fps: 60, drawCalls: 0 }, add(s) { this.systems.push(s); return s; }, hitstop() {} };
       document.body.innerHTML = '';
-      const ui = mountUI(document.body, { bus, stats: () => game.stats, input: game.input, catalog: PROP_CATALOG, seasonsToWin: 10, touch: false, version: 'check', hasSave: () => Save.hasSave(storage) });
+      const ui = mountUI(document.body, { bus, stats: () => game.stats, input: game.input, catalog: PROP_CATALOG, seasonsToWin: 10, touch: false, version: 'check', hasSave: () => Save.hasSave(storage), hasWon: () => Save.hasWon(storage) });
       const lg = createLumenGame(game, { ui, storyData, headless: true, seasonSeconds: 30, seed: 3, storage });
       const dt = 1 / 30; const step = () => { game.time += dt; game.sequences.update(dt); game.tweens.update(dt); for (const s of game.systems) s.update?.(game.paused ? 0 : dt, game, dt); };
       const run = (sec) => { for (let i = 0; i < sec * 30; i++) step(); };
@@ -1715,6 +1715,18 @@ if (doSave) {
     if (B.lg.state !== 'title' || B.ui.title.buttons.continue.style.display !== 'none') throw new Error('after lose: ' + B.lg.state + ' continue shown ' + B.ui.title.buttons.continue.style.display);
     B.lg.destroy(); B.ui.destroy();
     console.log(`  4. forced fog loss → eco:lose → save cleared → TRY AGAIN → title without CONTINUE · destroy clean  OK`);
+    // 5. S25: ENDLESS is hidden on the title until the first story win; the win writes lumen.unlocks (survives a later loss / save clear)
+    { if (Save.hasWon(storage)) throw new Error('S25: unlocked before any win'); Save.clearUnlocks(storage);
+      const W = rig(); if (W.ui.title.buttons.endless.style.display !== 'none') throw new Error('S25: ENDLESS visible on a fresh title');
+      W.bus.emit('ui:start', { mode: 'story' }); W.step(); W.drain(); const ecoW = W.lg.sb.eco;
+      ecoW.state.debt = 0; ecoW.state.fog01 = 0; ecoW.state.season = ecoW.config.seasonsToWin; ecoW.state.day01 = 0.99; ecoW.endSeason();
+      if (ecoW.state.ended !== 'win') throw new Error('S25: forced win → ' + ecoW.state.ended);
+      if (!Save.hasWon(storage) || !W.lg.save.hasWon() || W.ui.title.buttons.endless.style.display !== '') throw new Error('S25: win did not unlock endless (' + Save.hasWon(storage) + ' / ' + W.ui.title.buttons.endless.style.display + ')');
+      W.lg.destroy(); W.ui.destroy();
+      Save.clear(storage); const W2 = rig(); if (W2.ui.title.buttons.endless.style.display !== '' || !W2.ui.title.el.classList.contains('has-endless')) throw new Error('S25: unlock did not persist across a fresh title');
+      W2.ui.title.start('endless'); W2.step(); if (W2.lg.mode !== 'endless') throw new Error('S25: unlocked ENDLESS did not start: ' + W2.lg.mode);
+      W2.lg.destroy(); W2.ui.destroy(); Save.clearUnlocks(storage);
+      console.log(`  5. S25 ENDLESS hidden on a fresh title → forced story win → lumen.unlocks{endless} → button shown · persists after save clear → ENDLESS starts  OK`); }
     if (TUTORIAL_GATES.length !== 5) throw new Error('TUTORIAL_GATES');
   } catch (err) { bad++; console.log('  save FAIL →', err.message, process.env.STACK ? err.stack : ''); }
 }
