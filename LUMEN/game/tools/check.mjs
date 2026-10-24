@@ -828,7 +828,7 @@ if (doVFX) {
   try {
     const THREE = await import(pathToFileURL(resolve('vendor/three.module.js')).href);
     const { installPack1 } = await import(pathToFileURL(resolve('src/vfx/pack1.js')).href);
-    const { installPack2, PACK2_NAMES, DebtFog, makeFogRecedeSequence } = await import(pathToFileURL(resolve('src/vfx/pack2.js')).href);
+    const { installPack2, PACK2_NAMES, DebtFog, FOG_REACH_CURVE, makeFogRecedeSequence } = await import(pathToFileURL(resolve('src/vfx/pack2.js')).href);
     console.log('\nVFX PACK 2 (9B):', PACK2_NAMES.length, 'effects →', PACK2_NAMES.join(', '));
     const scene = new THREE.Scene(); let baseUpd = 0;
     const vfx = { game: { scene, sequences: null }, update(dt) { baseUpd++; } };
@@ -848,12 +848,14 @@ if (doVFX) {
     fog.setCoverage(0.6); for (let i = 0; i < 18; i++) step(); const covMid = fog.coverage;
     if (covMid < 0.5 || covMid > 0.56) throw new Error('coverage @300 ms ' + covMid.toFixed(3) + ' (expected ≈ 0.525 outCubic)');
     for (let i = 0; i < 24; i++) step();
-    if (Math.abs(fog.coverage - 0.6) > 1e-6 || Math.abs(fog.reach - 6) > 1e-6 || !fog.mesh.visible) throw new Error('coverage settle ' + fog.coverage + ' reach ' + fog.reach);
+    if (Math.abs(fog.coverage - 0.6) > 1e-6 || Math.abs(fog.reach - Math.pow(0.6, FOG_REACH_CURVE) * 10) > 1e-6 || !fog.mesh.visible) throw new Error('coverage settle ' + fog.coverage + ' reach ' + fog.reach);   // P57: reach = cov^1.6 × span
+    fog.setCoverage(0.4, { immediate: true }); step(); if (fog.reach > 2.4 || fog.reach < 2.2) throw new Error('P57: S1 fog (40 %) should hug the shore, reach ' + fog.reach.toFixed(2)); fog.setCoverage(0.6, { immediate: true }); step();
     let rMin = 99, rMax = 0; for (let i = 0; i < fog.n; i++) { const r = radiusOf(i); rMin = Math.min(rMin, r); rMax = Math.max(rMax, r); }
     if (rMin < fog.core - 0.1 || rMax > fog.edge + 0.1 || rMax - rMin < 2) throw new Error(`blob radii ${rMin.toFixed(2)}–${rMax.toFixed(2)} (edge ${fog.edge}, core ${fog.core})`);
     if (vfx.vignette.amount < 0.3 || vfx.vignette.amount > 0.4) throw new Error('vignette ' + vfx.vignette.amount.toFixed(3) + ' (expected (0.6−0.15)·0.8 = 0.36)');
     console.log(`  fog: 48 blobs = 1 InstancedMesh (1 dc, noOutline) · setCoverage(0.6) outCubic 600 ms (${covMid.toFixed(2)} @300 ms → 0.60) · reach 6.0 u · radii ${rMin.toFixed(1)}–${rMax.toFixed(1)} ⊂ [${fog.core}, ${fog.edge}] · vignette ${vfx.vignette.amount.toFixed(2)}  OK`);
     // 2 push (3B fogSweep hook): hero at (2,0,0) sweeping +x → blobs near +x edge move outward then spring back
+    fog.setCoverage(0.8, { immediate: true }); step();   // P57: at 0.6 the ring now sits ≥ 7.5 u out — sweep test uses 0.8 (reach ≈ 7 u) so the +x blobs are within the 5.5 u sweep range
     const r0 = radiusOf(0); const hit = vfx.fogShader.push(new THREE.Vector3(2, 0, 0), new THREE.Vector3(1, 0, 0), 1); if (hit < 3 || hit > 20) throw new Error('push hit ' + hit);
     step(0.15); const r1 = radiusOf(0); if (r1 - r0 < 0.05) throw new Error(`push did not shove blob 0 out (${r0.toFixed(2)} → ${r1.toFixed(2)})`);
     for (let i = 0; i < 60; i++) step(); const r2 = radiusOf(0); if (Math.abs(r2 - r0) > 0.05) throw new Error(`push did not settle back (${r0.toFixed(2)} → ${r2.toFixed(2)})`);

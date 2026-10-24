@@ -32,6 +32,7 @@ const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vect
 const hasDOM = typeof document !== 'undefined' && typeof document.createElement === 'function';
 
 // ---------------------------------------------------------------- Debt Fog ring
+export const FOG_REACH_CURVE = 1.6;   // P57: debt-fog reach = coverage^1.6 × (edge − core)
 export class DebtFog {
   /**
    * @param {THREE.Scene} scene
@@ -58,8 +59,10 @@ export class DebtFog {
     scene.add(this.mesh);
     this.dirty = true;
   }
-  /** Inward reach in world units at the current coverage (0 at fog01 = 0). */
-  get reach() { return this.coverage * (this.edge - this.core); }
+  /** Inward reach in world units at the current coverage (0 at fog01 = 0).
+   *  P57: eased-in (coverage^FOG_REACH_CURVE) — at the Season-1 40 % the blobs hug the shore (≈2.3 u in instead of 4 u) and leave the plaza
+   *  readable; from ~70 % on they close in fast, so a high debt still swallows the market. fog01 = 1 still reaches the core. */
+  get reach() { return Math.pow(this.coverage, FOG_REACH_CURVE) * (this.edge - this.core); }
   /** Animate coverage → fog01 (outCubic 600 ms). immediate: snap. */
   setCoverage(fog01, { immediate = false, ms = this.animMs } = {}) {
     const to = Math.max(0, Math.min(1, +fog01 || 0));
@@ -101,7 +104,7 @@ export class DebtFog {
       this._posOf(b, _p);
       // push: shove 150 ms inQuad out, settle 750 ms outElastic back
       if (b.pushT < 1) { anyPush = true; b.pushT = Math.min(1, b.pushT + dt / 0.9); const u = b.pushT; const k = u < 1 / 6 ? Easing.inQuad(u * 6) : 1 - Easing.outElastic((u - 1 / 6) / (5 / 6)); _p.addScaledVector(b.pushDir, b.push * k); }
-      const grow = 0.9 + this.reach / (this.edge - this.core) * 1.3;    // 0.9 → 2.2 as the ring closes in
+      const grow = 0.8 + this.reach / (this.edge - this.core) * 1.4;    // 0.8 → 2.2 as the ring closes in (P57: smaller puffs while far out)
       const sq = b.pushT < 0.2 ? 1 - 0.35 * Math.sin(b.pushT * 5 * Math.PI) : 1;
       const bob = Math.sin(this.time * 1.1 + b.phase) * 0.12;
       _p.y = 0.35 + bob - b.lift;
