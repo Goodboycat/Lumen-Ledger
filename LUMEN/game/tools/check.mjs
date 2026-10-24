@@ -1202,7 +1202,7 @@ if (doEnemies) {
     const { createSandbox } = await import(pathToFileURL(resolve('src/Game.js')).href);
     const { ENEMY_RULES, BARON_POWERS, baronPowersFor } = await import(pathToFileURL(resolve('src/systems/enemies.js')).href);
     console.log('\nENEMIES (S16):');
-    const bus = new EventBus(); const ev = {}; for (const n of ['enemy:wave', 'enemy:spawn', 'enemy:hit', 'enemy:defeated', 'enemy:heroHit', 'enemy:blocked', 'enemy:gone', 'enemy:levy', 'enemy:charge', 'enemy:summon', 'eco:scam']) bus.on(n, (p) => { (ev[n] ??= []).push(p); });
+    const bus = new EventBus(); const ev = {}; for (const n of ['enemy:wave', 'enemy:spawn', 'enemy:hit', 'enemy:defeated', 'enemy:heroHit', 'enemy:blocked', 'enemy:gone', 'enemy:baronWarn', 'enemy:cannon', 'enemy:stomp', 'enemy:baronInterrupted', 'enemy:summon', 'enemy:home', 'eco:scam']) bus.on(n, (p) => { (ev[n] ??= []).push(p); });
     const game = { scene: new THREE.Scene(), bus, sequences: new SequencePlayer(), tweens, hitStop: new HitStop(), input: { pointerWorld: new THREE.Vector3(), hasPointerWorld: false, move: new THREE.Vector2(), actions: {}, pressed: () => false }, camera: { zoom: 1, shake() {} }, time: 0, timeScale: 1, followTarget: null, systems: [], add(s) { this.systems.push(s); return s; }, hitstop() {} };
     const sb = createSandbox(game, { headless: true, seasonSeconds: 30, seed: 3 });
     const dt = 1 / 30; const step = () => { game.time += dt; game.sequences.update(dt); game.tweens.update(dt); for (const s of game.systems) s.update?.(dt); };
@@ -1249,28 +1249,62 @@ if (doEnemies) {
     const defEv = (ev['enemy:defeated'] || []).length; if (E.list.length !== 0 || E.stats.defeated !== defB || defEv !== 1 || !ev['enemy:gone'].some((g) => g.why === 'home')) throw new Error(`walk-home not finished: ${E.list.length} left, defeated ${E.stats.defeated}/${defB}`);   // (sb.coins also grows from customer tips while the clock runs → not compared)
     // 5b. the new season's wave still spawns normally after a walk-home
     E.waveSeason = 0; sb.eco.state.season = 4; sb.sched.wave = false; sb.sched.season = 4; sb.eco.state.day01 = 0.71; step(); if (E.list.length !== 4) throw new Error('S4 wave after walk-home ' + E.list.length); E.clear();
-    // 6. Season 6: Baron + 0 minions; S9: Baron + 3 minions with fogSlow/levy/summon; cap 5  (clock frozen: a 30 s season would end mid-probe)
+    // 6. Season 6 (S20): Baron on his PODIUM (stationary) + 0 minions, power 'cannon' only; S9: Baron + 3 minions with cannon/puddle/stomp/summon; cap 5  (clock frozen: a 30 s season would end mid-probe)
     sb.eco.config.seasonSeconds = 1e9;
+    const RB = ENEMY_RULES.baron;
     E.waveSeason = 0; sb.eco.state.season = 6; sb.sched.wave = false; sb.sched.season = 6; sb.eco.state.day01 = 0.71; step();
-    if (E.list.length !== 1 || E.list[0].kind !== 'baron' || E.list[0].powers.length !== 0 || !ev['enemy:wave'].at(-1).boss) throw new Error('S6 baron wave');
-    const b = E.baron; b.g.position.copy(sb.hero.root.position); b.hitAt = -99; sb.eco.state.spark = 10; run(0.2); if (sb.eco.state.spark !== 10 - ENEMY_RULES.baron.hitSpark) throw new Error('baron contact ' + sb.eco.state.spark);
+    if (E.list.length !== 1 || E.list[0].kind !== 'baron' || E.list[0].powers.join() !== 'cannon' || !ev['enemy:wave'].at(-1).boss) throw new Error('S6 baron wave ' + (E.list[0]?.powers || []).join());
+    const b = E.baron; if (!b.podium || !sb.island.isLand(b.podium.x, b.podium.z) || Math.hypot(b.g.position.x - b.podium.x, b.g.position.z - b.podium.z) > 0.01) throw new Error('baron podium');
+    // stationary: Pip 6 u away for 3 s → the Baron has not moved
+    sb.hero.root.position.set(b.podium.x + 6, 0, b.podium.z); b.timers.attack = -99; run(3); if (Math.hypot(b.g.position.x - b.podium.x, b.g.position.z - b.podium.z) > 0.05) throw new Error('baron moved');
+    // contact (Pip walks into him) still costs 2 ✦
+    b.g.position.copy(sb.hero.root.position); b.podium = { x: sb.hero.root.position.x, z: sb.hero.root.position.z }; b.hitAt = -99; b.phase = 'idle'; b.timers.attack = -99; sb.eco.state.spark = 10; run(0.2); if (sb.eco.state.spark !== 10 - RB.hitSpark) throw new Error('baron contact ' + sb.eco.state.spark);
     // S16b: Baron hit at 0 ✦ → the shortfall becomes DEBT (a Collector at 0 ✦ does nothing — probed in step 2)
     sb.eco.state.spark = 1; const debtB = sb.eco.state.debt; b.hitAt = -99; run(0.2);
-    if (sb.eco.state.spark !== 0 || sb.eco.state.debt !== debtB + ENEMY_RULES.baron.hitSpark - 1 || !ev['enemy:heroHit'].at(-1).debt) throw new Error(`baron bill: spark ${sb.eco.state.spark} debt ${debtB} → ${sb.eco.state.debt}`);
-    b.hitAt = -99; run(0.2); if (sb.eco.state.debt !== debtB + ENEMY_RULES.baron.hitSpark - 1 + ENEMY_RULES.baron.hitSpark) throw new Error('baron bill at 0 ✦ ' + sb.eco.state.debt);
-    for (let i = 0; i < ENEMY_RULES.baron.hp; i++) E.hitEnemy(b, dir, 1); if (b.state !== 'flee' || E.stats.baronDefeats !== 1 || sb.coins.at(-1).value !== ENEMY_RULES.baron.reward) throw new Error('baron defeat');
-    E.clear(); E.waveSeason = 0; sb.eco.state.season = 9; sb.sched.wave = false; sb.sched.season = 9; sb.eco.state.day01 = 0.71; step();
-    const b9 = E.baron; if (!b9 || E.list.length !== 4 || b9.powers.join() !== 'fogSlow,levy,summon') throw new Error('S9 wave ' + E.list.length + ' ' + (b9?.powers || []).join());
-    if (baronPowersFor(12).length !== 4 || baronPowersFor(6).length !== 0) throw new Error('baronPowersFor');
-    b9.g.position.copy(sb.hero.root.position).add(new THREE.Vector3(1, 0, 0)); step(); if (E.heroSpeedMul !== BARON_POWERS[0].mul || sb.hero.speed >= 5.2) throw new Error('fogSlow not applied');
-    sb.eco.state.spark = 20; for (let i = 0; i < (BARON_POWERS[1].every + 1) * 30; i++) { b9.g.position.copy(sb.hero.root.position).add(new THREE.Vector3(6, 0, 0)); step(); }   // Pip keeps his distance → the bill comes by post if (!ev['enemy:levy'] || sb.eco.state.spark >= 20) throw new Error('levy'); if (E.heroSpeedMul !== 1) throw new Error('fogSlow not released');
-    run(BARON_POWERS[2].every + 1); if (!ev['enemy:summon'] || E.list.filter((e) => e.kind === 'collector').length < 4) throw new Error('summon');
-    for (let i = 0; i < 6; i++) { b9.timers.summon = 99; step(); } if (E.list.filter((e) => e.kind === 'collector' && e.state !== 'flee').length > ENEMY_RULES.minionCap) throw new Error('minion cap');
-    E.waveSeason = 0; E.clear(); sb.eco.state.season = 12; sb.sched.wave = false; sb.sched.season = 12; sb.eco.state.day01 = 0.71; step(); const b12 = E.baron; if (E.list.length !== 6 || b12.powers.length !== 4) throw new Error('S12 cap');
-    for (let i = 0; i < (BARON_POWERS[3].every + 0.5) * 30 && !ev['enemy:charge']; i++) { b12.g.position.copy(sb.hero.root.position).add(new THREE.Vector3(5, 0, 0)); step(); } if (!ev['enemy:charge'] || !(b12.charging > 0)) throw new Error('charge');
+    if (sb.eco.state.spark !== 0 || sb.eco.state.debt !== debtB + RB.hitSpark - 1 || !ev['enemy:heroHit'].at(-1).debt) throw new Error(`baron bill: spark ${sb.eco.state.spark} debt ${debtB} → ${sb.eco.state.debt}`);
+    b.hitAt = -99; run(0.2); if (sb.eco.state.debt !== debtB + RB.hitSpark - 1 + RB.hitSpark) throw new Error('baron bill at 0 ✦ ' + sb.eco.state.debt);
+    // S20 cannon: Pip 4 u away → warn decal at Pip's cell (enemy:baronWarn) → telegraph 0.9 s → fog ball: Pip stayed → −1 ✦ + puddle slows him (×0.6)
+    b.hitAt = 99; b.timers.attack = RB.attackEvery; sb.hero.root.position.set(b.podium.x + 4, 0, b.podium.z); sb.eco.state.spark = 10; step();
+    if (!ev['enemy:baronWarn'] || ev['enemy:baronWarn'].at(-1).kind !== 'cannon' || b.phase !== 'warn' || E.decals.active !== 1) throw new Error('cannon warn ' + b.phase + ' decals ' + E.decals.active);
+    run(RB.telegraph + 0.1); if (!ev['enemy:cannon'] || !ev['enemy:cannon'].at(-1).hit || sb.eco.state.spark !== 10 - RB.cannonSpark || E.puddles.length !== 1 || E.stats.cannons !== 1) throw new Error('cannon land ' + sb.eco.state.spark + ' puddles ' + E.puddles.length);
+    step(); if (E.heroSpeedMul !== RB.puddleMul || sb.hero.speed >= 5.2) throw new Error('puddle slow ' + E.heroSpeedMul);
+    sb.hero.root.position.set(b.podium.x + 4, 0, b.podium.z + 4); step(); if (E.heroSpeedMul !== 1) throw new Error('puddle slow not released');
+    run(RB.puddleSeconds); if (E.puddles.length !== 0) throw new Error('puddle did not expire');
+    // dodge: step out during the telegraph → no Spark lost, attacksDodged++
+    b.phase = 'idle'; b.timers.attack = RB.attackEvery; sb.hero.root.position.set(b.podium.x + 4, 0, b.podium.z); sb.eco.state.spark = 10; step(); sb.hero.root.position.set(b.podium.x + 4, 0, b.podium.z + 3); run(RB.telegraph + 0.1);
+    if (sb.eco.state.spark !== 10 || E.stats.attacksDodged !== 1) throw new Error('cannon dodge ' + sb.eco.state.spark + ' ' + E.stats.attacksDodged);
+    // Pip's hit during the wind-up cancels it
+    b.phase = 'idle'; b.timers.attack = RB.attackEvery; step(); if (b.phase !== 'warn') throw new Error('warn for interrupt'); E.hitEnemy(b, dir, 1); if (b.phase !== 'idle' || b.attack || !ev['enemy:baronInterrupted']) throw new Error('interrupt');
+    b.hp = RB.hp; b.phase = 'idle'; b.timers.attack = -99;
+    for (let i = 0; i < RB.hp; i++) E.hitEnemy(b, dir, 1); if (b.state !== 'flee' || E.stats.baronDefeats !== 1 || sb.coins.at(-1).value !== RB.reward) throw new Error('baron defeat');
+    E.clear(); if (E.decals.active !== 0) throw new Error('clear left decals');
+    E.waveSeason = 0; sb.eco.state.season = 9; sb.sched.wave = false; sb.sched.season = 9; sb.eco.state.day01 = 0.71; step();
+    const b9 = E.baron; if (!b9 || E.list.length !== 4 || b9.powers.join() !== 'cannon,puddle,stomp,summon') throw new Error('S9 wave ' + E.list.length + ' ' + (b9?.powers || []).join());
+    if (baronPowersFor(12).length !== 5 || baronPowersFor(6).length !== 1) throw new Error('baronPowersFor');
+    // S20 stomp: Pip 2 u from the podium → crouch (warn, ring r 3.5) → air → land: 2 ✦ + shoved out of the ring, Baron DAZED
+    for (const m of E.list) if (m !== b9) { m.state = 'flee'; m.fleeT = 99; }   // park the minions so the pick is deterministic
+    b9.hitAt = 99; b9._pick = 1; b9.phase = 'idle'; b9.timers.attack = RB.attackEvery; sb.hero.root.position.set(b9.podium.x + 2, 0, b9.podium.z); sb.eco.state.spark = 10; step();
+    if (ev['enemy:baronWarn'].at(-1).kind !== 'stomp') { b9._pick = 0; b9.phase = 'idle'; b9.attack = null; b9.timers.attack = RB.attackEvery; step(); }
+    if (ev['enemy:baronWarn'].at(-1).kind !== 'stomp' || b9.phase !== 'warn') throw new Error('stomp warn ' + ev['enemy:baronWarn'].at(-1).kind);
+    run(RB.telegraph + 0.05); if (b9.phase !== 'air' || E.targets().some((t) => t.enemy === b9)) throw new Error('stomp air / targetable in the air');
+    run(RB.stompAir + 0.05); const d9 = Math.hypot(sb.hero.root.position.x - b9.podium.x, sb.hero.root.position.z - b9.podium.z);
+    if (!ev['enemy:stomp'] || !ev['enemy:stomp'].at(-1).hit || sb.eco.state.spark !== 10 - RB.stompSpark || d9 <= 2.5 || b9.phase !== 'dazed' || E.stats.stomps !== 1 || b9.g.position.y !== 0) throw new Error(`stomp land spark ${sb.eco.state.spark} d ${d9.toFixed(2)} phase ${b9.phase}`);
+    if (!E.targets().some((t) => t.enemy === b9)) throw new Error('dazed Baron not targetable'); run(RB.dazed + 0.1); if (b9.phase !== 'idle') throw new Error('dazed did not end');
+    // summon (S9): below the cap → one more Collector appears beside the Baron
+    for (const m of E.list) if (m !== b9) m.fleeT = 0; run(0.1); b9._pick = -1; b9.phase = 'idle'; b9.timers.attack = RB.attackEvery; sb.hero.root.position.set(b9.podium.x + 7, 0, b9.podium.z); step();
+    if (!ev['enemy:summon'] || E.list.filter((e) => e.kind === 'collector' && e.state === 'chase').length !== 1 || E.stats.summons !== 1) throw new Error('summon ' + E.list.length);
+    for (let i = 0; i < 8; i++) { b9._pick = -1; b9.phase = 'idle'; b9.attack = null; b9.timers.attack = RB.attackEvery; step(); } if (E.list.filter((e) => e.kind === 'collector' && e.state !== 'flee').length > ENEMY_RULES.minionCap) throw new Error('minion cap');
+    // S12: Baron + 5 minions, all 5 powers; cannon3 → 3 warn decals
+    E.waveSeason = 0; E.clear(); sb.eco.state.season = 12; sb.sched.wave = false; sb.sched.season = 12; sb.eco.state.day01 = 0.71; step(); const b12 = E.baron; if (E.list.length !== 6 || b12.powers.length !== 5) throw new Error('S12 cap');
+    for (const m of E.list) if (m !== b12) { m.state = 'flee'; m.fleeT = 99; }
+    b12.hitAt = 99; b12._pick = 0; b12.phase = 'idle'; b12.timers.attack = RB.attackEvery; sb.hero.root.position.set(b12.podium.x + 6, 0, b12.podium.z); step();
+    if (ev['enemy:baronWarn'].at(-1).kind !== 'cannon3' || E.decals.active !== 3) throw new Error('cannon3 ' + ev['enemy:baronWarn'].at(-1).kind + ' decals ' + E.decals.active);
+    run(RB.telegraph + 0.1); if (ev['enemy:cannon'].at(-1).shots !== 3 || E.puddles.length !== 3) throw new Error('cannon3 land');
+    // season end mid-attack: sendHome cancels the wind-up and he walks off
+    b12.phase = 'idle'; b12.timers.attack = RB.attackEvery; sb.hero.root.position.set(b12.podium.x + 4, 0, b12.podium.z); step(); E.sendHome(); if (b12.state !== 'home' || b12.attack || b12.phase !== 'idle') throw new Error('sendHome mid-attack');
     for (const e of E.list) if (!isFinite(e.g.position.x) || !isFinite(e.g.scale.y)) throw new Error('enemy NaN');
     E.clear(); if (game.scene.children.some((o) => o.userData?.type === 'baron' || o.userData?.type === 'collector')) throw new Error('clear left meshes');
-    console.log(`  S1 wave 1 · chase ${d0.toFixed(1)}→${d1.toFixed(1)} u · contact −1 ✦ pouch only (jars untouched, floor 0) · Bubble Shield BLOCKED · 2 sword hits → flee + 1 ✦ coin → gone · hero targets merged · S3 wave 3 · S19 spread landings + separation · season end → walk home to own shore point → off (no coin) · S4 re-lands · S6 Baron (hp 6, −2 ✦; at 0 ✦ → DEBT) → ${ENEMY_RULES.baron.reward} ✦ (P60) · S9 Baron+3 fogSlow(×${BARON_POWERS[0].mul})/levy/summon(cap ${ENEMY_RULES.minionCap}) · S12 Baron+5 charge · stats ${JSON.stringify(E.stats)}  OK`);
+    console.log(`  S1 wave 1 · chase ${d0.toFixed(1)}→${d1.toFixed(1)} u · contact −1 ✦ pouch only (jars untouched, floor 0) · Bubble Shield BLOCKED · 2 sword hits → flee + 1 ✦ coin → gone · hero targets merged · S3 wave 3 · S19 spread landings + separation · season end → walk home to own shore point → off (no coin) · S4 re-lands · S6 Baron STATIONARY on podium (S20) · contact −2 ✦ (at 0 ✦ → DEBT) · cannon warn ${ENEMY_RULES.baron.telegraph} s → hit/puddle(×${ENEMY_RULES.baron.puddleMul})/dodge/interrupt → ${ENEMY_RULES.baron.reward} ✦ (P60) · S9 Baron+3 stomp(r ${ENEMY_RULES.baron.stompRadius}, dazed)/summon(cap ${ENEMY_RULES.minionCap}) · S12 Baron+5 cannon3 · sendHome mid-attack · stats ${JSON.stringify(E.stats)}  OK`);
   } catch (err) { bad++; console.log('  enemies FAIL →', err.message); }
 }
 
