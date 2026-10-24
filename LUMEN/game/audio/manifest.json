@@ -2,7 +2,7 @@
   "_": "Chat 12 — Lumen Ledger audio manifest. `file` is relative to `base`; a missing file (404/decode error) silently falls back to `synth`. Ludo.ai prompts for every id: docs/audio_prompts.md. `events` overrides src/core/Audio.js DEFAULT_EVENTS.",
   "base": "./audio/",
   "fetchFiles": true,
-  "_fetchFiles": "true since the Ludo.ai files landed (2026-10-20). All 47 files present (41 sfx = 33 core + 8 extras, 6 music) — no more 404s.",
+  "_fetchFiles": "true since the Ludo.ai files landed (2026-10-20). 2026-10-24: user sfx pack mapped onto the 13 enemy/storm/cine ids (all real files now) + 7 new ids + 4 ambience loops in amb/.",
   "sfx": {
     "coin": {
       "file": "sfx/coin.ogg",
@@ -483,7 +483,7 @@
     },
     "enemy_wave": {
       "file": "sfx/enemy_wave.ogg",
-      "vol": 0.8,
+      "vol": 0.7,
       "pitchVar": 0.03,
       "synth": {
         "type": "sad",
@@ -493,7 +493,7 @@
     },
     "baron_arrive": {
       "file": "sfx/baron_arrive.ogg",
-      "vol": 0.9,
+      "vol": 1,
       "pitchVar": 0,
       "synth": {
         "type": "sad",
@@ -553,7 +553,7 @@
     },
     "baron_stomp": {
       "file": "sfx/baron_stomp.ogg",
-      "vol": 1.0,
+      "vol": 1,
       "pitchVar": 0.03,
       "synth": {
         "type": "thud",
@@ -563,7 +563,7 @@
     },
     "fog_minigun": {
       "file": "sfx/fog_minigun.ogg",
-      "vol": 0.7,
+      "vol": 0.6,
       "pitchVar": 0.05,
       "synth": {
         "type": "tick",
@@ -583,7 +583,7 @@
     },
     "thunder": {
       "file": "sfx/thunder.ogg",
-      "vol": 1.0,
+      "vol": 0.9,
       "pitchVar": 0.05,
       "synth": {
         "type": "thud",
@@ -609,6 +609,76 @@
         "type": "chime",
         "f": 880,
         "dur": 1.4
+      }
+    },
+    "baron_defeated": {
+      "file": "sfx/baron_defeated.ogg",
+      "vol": 0.9,
+      "pitchVar": 0,
+      "synth": {
+        "type": "fanfare",
+        "f": 660,
+        "dur": 0.5
+      }
+    },
+    "fog_impact": {
+      "file": "sfx/fog_impact.ogg",
+      "vol": 0.8,
+      "pitchVar": 0.06,
+      "synth": {
+        "type": "thud",
+        "f": 120,
+        "dur": 0.3
+      }
+    },
+    "baron_dash": {
+      "file": "sfx/baron_dash.ogg",
+      "vol": 0.9,
+      "pitchVar": 0.04,
+      "synth": {
+        "type": "whoosh",
+        "f": 300,
+        "dur": 0.4
+      }
+    },
+    "hit_shield": {
+      "file": "sfx/hit_shield.ogg",
+      "vol": 0.8,
+      "pitchVar": 0.05,
+      "synth": {
+        "type": "chime",
+        "f": 1200,
+        "dur": 0.25
+      }
+    },
+    "debt_fall": {
+      "file": "sfx/debt_fall.ogg",
+      "vol": 0.9,
+      "pitchVar": 0,
+      "synth": {
+        "type": "sad",
+        "f": 330,
+        "dur": 0.6
+      }
+    },
+    "quest_complete": {
+      "file": "sfx/quest_complete.ogg",
+      "vol": 0.9,
+      "pitchVar": 0,
+      "synth": {
+        "type": "fanfare",
+        "f": 880,
+        "dur": 0.4
+      }
+    },
+    "chest": {
+      "file": "sfx/chest.ogg",
+      "vol": 0.8,
+      "pitchVar": 0.03,
+      "synth": {
+        "type": "chime",
+        "f": 990,
+        "dur": 0.4
       }
     }
   },
@@ -800,6 +870,30 @@
       }
     }
   },
-  "events": {},
-  "_voices": "Character voice blurbs (cartoon hums, Zelda-style) — played by Audio.js on ui:dialogue:say when the dialogue box starts a line; speaker → voice_<speaker>, narrator → dlg_blip. solo:\"voice\" cuts the previous blurb; preload:true decodes them on unlock()."
+  "_voices": "Character voice blurbs (cartoon hums, Zelda-style) — played by Audio.js on ui:dialogue:say when the dialogue box starts a line; speaker → voice_<speaker>, narrator → dlg_blip. solo:\"voice\" cuts the previous blurb; preload:true decodes them on unlock().",
+  "ambience": {
+    "_": "Looping beds mixed on the sfx bus (own ambGain). `always` beds run from game:start to game:title; `storm` beds fade in on storm:hit and out on storm:clear. Audio.js api.ambience(id,on,fade).",
+    "surf": {
+      "file": "amb/surf.ogg",
+      "vol": 0.35,
+      "when": "always"
+    },
+    "island_birds": {
+      "file": "amb/island_birds.ogg",
+      "vol": 0.3,
+      "when": "always",
+      "stormDuck": 0.15
+    },
+    "rain": {
+      "file": "amb/rain.ogg",
+      "vol": 0.55,
+      "when": "storm"
+    },
+    "wind": {
+      "file": "amb/wind.ogg",
+      "vol": 0.45,
+      "when": "storm"
+    }
+  },
+  "events": {}
 }
