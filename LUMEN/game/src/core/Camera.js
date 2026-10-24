@@ -16,6 +16,11 @@ export class GameCamera {
     this.maxShakeRot = 0.035;
     this._t = 0;
     this._shakeOff = new THREE.Vector3();
+    // S18 cinematics: an external rig (CinematicDirector) can own the camera. `cine` = { pos:Vector3, look:Vector3 } written every frame
+    // by the director; `cineBlend` 0..1 mixes the follow camera (0) into the rig (1). The follow target/lookAt keep updating underneath
+    // so handing control back is a blend, not a cut.
+    this.cine = null; this.cineBlend = 0;
+    this._cinePos = new THREE.Vector3(); this._cineLook = new THREE.Vector3();
     this.cam.position.copy(this.offset);
     this.cam.lookAt(0, 0, 0);
   }
@@ -24,6 +29,8 @@ export class GameCamera {
   /** Add shake. amount 0..1 (0.25 small hit, 0.5 heavy, 1 explosion). */
   shake(amount) { if (this.reduceMotion) return; this.trauma = Math.min(1, this.trauma + amount); }   // BUGFIX B23: Reduce Motion → no camera shake
   snapTo(pos) { this.target.copy(pos); this.lookAt.copy(pos); this.cam.position.copy(pos).add(this.offset).multiplyScalar(1); }
+  /** S18: hand the camera to a cinematic rig. rig = { pos:Vector3, look:Vector3 } (mutated by the caller each frame) or null to release. */
+  setCine(rig, blend = rig ? 1 : 0) { this.cine = rig || null; this.cineBlend = rig ? Math.max(0, Math.min(1, blend)) : 0; }
 
   /** @param {THREE.Vector3} followPos @param {number} dt seconds */
   update(followPos, dt) {
@@ -33,9 +40,15 @@ export class GameCamera {
     this.lookAt.y = damp(this.lookAt.y, this.target.y, this.followSpeed, dt);
     this.lookAt.z = damp(this.lookAt.z, this.target.z, this.followSpeed, dt);
 
-    const px = this.lookAt.x + this.offset.x * this.zoom;
-    const py = this.lookAt.y + this.offset.y * this.zoom;
-    const pz = this.lookAt.z + this.offset.z * this.zoom;
+    let px = this.lookAt.x + this.offset.x * this.zoom;
+    let py = this.lookAt.y + this.offset.y * this.zoom;
+    let pz = this.lookAt.z + this.offset.z * this.zoom;
+    // S18: blend toward the cinematic rig (position + look-at both lerped, so a 0→1 ramp is a smooth pull, not a snap)
+    const rig = this.cine, k = rig ? this.cineBlend : 0;
+    if (rig && k > 0) {
+      px += (rig.pos.x - px) * k; py += (rig.pos.y - py) * k; pz += (rig.pos.z - pz) * k;
+      this._cineLook.copy(this.lookAt).lerp(rig.look, k);
+    } else this._cineLook.copy(this.lookAt);
 
     // shake
     if (this.trauma > 0) {
@@ -48,11 +61,11 @@ export class GameCamera {
         noise1(t, 3) * this.maxShakePos * s * 0.5
       );
       this.cam.position.set(px, py, pz).add(this._shakeOff);
-      this.cam.lookAt(this.lookAt);
+      this.cam.lookAt(this._cineLook);
       this.cam.rotation.z += noise1(t, 4) * this.maxShakeRot * s;
     } else {
       this.cam.position.set(px, py, pz);
-      this.cam.lookAt(this.lookAt);
+      this.cam.lookAt(this._cineLook);
     }
   }
 }

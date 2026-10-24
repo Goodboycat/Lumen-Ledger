@@ -5,6 +5,7 @@
 //   const story = new StorySystem(economy, { data, bus });        // listens to eco:* and ui:* on the economy's bus (or opts.bus)
 //   story.onSeasonStart(n) · story.onSeasonEnd(report) · story.next() · story.choose(i) · story.onEvent(id) · story.onScam(offer)
 //   story.onWin() · story.onLose() · story.update(dt) · story.state · story.serialize() / StorySystem.deserialize(json, economy, opts)
+//   story.hold(on) (S18) — true: queued groups wait (a cinematic is playing); false: resume. story.held
 //
 // What it does (all output goes over the bus, UI is 7B's job)
 //   • Plays line GROUPS one line at a time: `story:line {speaker,text,mood?,choices?}` → waits for `ui:advance` (7B dialogue) → next line.
@@ -67,6 +68,7 @@ export class StorySystem {
     this.bus = opts.bus || economy?.bus || defaultBus;
     this.data = opts.data || null;
     this.opts = { autoplay: true, autoAdvance: false, lineGap: 0.12, midAt: 0.5, ledgerLinesBeforeReview: true, tutorial: true, ...opts };
+    this.held = false;                                                                  // S18: hold() defers new groups (cinematics)
     this.state = { season: 0, midPlayed: 0, openingPlayed: 0, endedPlayed: 0, toastsFired: [], scamsSeen: [], eventsSeen: [], finale: null, choicesMade: 0 };
     this.queue = [];          // [{ group, lines, i, onDone, meta }]
     this.current = null;      // group being played
@@ -188,6 +190,9 @@ export class StorySystem {
     else if (this.opts.autoAdvance && !this.current && this.queue.length) this._startNext();
   }
   skipGroup() { if (this.current) this._finishCurrent(); return this._startNext(); }
+  /** S18 cinematics: while held, queued groups are NOT started (nothing is lost — they play as soon as hold(false) is called).
+   *  A group already on screen keeps going. Used by the CinematicDirector so the Season-1 opening / victory lines wait for the shot. */
+  hold(on = true) { const was = !!this.held; this.held = !!on; if (was && !this.held && !this.current && this.queue.length) this._startNext(); return this.held; }
   clear() { this.queue.length = 0; this.current = null; this.line = null; this.pendingOffer = null; this.bus.emit('story:end', { group: 'clear' }); }
   destroy() { for (const off of this._offs) off(); this._offs.length = 0; this.clear(); }
 
@@ -223,7 +228,7 @@ export class StorySystem {
     return true;
   }
   _startNext() {
-    if (this.current || !this.queue.length) return this.line;
+    if (this.current || !this.queue.length || this.held) return this.line;
     this.current = this.queue.shift(); this.current.i = 0;
     this.bus.emit('story:begin', { group: this.current.group, ...this.current.meta, count: this.current.lines.length });
     return this._show(this.current.lines[0]);

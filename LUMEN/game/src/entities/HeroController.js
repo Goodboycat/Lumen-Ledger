@@ -77,6 +77,10 @@ export class HeroController {
     this.pose = { torsoYaw: 0, torsoPitch: 0, armR: new THREE.Euler(), armL: new THREE.Euler(), swordRoll: 0, lunge: 0, stretchAlong: 1, stretchAcross: 1, squash: 1, headTilt: 0 };
     this._restPose();
     this.combo = 0;
+    // S18 cinematics: when set, `inputOverride` replaces the player's stick for locomotion. It is `{ move: Vector2-like {x,y} }` in
+    // the same screen-relative space as game.input.move (y>0 = up/−z); attack/ability presses are ignored while it is set. The
+    // CinematicDirector writes it each frame to walk Pip from the pier to the plaza and clears it with null. No AI, no pathing.
+    this.inputOverride = null;
   }
 
   get position() { return this.root.position; }
@@ -255,16 +259,16 @@ export class HeroController {
   // ---------------- locomotion ----------------
   update(dt) {
     this.t += dt;
-    const inp = this.game.input, p = this.p;
+    const inp = this.game.input, p = this.p, ov = this.inputOverride;
     if (this.state !== 'attack') this.recoverToLand();     // BUGFIX P11/P21: runs BEFORE the attack press so mashing ⚔ on a shore edge cannot skip it
-    if (inp.pressed('attack')) this.doAttack();
+    if (!ov && inp.pressed('attack')) this.doAttack();
 
     if (this.state === 'attack') {
       // allow steering input to be buffered as facing only
       this.vel.set(0, 0, 0);
     } else {
-      const mv = inp.move;
-      const wantMove = mv.lengthSq() > 0.001;
+      const mv = ov ? ov.move : inp.move;
+      const wantMove = (mv.x * mv.x + mv.y * mv.y) > 0.001;
       // Camera-relative: screen up = -z world (camera looks toward -z from +z offset)
       _dir.set(mv.x, 0, -mv.y);
       const targetSpeed = wantMove ? this.speed * Math.min(1, _dir.length()) : 0;
