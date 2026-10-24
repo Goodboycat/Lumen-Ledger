@@ -12,7 +12,7 @@ Dev material (demos, tests, tools, screenshots, handoffs) lives in `../../LUMEN_
 | **itch.io** | upload `lumen-ledger-web.zip` built by the recipe in `docs/ITCH_PAGE.md §6` (index.html at the zip root, viewport 1280 × 720, "click to launch") |
 | **Android** | Flutter WebView APK (Chat 14) loads this same folder from assets; `?import=LUMEN1:<base64>` restores a save exported from the web build |
 
-Useful URL flags: `?autoplay` skip the title · `?endless` start in Endless · `?season=30` 30‑second seasons (QA) · `?debug` fps / draw calls / dpr overlay · `?mute` · `?nohistory` (disable the Android back‑button sentinel).
+Useful URL flags: `?autoplay` skip the title · `?endless` start in Endless · `?season=30` 30‑second seasons (QA) · `?debug` fps / draw calls / dpr overlay · `?nocine` no cinematics (title orbit / arrival walk-in / victory lighthouse) · `?cinelog` console trace of the cinematic bus events · `?mute` · `?nohistory` (disable the Android back‑button sentinel).
 
 **Controls** — WASD/arrows move · Space/J/Enter hammer/confirm · E/F interact · **B** build menu · Q W E R F G abilities (**tap** W = Bubble Shield, **hold** W = walk; R rotates the ghost while placing) · jars panel: ↩ withdraws half a jar, **PAY BARON** repays debt from the pouch · Esc/P pause · Enter/click advances dialogue, 1–4 picks a choice. Touch: left virtual joystick, A / B / 🔨 buttons, ⏸ in the HUD. Full table in `docs/GDD.md §6`.
 
@@ -26,7 +26,7 @@ game/
     anim/               Easing, Tween, Sequencer, SquashStretch · heroAnims (9 moves) · heroAbilities (6 FinLit abilities)
     assets/             geo.js primitives · hero.js (Pip) · props/ (12 stalls × 3 levels, nature, landmarks, decor, merge + bake) · creatures/ (12 Glimmers, 6 helpers, Baron + 3 Collectors)
     systems/            economy.js + economyData.js (pure JS, 4 jars, loans, events, scams) · build.js · customers.js + flowfield.js · story.js · save.js · perf.js
-    vfx/                VFX.js base · pack1 (coins, confetti, rings, trails) · pack2 (Debt Fog ring, vignette, lighthouse beam, fogRecede)
+    vfx/                VFX.js base · pack1 (coins, confetti, rings, trails) · pack2 (Debt Fog ring, vignette, lighthouse beam, fogRecede) · storm.js · cinematics.js (S18: title orbit, arrival walk-in, victory lighthouse)
     world/Island.js     three-lobe island, zones, grid, isLand, pier edge
     Game.js             createSandbox (world + systems on one loop) · createLumenGame (state machine, UI + story wiring, save, tutorial, perf)
   ui/                   pure HTML/CSS/JS: hud, jars, build tray, ledger, dialogue, toast, title, pause/settings, touch pad, index.js (mountUI)
@@ -43,7 +43,7 @@ No build step, no npm, no bundler, no CDN: vanilla ES modules + one vendored lib
 ```bash
 cd LUMEN/game
 node tools/check.mjs                       # imports every src/**/*.js — ~1 s, no browser
-node tools/check.mjs --props --creatures --hero --abilities --economy --build --customers --ui --story --vfx --world --sandbox --game --save --audio
+node tools/check.mjs --props --creatures --hero --abilities --economy --build --customers --ui --story --vfx --world --sandbox --game --save --audio --enemies --storm --cinematics
                                            # full headless suite ~5 s: builds every prop/creature, runs the economy sim, walks the whole game S1→win→endless→lose
 node tests/economy.sim.mjs --sweep         # balance: sensible wins S10 17/20 seeds, borrow-everything loses S3–S5
 bash tools/setup_browser.sh && node tools/smoke.mjs index.html --shots --close   # optional browser smoke (errors, fps, draw calls, PNGs → tools/shots/)

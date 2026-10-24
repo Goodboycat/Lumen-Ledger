@@ -14,6 +14,11 @@ LUMEN/
     README.md         how to play, controls, URL flags
 ```
 
+## Cinematics (S18, 2026-10-24)
+Three short camera pieces (`game/src/vfx/cinematics.js`): the island is built behind the **title** and the camera orbits it; a fresh PLAY
+walks Pip from the **pier to the plaza** (letterbox, SKIP / tap / Esc) before the tutorial and the Season-1 lines; on the win the camera
+flies to the **lighthouse**, the lamp lights, then it returns to Pip for the finale. Reduce Motion turns each into a cut. `?nocine` disables them.
+
 ## Guided tutorial
 Opens on the first PLAY (desktop and mobile). A hand 👆 points at the joystick (WASD on desktop), ⚔ Attack, ✋ Interact, 🔨 Build,
 🚀 Deploy / ⬆ Upgrade, the 4 jars, the Debt Fog bar, the Season pill and ⏸ Pause. While it is open the game is paused and the
