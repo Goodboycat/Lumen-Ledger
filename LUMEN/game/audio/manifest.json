@@ -480,6 +480,136 @@
         "f": 440,
         "dur": 0.12
       }
+    },
+    "enemy_wave": {
+      "file": "sfx/enemy_wave.ogg",
+      "vol": 0.8,
+      "pitchVar": 0.03,
+      "synth": {
+        "type": "sad",
+        "f": 220,
+        "dur": 0.45
+      }
+    },
+    "baron_arrive": {
+      "file": "sfx/baron_arrive.ogg",
+      "vol": 0.9,
+      "pitchVar": 0,
+      "synth": {
+        "type": "sad",
+        "f": 165,
+        "dur": 0.8
+      }
+    },
+    "enemy_hit": {
+      "file": "sfx/enemy_hit.ogg",
+      "vol": 0.8,
+      "pitchVar": 0.08,
+      "synth": {
+        "type": "thud",
+        "f": 200,
+        "dur": 0.14
+      }
+    },
+    "hero_hit": {
+      "file": "sfx/hero_hit.ogg",
+      "vol": 0.9,
+      "pitchVar": 0.05,
+      "synth": {
+        "type": "buzz",
+        "f": 180,
+        "dur": 0.22
+      }
+    },
+    "enemy_flee": {
+      "file": "sfx/enemy_flee.ogg",
+      "vol": 0.8,
+      "pitchVar": 0.06,
+      "synth": {
+        "type": "whoosh",
+        "f": 900,
+        "dur": 0.35
+      }
+    },
+    "baron_warn": {
+      "file": "sfx/baron_warn.ogg",
+      "vol": 0.9,
+      "pitchVar": 0,
+      "synth": {
+        "type": "buzz",
+        "f": 260,
+        "dur": 0.5
+      }
+    },
+    "fog_cannon": {
+      "file": "sfx/fog_cannon.ogg",
+      "vol": 0.9,
+      "pitchVar": 0.04,
+      "synth": {
+        "type": "thud",
+        "f": 70,
+        "dur": 0.45
+      }
+    },
+    "baron_stomp": {
+      "file": "sfx/baron_stomp.ogg",
+      "vol": 1.0,
+      "pitchVar": 0.03,
+      "synth": {
+        "type": "thud",
+        "f": 55,
+        "dur": 0.6
+      }
+    },
+    "fog_minigun": {
+      "file": "sfx/fog_minigun.ogg",
+      "vol": 0.7,
+      "pitchVar": 0.05,
+      "synth": {
+        "type": "tick",
+        "f": 600,
+        "dur": 0.12
+      }
+    },
+    "storm_warn": {
+      "file": "sfx/storm_warn.ogg",
+      "vol": 0.7,
+      "pitchVar": 0,
+      "synth": {
+        "type": "whoosh",
+        "f": 300,
+        "dur": 1.2
+      }
+    },
+    "thunder": {
+      "file": "sfx/thunder.ogg",
+      "vol": 1.0,
+      "pitchVar": 0.05,
+      "synth": {
+        "type": "thud",
+        "f": 45,
+        "dur": 1.1
+      }
+    },
+    "cine_sting": {
+      "file": "sfx/cine_sting.ogg",
+      "vol": 0.7,
+      "pitchVar": 0,
+      "synth": {
+        "type": "chime",
+        "f": 660,
+        "dur": 0.9
+      }
+    },
+    "lamp_light": {
+      "file": "sfx/lamp_light.ogg",
+      "vol": 0.9,
+      "pitchVar": 0,
+      "synth": {
+        "type": "chime",
+        "f": 880,
+        "dur": 1.4
+      }
     }
   },
   "music": {

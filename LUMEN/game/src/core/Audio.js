@@ -59,6 +59,26 @@ export const DEFAULT_EVENTS = {
   'sandbox:tip':       { sfx: 'coin',        cooldown: 0.1, vol: 0.5, pitch: 1.3 },
   'cust:state':        { sfx: 'cust_happy',  cooldown: 0.25, vol: 0.5, pick: (p) => p?.state !== 'react' ? { sfx: null } : p?.reaction === 'happy' ? { sfx: 'cust_happy' } : { sfx: 'cust_grumble' } },
   'ui:touch':          { sfx: 'click',       cooldown: 0.08, vol: 0.4 },
+  // S16–S20 enemies (2026-10-24): Collectors + Baron Gilt. Every Baron attack is telegraphed → the warn sting IS the audio cue (GAME_BIBLE §2: always a sound before damage).
+  'enemy:wave':        { sfx: 'enemy_wave',  cooldown: 1, pick: (p) => p?.boss ? { sfx: 'baron_arrive' } : null },
+  'enemy:hit':         { sfx: 'enemy_hit',   cooldown: 0.08 },
+  'enemy:heroHit':     { sfx: 'hero_hit',    cooldown: 0.2, pick: (p) => p?.debt ? { sfx: 'loan_stamp' } : null },
+  'enemy:blocked':     { sfx: 'shield',      cooldown: 0.2, vol: 0.6, pitch: 1.4 },
+  'enemy:defeated':    { sfx: 'enemy_flee',  cooldown: 0.2, pick: (p) => p?.kind === 'baron' ? { sfx: 'fanfare', vol: 0.7 } : null },
+  'enemy:home':        { sfx: 'toast',       cooldown: 1, vol: 0.5 },
+  'enemy:baronWarn':   { sfx: 'baron_warn',  cooldown: 0.3, pick: (p) => p?.kind === 'stomp' ? { sfx: 'baron_warn', pitch: 0.7 } : p?.kind === 'umbrella' ? { sfx: 'baron_warn', pitch: 1.3 } : null },
+  'enemy:cannon':      { sfx: 'fog_cannon',  cooldown: 0.2 },
+  'enemy:stomp':       { sfx: 'baron_stomp', cooldown: 0.3 },
+  'enemy:minigun':     { sfx: 'fog_minigun', cooldown: 0.5 },
+  'enemy:dash':        { sfx: 'sweep',       cooldown: 0.5, pitch: 0.8 },
+  'enemy:dashEnd':     { sfx: 'crumble',     cooldown: 0.5, vol: 0.7 },
+  'enemy:baronInterrupted': { sfx: 'deny',   cooldown: 0.2, vol: 0.5, pitch: 0.8 },
+  // S17 storm weather
+  'storm:warn':        { sfx: 'storm_warn',  cooldown: 2 },
+  'storm:hit':         { sfx: 'thunder',     cooldown: 2 },
+  // S18 cinematics: a soft chime when a shot begins (not the title orbit), the lighthouse lamp lighting on the victory shot
+  'cine:begin':        { sfx: 'cine_sting',  cooldown: 1, vol: 0.7, pick: (p) => p?.shot === 'title' ? { sfx: null } : null },
+  'cine:lamp':         { sfx: 'lamp_light',  cooldown: 2 },
 };
 export const VOICE_SFX = { pip: 'voice_pip', owl: 'voice_owl', tallyOwl: 'voice_owl', baron: 'voice_baron', glimmer: 'voice_glimmer', collector: 'voice_collector' };
 const ABILITY_SFX = { coinMagnetDash: 'magnet', bubbleShield: 'shield', growthStomp: 'stomp', ledgerFlash: 'flash', haggleShout: 'shout', fogSweep: 'sweep' };
