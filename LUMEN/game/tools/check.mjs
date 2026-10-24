@@ -1230,12 +1230,22 @@ if (doEnemies) {
     E.waveSeason = 0; sb.eco.state.season = 3; sb.sched.wave = false; sb.eco.state.day01 = 0.71; step(); if (E.list.length !== 3) throw new Error('S3 wave size ' + E.list.length);
     const tgt = sb.hero.deps.targets(); if (!tgt.some((t) => t.enemy)) throw new Error('hero targets lack enemies');
     // 5. S16b: season end → everyone WALKS back to the pier (state 'home', no longer a target, no coin), steps off within homeTimeout; hero speed reset
-    const defB = E.stats.defeated, exitP = E._exit; const dHome0 = E.list.map((e) => Math.hypot(e.g.position.x - exitP.x, e.g.position.z - exitP.z));
+    // S19 / P58: the 3 land at DIFFERENT shore points (≥ 5 u apart, #0 at the pier) and ≥ 6 u from Pip; e.home remembers the landing point
+    const exitP = E._exit, homes = E.list.map((e) => e.home); if (Math.hypot(homes[0].x - exitP.x, homes[0].z - exitP.z) > 1e-6) throw new Error('#0 not at the pier');
+    for (let i = 0; i < homes.length; i++) for (let j = i + 1; j < homes.length; j++) if (Math.hypot(homes[i].x - homes[j].x, homes[i].z - homes[j].z) < ENEMY_RULES.spawnSpread) throw new Error(`S19 landing points too close ${JSON.stringify(homes)}`);
+    for (const h of homes) if (Math.hypot(h.x - sb.hero.root.position.x, h.z - sb.hero.root.position.z) < ENEMY_RULES.spawnHeroMin) throw new Error('S19 landed too close to Pip');
+    for (const e of E.list) if (!sb.island.isLand(e.g.position.x, e.g.position.z) && e.i !== 0) throw new Error('S19 landed in water');
+    // S19 / P58: separation — stack all 3 on Pip's position, chase for 1 s → every pair ≥ separation apart
+    sb.eco.state.spark = 0; for (const e of E.list) { e.g.position.copy(sb.hero.root.position).add(new THREE.Vector3(1.5, 0, 0)); } run(1);
+    for (let i = 0; i < E.list.length; i++) for (let j = i + 1; j < E.list.length; j++) { const d = E.list[i].g.position.distanceTo(E.list[j].g.position); if (d < ENEMY_RULES.separation * 0.9) throw new Error(`S19 collectors still stacked (${d.toFixed(2)} u)`); }
+    // S16b: season end → everyone walks back to its own landing point
+    const defB = E.stats.defeated; for (const e of E.list) e.g.position.set(sb.hero.root.position.x + 2, 0, sb.hero.root.position.z);
+    const dHome0 = E.list.map((e) => Math.hypot(e.g.position.x - e.home.x, e.g.position.z - e.home.z));
     sb.keys.endSeason(); if (E.list.length !== 3 || E.active.length !== 0 || E.leaving.length !== 3 || E.targets().length !== 0) throw new Error(`season end: list ${E.list.length} active ${E.active.length} leaving ${E.leaving.length}`);
     if (E.heroSpeedMul !== 1 || sb.hero.speed !== 5.2) throw new Error('hero speed not reset');
-    run(1); const dHome1 = E.list.map((e) => Math.hypot(e.g.position.x - exitP.x, e.g.position.z - exitP.z)); if (!dHome1.every((d, i) => d < dHome0[i] - 0.5)) throw new Error(`not walking to the pier ${dHome0.map((d) => d.toFixed(1))} → ${dHome1.map((d) => d.toFixed(1))}`);
+    run(1); const dHome1 = E.list.map((e) => Math.hypot(e.g.position.x - e.home.x, e.g.position.z - e.home.z)); if (E.list.length !== 3 || !dHome1.every((d, i) => d < dHome0[i] - 0.5)) throw new Error(`not walking home ${dHome0.map((d) => d.toFixed(1))} → ${dHome1.map((d) => d.toFixed(1))}`);
     sb.eco.state.spark = 7; for (const e of E.list) { e.g.position.copy(sb.hero.root.position); e.hitAt = -99; } step(); if (sb.eco.state.spark !== 7) throw new Error('leaving enemy still hits');
-    for (const e of E.list) e.g.position.set(exitP.x, 0, exitP.z); run(ENEMY_RULES.homeTimeout + 1);
+    for (const e of E.list) e.g.position.set(e.home.x, 0, e.home.z); run(ENEMY_RULES.homeTimeout + 1);
     const defEv = (ev['enemy:defeated'] || []).length; if (E.list.length !== 0 || E.stats.defeated !== defB || defEv !== 1 || !ev['enemy:gone'].some((g) => g.why === 'home')) throw new Error(`walk-home not finished: ${E.list.length} left, defeated ${E.stats.defeated}/${defB}`);   // (sb.coins also grows from customer tips while the clock runs → not compared)
     // 5b. the new season's wave still spawns normally after a walk-home
     E.waveSeason = 0; sb.eco.state.season = 4; sb.sched.wave = false; sb.sched.season = 4; sb.eco.state.day01 = 0.71; step(); if (E.list.length !== 4) throw new Error('S4 wave after walk-home ' + E.list.length); E.clear();
@@ -1260,7 +1270,7 @@ if (doEnemies) {
     for (let i = 0; i < (BARON_POWERS[3].every + 0.5) * 30 && !ev['enemy:charge']; i++) { b12.g.position.copy(sb.hero.root.position).add(new THREE.Vector3(5, 0, 0)); step(); } if (!ev['enemy:charge'] || !(b12.charging > 0)) throw new Error('charge');
     for (const e of E.list) if (!isFinite(e.g.position.x) || !isFinite(e.g.scale.y)) throw new Error('enemy NaN');
     E.clear(); if (game.scene.children.some((o) => o.userData?.type === 'baron' || o.userData?.type === 'collector')) throw new Error('clear left meshes');
-    console.log(`  S1 wave 1 · chase ${d0.toFixed(1)}→${d1.toFixed(1)} u · contact −1 ✦ pouch only (jars untouched, floor 0) · Bubble Shield BLOCKED · 2 sword hits → flee + 1 ✦ coin → gone · hero targets merged · S3 wave 3 · season end → walk home to pier → off (no coin) · S4 re-lands · S6 Baron (hp 6, −2 ✦; at 0 ✦ → DEBT) → ${ENEMY_RULES.baron.reward} ✦ (P60) · S9 Baron+3 fogSlow(×${BARON_POWERS[0].mul})/levy/summon(cap ${ENEMY_RULES.minionCap}) · S12 Baron+5 charge · stats ${JSON.stringify(E.stats)}  OK`);
+    console.log(`  S1 wave 1 · chase ${d0.toFixed(1)}→${d1.toFixed(1)} u · contact −1 ✦ pouch only (jars untouched, floor 0) · Bubble Shield BLOCKED · 2 sword hits → flee + 1 ✦ coin → gone · hero targets merged · S3 wave 3 · S19 spread landings + separation · season end → walk home to own shore point → off (no coin) · S4 re-lands · S6 Baron (hp 6, −2 ✦; at 0 ✦ → DEBT) → ${ENEMY_RULES.baron.reward} ✦ (P60) · S9 Baron+3 fogSlow(×${BARON_POWERS[0].mul})/levy/summon(cap ${ENEMY_RULES.minionCap}) · S12 Baron+5 charge · stats ${JSON.stringify(E.stats)}  OK`);
   } catch (err) { bad++; console.log('  enemies FAIL →', err.message); }
 }
 

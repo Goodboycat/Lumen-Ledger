@@ -13,13 +13,14 @@
 //   • Collector: hp 2 (Pip's sword hits knock it back; the 2nd hit "defeats" it → it flees off the island → drops 1 ✦ tip coin).
 //     Contact with Pip (≤ 0.75 u, 1.1 s cooldown per enemy) takes 1 ✦ from the POUCH (never from jars, never below 0, never debt).
 //     Bubble Shield (W) blocks the hit (deps.isShielded). Speed 2.9 u/s < Pip's 5.2 so a player can always walk away.
-//   • Wave size = min(5, season). Spawns at the pier (customers' boat) and walks in. Only one wave per season.
+//   • Wave size = min(5, season). S19: #0 (and the Baron) land at the pier, the others at different shore points ≥ 5 u apart and ≥ 6 u from Pip
+//     (island.landEdge in 12 directions, cached) with a fog-puff arrival; chasing enemies are pushed apart (separation 0.8 u). Only one wave per season.
 //   • Season ≥ 6: the five Collectors stay home; BARON GILT comes as the boss (hp 6, speed 2.4, contact 2 ✦) plus (season − 6) minions, max 5.
 //     Baron powers unlock one per season (BARON_POWERS): S7 fogSlow (Pip walks at 60 % within 3 u of the Baron) · S8 levy (every 9 s, if ≥ 4 u away,
 //     he raises his cane and takes 1 ✦ remotely — "a bill by post") · S9 summon (every 14 s, calls one more Collector while below the minion cap) ·
 //     S10 charge (every 8 s dashes at Pip, 2 ✦ on contact). Defeating the Baron pays 3 ✦ (P60) and ends the wave for the season.
 //   • S16b: a Collector hit at 0 ✦ does nothing ("empty!"), but a BARON hit at 0 ✦ bills the shortfall as DEBT (state.debt += missing, eco:loan kind 'forced').
-//   • S16b: at season end nobody vanishes in place — sendHome() makes everyone turn and WALK back to the pier (deps.exitPoint = spawnPoint)
+//   • S16b: at season end nobody vanishes in place — sendHome() makes everyone turn and WALK back to the shore point they landed on (S19; e.home, pier for #0)
 //     and step off the island there (state 'home'); not a defeat: no coin, no stats. clear() is still the instant teardown (win / lose / dispose).
 //   • Transient: never saved. A season end / CONTINUE just clears the wave; the next season's scam re-spawns it.
 //   • Pure data + Three transforms. Works headless with the mock vfx (every vfx call is optional-chained).
@@ -30,6 +31,8 @@ export const ENEMY_RULES = {
   baron:     { hp: 6, speed: 2.4, radius: 0.95, hitSpark: 2, hitCooldown: 1.4, reward: 3 },   // P60: reward 5 → 3
   waveCap: 5, bossFrom: 6, minionCap: 5, knockback: 1.6, fleeSeconds: 2.2, approachMin: 0.55,
   homeSpeedMul: 1.25, homeRadius: 0.6, homeTimeout: 14,   // S16b walk-home: a bit brisk, arrive within 0.6 u of the exit, hard cap so nobody is stuck forever
+  // S19 / P58: Collectors keep apart (O(n²) separation, n ≤ 10) and land at DIFFERENT shore points (≥ spawnSpread u apart, ≥ spawnHeroMin u from Pip)
+  separation: 0.8, separationPush: 2.5, spawnSpread: 5, spawnHeroMin: 6,
 };
 /** Baron powers by the season he FIRST has them (cumulative). */
 export const BARON_POWERS = [
@@ -56,6 +59,36 @@ export class EnemySystem {
     this._spawn = deps.spawnPoint ? { x: deps.spawnPoint.x, z: deps.spawnPoint.z } : { x: 0, z: -10 };
     this._exit = deps.exitPoint ? { x: deps.exitPoint.x, z: deps.exitPoint.z } : this._spawn;   // S16b: where they walk back to
     this._baseHeroSpeed = this.hero?.speed ?? 5.2;
+    this._shore = null;                // S19: lazily computed shore landing points (pier first, then around the island)
+  }
+
+  // ------------------------------------------------------------------ S19 landing points
+  /** Shore land cells around the island, reached by walking out from the origin in 12 directions (pier first). Cached. */
+  _shorePoints() {
+    if (this._shore) return this._shore;
+    const out = [{ x: this._spawn.x, z: this._spawn.z }];
+    const edge = this.island?.landEdge;
+    if (typeof edge === 'function') {
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2 + 0.26; const p = edge.call(this.island, Math.cos(a), Math.sin(a));
+        if (p && out.every((q) => Math.hypot(q.x - p.x, q.z - p.z) >= 2)) out.push({ x: p.x, z: p.z });
+      }
+    }
+    return (this._shore = out);
+  }
+  /** Pick a landing point for wave member `i`: far from Pip and from the points already used this wave; the pier is always the first. */
+  _landingPoint(i, used) {
+    const pts = this._shorePoints(), hp = this.hero?.root?.position;
+    if (i === 0 || pts.length === 1) return pts[0];
+    let best = null, bestScore = -Infinity;
+    for (const p of pts) {
+      const dHero = hp ? Math.hypot(p.x - hp.x, p.z - hp.z) : 99;
+      let dUsed = 99; for (const u of used) dUsed = Math.min(dUsed, Math.hypot(p.x - u.x, p.z - u.z));
+      // score: spread first (capped at spawnSpread), then distance from Pip (capped at spawnHeroMin), tiny jitter so ties vary by season
+      const score = Math.min(dUsed, ENEMY_RULES.spawnSpread) * 2 + Math.min(dHero, ENEMY_RULES.spawnHeroMin) + ((p.x * 7 + p.z * 13 + i) % 5) * 0.01;
+      if (score > bestScore) { bestScore = score; best = p; }
+    }
+    return best || pts[0];
   }
 
   get baron() { return this.list.find((e) => e.kind === 'baron' && e.state !== 'flee') || null; }
@@ -66,7 +99,7 @@ export class EnemySystem {
   /** Spawn the wave for `season`. Returns the enemies created (empty when the wave already ran this season). */
   spawnWave(season = this.eco?.state?.season || 1) {
     if (!this.enabled || this.waveSeason === season || this.eco?.state?.ended) return [];
-    this.waveSeason = season;
+    this.waveSeason = season; this._waveUsed = [];
     const out = [];
     if (season >= ENEMY_RULES.bossFrom) {
       out.push(this._spawnOne('baron', season));
@@ -80,13 +113,16 @@ export class EnemySystem {
     return out;
   }
   _spawnOne(kind, season, i = 0) {
-    const R = ENEMY_RULES[kind];
+    const R = ENEMY_RULES[kind]; let e_home = this._spawn;
     const g = kind === 'baron' ? (this.C.makeBaronGilt ? this.C.makeBaronGilt({ seed: season }) : stub()) : (this.C.makeFogCollector ? this.C.makeFogCollector(i % 3, { seed: season * 10 + i }) : stub());
     const anim = this.C.VillainAnimator ? new this.C.VillainAnimator(g, { vfx: this.vfx, fogPool: this.fogPool, game: this.game }) : stubAnim(g);
+    // S19: each wave member lands at its own shore point (pier for #0 / the Baron, then spread ≥ 5 u apart and ≥ 6 u from Pip)
+    const used = this._waveUsed || (this._waveUsed = []); const lp = this._landingPoint(i, used); used.push(lp); e_home = lp;
     const a = (i / Math.max(1, ENEMY_RULES.waveCap)) * Math.PI * 0.6 - Math.PI * 0.3;
-    g.position.set(this._spawn.x + Math.sin(a) * (0.6 + i * 0.4), 0, this._spawn.z + Math.cos(a) * 0.3 * i);
+    g.position.set(lp.x + Math.sin(a) * 0.3, 0, lp.z + Math.cos(a) * 0.3);
     this.game.scene?.add(g);
-    const e = { kind, g, root: g, anim, hp: R.hp, maxHp: R.hp, state: 'chase', hitAt: -99, knock: new THREE.Vector3(), fleeT: 0, powers: kind === 'baron' ? baronPowersFor(season) : [], timers: { levy: 0, summon: 0, charge: 0 }, charging: 0, season, i };
+    if (this.fogPool && i > 0) this.fogPool.spawn?.(_v.set(lp.x, 0.3, lp.z), _d.set(0, 1, 0), 6);   // arrival puff so it does not look like popping in
+    const e = { kind, g, root: g, anim, hp: R.hp, maxHp: R.hp, state: 'chase', hitAt: -99, knock: new THREE.Vector3(), fleeT: 0, powers: kind === 'baron' ? baronPowersFor(season) : [], timers: { levy: 0, summon: 0, charge: 0 }, charging: 0, season, i, home: e_home };
     anim.play?.(kind === 'baron' ? 'strut' : 'walk');
     this.list.push(e); this.stats.spawned++;
     this.bus?.emit('enemy:spawn', { kind, season, powers: e.powers });
@@ -145,7 +181,8 @@ export class EnemySystem {
       if (e.knock.lengthSq() > 1e-4) { const nx = p.x + e.knock.x * dt * 4, nz = p.z + e.knock.z * dt * 4; if (this.island?.isLand?.(nx, nz) ?? true) p.set(nx, 0, nz); e.knock.multiplyScalar(Math.max(0, 1 - 6 * dt)); }
       if (e._fleeAnimT > 0) { e._fleeAnimT -= dt; if (e._fleeAnimT <= 0) e.anim.play?.(e.kind === 'baron' ? 'strut' : 'walk'); }
       if (e.state === 'home') {                                   // S16b: walking back to the pier, then stepping off
-        _d.set(this._exit.x - p.x, 0, this._exit.z - p.z); const dd = _d.length(); if (dd > 1e-4) _d.divideScalar(dd);
+        const ex = e.home || this._exit;                                 // S19: each one walks back to the shore point it landed on
+        _d.set(ex.x - p.x, 0, ex.z - p.z); const dd = _d.length(); if (dd > 1e-4) _d.divideScalar(dd);
         e.homeT += dt;
         if (dd > ENEMY_RULES.homeRadius && e.homeT < ENEMY_RULES.homeTimeout) {
           const sp = R.speed * ENEMY_RULES.homeSpeedMul; const nx = p.x + _d.x * sp * dt, nz = p.z + _d.z * sp * dt;
@@ -178,13 +215,32 @@ export class EnemySystem {
       if (e.kind === 'baron') {
         if (e.powers.includes('fogSlow') && dist <= BARON_POWERS[0].radius) slow = Math.min(slow, BARON_POWERS[0].mul);
         if (e.powers.includes('levy')) { e.timers.levy += dt; if (e.timers.levy >= BARON_POWERS[1].every) { e.timers.levy = 0; if (dist >= BARON_POWERS[1].minDist) { e.anim.play?.('offerDeal'); this.stats.levies++; this._hitHero(e, BARON_POWERS[1].spark); this.bus?.emit('enemy:levy', {}); } } }
-        if (e.powers.includes('summon')) { e.timers.summon += dt; if (e.timers.summon >= BARON_POWERS[2].every) { e.timers.summon = 0; if (this.list.filter((m) => m.kind === 'collector' && m.state !== 'flee').length < ENEMY_RULES.minionCap) { e.anim.play?.('fogPuff'); this.stats.summons++; const m = this._spawnOne('collector', e.season, this.stats.summons); m.g.position.set(p.x + 0.8, 0, p.z + 0.8); this.bus?.emit('enemy:summon', {}); } } }
+        if (e.powers.includes('summon')) { e.timers.summon += dt; if (e.timers.summon >= BARON_POWERS[2].every) { e.timers.summon = 0; if (this.list.filter((m) => m.kind === 'collector' && m.state !== 'flee').length < ENEMY_RULES.minionCap) { e.anim.play?.('fogPuff'); this.stats.summons++; const m = this._spawnOne('collector', e.season, this.stats.summons); m.g.position.set(p.x + 0.8, 0, p.z + 0.8); m.home = e.home;   // summoned minion appears beside the Baron and leaves with him this.bus?.emit('enemy:summon', {}); } } }
         if (e.powers.includes('charge')) { e.timers.charge += dt; if (e.timers.charge >= BARON_POWERS[3].every && dist > 2) { e.timers.charge = 0; e.charging = BARON_POWERS[3].dur; this.stats.charges++; e.anim.play?.('taunt'); this.vfx?.pop?.show?.(_v.set(p.x, 1.8, p.z).clone(), 'MINE!', { color: '#FFD54F' }); this.bus?.emit('enemy:charge', {}); } }
       }
       e.anim.update?.(dt);
     }
+    this._separate(dt);
     if (slow !== this.heroSpeedMul) this._setHeroSpeed(slow);
     this.fogPool?.update(dt);
+  }
+  /** S19 / P58: push chasing enemies apart so they never read as one blob (O(n²), n ≤ 10). Respects isLand. */
+  _separate(dt) {
+    const L = this.list, minD = ENEMY_RULES.separation, push = ENEMY_RULES.separationPush * dt;
+    for (let i = 0; i < L.length; i++) {
+      const a = L[i]; if (a.state !== 'chase') continue;
+      for (let j = i + 1; j < L.length; j++) {
+        const b = L[j]; if (b.state !== 'chase') continue;
+        const pa = a.g.position, pb = b.g.position; let dx = pb.x - pa.x, dz = pb.z - pa.z; let d = Math.hypot(dx, dz);
+        if (d >= minD) continue;
+        if (d < 1e-4) { dx = Math.cos(i * 2.4 + j); dz = Math.sin(i * 2.4 + j); d = 1; }   // exactly stacked → pick a deterministic direction
+        const f = Math.min(push, (minD - d) * 0.5) / d; const ox = dx * f, oz = dz * f;
+        // the Baron is heavier: minions move out of his way
+        const wa = a.kind === 'baron' ? 0 : b.kind === 'baron' ? 1 : 0.5, wb = 1 - wa;
+        if (wa && (this.island?.isLand?.(pa.x - ox * wa * 2, pa.z - oz * wa * 2) ?? true)) { pa.x -= ox * wa * 2; pa.z -= oz * wa * 2; }
+        if (wb && (this.island?.isLand?.(pb.x + ox * wb * 2, pb.z + oz * wb * 2) ?? true)) { pb.x += ox * wb * 2; pb.z += oz * wb * 2; }
+      }
+    }
   }
   _setHeroSpeed(mul) { this.heroSpeedMul = mul; if (this.hero) this.hero.speed = this._baseHeroSpeed * mul; }
 
