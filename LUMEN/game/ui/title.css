@@ -46,18 +46,22 @@
 .ll-title-btn.cont { background: var(--blue); }
 .ll-title-btn.endless { background: var(--grass); }
 /* S24 toon labels: the logo look — a dark navy plate, warm gradient letters with a thick ink outline and a hard ink drop, a top shine */
-.ll-title-btn { background: linear-gradient(180deg, #3b4760 0%, #2a3447 100%); border-color: #1b2230; box-shadow: 0 6px 0 #141a26; }
-.ll-title-btn.play, .ll-title-btn.cont, .ll-title-btn.endless { background: linear-gradient(180deg, #3b4760 0%, #2a3447 100%); }
-.ll-title-btn::after { content: ''; position: absolute; left: 12px; right: 12px; top: 5px; height: 8px; border-radius: 999px; background: rgba(255,255,255,.14); pointer-events: none; }
-.ll-title-btn::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 6px; border-radius: 0 6px 6px 0; background: var(--orange); }
-.ll-title-btn.cont::before { background: var(--blue); } .ll-title-btn.endless::before { background: var(--grass); }
-.ll-title-btn-ico { grid-row: 1 / 3; font-size: 32px; font-weight: 900; text-align: center; color: #FFD54F; -webkit-text-stroke: 1.5px #141a26; paint-order: stroke fill; text-shadow: 0 3px 0 #141a26; }
-.ll-title-btn.cont .ll-title-btn-ico { color: #81D4FA; } .ll-title-btn.endless .ll-title-btn-ico { color: #A5E882; }
-.ll-title-btn-lab { font-size: 30px; font-weight: 900; letter-spacing: 1px; line-height: 1.05; color: #FFB74D; font-family: "Arial Rounded MT Bold", "Baloo 2", "Nunito", Arial Black, Arial, sans-serif; background: linear-gradient(180deg, #FFF3C4 0%, #FFD54F 35%, #FFA726 60%, #F57C00 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 1.5px #141a26; paint-order: stroke fill; filter: drop-shadow(0 3px 0 #141a26) drop-shadow(0 0 1px #141a26); transform: rotate(-1.5deg); transform-origin: 0 100%; }
-.ll-title-btn.cont .ll-title-btn-lab { background-image: linear-gradient(180deg, #ffffff 0%, #BFE8FF 38%, #4FC3F7 62%, #1E88E5 100%); }
-.ll-title-btn.endless .ll-title-btn-lab { background-image: linear-gradient(180deg, #F4FFE0 0%, #C5F08A 38%, #7ED957 62%, #43A047 100%); }
-.ll-title-btn-sub { font-size: 11px; font-weight: 800; letter-spacing: .3px; color: var(--paper); opacity: .8; }
-.ll-title-btn.focus::before { content: '▸'; left: -22px; top: 50%; bottom: auto; width: auto; border-radius: 0; background: none; color: var(--paper); text-shadow: 0 2px 0 var(--ink); transform: translateY(-50%); font-size: 20px; animation: ll-swing 1s ease-in-out infinite; }
+/* S26 (2026-10-24, reference image): bright colour PLATE per mode (orange PLAY · blue CONTINUE · green ENDLESS) inside a navy rim with a hard
+   navy drop; label = chunky toon letters, pale fill, ink outline, hard drop; a glossy shine strip on top; sub-line in dark ink on the plate. */
+.ll-title-btn { border: 4px solid #1b2230; box-shadow: 0 6px 0 #141a26, inset 0 -6px 0 rgba(0,0,0,.18), inset 0 2px 0 rgba(255,255,255,.35); }
+.ll-title-btn.play    { background: linear-gradient(180deg, #FFC048 0%, #FF9F1C 55%, #F5820B 100%); }
+.ll-title-btn.cont    { background: linear-gradient(180deg, #7FD3FF 0%, #42B3F4 55%, #1E8FE0 100%); }
+.ll-title-btn.endless { background: linear-gradient(180deg, #B6F27A 0%, #7ED957 55%, #4CB944 100%); }
+.ll-title-btn::after { content: ''; position: absolute; left: 10px; right: 10px; top: 4px; height: 9px; border-radius: 999px; background: rgba(255,255,255,.32); pointer-events: none; }
+.ll-title-btn::before { content: none; }
+.ll-title-btn-ico { grid-row: 1 / 3; font-size: 30px; font-weight: 900; text-align: center; color: #3FD44A; -webkit-text-stroke: 1.5px #141a26; paint-order: stroke fill; text-shadow: 0 3px 0 #141a26; }
+.ll-title-btn.cont .ll-title-btn-ico { color: #FFF4C2; } .ll-title-btn.endless .ll-title-btn-ico { color: #7A3FC9; }
+.ll-title-btn-lab { font-size: 30px; font-weight: 900; letter-spacing: 1.5px; line-height: 1.05; font-family: "Arial Rounded MT Bold", "Baloo 2", "Nunito", Arial Black, Arial, sans-serif; color: #FFF6D6; background: linear-gradient(180deg, #FFFFFF 0%, #FFF0B8 55%, #FFD36B 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 1.6px #141a26; paint-order: stroke fill; filter: drop-shadow(0 3px 0 #141a26) drop-shadow(0 0 1px #141a26); transform: rotate(-1deg); transform-origin: 0 100%; }
+.ll-title-btn.cont .ll-title-btn-lab { background-image: linear-gradient(180deg, #ffffff 0%, #E8F7FF 55%, #BFE8FF 100%); }
+.ll-title-btn.endless .ll-title-btn-lab { background-image: linear-gradient(180deg, #ffffff 0%, #F4FFE0 55%, #D7F7B0 100%); }
+.ll-title-btn-sub { font-size: 11px; font-weight: 800; letter-spacing: .3px; color: #2a1a05; opacity: .85; white-space: nowrap; }
+.ll-title-btn.cont .ll-title-btn-sub { color: #0b2a45; } .ll-title-btn.endless .ll-title-btn-sub { color: #14350f; }
+.ll-title-btn.focus::before { content: '▸'; position: absolute; left: -22px; top: 50%; bottom: auto; width: auto; border-radius: 0; background: none; color: var(--paper); text-shadow: 0 2px 0 var(--ink); transform: translateY(-50%); font-size: 20px; animation: ll-swing 1s ease-in-out infinite; pointer-events: none; }
 .ll-title-btn:hover, .ll-title-btn.focus { filter: brightness(1.08); transform: translateY(-2px); box-shadow: 0 8px 0 #141a26; }
 .ll-title-btn.down, .ll-title-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #141a26; transition: none; }
 .ll-title-btn:disabled, .ll-title.busy .ll-title-btn { opacity: .5; filter: grayscale(.4); pointer-events: none; }
