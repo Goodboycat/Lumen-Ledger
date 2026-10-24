@@ -16,16 +16,19 @@
 //   • Wave size = min(5, season). S19: #0 (and the Baron) land at the pier, the others at different shore points ≥ 5 u apart and ≥ 6 u from Pip
 //     (island.landEdge in 12 directions, cached) with a fog-puff arrival; chasing enemies are pushed apart (separation 0.8 u). Only one wave per season.
 //   • Season ≥ 6: the five Collectors stay home; BARON GILT comes as the boss (hp 6, contact 2 ✦) plus (season − 6) minions, max 5.
-//     S20 / P59: the Baron is a STATIONARY boss. He lands on his podium (ENEMY_RULES.baron.podium, plaza edge) and never chases. Every
-//     `attackEvery` s he picks ONE attack; each one shows a ground decal (BaronDecalPool, red/purple ring) for ≥ `telegraph` s BEFORE it lands:
-//       cannon (S6+)   Debt-Fog Cannon — a ring appears where Pip stands; when the fog ball lands, 1 ✦ if Pip is still inside (radius 1.3 u)
-//                      and a fog PUDDLE stays `puddleSeconds` s: Pip walks at 60 % inside it (replaces the S7 fogSlow aura).
-//       stomp  (S8+)   Big Stomp — he crouches, a big ring (radius 3.5 u) grows around the podium, he jumps and lands: 2 ✦ + knockback inside,
-//                      then he is DAZED `dazed` s (hp window: run in and hit him).
-//       summon (S9+)   calls one more Collector while below the minion cap (unchanged S9 power).
-//       cannon3 (S10+) fan of 3 cannon shots (Pip's cell + 2 flanks).
-//     Bubble Shield (W) still blocks every hit. Defeating the Baron pays 3 ✦ (P60) and ends the wave for the season. `charge` (a chase move) is gone.
-//     Pip damages him by running in: he is a target whenever he is not mid-jump (state 'chase' = alive on the podium).
+//     S20 (revised 2026-10-24): the Baron is a VERY SLOW chaser (speed 1.1 u/s — Pip 5.2) that lands at the pier and plods after Pip.
+//     Every `attackEvery` s (2–4 s, random) he picks ONE attack; each shows a ground decal (BaronDecalPool, red/purple ring) for ≥ `telegraph` s
+//     (0.8 s) BEFORE anything lands. He stops walking while winding up / recovering:
+//       cannon  (S6+)  Debt-Fog Cannon — a ring appears where Pip stands; when the fog ball lands, 1 ✦ if Pip is still inside (radius 1.3 u)
+//                      and a fog PUDDLE stays `puddleSeconds` s: Pip walks at 60 % inside it (S7 'puddle' power = longer puddles).
+//       stomp   (S8+)  Big Stomp — he crouches (shadow grows), a big ring (r 3.5 u) grows at PIP'S LAST POSITION, he jumps high toward it
+//                      and lands there: 2 ✦ + knockback inside, then he is DAZED `dazed` s (hp window: run in and hit him).
+//       minigun (S9+)  Fog Minigun — 2 s of fog pellets that AIM-CHASE Pip (a small ring tracks him with lag `aimLag`, one pellet every
+//                      `minigunEvery` s lands where the ring was): 1 ✦ per pellet that catches Pip (0.5 s mercy between pellets).
+//       umbrella (S10+) Umbrella Dash — he aims (ring tracks Pip for the telegraph), then dashes 7 u/s along the aimed line: 2 ✦ + shove if he
+//                      passes within 1.1 u. Either way he ends PARALYSED `umbrellaStun` s (4 s) — the biggest hit window.
+//     Bubble Shield (W) still blocks every hit. Defeating the Baron pays 3 ✦ (P60) and ends the wave for the season.
+//     Pip damages him by running in: he is a target whenever he is not mid-air (stomp jump) or mid-dash.
 //   • S16b: a Collector hit at 0 ✦ does nothing ("empty!"), but a BARON hit at 0 ✦ bills the shortfall as DEBT (state.debt += missing, eco:loan kind 'forced').
 //   • S16b: at season end nobody vanishes in place — sendHome() makes everyone turn and WALK back to the shore point they landed on (S19; e.home, pier for #0)
 //     and step off the island there (state 'home'); not a defeat: no coin, no stats. clear() is still the instant teardown (win / lose / dispose).
@@ -35,10 +38,12 @@ import * as THREE from '../../vendor/three.module.js';
 
 export const ENEMY_RULES = {
   collector: { hp: 2, speed: 2.9, radius: 0.75, hitSpark: 1, hitCooldown: 1.1, reward: 1 },
-  // S20: stationary boss. speed only matters for the walk-home; podium = where he stands (plaza edge, chosen at spawn: nearest land cell to this)
-  baron:     { hp: 6, speed: 2.4, radius: 0.95, hitSpark: 2, hitCooldown: 1.4, reward: 3, podium: { x: 0, z: -4.5 },   // P60: reward 5 → 3
-               attackEvery: 3.5, telegraph: 0.9, cannonRadius: 1.3, cannonSpark: 1, puddleSeconds: 4, puddleMul: 0.6,
-               stompRadius: 3.5, stompSpark: 2, stompKnock: 3.2, stompAir: 0.55, dazed: 1.5, fanSpread: 1.8 },
+  // S20 (revised): very slow chaser. podium kept only as a fallback landing spot when there is no shore point.
+  baron:     { hp: 6, speed: 1.1, homeSpeed: 2.4, radius: 0.95, hitSpark: 2, hitCooldown: 1.4, reward: 3, podium: { x: 0, z: -4.5 },   // P60: reward 5 → 3
+               attackMin: 2, attackMax: 4, attackEvery: 3, telegraph: 0.8, cannonRadius: 1.3, cannonSpark: 1, puddleSeconds: 4, puddleMul: 0.6,
+               stompRadius: 3.5, stompSpark: 2, stompKnock: 3.2, stompAir: 0.7, stompRange: 9, dazed: 2.5, fanSpread: 1.8,
+               minigunSeconds: 2, minigunEvery: 0.25, minigunRadius: 0.8, minigunSpark: 1, minigunMercy: 0.5, aimLag: 4,
+               umbrellaSpeed: 7, umbrellaRange: 8, umbrellaRadius: 1.1, umbrellaSpark: 2, umbrellaKnock: 2.5, umbrellaStun: 4 },
   waveCap: 5, bossFrom: 6, minionCap: 5, knockback: 1.6, fleeSeconds: 2.2, approachMin: 0.55,
   homeSpeedMul: 1.25, homeRadius: 0.6, homeTimeout: 14,   // S16b walk-home: a bit brisk, arrive within 0.6 u of the exit, hard cap so nobody is stuck forever
   // S19 / P58: Collectors keep apart (O(n²) separation, n ≤ 10) and land at DIFFERENT shore points (≥ spawnSpread u apart, ≥ spawnHeroMin u from Pip)
@@ -46,11 +51,11 @@ export const ENEMY_RULES = {
 };
 /** Baron attacks by the season he FIRST has them (cumulative). S20: every entry is a telegraphed attack picked by the attack cycle. */
 export const BARON_POWERS = [
-  { season: 6,  id: 'cannon',  title: 'Debt-Fog Cannon', text: 'A ring marks where Pip stands — step out before the fog ball lands (1 ✦). It leaves a slowing puddle.' },
-  { season: 7,  id: 'puddle',  title: 'Fog Puddles',     text: 'Cannon puddles linger longer and Pip walks at 60 % inside them.', seconds: 7 },
-  { season: 8,  id: 'stomp',   title: 'Big Stomp',       text: 'He crouches, a wide ring grows, he jumps — 2 ✦ and a shove inside it. Dazed after: hit him!' },
-  { season: 9,  id: 'summon',  title: 'Summons',         text: 'The Baron calls another Collector.' },
-  { season: 10, id: 'cannon3', title: 'Triple Cannon',   text: 'Three fog balls: your cell and both flanks.' },
+  { season: 6,  id: 'cannon',   title: 'Debt-Fog Cannon', text: 'A ring marks where Pip stands — step out before the fog ball lands (1 ✦). It leaves a slowing puddle.' },
+  { season: 7,  id: 'puddle',   title: 'Fog Puddles',     text: 'Cannon puddles linger longer and Pip walks at 60 % inside them.', seconds: 7 },
+  { season: 8,  id: 'stomp',    title: 'Big Stomp',       text: 'He crouches, a wide ring grows where you stood, he leaps there — 2 ✦ and a shove inside it. Dazed after: hit him!' },
+  { season: 9,  id: 'minigun',  title: 'Fog Minigun',     text: 'Two seconds of fog pellets that follow you — keep moving, the aim lags behind.' },
+  { season: 10, id: 'umbrella', title: 'Umbrella Dash',   text: 'He aims his umbrella and dashes along the line. Sidestep — then hit him: he is paralysed for 4 s.' },
 ];
 export function baronPowersFor(season) { return BARON_POWERS.filter((p) => season >= p.season).map((p) => p.id); }
 
@@ -105,7 +110,8 @@ export class EnemySystem {
     this.C = deps.creatures || {};
     this.list = [];
     this.waveSeason = 0;               // season of the last spawned wave (one per season)
-    this.stats = { spawned: 0, defeated: 0, hitsTaken: 0, sparkLost: 0, sparkWon: 0, baronDefeats: 0, cannons: 0, stomps: 0, summons: 0, attacksDodged: 0 };
+    this.stats = { spawned: 0, defeated: 0, hitsTaken: 0, sparkLost: 0, sparkWon: 0, baronDefeats: 0, cannons: 0, stomps: 0, miniguns: 0, pellets: 0, dashes: 0, attacksDodged: 0 };
+    this._rng = deps.rng || Math.random;
     this.fogPool = (!deps.headless && this.C.FogPuffPool && game.scene) ? new this.C.FogPuffPool(game.scene, 24) : null;
     this.decals = new BaronDecalPool(deps.headless ? null : game.scene, 12);   // S20: warning rings + fog puddles (headless: logic only)
     this.puddles = [];                 // S20: [{x,z,r,until}] fog puddles that slow Pip (puddleMul) while he stands inside
@@ -176,18 +182,18 @@ export class EnemySystem {
     const a = (i / Math.max(1, ENEMY_RULES.waveCap)) * Math.PI * 0.6 - Math.PI * 0.3;
     g.position.set(lp.x + Math.sin(a) * 0.3, 0, lp.z + Math.cos(a) * 0.3);
     let podium = null;
-    if (kind === 'baron') { podium = this._podium(); g.position.set(podium.x, 0, podium.z); }   // S20: the boss appears ON his podium (plaza edge) and stays there
+    if (kind === 'baron') { podium = this._podium(); if (!this.island?.isLand?.(lp.x, lp.z) && !this.island?.landEdge) g.position.set(podium.x, 0, podium.z); }   // S20 (revised): the boss lands at the pier like everyone else; podium only as a headless fallback
     this.game.scene?.add(g);
     if (this.fogPool && (i > 0 || kind === 'baron')) this.fogPool.spawn?.(_v.set(g.position.x, 0.3, g.position.z), _d.set(0, 1, 0), kind === 'baron' ? 10 : 6);   // arrival puff so it does not look like popping in
     const e = { kind, g, root: g, anim, hp: R.hp, maxHp: R.hp, state: 'chase', hitAt: -99, knock: new THREE.Vector3(), fleeT: 0, powers: kind === 'baron' ? baronPowersFor(season) : [], timers: { attack: kind === 'baron' ? R.attackEvery * 0.5 : 0, summon: 0 }, season, i, home: e_home,
-      podium, attack: null, dazed: 0, phase: 'idle' };   // S20 boss fields: attack = the telegraphed attack in flight, dazed = recovery window, phase 'idle'|'warn'|'air'|'dazed'
+      podium, attack: null, dazed: 0, phase: 'idle', nextAttack: kind === 'baron' ? R.attackMin : 0 };   // S20 boss fields: attack = the telegraphed attack in flight, dazed = recovery window, phase 'idle'|'warn'|'air'|'fire'|'dash'|'dazed'
     anim.play?.(kind === 'baron' ? 'strut' : 'walk');
     this.list.push(e); this.stats.spawned++;
     this.bus?.emit('enemy:spawn', { kind, season, powers: e.powers });
     return e;
   }
 
-  /** S20: the Baron's podium — ENEMY_RULES.baron.podium snapped to the nearest land cell (spiral search), so he never stands in water or on a stall. */
+  /** S20: fallback landing cell — ENEMY_RULES.baron.podium snapped to the nearest land cell (spiral search). Only used headless without island.landEdge. */
   _podium() {
     if (this._podiumPt) return this._podiumPt;
     const P = ENEMY_RULES.baron.podium; const ok = (x, z) => (this.island?.isLand?.(x, z) ?? true) && !(this.deps.occupied?.(x, z));
@@ -196,17 +202,17 @@ export class EnemySystem {
     return (this._podiumPt = best);
   }
 
-  /** Targets for the hero's sword (HeroController deps.targets shape). The Baron is untouchable only while in the air (stomp). */
-  targets() { return this.list.filter((e) => e.state === 'chase' && e.phase !== 'air').map((e) => ({ root: e.g, enemy: e, hit: (dir, power) => this.hitEnemy(e, dir, power) })); }
+  /** Targets for the hero's sword (HeroController deps.targets shape). The Baron is untouchable only while in the air (stomp) or mid-dash. */
+  targets() { return this.list.filter((e) => e.state === 'chase' && e.phase !== 'air' && e.phase !== 'dash').map((e) => ({ root: e.g, enemy: e, hit: (dir, power) => this.hitEnemy(e, dir, power) })); }
 
   /** Pip's hit landed on `e`: knockback + flinch; hp 0 → defeated (flee + reward coin). The Baron does not slide (stationary boss) but the hit still cancels his wind-up. */
   hitEnemy(e, dir, power = 1) {
-    if (e.state !== 'chase' || e.phase === 'air') return false;
+    if (e.state !== 'chase' || e.phase === 'air' || e.phase === 'dash') return false;
     e.hp -= 1;
-    if (e.kind === 'baron') { if (e.phase === 'warn' && e.attack) { this._cancelAttack(e); } }
+    if (e.kind === 'baron') { if (e.phase === 'warn' && e.attack) { this._cancelAttack(e); } else if (e.phase === 'fire') { this._endMinigun(e); } }
     else e.knock.copy(dir).setY(0).normalize().multiplyScalar(ENEMY_RULES.knockback * power);
     e.anim.hit?.(dir, power);
-    if (e.hp <= 0) this._defeat(e); else { e.anim.play?.('flee'); e._fleeAnimT = 0.45; }
+    if (e.hp <= 0) this._defeat(e); else if (e.kind !== 'baron' || e.phase === 'idle') { e.anim.play?.('flee'); e._fleeAnimT = 0.45; }
     this.bus?.emit('enemy:hit', { kind: e.kind, hp: e.hp });
     return true;
   }
@@ -254,7 +260,7 @@ export class EnemySystem {
         _d.set(ex.x - p.x, 0, ex.z - p.z); const dd = _d.length(); if (dd > 1e-4) _d.divideScalar(dd);
         e.homeT += dt;
         if (dd > ENEMY_RULES.homeRadius && e.homeT < ENEMY_RULES.homeTimeout) {
-          const sp = R.speed * ENEMY_RULES.homeSpeedMul; const nx = p.x + _d.x * sp * dt, nz = p.z + _d.z * sp * dt;
+          const sp = (R.homeSpeed || R.speed) * ENEMY_RULES.homeSpeedMul;   // the slow Baron hurries a bit on the way out const nx = p.x + _d.x * sp * dt, nz = p.z + _d.z * sp * dt;
           if (this.island?.isLand?.(nx, nz) ?? true) p.set(nx, 0, nz); else { p.x += _d.x * sp * dt * 0.5; p.z += _d.z * sp * dt * 0.5; }   // the pier itself is off the land grid: keep going
           e.anim.faceTo?.(_v.set(p.x + _d.x, 0, p.z + _d.z));
         } else {                                                  // arrived (or timed out): fade out over 0.6 s — no coin, no stats
@@ -270,7 +276,7 @@ export class EnemySystem {
         if (e.fleeT <= 0) { this._remove(i); }
         e.anim.update?.(dt); continue;
       }
-      // chase (Collectors) — the Baron is stationary (S20): he stays on his podium and runs the attack cycle instead
+      // chase (Collectors) — the Baron (S20) plods after Pip very slowly and runs the attack cycle
       _d.set(hp.x - p.x, 0, hp.z - p.z); const dist = _d.length(); if (dist > 1e-4) _d.divideScalar(dist);
       if (e.kind === 'baron') { this._baronUpdate(e, dt, dist); e.anim.update?.(dt); continue; }
       if (dist > ENEMY_RULES.approachMin) {
@@ -290,66 +296,91 @@ export class EnemySystem {
     this.fogPool?.update(dt);
   }
 
-  // ------------------------------------------------------------------ S20 Baron boss cycle
-  /** Stationary boss: idle → (every attackEvery s) pick ONE attack → warn (decal ≥ telegraph s) → land → idle / dazed. */
+  // ------------------------------------------------------------------ S20 Baron boss cycle (revised: slow chaser + 4 telegraphed attacks)
+  /** Slow chaser: idle (walks at R.speed) → every 2–4 s pick ONE attack → warn (decal ≥ telegraph s, he stands still) → land → idle / dazed / stunned. */
   _baronUpdate(e, dt, dist) {
     const R = ENEMY_RULES.baron, hp = this.hero.root.position, p = e.g.position, t = this.game.time;
-    // keep him on the podium (separation / knock may nudge him)
-    if (e.podium && e.phase !== 'air') { p.x += (e.podium.x - p.x) * Math.min(1, dt * 6); p.z += (e.podium.z - p.z) * Math.min(1, dt * 6); }
-    e.anim.faceTo?.(hp);
-    // contact still hurts (he is big) — only on the podium, not mid-jump
-    if (e.phase !== 'air' && dist <= R.radius && t - e.hitAt >= R.hitCooldown) { e.hitAt = t; this._hitHero(e, R.hitSpark); e.anim.play?.('taunt'); }
-    if (e.phase === 'dazed') { e.dazed -= dt; if (e.dazed <= 0) { e.phase = 'idle'; e.anim.play?.('strut'); } return; }
+    // contact still hurts (he is big) — not mid-jump / mid-dash (those have their own hits)
+    if (e.phase !== 'air' && e.phase !== 'dash' && dist <= R.radius && t - e.hitAt >= R.hitCooldown) { e.hitAt = t; this._hitHero(e, R.hitSpark); if (e.phase === 'idle') e.anim.play?.('taunt'); }
+    if (e.phase === 'dazed') { e.dazed -= dt; if (e.dazed <= 0) { e.phase = 'idle'; e.timers.attack = 0; e.anim.play?.('strut'); } return; }
     if (e.phase === 'idle') {
+      e.anim.faceTo?.(hp);
+      if (dist > ENEMY_RULES.approachMin) {   // very slow plod toward Pip
+        const nx = p.x + _d.x * R.speed * dt, nz = p.z + _d.z * R.speed * dt;
+        if (this.island?.isLand?.(nx, nz) ?? true) p.set(nx, 0, nz); else { p.x += _d.x * R.speed * dt * 0.3; }
+      }
       e.timers.attack += dt;
-      if (e.timers.attack >= R.attackEvery) { e.timers.attack = 0; this._baronPick(e, dist); }
+      if (e.timers.attack >= e.nextAttack) { e.timers.attack = 0; e.nextAttack = R.attackMin + (R.attackMax - R.attackMin) * this._rng(); this._baronPick(e, dist); }
       return;
     }
     const A = e.attack; if (!A) { e.phase = 'idle'; return; }
     A.t += dt;
     if (e.phase === 'warn') {
-      if (A.kind === 'stomp') { const k = Math.min(1, A.t / R.telegraph); e.g.scale.set(1 + 0.08 * k, 1 - 0.22 * k, 1 + 0.08 * k); }   // crouch
+      if (A.kind === 'stomp') { const k = Math.min(1, A.t / R.telegraph); e.g.scale.set(1 + 0.08 * k, 1 - 0.22 * k, 1 + 0.08 * k); const sh = e.g.userData?.parts?.shadow; if (sh) sh.scale.setScalar(1 + 0.8 * k); }   // crouch + shadow grows
+      if (A.kind === 'minigun' || A.kind === 'umbrella') this._aimTrack(e, A, dt);   // aim ring chases Pip during the wind-up
+      else e.anim.faceTo?.(hp);
       if (A.t >= R.telegraph) this._baronLand(e, A);
       return;
     }
-    if (e.phase === 'air') {   // stomp jump: up and down over stompAir s, then the ring lands
-      const k = Math.min(1, A.t / R.stompAir); p.y = Math.sin(k * Math.PI) * 2.2; e.g.scale.set(1, 1 + 0.25 * Math.sin(k * Math.PI), 1);
-      if (k >= 1) { p.y = 0; e.g.scale.set(1, 1, 1); this._stompLand(e, A); }
+    if (e.phase === 'air') {   // stomp jump: a high arc from the take-off point to the target ring over stompAir s
+      const k = Math.min(1, A.t / R.stompAir), s0 = A.spots[0];
+      p.x = A.from.x + (s0.x - A.from.x) * k; p.z = A.from.z + (s0.z - A.from.z) * k; p.y = Math.sin(k * Math.PI) * 3.2; e.g.scale.set(1, 1 + 0.25 * Math.sin(k * Math.PI), 1);
+      const sh = e.g.userData?.parts?.shadow; if (sh) { sh.position.y = -p.y + 0.012; sh.scale.setScalar(1.8 - 0.8 * Math.sin(k * Math.PI)); }
+      if (k >= 1) { p.y = 0; e.g.scale.set(1, 1, 1); if (sh) { sh.position.y = 0.012; sh.scale.setScalar(1); } this._stompLand(e, A); }
+      return;
+    }
+    if (e.phase === 'fire') {   // minigun: aim ring keeps chasing Pip, a pellet lands at its position every minigunEvery s
+      this._aimTrack(e, A, dt);
+      A.fireT += dt;
+      while (A.fireT >= R.minigunEvery) { A.fireT -= R.minigunEvery; this._pellet(e, A); }
+      if (A.t >= R.minigunSeconds) this._endMinigun(e);
+      return;
+    }
+    if (e.phase === 'dash') {   // umbrella dash along the aimed line until the range is used up (or the shore)
+      const step = R.umbrellaSpeed * dt, nx = p.x + A.dir.x * step, nz = p.z + A.dir.z * step;
+      if ((this.island?.isLand?.(nx, nz) ?? true) && A.gone < R.umbrellaRange) { p.set(nx, 0, nz); A.gone += step; } else A.gone = R.umbrellaRange;
+      if (!A.hit && Math.hypot(hp.x - p.x, hp.z - p.z) <= R.umbrellaRadius) {
+        A.hit = true; const took = this._hitHero(e, R.umbrellaSpark);
+        if (took > 0 || !this.deps.isShielded?.()) this._shove(hp, p, R.umbrellaKnock, A.dir);
+      }
+      if (A.gone >= R.umbrellaRange) this._dashEnd(e, A);
     }
   }
-  /** Choose the next attack from the powers the Baron has this season. cannon3 replaces cannon when owned; stomp 1 in 3 when owned; summon when below the cap. */
+  /** Choose the next attack from the powers the Baron has this season (round-robin over a weighted pool; stomp/umbrella only in range). */
   _baronPick(e, dist) {
-    const R = ENEMY_RULES.baron, has = (id) => e.powers.includes(id), hp = this.hero.root.position;
-    const minions = this.list.filter((m) => m.kind === 'collector' && m.state === 'chase').length;
-    const pool = [];
-    if (has('summon') && minions < ENEMY_RULES.minionCap) pool.push('summon');
-    if (has('stomp') && dist <= R.stompRadius + 1.5) pool.push('stomp', 'stomp');
-    pool.push(has('cannon3') ? 'cannon3' : 'cannon', has('cannon3') ? 'cannon3' : 'cannon');
+    const R = ENEMY_RULES.baron, has = (id) => e.powers.includes(id), hp = this.hero.root.position, p = e.g.position;
+    const pool = ['cannon'];
+    if (has('stomp') && dist <= R.stompRange) pool.push('stomp', 'stomp');
+    if (has('minigun')) pool.push('minigun');
+    if (has('umbrella') && dist <= R.umbrellaRange) pool.push('umbrella', 'umbrella');
     const kind = pool[(e._pick = (e._pick || 0) + 1) % pool.length];
-    if (kind === 'summon') { this._summon(e); e.phase = 'idle'; return; }
-    const A = { kind, t: 0, spots: [] };
-    if (kind === 'stomp') { A.spots.push({ x: e.podium?.x ?? e.g.position.x, z: e.podium?.z ?? e.g.position.z, r: R.stompRadius }); e.anim.play?.('taunt'); }
-    else {
-      // aim at Pip's current cell (+ 2 flanks for cannon3, perpendicular to the Baron→Pip line)
-      const dx = hp.x - e.g.position.x, dz = hp.z - e.g.position.z, L = Math.hypot(dx, dz) || 1, px = -dz / L, pz = dx / L;
-      A.spots.push({ x: hp.x, z: hp.z, r: R.cannonRadius });
-      if (kind === 'cannon3') for (const s of [-1, 1]) A.spots.push({ x: hp.x + px * R.fanSpread * s, z: hp.z + pz * R.fanSpread * s, r: R.cannonRadius });
-      e.anim.play?.('offerDeal');
-    }
+    const A = { kind, t: 0, spots: [], from: { x: p.x, z: p.z } };
+    if (kind === 'stomp') { A.spots.push({ x: hp.x, z: hp.z, r: R.stompRadius }); e.anim.play?.('taunt'); }                      // ring at Pip's LAST position
+    else if (kind === 'cannon') { A.spots.push({ x: hp.x, z: hp.z, r: R.cannonRadius }); e.anim.play?.('offerDeal'); }
+    else { A.aim = { x: hp.x, z: hp.z }; A.spots.push({ x: hp.x, z: hp.z, r: kind === 'minigun' ? R.minigunRadius : R.umbrellaRadius }); A.fireT = 0; e.anim.play?.(kind === 'minigun' ? 'fogPuff' : 'taunt'); }
     for (const s of A.spots) s.decal = this.decals.show(s, s.r, R.telegraph + 0.05, 'warn');
     e.attack = A; e.phase = 'warn';
-    this.vfx?.pop?.show?.(_v.set(e.g.position.x, 2.0, e.g.position.z).clone(), kind === 'stomp' ? 'HRRM…' : 'PAY UP!', { color: '#FFD54F' });
+    this.vfx?.pop?.show?.(_v.set(p.x, 2.0, p.z).clone(), kind === 'stomp' ? 'HRRM…' : kind === 'umbrella' ? 'EN GARDE!' : kind === 'minigun' ? 'BRRR!' : 'PAY UP!', { color: '#FFD54F' });
     this.bus?.emit('enemy:baronWarn', { kind, spots: A.spots.length, telegraph: R.telegraph });
   }
-  _summon(e) {
-    const p = e.g.position; e.anim.play?.('fogPuff'); this.stats.summons++;
-    const m = this._spawnOne('collector', e.season, this.stats.summons); m.g.position.set(p.x + 0.8, 0, p.z + 0.8); m.home = e.home;   // appears beside the Baron and leaves with him
-    this.bus?.emit('enemy:summon', {});
+  /** Minigun / umbrella aim: the warning ring chases Pip with lag (exp. smoothing, aimLag per second) and the decal follows. */
+  _aimTrack(e, A, dt) {
+    const R = ENEMY_RULES.baron, hp = this.hero.root.position, k = 1 - Math.exp(-R.aimLag * dt);
+    A.aim.x += (hp.x - A.aim.x) * k; A.aim.z += (hp.z - A.aim.z) * k;
+    const s = A.spots[0]; s.x = A.aim.x; s.z = A.aim.z; if (s.decal) { s.decal.pos.set(s.x, 0.06, s.z); s.decal.life = Math.max(s.decal.life, 0.2); }
+    e.anim.faceTo?.(_v.set(A.aim.x, 0, A.aim.z));
   }
-  /** Telegraph is over: the attack lands. Cannon(s) hit now; the stomp lifts him into the air first. */
+  /** Telegraph is over: the attack lands. Cannon hits now; the stomp lifts him into the air; minigun starts firing; umbrella starts the dash. */
   _baronLand(e, A) {
-    const R = ENEMY_RULES.baron;
-    if (A.kind === 'stomp') { e.phase = 'air'; A.t = 0; e.g.scale.set(1, 1, 1); return; }
+    const R = ENEMY_RULES.baron, p = e.g.position;
+    if (A.kind === 'stomp') { e.phase = 'air'; A.t = 0; A.from = { x: p.x, z: p.z }; e.g.scale.set(1, 1, 1); return; }
+    if (A.kind === 'minigun') { e.phase = 'fire'; A.t = 0; A.fireT = 0; A.hitAt = -99; this.stats.miniguns++; if (A.spots[0].decal) A.spots[0].decal.life = Math.max(A.spots[0].decal.life, R.minigunSeconds + 0.1); this.bus?.emit('enemy:minigun', {}); return; }
+    if (A.kind === 'umbrella') {
+      const dx = A.aim.x - p.x, dz = A.aim.z - p.z, L = Math.hypot(dx, dz) || 1; A.dir = { x: dx / L, z: dz / L }; A.gone = 0; A.hit = false;
+      if (A.spots[0].decal) A.spots[0].decal.life = Math.min(A.spots[0].decal.life, 0.3);
+      e.phase = 'dash'; A.t = 0; this.stats.dashes++; e.anim.play?.('strut'); if (e.anim) e.anim.timeScale = 2.5;
+      this.vfx?.sparks?.burst?.(_v.set(p.x, 0.5, p.z).clone(), 6, 3); this.bus?.emit('enemy:dash', {}); return;
+    }
     const hp = this.hero.root.position; let hit = false;
     for (const s of A.spots) {
       this.stats.cannons++;
@@ -364,17 +395,43 @@ export class EnemySystem {
     this.bus?.emit('enemy:cannon', { kind: A.kind, shots: A.spots.length, hit });
     e.attack = null; e.phase = 'idle'; e.timers.attack = 0;
   }
+  /** One minigun pellet lands where the aim ring is now: fog puff + 1 ✦ if Pip is inside (mercy gap between hits). */
+  _pellet(e, A) {
+    const R = ENEMY_RULES.baron, hp = this.hero.root.position, s = A.spots[0]; this.stats.pellets++;
+    this.fogPool?.spawn?.(_v.set(s.x, 0.3, s.z), _d.set(0, 1, 0), 2);
+    if (Math.hypot(hp.x - s.x, hp.z - s.z) <= s.r && A.t - A.hitAt >= R.minigunMercy) { A.hitAt = A.t; A.hits = (A.hits || 0) + 1; this._hitHero(e, R.minigunSpark); }
+  }
+  _endMinigun(e) {
+    const A = e.attack; if (!A) { e.phase = 'idle'; return; }
+    if (A.spots[0]?.decal) A.spots[0].decal.life = Math.min(A.spots[0].decal.life, 0.15);
+    if (!A.hits) { this.stats.attacksDodged++; this.vfx?.pop?.show?.(_v.copy(this.hero.root.position).setY(1.6).clone(), 'DODGED', { color: '#A5D6A7' }); }
+    this.bus?.emit('enemy:minigunEnd', { hits: A.hits || 0 });
+    e.attack = null; e.phase = 'idle'; e.timers.attack = 0; e.anim.play?.('strut');
+  }
+  /** The dash is spent: the Baron trips over his umbrella and is PARALYSED umbrellaStun s (biggest hit window). */
+  _dashEnd(e, A) {
+    const R = ENEMY_RULES.baron, p = e.g.position;
+    if (e.anim) e.anim.timeScale = 1;
+    if (!A.hit) { this.stats.attacksDodged++; this.vfx?.pop?.show?.(_v.copy(this.hero.root.position).setY(1.6).clone(), 'DODGED', { color: '#A5D6A7' }); }
+    this.vfx?.sparks?.burst?.(_v.set(p.x, 0.4, p.z).clone(), 10, 4); this.game.camera?.shake?.(0.18);
+    e.attack = null; e.phase = 'dazed'; e.dazed = R.umbrellaStun; e.timers.attack = 0; e.anim.play?.('slipOnCoin');
+    this.vfx?.pop?.show?.(_v.set(p.x, 2.0, p.z).clone(), 'PARALYSED!', { color: '#80DEEA', dur: 1.6 });
+    this.bus?.emit('enemy:dashEnd', { hit: A.hit, stun: R.umbrellaStun });
+  }
+  /** Shove Pip `dist` u away from `from` (or along `dir`), staying on land. */
+  _shove(hp, from, dist, dir) {
+    const d = Math.hypot(hp.x - from.x, hp.z - from.z);
+    const nx = d > 1e-3 ? (hp.x - from.x) / d : (dir?.x ?? 0), nz = d > 1e-3 ? (hp.z - from.z) / d : (dir?.z ?? 1);
+    const tx = hp.x + nx * dist, tz = hp.z + nz * dist;
+    if (this.island?.isLand?.(tx, tz) ?? true) hp.set(tx, hp.y, tz); else if (this.island?.isLand?.(hp.x + nx, hp.z + nz) ?? true) hp.set(hp.x + nx, hp.y, hp.z + nz);
+    this.hero.recoverToLand?.();
+  }
   _stompLand(e, A) {
     const R = ENEMY_RULES.baron, hp = this.hero.root.position, s = A.spots[0]; this.stats.stomps++;
     const d = Math.hypot(hp.x - s.x, hp.z - s.z); const hit = d <= s.r;
     if (hit) {
       const took = this._hitHero(e, R.stompSpark);
-      if (took > 0 || !this.deps.isShielded?.()) {   // shove Pip out of the ring (shield blocks the Spark loss, not the push — it is a bubble)
-        const nx = d > 1e-3 ? (hp.x - s.x) / d : 0, nz = d > 1e-3 ? (hp.z - s.z) / d : 1;
-        const tx = hp.x + nx * R.stompKnock, tz = hp.z + nz * R.stompKnock;
-        if (this.island?.isLand?.(tx, tz) ?? true) hp.set(tx, hp.y, tz); else if (this.island?.isLand?.(hp.x + nx * 1, hp.z + nz * 1) ?? true) hp.set(hp.x + nx, hp.y, hp.z + nz);
-        this.hero.recoverToLand?.();
-      }
+      if (took > 0 || !this.deps.isShielded?.()) this._shove(hp, s, R.stompKnock);   // shield blocks the Spark loss, not the push — it is a bubble
     } else { this.stats.attacksDodged++; this.vfx?.pop?.show?.(_v.copy(hp).setY(1.6).clone(), 'DODGED', { color: '#A5D6A7' }); }
     this.vfx?.rings?.show?.(_v.set(s.x, 0.1, s.z).clone(), { radius: s.r, color: 0xE53970, dur: 0.6 }); this.vfx?.sparks?.burst?.(_v.set(s.x, 0.4, s.z).clone(), 16, 5);
     this.game.camera?.shake?.(0.35); this.game.hitstop?.(0.06);
@@ -382,11 +439,13 @@ export class EnemySystem {
     this.vfx?.pop?.show?.(_v.set(e.g.position.x, 2.0, e.g.position.z).clone(), 'DAZED!', { color: '#80DEEA' });
     this.bus?.emit('enemy:stomp', { hit, dazed: R.dazed });
   }
-  /** Pip's hit interrupts a wind-up (cannon/stomp telegraph): the decals fade, no attack lands. */
+  /** Pip's hit interrupts a wind-up (any telegraph): the decals fade, no attack lands. */
   _cancelAttack(e) {
     if (!e.attack) return;
     for (const s of e.attack.spots) if (s.decal) s.decal.life = Math.min(s.decal.life, 0.15);
-    e.attack = null; e.phase = 'idle'; e.timers.attack = ENEMY_RULES.baron.attackEvery * 0.4; e.g.scale.set(1, 1, 1);
+    const sh = e.g.userData?.parts?.shadow; if (sh) { sh.scale.setScalar(1); sh.position.y = 0.012; }
+    if (e.anim) e.anim.timeScale = 1;
+    e.attack = null; e.phase = 'idle'; e.timers.attack = ENEMY_RULES.baron.attackMin * 0.4; e.g.scale.set(1, 1, 1);
     this.bus?.emit('enemy:baronInterrupted', {});
   }
   /** S19 / P58: push chasing enemies apart so they never read as one blob (O(n²), n ≤ 10). Respects isLand. */
@@ -413,7 +472,7 @@ export class EnemySystem {
   /** S16b: season is over — everyone still chasing turns around and WALKS back to the pier, then steps off (not a defeat). Returns how many were sent. */
   sendHome() {
     let n = 0;
-    for (const e of this.list) if (e.state === 'chase') { e.state = 'home'; e.homeT = 0; e.offT = 0; e.knock.set(0, 0, 0); if (e.kind === 'baron') { this._cancelAttack(e); e.phase = 'idle'; e.g.position.y = 0; } e.anim.play?.(e.kind === 'baron' ? 'strut' : 'walk'); n++; }
+    for (const e of this.list) if (e.state === 'chase') { e.state = 'home'; e.homeT = 0; e.offT = 0; e.knock.set(0, 0, 0); if (e.kind === 'baron') { if (e.phase === 'fire') this._endMinigun(e); this._cancelAttack(e); e.phase = 'idle'; e.g.position.y = 0; e.g.scale.set(1, 1, 1); if (e.anim) e.anim.timeScale = 1; } e.anim.play?.(e.kind === 'baron' ? 'strut' : 'walk'); n++; }
     this._setHeroSpeed(1);
     if (n) { const h = this.hero?.root?.position; if (h) this.vfx?.pop?.show?.(_v.set(h.x, 2.1, h.z).clone(), 'season over — they leave', { color: '#B0BEC5', dur: 1.4 }); this.bus?.emit('enemy:home', { count: n }); }
     return n;
