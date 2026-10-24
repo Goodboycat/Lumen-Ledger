@@ -260,7 +260,8 @@ export class EnemySystem {
         _d.set(ex.x - p.x, 0, ex.z - p.z); const dd = _d.length(); if (dd > 1e-4) _d.divideScalar(dd);
         e.homeT += dt;
         if (dd > ENEMY_RULES.homeRadius && e.homeT < ENEMY_RULES.homeTimeout) {
-          const sp = (R.homeSpeed || R.speed) * ENEMY_RULES.homeSpeedMul;   // the slow Baron hurries a bit on the way out const nx = p.x + _d.x * sp * dt, nz = p.z + _d.z * sp * dt;
+          const sp = (R.homeSpeed || R.speed) * ENEMY_RULES.homeSpeedMul;   // the slow Baron hurries a bit on the way out
+          const nx = p.x + _d.x * sp * dt, nz = p.z + _d.z * sp * dt;
           if (this.island?.isLand?.(nx, nz) ?? true) p.set(nx, 0, nz); else { p.x += _d.x * sp * dt * 0.5; p.z += _d.z * sp * dt * 0.5; }   // the pier itself is off the land grid: keep going
           e.anim.faceTo?.(_v.set(p.x + _d.x, 0, p.z + _d.z));
         } else {                                                  // arrived (or timed out): fade out over 0.6 s — no coin, no stats
