@@ -1721,7 +1721,9 @@ if (doCine) {
     if (ui.tutorial?.isOpen) throw new Error('tutorial opened during the arrival shot');
     run(1.5); const d1 = hero.root.position.distanceTo(new THREE.Vector3(0, 0, 1)); if (!(d1 < startD - 0.5 || startD < 2)) throw new Error('Pip is not walking in (' + d1.toFixed(1) + ' vs ' + startD.toFixed(1) + ')');
     if (game.paused) throw new Error('arrival should run unpaused');
-    let n = 0; while (C.active && n < 15 * 30) { step(); n++; }
+    const finite = (v) => Number.isFinite(v.x) && Number.isFinite(v.y) && Number.isFinite(v.z);
+    if (!finite(C.rig.pos) || !finite(C.rig.look)) throw new Error('P53: arrival rig not finite at start ' + JSON.stringify(C.rig.pos));
+    let n = 0; while (C.active && n < 15 * 30) { step(); n++; if (!finite(C.rig.pos) || !finite(C.rig.look) || !finite(camera.cam.position)) throw new Error('P53: arrival rig/camera NaN at frame ' + n); }
     if (C.active || !ev['cine:end'] || ev['cine:end'][0].shot !== 'arrival' || ev['cine:end'][0].skipped) throw new Error('arrival did not end (' + (n / 30).toFixed(1) + ' s)');
     if (hero.inputOverride || lg.story.held || has('ll-cine-on') || camera.cine) throw new Error('arrival did not release hero/story/camera');
     const dEnd = hero.root.position.distanceTo(new THREE.Vector3(0, 0, 1)); if (!(dEnd < 3)) throw new Error('Pip did not reach the plaza (' + dEnd.toFixed(1) + ')');
