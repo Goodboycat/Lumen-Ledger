@@ -27,7 +27,7 @@ export function mountSeasonInfo(root, opts = {}) {
   const seasonsToWin = opts.seasonsToWin || 10;
   const lessons = opts.lessons || {};
   const seasonsData = Array.isArray(opts.seasons) ? opts.seasons : [];
-  const st = { open: false, pending: null, season: 1, day01: 0, seasonSeconds: opts.seasonSeconds || 150, bannerT: 0, endless: false, playing: false };
+  const st = { open: false, pending: null, season: 1, day01: 0, seasonSeconds: opts.seasonSeconds || 150, bannerT: 0, endless: false, playing: false, cine: false };
 
   const lessonFor = (n) => {
     const sd = seasonsData.find((s) => s.season === n);
@@ -119,7 +119,7 @@ export function mountSeasonInfo(root, opts = {}) {
     },
     /** Show the banner as soon as no modal (dialogue / ledger / tutorial) owns the screen. */
     requestBanner(n) { st.pending = n || st.season; api._flush(); return api; },
-    _flush() { if (st.pending == null || !st.playing) return; if (typeof opts.isModal === 'function' && opts.isModal()) return; const n = st.pending; st.pending = null; setTimeout(() => api.banner(n), 250); },
+    _flush() { if (st.pending == null || !st.playing || st.cine) return; if (typeof opts.isModal === 'function' && opts.isModal()) return; const n = st.pending; st.pending = null; setTimeout(() => api.banner(n), 250); },
     hideBanner() { clearTimeout(st.bannerT); banner.classList.remove('on'); return api; },
     setSeason(n) { if (n && n !== st.season) { st.season = n; renderTag(); } return api; },
     destroy() { offs.forEach((f) => f()); clearTimeout(st.bannerT); if (typeof window !== 'undefined' && window.removeEventListener) window.removeEventListener('keydown', onEsc, true); banner.remove(); back.remove(); tag.remove(); },
@@ -134,6 +134,9 @@ export function mountSeasonInfo(root, opts = {}) {
     bus.on('ui:dialogue:close', () => setTimeout(() => api._flush(), 60)),
     bus.on('ui:ledger:close', () => setTimeout(() => api._flush(), 60)),
     bus.on('ui:tutorial:close', () => setTimeout(() => api._flush(), 60)),
+    // P54 / S23: the Season banner / lesson card waits while a cinematic (arrival / victory) owns the screen
+    bus.on('cine:begin', (p) => { if (p?.shot !== 'title') { st.cine = true; api.hideBanner(); } }),
+    bus.on('cine:end', () => { st.cine = false; setTimeout(() => api._flush(), 300); }),
     bus.on('game:endless', () => { st.endless = true; renderTag(); }),
     bus.on('game:title', () => { st.playing = false; api.hideBanner(); api.close(); tag.classList.remove('on'); }),
   ];

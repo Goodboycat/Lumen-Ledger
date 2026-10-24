@@ -23,7 +23,7 @@ import * as THREE from '../../vendor/three.module.js';
 const hasDOM = typeof document !== 'undefined' && typeof document.createElement === 'function' && !!document.body;
 export const CINE = {
   blendIn: 0.9, blendOut: 1.1,                                    // s — camera hand-over ramps
-  titleRadius: 24, titleHeight: 13, titleSpeed: 0.11,            // orbit: metres, metres, rad/s (≈ 57 s per lap)
+  titleRadius: 23, titleHeight: 10.5, titleSpeed: 0.11,          // orbit (S22: lower so more island shows): metres, metres, rad/s (≈ 57 s per lap)
   arrivalMax: 9, arriveDist: 1.2, arrivalWalk: 0.55,                // walk: stick magnitude during the walk-in (a stroll, not a sprint)
   arrivalWideDist: 22, arrivalWideHeight: 14, arrivalCloseDist: 9, arrivalCloseHeight: 7,   // P53: were on the comment line above → NaN camera
   victoryFly: 2.2, victoryHold: 3.2, victoryReturn: 1.6, victoryDist: 11, victoryHeight: 8,
