@@ -884,7 +884,7 @@ function installSave(lg) {
   on('game:state', (p) => { if (p.prev === 'review' && (p.state === 'playing' || p.state === 'endless')) checkpoint(); });
   on('game:endless', checkpoint);
   on('eco:lose', () => lg.save.clear());
-  on('eco:win', () => { if (lg.sb && !lg.save.hasWon()) { lg.save.unlock('endless', true); bus.emit('game:unlock', { key: 'endless' }); } });   // S25: first victory unlocks Endless
+  on('eco:win', () => { if (lg.sb && lg.mode === 'story' && !lg.save.hasWon()) { lg.save.unlock('endless', true); bus.emit('game:unlock', { key: 'endless' }); } });   // S25: the 10-season STORY victory unlocks Endless (never an endless-mode fog win)
   on('game:start', () => { if (!lg._resuming) ui?.title?.setHasSave?.(lg.save.has()); });
   on('ui:jar', (p) => { if (p?.pct) lg.jarPct = { ...p.pct }; });
   installTutorialGates(lg);
