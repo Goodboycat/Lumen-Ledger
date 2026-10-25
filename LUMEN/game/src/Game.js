@@ -434,6 +434,21 @@ export function createLumenGame(game, opts = {}) {
   lg.setState = (s) => { if (!GAME_STATES.includes(s)) throw new Error('bad state ' + s); const prev = lg.state; lg.state = s; lg.log.push(`${prev} → ${s}`); bus.emit('game:state', { state: s, prev }); return s; };
   // ---- pause: OR of every reason. game.paused is written ONLY here. --------------------------------------------------
   lg.pause = (by, on_) => { if (on_) lg.pauseBy.add(by); else lg.pauseBy.delete(by); const p = lg.pauseBy.size > 0; if (game.paused !== p) { game.paused = p; bus.emit('game:paused', { paused: p, by: [...lg.pauseBy] }); } return p; };
+  // ---- S28 time speed: 1× / 2× / 3×. game.timeScale is written ONLY here (and zeroed/restored by HitStop, which we keep in sync). -------
+  //   lg.setSpeed(n) · ui:speed {speed} or {cycle:true} (HUD ⏩ button, key T) · emits game:speed {speed}. Reset to 1× on season end,
+  //   win/lose, title and whenever a dialogue/ledger/menu pauses the game (so a cut-scene never runs at 3×).
+  const SPEEDS = [1, 2, 3]; lg.speed = 1;
+  lg.setSpeed = (n, { silent } = {}) => {
+    n = SPEEDS.includes(+n) ? +n : 1; lg.speed = n;
+    if (game.hitStop?.active) { const i = game.hitStop.targets.indexOf(game); if (i >= 0) game.hitStop.saved[i] = n; } else game.timeScale = n;
+    bus.emit('game:speed', { speed: n });
+    if (!silent && lg.sb) bus.emit('ui:toast', { text: n > 1 ? `Time ×${n} — tap ⏩ or press T to slow down` : 'Normal speed', kind: 'info', icon: '⏩', id: 'speed', duration: 1400 });
+    return n;
+  };
+  lg._offs.push(bus.on('ui:speed', (p) => { if (!lg.sb || (lg.state !== 'playing' && lg.state !== 'endless')) return; const next = p?.cycle ? SPEEDS[(SPEEDS.indexOf(lg.speed) + 1) % SPEEDS.length] : p?.speed; lg.setSpeed(next); }));
+  lg._offs.push(bus.on('game:paused', (p) => { if (p?.paused && lg.speed !== 1) lg.setSpeed(1, { silent: true }); }));
+  for (const ev of ['eco:season', 'eco:win', 'eco:lose', 'game:title', 'game:state']) lg._offs.push(bus.on(ev, () => { if (lg.speed !== 1) lg.setSpeed(1, { silent: true }); }));
+  if (typeof window !== 'undefined') { const onKey = (e) => { if (e.code !== 'KeyT' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return; const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return; if (!lg.sb || game.paused || ui?.isModal?.()) return; bus.emit('ui:speed', { cycle: true, source: 'key' }); }; window.addEventListener('keydown', onKey); lg._offs.push(() => window.removeEventListener('keydown', onKey)); }
   on('ui:pause', (p) => lg.pause(p?.by || 'menu', !!p?.on));
   on('ui:ledger:open', () => lg.pause('ledger', true)); on('ui:ledger:close', () => lg.pause('ledger', false));
   on('ui:title:open', () => lg.pause('title', true)); on('ui:title:close', () => lg.pause('title', false));

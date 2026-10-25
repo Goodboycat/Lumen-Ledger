@@ -45,7 +45,11 @@ export function mountHUD(root, opts = {}) {
   const season = el('div', 'll-season');
   const seasonTxt = el('span', null, 'Season 1 / 10');
   const day = el('span', 'll-day'); const dayFill = el('i'); day.append(dayFill);
-  season.append(seasonTxt, day);
+  // S28: time speed ⏩ — the player often waits for customers with nothing to do. Cycles 1× → 2× → 3× → 1× (also key T).
+  //   Emits 'ui:speed' {cycle:true}; Game.js owns game.timeScale and answers with 'game:speed' {speed} which relabels the button.
+  const speedBtn = el('button', 'll-speed', '⏩'); speedBtn.type = 'button'; speedBtn.title = 'Time speed (T): 1× → 2× → 3×'; speedBtn.setAttribute('aria-label', 'Time speed');
+  speedBtn.addEventListener('click', (e) => { e.stopPropagation && e.stopPropagation(); bus.emit('ui:speed', { cycle: true, source: 'hud' }); });
+  season.append(seasonTxt, day, speedBtn);
   const fog = el('div', 'll-fog');
   const fogTrack = el('div', 'll-fog-track'); const fogFill = el('div', 'll-fog-fill'); fogTrack.append(fogFill);
   const fogPct = el('span', 'll-fog-pct', '35%');
@@ -146,6 +150,7 @@ export function mountHUD(root, opts = {}) {
     bus.on('eco:tick', (p) => { if (p && p.day01 != null) api.setDay(p.day01); if (p && p.season != null && p.season !== st.season) api.setSeason(p.season); }),
     bus.on('eco:win', () => { api.setFog(0); seasonTxt.innerHTML = iconize('✦ Lighthouse lit!'); }),
     bus.on('eco:lose', () => { seasonTxt.textContent = 'Fogged out…'; }),
+    bus.on('game:speed', (p) => { const s = (p && p.speed) || 1; speedBtn.textContent = s > 1 ? `⏩${s}×` : '⏩'; speedBtn.classList.toggle('on', s > 1); speedBtn.title = `Time speed ${s}× (T): 1× → 2× → 3×`; if (s > 1) retrigger(speedBtn, 'pop'); }),
   ];
 
   // self-drive (demo pages / integrator may call update(dt) themselves with selfDrive:false)
