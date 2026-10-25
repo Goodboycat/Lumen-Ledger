@@ -139,6 +139,8 @@ try {
   if (params.has('cinelog')) for (const n of ['cine:showcase', 'cine:begin', 'cine:end', 'cine:lamp', 'game:start']) game.bus.on(n, (p) => console.log('[cine]', n, JSON.stringify(p || {}), 'active=' + (lg.cine?.active ?? 'none'), 'meshes=' + game.scene.children.length));
   game.start();
   requestAnimationFrame(() => requestAnimationFrame(hideLoading));                      // 11B P3: first real frame is on screen → fade the loading layer
+  // S27 QA: ?qa=<scenario> runs tools/qa_browser.js in-page and prints "[qa] …" lines (read with PlaywrightConsoleCapture — no local Chromium needed)
+  if (params.has('qa')) import('./tools/qa_browser.js').then((m) => m.runQA(params.get('qa') || 'all', { game, lg, ui })).catch((e) => console.error('[qa] load failed', e));
 } catch (e) { showError(e); }
 </script>
 </body>
