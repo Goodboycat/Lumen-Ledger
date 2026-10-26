@@ -39,7 +39,7 @@ game/
   vendor/three.module.js  Three.js r160 (MIT) — the only dependency
   tests/                economy.test.mjs (80 asserts) · economy.sim.mjs (3 strategies × 20 seeds) · story.test.mjs (58 asserts)
   tools/                check.mjs (headless suite) · smoke.mjs + setup_browser.sh (Playwright) · next.sh / wip.sh / github.sh / pack.sh (pipeline)
-  docs/                 GDD, BUDGET, ITCH_PAGE, SUBMISSION_CHECKLIST, GAME_BIBLE, balance, story_outline, PLAY_BUGS, SUGGESTIONS
+  docs/                 GDD, BUDGET, ITCH_PAGE, SUBMISSION_CHECKLIST (dev notes: ../../LUMEN_extras/game/docs/)
 ```
 No build step, no npm, no bundler, no CDN: vanilla ES modules + one vendored library. All 3D is procedural (boxes, spheres, cones with a 3‑step toon ramp and an inverted‑hull outline); there are no model or texture files.
 
@@ -58,4 +58,4 @@ Target device: a 2018 Android phone at 60 fps. In play the game draws **110–13
 
 ## Credits & licence
 Design, code, art and writing: **[team name]**, built with the LUMEN chat pipeline (Genspark) — ~40 documented 100‑credit sessions, each owning a folder and gated by `tools/check.mjs` (`docs/MASTER_PLAN.md`). Engine: Three.js r160, MIT. Audio: in‑engine procedural synth; optional generated SFX/music per `docs/audio_prompts.md`. Reference look: XP Hero (Supercent) — colours and camera only, no assets.
-Game code and content © 2026 the Lumen Ledger team; see the repository for the licence. Family‑friendly content rules: `docs/GAME_BIBLE.md §2`.
+Game code and content © 2026 the Lumen Ledger team; see the repository for the licence. Family‑friendly content rules: `LUMEN_extras/game/docs/GAME_BIBLE.md §2`.

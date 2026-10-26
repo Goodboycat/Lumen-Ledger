@@ -10,7 +10,7 @@ LUMEN/
     index.html        THE game — serve statically: cd game && python3 -m http.server 3000 → http://localhost:3000/
     src/ ui/ data/ audio/ vendor/   game code, UI (incl. ui/tutorial.js), story, sounds, Three.js r160 (MIT)
     docs/             GDD.md (concept doc) · BUDGET.md (game budget) · ITCH_PAGE.md · SUBMISSION_CHECKLIST.md
-                      GAME_BIBLE.md · balance.md · story_outline.md
+                      (dev notes GAME_BIBLE / balance / story_outline / PLAY_BUGS / SUGGESTIONS live in ../LUMEN_extras/game/docs/)
     README.md         how to play, controls, URL flags
 ```
 

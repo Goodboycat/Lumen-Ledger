@@ -1,6 +1,6 @@
 # LUMEN LEDGER — Game Design Document
 *Zoud GameLab jam · theme “Make FinLit Fun” · deadline 2026-11-15 · browser (itch.io HTML5) + Flutter WebView APK*
-*Version 1.0 (Chat 8B, 2026-10-18). Source of truth for numbers: `src/systems/economy.js` (BALANCE) + `src/systems/economyData.js` (BALANCE_TUNED, `docs/balance.md`). Source of truth for text: `data/story.json`.*
+*Version 1.0 (Chat 8B, 2026-10-18). Source of truth for numbers: `src/systems/economy.js` (BALANCE) + `src/systems/economyData.js` (BALANCE_TUNED, `LUMEN_extras/game/docs/balance.md`). Source of truth for text: `data/story.json`.*
 
 ---
 
@@ -14,7 +14,7 @@ You are **Pip**, a young *Channeler* who inherits a bankrupt island market, **Gl
 2. **One lesson, one season, one tap.** Each Season teaches exactly one idea; the Ledger Review restates it in two sentences and a tip. The player never reads a wall of text.
 3. **Cozy, snappy, optimistic.** XP-Hero toon look, squash-and-stretch on everything, humour instead of scolding. Failure is foggy, not punishing; Tally-Owl never scolds twice.
 4. **Choices are real but cheap to make.** Every decision (build / price / jar split / accept-or-refuse a deal) takes one tap and shows its consequence within a season.
-5. **Family-friendly, 16+ rating safe, UAE partner.** No gambling, no loot boxes, no magic words, no dark-fantasy creatures (see GAME_BIBLE §2).
+5. **Family-friendly, 16+ rating safe, UAE partner.** No gambling, no loot boxes, no magic words, no dark-fantasy creatures (see `LUMEN_extras/game/docs/GAME_BIBLE.md` §2).
 
 ## 3. Core loop
 
@@ -116,19 +116,19 @@ Portrait and landscape both work (camera zooms out in portrait). All UI targets 
 | **Fog Collectors** | Baron's tax-collector blobs | bumbling, slip on coins, pitch Too-Good Deals |
 | **Glimmers** | blob customers (12 types) | short bursts: “Fruit! Shiny!” |
 
-Structure per season: *opening* (6–9 lines, narrator title card first) → *mid* (2 lines at 50 % of the season) → *ledger* lines (2, variant by stars: low 0–1 / default 2 / high 3) → Ledger Review. Events (10) and scams (6, pitch → choice → accept/refuse lines → lesson = the scam's *tell*) interleave. Ending: *win* (9 lines, Lighthouse relit, Baron is handed a Save jar) → *endlessUnlock*; *lose* (3 lines, fogged out, title returns). Full outline: `docs/story_outline.md`.
+Structure per season: *opening* (6–9 lines, narrator title card first) → *mid* (2 lines at 50 % of the season) → *ledger* lines (2, variant by stars: low 0–1 / default 2 / high 3) → Ledger Review. Events (10) and scams (6, pitch → choice → accept/refuse lines → lesson = the scam's *tell*) interleave. Ending: *win* (9 lines, Lighthouse relit, Baron is handed a Save jar) → *endlessUnlock*; *lose* (3 lines, fogged out, title returns). Full outline: `LUMEN_extras/game/docs/story_outline.md`.
 
 ## 9. Scope & schedule
 **MVP (jam build):** 10-season story run on one island, 12 stalls × 3 levels, 12 Glimmer types, 6 helpers, 6 abilities, 4 jars, Ledger Review, 6 scams, 10 events, title/pause/settings/touch, localStorage save, tutorial toasts, audio, itch.io HTML5 upload, Flutter WebView APK.
 **Stretch (only after MVP is green):** Endless mode text/variations, branching on stars (8B P3), per-Glimmer barks (6B), demo/trailer mode (13B), localisation.
 **Out of scope:** multiplayer, external 3D models/textures, server/online features, in-app purchases, any gambling-like mechanic.
 
-Pipeline: ~40 independent 100-credit chats, each owning a folder (GAME_BIBLE §6), each gated by `node tools/check.mjs` (headless, ~3 s). Done table and next IDs live in `LUMEN/README.md`.
+Pipeline: ~40 independent 100-credit chats, each owning a folder (`LUMEN_extras/game/docs/GAME_BIBLE.md` §6), each gated by `node tools/check.mjs` (headless, ~3 s). Done table and next IDs live in `LUMEN/README.md`.
 
 **Performance budget (2018 Android phone, 60 fps):** ≤ 150 draw calls on screen (mesh + outline = 2), ≤ 900 tris per stall / 600 per creature, InstancedMesh for grass, flowers, coins and crowds, shadow map ≤ 1024, pixelRatio ≤ 1.5.
 
 ## 10. Accessibility & safety
-Reduce-motion setting (CSS class + fewer shakes), outline thickness setting, quality presets (low/med/high), SFX/music toggles, no flashing above 3 Hz, no time-pressure on choices (dialogue waits), colour + icon + text for every jar/state (never colour alone). Content rules per GAME_BIBLE §2 are enforced by a banned-word regex in `check.mjs --story`.
+Reduce-motion setting (CSS class + fewer shakes), outline thickness setting, quality presets (low/med/high), SFX/music toggles, no flashing above 3 Hz, no time-pressure on choices (dialogue waits), colour + icon + text for every jar/state (never colour alone). Content rules per `LUMEN_extras/game/docs/GAME_BIBLE.md` §2 are enforced by a banned-word regex in `check.mjs --story`.
 
 ## 11. Team / credits (placeholder — fill before submission, 13A)
 - Design, code, art, writing: *[name(s)]* with the LUMEN chat pipeline (Genspark).

@@ -16,7 +16,7 @@ Legend: ✅ exists today · 🔜 owned by a later chat · ☐ manual step on sub
 |---|---|---|---|---|
 | B1 | Theme **"Make FinLit Fun"** visible | title screen tagline + footer (`ui/title.js` l.46/54), `<title>` in `index.html`, lesson card every season, theme statement `docs/ITCH_PAGE.md §3` | open `index.html` — tagline under logo | ✅ |
 | B2 | Financial‑literacy concepts taught, not just themed | 10 lessons (budgeting → planning for a goal) each tied to a mechanic: `docs/GDD.md §4`, `data/story.json → lessons`, `src/systems/economy.js BALANCE.lessons` | `node tools/check.mjs --story` (every lessonId has lines) | ✅ |
-| B3 | Family‑friendly / 16+ safe, UAE partner | no gambling, loot boxes, magic, undead (`docs/GAME_BIBLE.md §2`) | `check.mjs --story` banned‑word regex passes | ✅ |
+| B3 | Family‑friendly / 16+ safe, UAE partner | no gambling, loot boxes, magic, undead (`LUMEN_extras/game/docs/GAME_BIBLE.md §2`) | `check.mjs --story` banned‑word regex passes | ✅ |
 | B4 | No external assets with unclear licence | all 3D procedural, one MIT library (`vendor/three.module.js`), audio in‑engine synth or self‑generated | `grep -r "http" src ui` finds no CDN/asset URLs | ✅ |
 
 ## C. itch.io page fields (from `docs/ITCH_PAGE.md §1`)
