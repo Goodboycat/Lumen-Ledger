@@ -14,6 +14,16 @@ LUMEN/
     README.md         how to play, controls, URL flags
 ```
 
+## Stalls & upgrades (S29–S31, 2026-10-26) — version shown in the title menu: `S31`
+**One stall per type.** The old bug: deploying a second Fruit Stand after upgrading the first made the tray/level badge fall back to L1
+(and L1 vs L2 looked the same). Now `BuildSystem.owned(id)` / `placeBlocker(id)` deny a duplicate deploy everywhere (tray card, `enter()`,
+`place()`, `canPlace()` → ghost red, reason `duplicate`), and `load()` is tolerant: a legacy save with two of a kind keeps the highest level
+and refunds the rest. The build tray shows a **level badge** (L1 / L2 / L3 ★) on every stall card; once placed the card reads
+**✓ Deployed · Lx** and the button becomes ⬆ Upgrade. **Every stall type has its own L2 and L3 model** (`src/assets/props/stalls.js`
+`LEVEL_EXTRAS`): e.g. Bakery L2 adds a clay oven, L3 a pretzel sign + flour sacks; Fish Market L2 an ice barrel, L3 an anchor + buoy;
+Tool Smith L2 an anvil, L3 a forge chimney with embers. All 12 stay ≤ 900 tris at L3 (gate: `node tools/check.mjs --props` → STALL LEVELS).
+Gallery of all 12 × 3 levels: `LUMEN_extras/game/demo_stall_levels.html`.
+
 ## Cinematics (S18, 2026-10-24)
 Three short camera pieces (`game/src/vfx/cinematics.js`): the island is built behind the **title** and the camera orbits it; a fresh PLAY
 walks Pip from the **pier to the plaza** (letterbox, SKIP / tap / Esc) before the tutorial and the Season-1 lines; on the win the camera
