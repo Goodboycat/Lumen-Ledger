@@ -31,6 +31,16 @@
 .ll-card.denied { animation: ll-shake .36s linear; }
 .ll-card-count { position: absolute; left: 4px; bottom: 4px; font-size: 9px; font-weight: 900; background: var(--blue); border: 2px solid var(--ink); border-radius: 999px; padding: 0 4px; display: none; }
 .ll-card.has-count .ll-card-count { display: block; }
+/* S29/S30: one stall per type — an OWNED stall card is tinted green, its count pill becomes a level badge (L1 / L2 / L3 ★) and the cost pill
+   reads "✓ yours"; a MAXED stall (L3) gets a gold badge. Decor / nature keep the blue count pill. */
+.ll-card.owned { background: #e8f5e9; }
+.ll-card.owned:hover { background: #dcedc8; }
+.ll-card.owned.selected { background: var(--gold); }
+.ll-card.owned .ll-card-count { display: block; background: var(--grass); color: var(--ink); left: auto; right: 4px; bottom: 4px; font-size: 9px; padding: 0 5px; }
+.ll-card.owned .ll-card-cost { background: #c8e6c9; color: #1b5e20; }
+.ll-card.maxed .ll-card-count { background: var(--gold); color: #7a4a00; }
+.ll-card.maxed .ll-card-cost { background: var(--gold); color: #7a4a00; }
+.ll-build-detail .ll-btn.deploy.owned { background: #c8e6c9; color: #1b5e20; opacity: .8; }
 
 .ll-build-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 10px; font-weight: 700; color: #555; gap: 6px; }
 .ll-build-foot .ll-btn { background: #fff; border: 3px solid var(--ink); border-radius: 8px; padding: 2px 8px; font: inherit; font-weight: 900; font-size: 10px; box-shadow: 0 2px 0 var(--ink); cursor: pointer; color: var(--ink); }

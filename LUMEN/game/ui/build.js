@@ -99,6 +99,11 @@ export function mountBuildMenu(root, opts = {}) {
   // BUGFIX B02/B06: badges come from the LIVE placed collection when the integrator provides placedInfo (starter + restored stalls count,
   // nothing survives a new run); the event-fed counter is only the standalone fallback.
   const countOf = (id) => (typeof api.placedInfo === 'function' ? api.placedInfo(id).length : (st.counts[id] || 0));
+  // S29: one stall per type — a placed stall type is OWNED: its card shows a level badge (L1–L3) instead of a count and Deploy turns into
+  //   "✓ Deployed · L2" (disabled) so the player reaches for ⬆ Upgrade. Decor / nature keep their counts and stay unlimited.
+  const isStallId = (id) => (catalog[id] || {}).category === 'stall';
+  const ownedLevel = (id) => { if (!isStallId(id)) return 0; const l = placedOf(id); return l.length ? Math.max(...l.map((e) => e.level || 1)) : 0; };
+  const LEVEL_NAMES = { 1: 'L1', 2: 'L2', 3: 'L3 ★' };
 
   // B24: 'crew' tab = offers (helpers + zones) from the integrator; a card buys, no placement
   function renderOffers() {
@@ -145,7 +150,11 @@ export function mountBuildMenu(root, opts = {}) {
       const cEl = card.querySelector && card.querySelector('.ll-card-cost'); if (cEl) cEl.innerHTML = iconize(cost ? `${cost} ✦` : 'free');
       card.classList.toggle('locked', locked);
       card.classList.toggle('selected', st.selected === id);
-      const n = countOf(id); card.classList.toggle('has-count', n > 0); card.lastChild.textContent = n;
+      const n = countOf(id); const lvl = ownedLevel(id);
+      card.classList.toggle('owned', lvl > 0); card.classList.toggle('maxed', lvl >= 3);
+      card.classList.toggle('has-count', n > 0); card.lastChild.textContent = lvl > 0 ? LEVEL_NAMES[lvl] || 'L' + lvl : n;
+      if (lvl > 0 && cEl) cEl.innerHTML = iconize(lvl >= 3 ? '★ max' : '✓ yours');
+      card.classList.toggle('poor', !locked && lvl === 0 && !affordable(cost));   // an owned stall is never "too expensive" — it is already bought
     }
     refreshDetail();
   }
@@ -160,12 +169,15 @@ export function mountBuildMenu(root, opts = {}) {
   function refreshDetail() {
     const id = st.selected, e = id && catalog[id];
     wrap.classList.toggle('has-detail', !!e); if (!e) return;
-    const cost = costOf(id), n = countOf(id);
+    const cost = costOf(id), n = countOf(id), lvl = ownedLevel(id);
     detIcon.innerHTML = iconize(iconFn(id, e));
-    detInfo.innerHTML = iconize(`<b>${e.name || id}</b><small>${cost ? cost + ' ✦' : 'free'} · ${(e.footprint || [1, 1]).join('×')}${n ? ` · ${n} placed` : ''}</small>`);
-    const poor = !affordable(cost);
-    deployBtn.disabled = poor; deployBtn.classList.toggle('poor', poor); deployBtn.innerHTML = iconize(poor ? `🚀 need ${cost} ✦` : '🚀 Deploy');
     const isStall = e.category === 'stall';
+    detInfo.innerHTML = iconize(`<b>${e.name || id}</b><small>${lvl ? `✓ yours · ${LEVEL_NAMES[lvl] || 'L' + lvl}` : (cost ? cost + ' ✦' : 'free')} · ${(e.footprint || [1, 1]).join('×')}${n && !isStall ? ` · ${n} placed` : ''}</small>`);
+    const poor = !affordable(cost);
+    // S29: an owned stall type cannot be deployed twice — the button says so and hands over to ⬆ Upgrade
+    deployBtn.disabled = lvl > 0 || poor; deployBtn.classList.toggle('poor', poor && !lvl); deployBtn.classList.toggle('owned', lvl > 0);
+    deployBtn.innerHTML = iconize(lvl > 0 ? `✓ Deployed · ${LEVEL_NAMES[lvl] || 'L' + lvl}` : poor ? `🚀 need ${cost} ✦` : '🚀 Deploy');
+    deployBtn.title = lvl > 0 ? `you already run a ${e.name || id} (one stall per type) — upgrade it instead` : 'place a new one on the island';
     // BUGFIX P24: the refund is 50 % of the ACTUAL entry cost (base + upgrades) of the stall that would be sold (lowest level first, like Game.js)
     const sellTarget = n ? placedOf(id).slice().sort((a, b) => (a.level || 1) - (b.level || 1))[0] : null; const sellCost = sellTarget && sellTarget.cost != null ? sellTarget.cost : cost;
     // S07: pre-spawned clutter (cost 0 + salvage) sells for its flat salvage bonus → label says "Salvage"
@@ -202,7 +214,8 @@ export function mountBuildMenu(root, opts = {}) {
       if (st.locked.has(id)) { if (card) retrigger(card, 'denied'); footTxt.textContent = 'locked — finish the lesson first'; return api; }
       if (st.selected === id && opts.tapAgainDeploys) return api.deploy(id);
       st.selected = id; st.demolish = false; demolishBtn.classList.remove('on'); refreshCards();
-      footTxt.innerHTML = iconize(e.category === 'stall' ? `${e.name}: 🚀 deploy a new one or ⬆ upgrade yours` : `${e.name}: 🚀 deploy to place it`);
+      const lvl = ownedLevel(id);
+      footTxt.innerHTML = iconize(e.category === 'stall' ? (lvl >= 3 ? `${e.name}: ★ max level — your best stall` : lvl ? `${e.name}: already yours (L${lvl}) → ⬆ upgrade it` : `${e.name}: 🚀 deploy it (one per type) or ⬆ upgrade later`) : `${e.name}: 🚀 deploy to place it`);
       bus.emit('ui:build', { id, cost: costOf(id), action: 'pick', footprint: e.footprint });
       return api;
     },
@@ -213,6 +226,9 @@ export function mountBuildMenu(root, opts = {}) {
       const card = cards.get(id);
       if (st.locked.has(id)) { if (card) retrigger(card, 'denied'); footTxt.textContent = 'locked — finish the lesson first'; return api; }
       const cost = costOf(id);
+      // S29: one stall per type — a second Deploy is refused in the tray (BuildSystem.enter refuses it too, belt and braces)
+      const lvl = ownedLevel(id);
+      if (lvl > 0) { if (card) retrigger(card, 'denied'); st.selected = id; refreshCards(); footTxt.innerHTML = iconize(`${e.name}: already yours (L${lvl}) — one stall per type, ⬆ upgrade it instead`); bus.emit('ui:build', { id, cost, action: 'denied', why: 'duplicate', level: lvl }); return api; }
       if (!affordable(cost)) { if (card) retrigger(card, 'denied'); footTxt.innerHTML = iconize(`need ${cost} ✦ (have ${st.spark})`); bus.emit('ui:build', { id, cost, action: 'denied', why: 'cannot afford' }); return api; }
       st.selected = id; st.demolish = false; demolishBtn.classList.remove('on'); refreshCards();
       footTxt.innerHTML = iconize((document.body?.classList?.contains('is-touch') ? `${e.name}: tap / drag on the ground (or walk Pip) to move it · ✓ place` : `${e.name}: click the ground to place · R rotate · Esc cancel`));
@@ -287,7 +303,7 @@ export function mountBuildMenu(root, opts = {}) {
     bus.on('build:placed', (p) => { if (p && p.id) { st.counts[p.id] = (st.counts[p.id] || 0) + 1; track(p, true); } refreshCards(); }),
     bus.on('build:removed', (p) => { if (p && p.id) { st.counts[p.id] = Math.max(0, (st.counts[p.id] || 0) - 1); track(p, false); } refreshCards(); }),
     bus.on('build:upgraded', (p) => { if (p && p.id) track(p, true); if (p && p.level) footTxt.innerHTML = iconize(`⬆ upgraded to L${p.level}!`); refreshCards(); }),
-    bus.on('build:denied', (p) => { const id = (p && p.id) || st.selected || st.placing; const c = id && cards.get(id); if (c) retrigger(c, 'denied'); footTxt.textContent = 'denied: ' + ((p && p.why) || '?'); }),
+    bus.on('build:denied', (p) => { const id = (p && p.id) || st.selected || st.placing; const c = id && cards.get(id); if (c) retrigger(c, 'denied'); footTxt.innerHTML = iconize(p && p.why2 === 'duplicate' ? `one stall per type — your ${(catalog[id] || {}).name || id} is L${p.level || 1}: ⬆ upgrade it` : 'denied: ' + ((p && p.why) || '?')); }),
     bus.on('ui:unlock', (p) => { if (p && p.ids) api.setUnlocked(p.ids); }),
     bus.on('build:loaded', () => refreshCards()),
     bus.on('cust:price', () => refreshDetail()),                                   // B24: price changed (ui:price → Game.js → cust.setPrice)

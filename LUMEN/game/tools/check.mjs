@@ -1038,15 +1038,31 @@ if (doUI) {
     menu.setLocked('stall_bread', true); menu.select('stall_bread'); if (!menu.cards.get('stall_bread').classList.contains('locked') || ev['ui:build'].length !== n0 + 2) throw new Error('locked card emitted');
     bus.emit('build:enter', { id: 'stall_fruit', cost: 40 }); if (!menu.el.classList.contains('placing') || !/Fruit Stand/.test(menu.el.querySelector('.ll-build-placing').textContent)) throw new Error('placing banner');
     bus.emit('build:ghost', { ok: false }); if (!/blocked/.test(menu.el.querySelector('.ll-build-placing .ll-btn.no').textContent)) throw new Error('ghost red');
-    bus.emit('build:placed', { id: 'stall_fruit' }); bus.emit('build:placed', { id: 'stall_fruit' }); if (!menu.el.classList.contains('placing')) throw new Error('B13: placed must not drop placing'); bus.emit('build:exit', {}); if (menu.el.classList.contains('placing') || menu.state.counts.stall_fruit !== 2 || menu.cards.get('stall_fruit').lastChild.textContent !== '2') throw new Error('counts');
-    bus.emit('build:removed', { id: 'stall_fruit' }); if (menu.state.counts.stall_fruit !== 1) throw new Error('removed count');
+    bus.emit('build:placed', { id: 'stall_fruit', uid: 'f1' }); if (!menu.el.classList.contains('placing')) throw new Error('B13: placed must not drop placing'); bus.emit('build:exit', {});
+    // S30: a placed STALL card is OWNED — level badge (L1) instead of a count, cost pill "✓ yours", Deploy disabled "✓ Deployed · L1"
+    const fruitCard = menu.cards.get('stall_fruit');
+    if (menu.el.classList.contains('placing') || menu.state.counts.stall_fruit !== 1 || fruitCard.lastChild.textContent !== 'L1' || !fruitCard.classList.contains('owned') || fruitCard.classList.contains('maxed')) throw new Error('owned badge L1: ' + fruitCard.lastChild.textContent + ' ' + fruitCard.className);
+    if (!/yours/.test(fruitCard.querySelector('.ll-card-cost').textContent)) throw new Error('owned cost pill: ' + fruitCard.querySelector('.ll-card-cost').textContent);
+    menu.select('stall_fruit'); const dBtn = menu.el.querySelector('.ll-build-detail .deploy');
+    if (!dBtn.disabled || !dBtn.classList.contains('owned') || !/Deployed/.test(dBtn.textContent) || !/L1/.test(dBtn.textContent)) throw new Error('owned deploy btn: ' + dBtn.textContent + ' disabled=' + dBtn.disabled);
+    const nDup = ev['ui:build'].length; menu.deploy();                                // S30: tray refuses a 2nd deploy of an owned type
+    const dup = ev['ui:build'][ev['ui:build'].length - 1]; if (ev['ui:build'].length !== nDup + 1 || dup.action !== 'denied' || dup.why !== 'duplicate' || !fruitCard.classList.contains('denied')) throw new Error('duplicate deploy must be denied: ' + JSON.stringify(dup));
+    bus.emit('build:upgraded', { id: 'stall_fruit', uid: 'f1', level: 2 }); if (fruitCard.lastChild.textContent !== 'L2' || !/L2/.test(menu.el.querySelector('.ll-build-detail .deploy').textContent)) throw new Error('L2 badge: ' + fruitCard.lastChild.textContent);
+    bus.emit('build:upgraded', { id: 'stall_fruit', uid: 'f1', level: 3 }); if (!/L3/.test(fruitCard.lastChild.textContent) || !fruitCard.classList.contains('maxed') || !/max/.test(fruitCard.querySelector('.ll-card-cost').textContent)) throw new Error('L3 maxed badge: ' + fruitCard.lastChild.textContent);
+    bus.emit('build:removed', { id: 'stall_fruit', uid: 'f1' }); if (menu.state.counts.stall_fruit !== 0 || fruitCard.classList.contains('owned') || fruitCard.lastChild.textContent !== '0') throw new Error('removed → not owned: ' + fruitCard.lastChild.textContent);
+    menu.select('stall_fruit'); if (menu.el.querySelector('.ll-build-detail .deploy').disabled) throw new Error('deploy re-enabled after demolish');
+    // decor keeps the plain count pill (unlimited)
+    menu.setCategory('decor'); bus.emit('build:placed', { id: 'bench', uid: 'b1' }); bus.emit('build:placed', { id: 'bench', uid: 'b2' });
+    const benchCard = menu.cards.get('bench'); if (benchCard.lastChild.textContent !== '2' || benchCard.classList.contains('owned') || !benchCard.classList.contains('has-count')) throw new Error('decor count: ' + benchCard.lastChild.textContent);
+    bus.emit('build:removed', { id: 'bench', uid: 'b2' }); if (menu.state.counts.bench !== 1 || benchCard.lastChild.textContent !== '1') throw new Error('removed count');
+    menu.setCategory('stall');
     bus.emit('eco:spark', { spark: 500 }); if (menu.cards.get('stall_sparkExchange').classList.contains('poor')) throw new Error('affordability refresh');
     menu.setCategory('landmark'); const lm = Object.entries(PROP_CATALOG).filter(([, e]) => e.category === 'landmark' && e.cost).length; if (menu.cards.size !== lm) throw new Error('free landmarks should be hidden: ' + menu.cards.size);
     menu.setCategory('decor'); if (!menu.cards.has('bench') || !menu.el.querySelector('.ll-build-tab.on')) throw new Error('decor tab');
     bus.emit('build:denied', { why: 'blocked', id: 'bench' }); if (!/blocked/.test(menu.el.querySelector('.ll-build-foot span').textContent)) throw new Error('denied foot text');
     pressKey('Escape'); if (menu.isOpen || !ev['ui:build:close']) throw new Error('Esc close');
     menu.destroy();
-    console.log(`  build: ${stalls} stall cards · B opens · select stall_fruit → ui:build{select,40} · poor → denied shake · locked silent · build:enter → placing banner · ghost red · placed×2/removed → count 1 · eco:spark refresh · ${lm} paid landmarks · decor tab · denied text · Esc  OK`);
+    console.log(`  build: ${stalls} stall cards · B opens · select stall_fruit → ui:build{select,40} · poor → denied shake · locked silent · build:enter → placing banner · ghost red · placed → owned L1 badge + "✓ yours" + Deploy disabled · 2nd deploy denied(duplicate) · upgraded → L2 / L3 ★ maxed · removed → deployable again · decor keeps counts · eco:spark refresh · ${lm} paid landmarks · decor tab · denied text · Esc  OK`);
   } catch (err) { bad++; console.log('  build FAIL →', err.message); }
 
   // 7B: ledger.js / dialogue.js / toast.js. Checks: eco:season → ledger opens with rows/chips/title, count-up settles via update(dt),
