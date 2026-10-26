@@ -94,9 +94,20 @@ export class BuildSystem {
   }
   isLand(x, z) { return this.island ? this.island.isLand(x, z) : true; }
   occupied(x, z) { return this.cells.get(key(Math.round(x), Math.round(z))) || null; }
-  /** true when every cell is land and free */
-  canPlace(id, cx, cz, rot = this.rot) {
+  /** S29: the ONE placed stall of catalog id `id` (stalls are unique per type), or null. Decor / nature always return null. */
+  owned(id) {
+    const e = this.entry(id); if (!e || e.category !== 'stall') return null;
+    const cid = this.catalog[id] ? id : PROP_ALIASES[id];
+    for (const p of this.placed.values()) if (p.id === cid && p.category === 'stall' && !p.scenery) return p;
+    return null;
+  }
+  /** S29: why `id` cannot be placed at all right now (independent of the cell): 'duplicate' when a stall of that type already stands, else null. */
+  placeBlocker(id) { return this.owned(id) ? 'duplicate' : null; }
+  /** true when every cell is land and free — and (S29) no stall of that type stands yet (one stall per type: the second would
+   *  restart at L1 and the upgrade-stall bug followed from there). `opts.ignoreUnique` lets load() keep legacy saves with duplicates. */
+  canPlace(id, cx, cz, rot = this.rot, opts = {}) {
     if (!this.entry(id)) return false;
+    if (!opts.ignoreUnique && this.placeBlocker(id)) return false;
     for (const c of this.cellsFor(id, cx, cz, rot)) if (!this.isLand(c.x, c.z) || this.cells.has(key(c.x, c.z))) return false;
     return true;
   }
@@ -169,6 +180,8 @@ export class BuildSystem {
   enter(propId) {
     if (!this.entry(propId)) { this._deny('unknown prop ' + propId, { id: propId }); return false; }
     if (!this.catalog[propId] && PROP_ALIASES[propId]) propId = PROP_ALIASES[propId];   // P10: normalise to the catalog id (placed/save use it)
+    // S29: one stall per type — a second Deploy is refused before a ghost appears (the tray shows ⬆ Upgrade instead)
+    if (this.placeBlocker(propId)) { const o = this.owned(propId); this._deny('already placed — upgrade it instead', { id: propId, why2: 'duplicate', level: o && o.level, entry: o }); return false; }
     this.exit(true);
     this.mode = 'place'; this.propId = propId;
     this._makeGhost();
@@ -249,7 +262,9 @@ export class BuildSystem {
    */
   place(id, cx, cz, rot = this.rot, opts = {}) {
     const animate = opts.animate !== false, pay = opts.pay !== false;
-    if (!this.canPlace(id, cx, cz, rot)) { this._deny('blocked', { id, cx, cz }); return null; }
+    // S29: duplicate stall type → its own deny reason (the tray shakes the card and says why); load() may pass ignoreUnique for legacy saves
+    if (!opts.ignoreUnique && this.placeBlocker(id)) { const o = this.owned(id); this._deny('already placed — upgrade it instead', { id, cx, cz, why2: 'duplicate', level: o && o.level, entry: o }); return null; }
+    if (!this.canPlace(id, cx, cz, rot, { ignoreUnique: !!opts.ignoreUnique })) { this._deny('blocked', { id, cx, cz }); return null; }
     // BUGFIX P24: a stall placed without paying (starter / restore) still has a resale value — its catalog price (+ later upgrades).
     // opts.cost overrides (save/load passes the accumulated cost). Only the ECONOMY charge depends on `pay`.
     const e = this.entry(id);
@@ -408,11 +423,28 @@ export class BuildSystem {
 
   // --------------------------------------------------------------- save / load (for Chat 10D)
   serialize() { return [...this.placed.values()].map((e) => { const s = { id: e.id, cx: e.cx, cz: e.cz, rot: e.rot, level: e.level, cost: e.cost }; if (e.salvage) s.salvage = e.salvage; return s; }); }
-  /** Re-place saved props instantly, no cost, no events per item. Returns count. */
-  load(list = []) {
-    let n = 0;
-    for (const s of list) { const e = this.place(s.id, s.cx, s.cz, s.rot || 0, { animate: false, pay: false, level: s.level || 1, silent: true, cost: s.cost }); if (e) { n++; if (s.salvage) e.salvage = s.salvage; } }
-    this.bus.emit('build:loaded', { count: n });
+  /** Re-place saved props instantly, no cost, no events per item. Returns count.
+   *  S29 (load tolerant): a save from before "one stall per type" may hold two stalls of one type. The HIGHEST level one is kept
+   *  (it is what the player paid for); the lower duplicates are not re-placed and their accumulated cost is refunded at the
+   *  demolish ratio so no Spark is lost. `opts.keepDuplicates` keeps the old behaviour (demo/tests). */
+  load(list = [], opts = {}) {
+    let n = 0, dropped = 0, refunded = 0;
+    const items = [...list];
+    if (!opts.keepDuplicates) {
+      // decide per type which one survives BEFORE placing, so load order in the save does not matter
+      const best = new Map();
+      for (const s of items) { const e = this.entry(s.id); if (!e || e.category !== 'stall') continue; const cid = this.catalog[s.id] ? s.id : PROP_ALIASES[s.id]; const b = best.get(cid); if (!b || (s.level || 1) > (b.level || 1)) best.set(cid, s); }
+      for (const s of items) {
+        const e = this.entry(s.id); if (!e || e.category !== 'stall') continue; const cid = this.catalog[s.id] ? s.id : PROP_ALIASES[s.id];
+        if (best.get(cid) !== s || this.owned(cid)) { s._drop = true; dropped++; const r = Math.round((s.cost || 0) * REFUND_RATIO); if (r > 0 && this.economy && this.economy.earn) { this.economy.earn(r, 'refund:duplicate:' + cid); refunded += r; } }
+      }
+    }
+    for (const s of items) {
+      if (s._drop) { delete s._drop; continue; }
+      const e = this.place(s.id, s.cx, s.cz, s.rot || 0, { animate: false, pay: false, level: s.level || 1, silent: true, cost: s.cost, ignoreUnique: !!opts.keepDuplicates });
+      if (e) { n++; if (s.salvage) e.salvage = s.salvage; }
+    }
+    this.bus.emit('build:loaded', { count: n, dropped, refunded });
     return n;
   }
   clear() { for (const e of [...this.placed.values()]) this.demolish(e, { animate: false, refund: false }); }

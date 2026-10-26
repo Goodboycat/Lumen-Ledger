@@ -489,7 +489,7 @@ if (doBuild) {
     // 3. denied: blocked + cannot afford
     try {
       const n0 = (events['build:denied'] || []).length;
-      const r1 = build.place('stall_fruit', land.x, land.z); if (r1) throw new Error('placed on occupied');
+      const r1 = build.place('bench', land.x, land.z, 0); if (r1) throw new Error('placed on occupied');   // S29: a 2nd fruit stall is now 'duplicate', so the cell test uses a bench
       const save = eco.state.spark; eco.state.spark = 1;
       const free = island.gridCells().find((c) => build.canPlace('stall_bread', c.x, c.z, 0)); if (!free) throw new Error('no free 2x2');
       const r2 = build.place('stall_bread', free.x, free.z, 0); eco.state.spark = save;
@@ -577,6 +577,51 @@ if (doBuild) {
       b2.clear(); b2.exit();
       console.log(`  no economy → catalog cost, always affordable · touch: moveTo() + Input.press('build') confirms  OK`);
     } catch (err) { bad++; console.log('  touch/stub FAIL →', err.message); }
+    // 10. S29 one stall per type: owned() · a 2nd stall of a placed type is denied (enter + place + canPlace) with why2 'duplicate' · ghost is red
+    //     everywhere while a duplicate is armed via place mode · decor stays unlimited · demolish frees the type · load() keeps the highest-level
+    //     duplicate from a legacy save and refunds the rest · keepDuplicates keeps old behaviour · upgrade after re-place keeps its level.
+    try {
+      build.clear(); build.exit(); const cells = island.gridCells(); eco.state.spark = 2000;
+      const free = (id) => cells.find((c) => build.canPlace(id, c.x, c.z, 0, { ignoreUnique: true }));
+      const c1 = free('stall_fish'); const e1 = build.place('stall_fish', c1.x, c1.z, 0, { animate: false }); if (!e1) throw new Error('first fish not placed');
+      if (build.owned('stall_fish') !== e1 || build.owned('stall_tea') !== null || build.owned('bench') !== null) throw new Error('owned()');
+      if (build.placeBlocker('stall_fish') !== 'duplicate' || build.placeBlocker('stall_tea') !== null) throw new Error('placeBlocker');
+      const c2 = free('stall_fish'); if (!c2) throw new Error('no 2nd free cell'); if (build.canPlace('stall_fish', c2.x, c2.z, 0)) throw new Error('canPlace allowed a duplicate');
+      if (!build.canPlace('stall_fish', c2.x, c2.z, 0, { ignoreUnique: true })) throw new Error('ignoreUnique should allow');
+      const d0 = (events['build:denied'] || []).length, sp0 = eco.state.spark, n0 = build.placed.size;
+      if (build.place('stall_fish', c2.x, c2.z, 0, { animate: false }) !== null) throw new Error('placed a duplicate');
+      if (build.enter('stall_fish') !== false || build.mode !== 'idle' || build.ghost) throw new Error('enter armed a duplicate ghost');
+      const den = events['build:denied'].slice(d0); if (den.length !== 2 || den.some((p) => p.why2 !== 'duplicate' || p.id !== 'stall_fish' || p.level !== 1)) throw new Error('deny payload ' + JSON.stringify(den));
+      if (eco.state.spark !== sp0 || build.placed.size !== n0) throw new Error('duplicate charged / placed');
+      // ghost red: arm the type legitimately (different type), then place it → the still-armed ghost must be red wherever it goes (type now owned)
+      const c3 = free('stall_toy'); build.enter('stall_toy'); build.moveTo(c3.x + 0.5, c3.z + 0.5); if (!build.cursor.ok) throw new Error('toy ghost not green before placing');
+      if (!build.confirm()) throw new Error('toy confirm'); if (build.mode !== 'place') throw new Error('mode');   // BuildSystem alone stays in place mode (Game.js exits on stall)
+      const c4 = free('stall_toy'); build.moveTo(c4.x + 0.5, c4.z + 0.5); if (build.cursor.ok) throw new Error('ghost green on a free cell while a toy already stands');
+      if (build.confirm() !== null) throw new Error('confirm placed a 2nd toy'); build.exit(); for (let i = 0; i < 50; i++) step();   // let the toy's buildPlace finish so clear() can demolish it
+      // decor unlimited
+      let benches = 0; for (let i = 0; i < 3; i++) { const c = free('bench'); if (c && build.place('bench', c.x, c.z, 0, { animate: false })) benches++; } if (benches !== 3) throw new Error('bench limited ' + benches);
+      // demolish frees the type
+      build.demolish(e1, { animate: false }); if (build.owned('stall_fish') || build.placeBlocker('stall_fish')) throw new Error('demolish did not free the type');
+      const c5 = free('stall_fish'); if (!build.place('stall_fish', c5.x, c5.z, 0, { animate: false })) throw new Error('re-place after demolish');
+      // load tolerant: legacy save with fish L1 + fish L3 + tea L2 + bench → keeps fish L3 (not the first in list), refunds fish L1's 50 %
+      build.clear();
+      // pick 4 non-overlapping anchors by placing with keepDuplicates and reading them back
+      const probe = [['stall_fish', 1, 100], ['stall_fish', 3, 370], ['stall_tea', 2, 170], ['bench', 1, 0]].map(([id, level, cost]) => { const c = free(id); const e = build.place(id, c.x, c.z, 0, { animate: false, pay: false, level, cost, ignoreUnique: true }); if (!e) throw new Error('probe place ' + id); return { id, cx: c.x, cz: c.z, rot: 0, level, cost }; });
+      build.clear(); const legacy = probe;
+      const spL = eco.state.spark; let loaded = null; const offL = bus.on('build:loaded', (p) => { loaded = p; });
+      const nL = build.load(legacy); offL();
+      if (nL !== 3 || build.placed.size !== 3 || !loaded || loaded.dropped !== 1 || loaded.refunded !== 50 || eco.state.spark !== spL + 50) throw new Error(`legacy load n=${nL} placed=${build.placed.size} loadedEv=${JSON.stringify(loaded)} dropped=${loaded && loaded.dropped} refunded=${loaded && loaded.refunded} spark +${eco.state.spark - spL}`);
+      const kept = build.owned('stall_fish'); if (!kept || kept.level !== 3 || kept.cx !== legacy[1].cx || kept.group.userData.level !== 3) throw new Error('kept the wrong fish: L' + (kept && kept.level));
+      if (build.owned('stall_tea').level !== 2) throw new Error('tea level');
+      // keepDuplicates (demo / tests) keeps the old behaviour
+      build.clear(); const nK = build.load(legacy, { keepDuplicates: true }); if (nK !== 4 || build.placed.size !== 4) throw new Error('keepDuplicates ' + nK);
+      // serialize round-trip after a tolerant load is clean (no duplicates)
+      build.clear(); build.load(legacy); const snap = build.serialize(); if (snap.filter((s) => s.id === 'stall_fish').length !== 1) throw new Error('serialize still has duplicates');
+      // upgrade keeps working on the unique stall
+      const t = build.owned('stall_tea'); if (!build.upgrade(t) || t.level !== 3) throw new Error('upgrade unique tea'); for (let i = 0; i < 60; i++) step();
+      build.clear();
+      console.log(`  S29 one stall per type: owned()/placeBlocker() · 2nd fish denied (place + enter, why2 'duplicate', nothing charged) · ghost red after placing a toy · 3 benches fine · demolish frees the type · legacy load fish L1+L3 → keeps L3, drops 1, refunds +50 ✦ · keepDuplicates 4/4 · serialize clean · upgrade OK  OK`);
+    } catch (err) { bad++; console.log('  S29 unique FAIL →', err.message); }
   } catch (e) { bad++; console.log('  build.js FAIL →', e.message.split('\n')[0]); }
 }
 if (doCustomers) {
@@ -1387,7 +1432,7 @@ if (doSandbox) {
     let meshes = 0; game.scene.traverse((o) => { if (o.isMesh || o.isInstancedMesh) meshes++; });
     // 2. debug keys: pick + build + confirm (charged), demolish/upgrade on nearest, rotate
     sb.eco.state.spark = 400; const spark0 = sb.eco.state.spark;
-    const id = sb.keys.pick(1); if (id !== 'stall_' + STALL_PICKS[1]) throw new Error('pick');
+    const id = sb.keys.pick(3); if (id !== 'stall_' + STALL_PICKS[3]) throw new Error('pick');   // S29: picks 0–2 (fruit/bread/lantern) — bread is a starter stall and would be a duplicate; 3 = fish
     if (!sb.keys.build() || sb.build.mode !== 'place') throw new Error('build enter'); sb.keys.rotate(); sb.build.moveTo(1, 1);
     const placedBefore = sb.build.placed.size;   // S07: 3 starter stalls + 6 salvageable clutter props
     if (!sb.keys.confirm() || sb.build.placed.size !== placedBefore + 1 || sb.eco.state.spark >= spark0) throw new Error('confirm/charge');
@@ -1637,7 +1682,7 @@ if (doSave) {
     if ((A.ev['game:saved'] || []).length !== 1 || !Save.hasSave(storage)) throw new Error('A: autosave on eco:season → ' + (A.ev['game:saved'] || []).length);
     A.ui.ledger.skip(); A.ui.ledger.continue(); A.step(); A.drain();
     if ((A.ev['game:saved'] || []).length !== 2) throw new Error('A: autosave on review→playing → ' + A.ev['game:saved'].length);
-    A.bus.emit('ui:build', { action: 'select', id: 'stall_fruit' }); A.bus.emit('ui:build', { action: 'confirm' }); A.run(0.2);
+    A.bus.emit('ui:build', { action: 'select', id: 'stall_fish' }); A.bus.emit('ui:build', { action: 'confirm' }); A.run(0.2);   // S29: fruit is a starter stall → duplicate denied; fish is free
     A.bus.emit('ui:jar:apply', { pct: { spend: 40, save: 30, invest: 20, protect: 10 } });
     A.run(11);
     const firedA = [...A.lg.tut.fired]; if (!firedA.includes('tut:move') || !firedA.includes('tut:endSeason') || !firedA.includes('tut:upgrade')) throw new Error('A: tutorial gates ' + firedA.join(','));
