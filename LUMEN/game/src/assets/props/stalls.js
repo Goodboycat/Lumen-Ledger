@@ -118,7 +118,7 @@ function hangingSign(emblemColor, emblemShape = 'circle') {
   merged.name = 'sign';
   return merged;
 }
-/** Small post lantern pair (L2+). glow=true uses flatMat (L3). */
+/** Small post lantern pair (L2+). glow=true uses flatMat (L3). S31: hooks dropped (−24 tris) to make room for per-type extras. */
 function lanterns(glow = false) {
   const g = group();
   const body = G.box(0.18, 0.26, 0.18);
@@ -128,8 +128,7 @@ function lanterns(glow = false) {
     const x = sx * (W / 2 + 0.16);
     const b = mesh(body, mat, x, POST_H - 0.55, 0.62);
     const c = mesh(cap, P.woodDark, x, POST_H - 0.37, 0.62);
-    const hook = mesh(G.box(0.14, 0.03, 0.03), P.metalDark, x - sx * 0.08, POST_H - 0.3, 0.62);
-    g.add(b, c, hook);
+    g.add(b, c);
   }
   g.userData.lanterns = g.children.filter((m) => m.geometry === body);
   return g;
@@ -149,21 +148,228 @@ function goldTrim() {
   const rail = G.box(W + 0.3, 0.06, 0.06);
   g.add(mesh(rail, C.goldDark, 0, POST_H + 0.02, 0.9));
   g.add(mesh(rail, C.goldDark, 0, POST_H + 0.02, -0.74));
-  const knob = G.ico(0.08, 0);
+  const knob = G.box(0.12, 0.12, 0.12); // S31: box knobs (12 tris) instead of ico (20) — gold cubes read the same at toy scale
   for (const sx of [-1, 1]) {
-    g.add(mesh(knob, C.gold, sx * (W / 2 + 0.1), POST_H + 0.1, 0.9));
-    g.add(mesh(knob, C.gold, sx * (W / 2 + 0.1), POST_H + 0.1, -0.74));
+    const k1 = mesh(knob, C.gold, sx * (W / 2 + 0.1), POST_H + 0.1, 0.9); k1.rotation.y = Math.PI / 4;
+    const k2 = mesh(knob, C.gold, sx * (W / 2 + 0.1), POST_H + 0.1, -0.74); k2.rotation.y = Math.PI / 4;
+    g.add(k1, k2);
   }
   // gold edge on counter top
   g.add(mesh(G.box(W + 0.16, 0.04, 0.05), C.gold, 0, COUNTER_H + 0.02, 0.78));
   return g;
 }
-/** Decorative crate at the side (L2+) */
-function sideCrate(x) {
-  const g = group(block(0.42, 0.4, 0.42, P.wood, x, 0, 0.3));
-  g.add(block(0.46, 0.05, 0.46, P.woodDark, x, 0.4, 0.3));
+/** Decorative crate at the side (used by a few per-type extras) */
+function sideCrate(x, z = 0.3) {
+  const g = group(block(0.42, 0.4, 0.42, P.wood, x, 0, z));
+  g.add(block(0.46, 0.05, 0.46, P.woodDark, x, 0.4, z));
   return g;
 }
+
+// ---------------------------------------------------------------------------------------
+// S31 — PER-TYPE LEVEL EXTRAS. Every stall type gets its own L2 piece (a side feature that tells
+// you what the shop does from across the plaza) and a richer L3 piece on the other side / roof.
+// Budget: each piece ≤ ~110 tris so every stall stays ≤ 900 tris at L3 (fruit/fish are the tight ones).// Positions: left side x≈-(W/2+0.4), right side x≈+(W/2+0.4); the counter front is z≈+0.7, back wall z≈-0.5.
+// Pieces are static → baked into the level mesh by mergeGroup (flat glow materials go to the flat bucket).
+// ---------------------------------------------------------------------------------------
+const SX = W / 2 + 0.42; // side-piece x offset
+const LEVEL_EXTRAS = {
+  fruit: {
+    // L2: apple barrel on the left. L3: chalk price board on the right + hanging fruit garland under the awning.
+    l2(g) {
+      g.add(mesh(G.cyl(0.22, 0.19, 0.42, 6), P.wood, -SX, 0.21, 0.3));
+      g.add(block(0.5, 0.04, 0.1, P.woodDark, -SX, 0.22, 0.3));
+      g.add(mesh(G.ico(0.08, 0), C.apple, -SX - 0.06, 0.48, 0.26));
+      g.add(mesh(G.ico(0.08, 0), C.orangeFruit, -SX + 0.07, 0.48, 0.36));
+    },
+    l3(g) {
+      g.add(block(0.05, 0.9, 0.05, P.woodDark, SX, 0, 0.5));
+      g.add(block(0.42, 0.34, 0.04, C.ink, SX, 0.62, 0.5));
+      g.add(block(0.2, 0.03, 0.05, C.canvasWhite, SX, 0.7, 0.53));
+      g.add(block(0.14, 0.03, 0.05, C.canvasWhite, SX - 0.03, 0.62, 0.53));
+    },
+  },
+  bread: {
+    // L2: clay bread oven on the left (dome + chimney + dark mouth). L3: pretzel sign on the roof pole + flour sacks right.
+    l2(g) {
+      g.add(block(0.5, 0.3, 0.5, C.clayDark, -SX, 0, 0.1));
+      g.add(mesh(G.ico(0.26, 0), C.clay, -SX, 0.42, 0.1));
+      g.add(block(0.1, 0.42, 0.1, C.clayDark, -SX - 0.1, 0.5, -0.05));
+      g.add(block(0.18, 0.14, 0.06, C.ink, -SX, 0.32, 0.35));
+    },
+    l3(g) {
+      const pz = mesh(G.torus(0.14, 0.045, 4, 6), C.breadDark, SX, POST_H + 0.35, 0.3); g.add(pz);
+      g.add(block(0.05, 0.6, 0.05, P.woodDark, SX, POST_H - 0.15, 0.3));
+      g.add(block(0.3, 0.34, 0.3, C.cream, SX, 0, 0.45));
+      g.add(block(0.28, 0.3, 0.28, C.cream, SX + 0.05, 0.34, 0.4));
+    },
+  },
+  lantern: {
+    // L2: string of three glowing mini lanterns under the awning front. L3: tall lamp post with a big glowing lantern on the right.
+    l2(g) {
+      const body = G.box(0.12, 0.18, 0.12), cap = G.cone(0.1, 0.07, 4);
+      const cols = [C.teal, C.pink, C.lanternGlow];
+      for (let i = 0; i < 3; i++) {
+        const x = -0.55 + i * 0.55;
+        g.add(mesh(body, flatMat(cols[i]), x, POST_H - 0.3, 0.95));
+        g.add(mesh(cap, P.woodDark, x, POST_H - 0.18, 0.95));
+      }
+    },
+    l3(g) {
+      g.add(block(0.08, 2.4, 0.08, P.woodDark, SX, 0, 0.4));
+      g.add(mesh(G.box(0.3, 0.4, 0.3), flatMat(C.lanternGlow), SX, 2.3, 0.4));
+      g.add(mesh(G.cone(0.26, 0.16, 4), P.woodDark, SX, 2.58, 0.4));
+      g.add(mesh(G.ico(0.1, 0), flatMat(C.canvasWhite), SX, 2.3, 0.4));
+    },
+  },
+  fish: {
+    // L2: ice barrel with a fish on the left. L3: anchor + buoy on the right.
+    l2(g) {
+      g.add(mesh(G.cyl(0.22, 0.19, 0.42, 6), P.woodDark, -SX, 0.21, 0.3));
+      g.add(block(0.3, 0.08, 0.3, 0xe3f6ff, -SX, 0.4, 0.3));
+      const f = mesh(G.cone(0.08, 0.3, 4), C.fishSilver, -SX, 0.6, 0.3); f.rotation.z = Math.PI; g.add(f);
+      const t = mesh(G.cone(0.07, 0.12, 3), C.fishSilver, -SX, 0.8, 0.3); g.add(t);
+    },
+    l3(g) {
+      g.add(block(0.06, 0.8, 0.06, P.metalDark, SX, 0, 0.4));
+      g.add(block(0.4, 0.06, 0.06, P.metalDark, SX, 0.72, 0.4));
+      g.add(block(0.46, 0.08, 0.1, P.metalDark, SX, 0.0, 0.4));
+      g.add(block(0.2, 0.2, 0.2, C.red, SX + 0.3, 0.0, 0.75));
+    },
+  },
+  flower: {
+    // L2: hanging flower baskets on both front posts. L3: rose trellis arch on the right.
+    l2(g) {
+      for (const sx of [-1, 1]) {
+        const x = sx * (W / 2 + 0.3);
+        g.add(mesh(G.cyl(0.14, 0.1, 0.16, 5), C.brown, x, POST_H - 0.9, 0.62));
+        g.add(mesh(G.ico(0.15, 0), sx < 0 ? C.pink : C.purple, x, POST_H - 0.74, 0.62));
+      }
+    },
+    l3(g) {
+      g.add(block(0.06, 1.6, 0.06, P.wood, SX - 0.3, 0, 0.5));
+      g.add(block(0.06, 1.6, 0.06, P.wood, SX + 0.3, 0, 0.5));
+      g.add(block(0.72, 0.06, 0.06, P.wood, SX, 1.6, 0.5));
+      g.add(mesh(G.ico(0.12, 0), C.red, SX - 0.3, 1.1, 0.5));
+      g.add(mesh(G.ico(0.12, 0), C.yellow, SX, 1.66, 0.5));
+      g.add(mesh(G.ico(0.12, 0), C.pink, SX + 0.3, 0.8, 0.5));
+    },
+  },
+  tool: {
+    // L2: anvil on a stump + grindstone on the left. L3: forge chimney with glowing ember + tool rack on the right.
+    l2(g) {
+      g.add(mesh(G.cyl(0.2, 0.22, 0.36, 6), P.woodDark, -SX, 0.18, 0.4));
+      g.add(block(0.44, 0.16, 0.2, P.metalDark, -SX, 0.36, 0.4));
+      const horn = mesh(G.cone(0.08, 0.2, 4), P.metalDark, -SX + 0.3, 0.46, 0.4); horn.rotation.z = -Math.PI / 2; g.add(horn);
+      const gs = mesh(G.cyl(0.2, 0.2, 0.08, 8), P.stone, -SX, 0.22, -0.2); gs.rotation.z = Math.PI / 2; g.add(gs);
+    },
+    l3(g) {
+      g.add(block(0.5, 0.6, 0.5, P.stone, SX, 0, -0.1));
+      g.add(block(0.22, 1.2, 0.22, P.stoneDark || P.stone, SX, 0.6, -0.2));
+      g.add(mesh(G.ico(0.12, 0), flatMat(C.orange), SX, 0.5, 0.18));
+      g.add(block(0.04, 0.5, 0.04, P.wood, SX - 0.1, 0.6, 0.3));
+      g.add(block(0.04, 0.5, 0.04, P.wood, SX + 0.12, 0.6, 0.3));
+      g.add(block(0.16, 0.08, 0.08, P.metal, SX - 0.1, 1.08, 0.3));
+    },
+  },
+  cloth: {
+    // L2: dress form (mannequin) on the left + two hanging banners. L3: spinning wheel on the right.
+    l2(g) {
+      g.add(mesh(G.cyl(0.16, 0.2, 0.7, 6), C.cloth2, -SX, 0.65, 0.35));
+      g.add(block(0.05, 0.3, 0.05, P.woodDark, -SX, 0, 0.35));
+      g.add(mesh(G.ico(0.1, 0), C.cream, -SX, 1.12, 0.35));
+      g.add(block(0.26, 1.0, 0.03, C.cloth3, SX + 0.1, 0.9, -0.3));
+    },
+    l3(g) {
+      const wheel = mesh(G.torus(0.3, 0.035, 4, 8), P.wood, SX, 0.55, 0.3); g.add(wheel);
+      g.add(block(0.04, 0.6, 0.04, P.woodDark, SX, 0.25, 0.3));
+      const sp = mesh(G.box(0.56, 0.04, 0.04), P.woodDark, SX, 0.55, 0.3); g.add(sp);
+      g.add(block(0.5, 0.06, 0.3, P.wood, SX, 0, 0.3));
+    },
+  },
+  pottery: {
+    // L2: kiln on the left. L3: potter's wheel with wet clay on the right + big amphora.
+    l2(g) {
+      g.add(block(0.5, 0.36, 0.5, C.clayDark, -SX, 0, 0.0));
+      g.add(mesh(G.ico(0.27, 0), C.clay, -SX, 0.48, 0.0));
+      g.add(block(0.1, 0.5, 0.1, C.clayDark, -SX + 0.12, 0.5, -0.12));
+      g.add(block(0.18, 0.14, 0.06, C.ink, -SX, 0.38, 0.25));
+    },
+    l3(g) {
+      g.add(mesh(G.cyl(0.26, 0.26, 0.06, 6), P.woodDark, SX, 0.33, 0.45));
+      g.add(block(0.08, 0.3, 0.08, P.wood, SX, 0, 0.45));
+      g.add(mesh(G.ico(0.1, 0), C.clay, SX, 0.46, 0.45));
+      g.add(mesh(G.cyl(0.16, 0.12, 0.5, 6), C.teal, SX, 0.25, -0.3));
+      g.add(mesh(G.cyl(0.07, 0.1, 0.14, 5), C.teal, SX, 0.57, -0.3));
+    },
+  },
+  toy: {
+    // L2: rocking horse on the left + balloon. L3: pinwheel on the roof + gift boxes on the right.
+    l2(g) {
+      g.add(block(0.5, 0.06, 0.1, P.woodDark, -SX, 0, 0.45));
+      g.add(block(0.5, 0.06, 0.1, P.woodDark, -SX, 0, 0.15));
+      g.add(block(0.34, 0.22, 0.3, C.toyRed, -SX, 0.2, 0.3));
+      g.add(block(0.14, 0.22, 0.16, C.toyRed, -SX + 0.2, 0.4, 0.3));
+      g.add(block(0.02, 0.9, 0.02, P.metalDark, -SX - 0.2, 0.3, 0.3));
+      g.add(mesh(G.ico(0.15, 0), C.toyYellow, -SX - 0.2, 1.3, 0.3));
+    },
+    l3(g) {
+      g.add(block(0.04, 0.8, 0.04, P.woodDark, SX, POST_H - 0.2, -0.2));
+      const blade = G.box(0.24, 0.1, 0.03);
+      for (let i = 0; i < 4; i++) { const b = mesh(blade, [C.toyRed, C.toyBlue, C.toyYellow, C.pink][i], SX, POST_H + 0.6, -0.2); b.rotation.z = i * Math.PI / 2; b.position.x += Math.cos(i * Math.PI / 2) * 0.12; b.position.y += Math.sin(i * Math.PI / 2) * 0.12; g.add(b); }
+      g.add(block(0.4, 0.3, 0.4, C.toyBlue, SX, 0, 0.4));
+      g.add(block(0.08, 0.32, 0.42, C.toyYellow, SX, 0, 0.4));
+      g.add(block(0.28, 0.22, 0.28, C.pink, SX + 0.05, 0.3, 0.4));
+    },
+  },
+  tea: {
+    // L2: brazier with steaming kettle on the left. L3: two potted tea shrubs on the right.
+    l2(g) {
+      g.add(mesh(G.cyl(0.2, 0.16, 0.3, 6), P.metalDark, -SX, 0.15, 0.35));
+      g.add(mesh(G.ico(0.17, 0), C.teal, -SX, 0.46, 0.35));
+      const sp = mesh(G.cyl(0.03, 0.045, 0.18, 4), C.teal, -SX + 0.18, 0.52, 0.35); sp.rotation.z = -1.1; g.add(sp);
+      g.add(mesh(G.ico(0.09, 0), flatMat(C.canvasWhite), -SX + 0.26, 0.74, 0.35));
+    },
+    l3(g) {
+      for (const dz of [-0.25, 0.45]) {
+        g.add(mesh(G.cyl(0.17, 0.13, 0.26, 5), C.clay, SX, 0.13, dz));
+        g.add(mesh(G.ico(0.22, 0), C.tea, SX, 0.46, dz));
+      }
+    },
+  },
+  book: {
+    // L2: side bookshelf on the left. L3: globe on a stand + ink pot on the right.
+    l2(g) {
+      g.add(block(0.5, 1.3, 0.08, P.woodDark, -SX, 0, -0.3));
+      g.add(block(0.5, 0.05, 0.3, P.wood, -SX, 0.5, -0.18));
+      g.add(block(0.5, 0.05, 0.3, P.wood, -SX, 1.0, -0.18));
+      const cols = [C.book1, C.book2, C.book3, C.book4];
+      for (let i = 0; i < 4; i++) g.add(block(0.08, 0.3 + (i % 2) * 0.05, 0.22, cols[i], -SX - 0.17 + i * 0.11, i < 2 ? 0.55 : 1.05, -0.18));
+    },
+    l3(g) {
+      g.add(block(0.08, 0.9, 0.08, P.woodDark, SX, 0, 0.35));
+      g.add(mesh(G.cyl(0.2, 0.2, 0.04, 5), P.woodDark, SX, 0.02, 0.35));
+      g.add(mesh(G.ico(0.22, 0), C.blue, SX, 1.1, 0.35));
+      g.add(block(0.2, 0.2, 0.2, C.ink, SX - 0.2, 0, -0.3));
+    },
+  },
+  sparkExchange: {
+    // L2: vault door with a dial on the left + glowing coin stack. L3: spark chandelier (glowing coins on a pole) right.
+    l2(g) {
+      g.add(block(0.5, 0.8, 0.14, C.vault, -SX, 0, -0.3));
+      const dial = mesh(G.cyl(0.1, 0.1, 0.05, 8), C.gold, -SX, 0.45, -0.21); dial.rotation.x = Math.PI / 2; g.add(dial);
+      g.add(block(0.2, 0.05, 0.06, C.goldDark, -SX + 0.14, 0.25, -0.21));
+      g.add(mesh(G.cyl(0.14, 0.14, 0.05, 6), flatMat(C.spark), -SX, 0.025, 0.4));
+      g.add(mesh(G.cyl(0.14, 0.14, 0.05, 6), flatMat(C.sparkDark), -SX + 0.05, 0.075, 0.42));
+    },
+    l3(g) {
+      g.add(block(0.06, 2.2, 0.06, C.goldDark, SX, 0, 0.3));
+      for (let i = 0; i < 4; i++) {
+        const a = i * Math.PI / 2;
+        g.add(mesh(G.cyl(0.1, 0.1, 0.04, 6), flatMat(i % 2 ? C.spark : C.sparkDark), SX + Math.cos(a) * 0.22, 1.9 + (i % 2) * 0.12, 0.3 + Math.sin(a) * 0.22));
+      }
+    },
+  },
+};
 
 // ---------------------------------------------------------------------------------------
 // Goods: tiny clusters placed on the counter top (y = COUNTER_H). Each ≤ ~60 tris.
@@ -408,18 +614,21 @@ export function makeStall(type, opts = {}) {
     ud.lanterns = [];
     ud.flag = null;
     let flagMesh = null;
+    // S31: generic kit per level is lanterns (L2+) and gold trim + flag (L3); the side pieces are PER TYPE (LEVEL_EXTRAS)
+    // so a Bakery L2 (oven) looks nothing like a Fish Market L2 (ice barrel), and L3 adds a second, richer piece.
+    const extras = LEVEL_EXTRAS[type];
     if (lvl >= 2) {
       const l = lanterns(lvl >= 3);
       raw.add(l);
       ud.lanterns = l.userData.lanterns;
-      raw.add(sideCrate(-W / 2 - 0.4));
+      if (extras && extras.l2) { const x2 = group(); extras.l2(x2); x2.name = 'extraL2'; raw.add(x2); } else raw.add(sideCrate(-W / 2 - 0.4));
     }
     if (lvl >= 3) {
       raw.add(goldTrim());
       const f = roofFlag(a === C.canvasWhite ? b : a);
       raw.add(f);
       flagMesh = f.userData.flag;
-      raw.add(sideCrate(W / 2 + 0.4));
+      if (extras && extras.l3) { const x3 = group(); extras.l3(x3); x3.name = 'extraL3'; raw.add(x3); } else raw.add(sideCrate(W / 2 + 0.4));
     }
     // Keep the sign (swings) and flag (waves) as live meshes; bake everything else.
     const keepSet = new Set();

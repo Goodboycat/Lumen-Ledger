@@ -62,6 +62,32 @@ if (doProps) {
       console.log(`  ${id.padEnd(22)} ${e.category.padEnd(8)} fp=${(e.footprint || []).join('x')}  L1 ${tris[0]}  L2 ${tris[1]}  L3 ${tris[2]}`);
     } catch (err) { bad++; console.log(`  ${id.padEnd(22)} FAIL → ${err.message.split('\n')[0]}`); }
   }
+  // S31 stall levels: every stall type ≤ 900 tris at L3, L1 < L2 < L3 (each level visibly adds), and the L2 / L3 extra pieces are
+  // PER TYPE — the unmerged level group must carry an 'extraL2' (L2+) and 'extraL3' (L3) node whose tri count differs across types
+  // (no two types may share the same L2 extra; previously every type got the same side crate so "L1 vs L2" looked identical).
+  try {
+    const { STALL_TYPES, makeStall, countTris } = await import(pathToFileURL(resolve('src/assets/props/stalls.js')).href);
+    const THREE = await import(pathToFileURL(resolve('vendor/three.module.js')).href);
+    const sigL2 = new Map(), sigL3 = new Map();
+    for (const t of STALL_TYPES) {
+      const tri = [1, 2, 3].map((level) => countTris(makeStall(t, { level, outline: false })));
+      if (tri[2] > 900) throw new Error(`${t} L3 ${tri[2]} tris > 900`);
+      if (!(tri[0] < tri[1] && tri[1] < tri[2])) throw new Error(`${t} levels not increasing ${tri.join('/')}`);
+      const raw3 = makeStall(t, { level: 3, outline: false, merge: false });
+      const x2 = raw3.getObjectByName('extraL2'), x3 = raw3.getObjectByName('extraL3');
+      if (!x2 || !x3) throw new Error(`${t} missing per-type extraL2/extraL3`);
+      const sig = (x) => { const b = new THREE.Box3().setFromObject(x); return `${countTris(x)}:${x.children.length}:${b.min.toArray().map((v) => v.toFixed(2)).join(',')}:${b.max.toArray().map((v) => v.toFixed(2)).join(',')}`; };
+      const s2 = sig(x2), s3 = sig(x3);
+      if (sigL2.has(s2)) throw new Error(`${t} L2 extra identical to ${sigL2.get(s2)} (${s2})`);
+      sigL2.set(s2, t); sigL3.set(s3, t);
+      const raw2 = makeStall(t, { level: 2, outline: false, merge: false });
+      if (raw2.getObjectByName('extraL3')) throw new Error(`${t} L2 already carries the L3 extra`);
+      // setLevel instant path swaps the extras in/out
+      raw2.userData.setLevel(3); if (!raw2.getObjectByName('extraL3') || raw2.userData.level !== 3) throw new Error(`${t} setLevel(3) did not add extraL3`);
+      raw2.userData.setLevel(1); if (raw2.getObjectByName('extraL2') || raw2.userData.level !== 1) throw new Error(`${t} setLevel(1) did not remove extraL2`);
+    }
+    console.log(`  STALL LEVELS (S31): ${STALL_TYPES.length}/12 types ≤ 900 tris at L3, L1<L2<L3, ${sigL2.size} distinct L2 extras · ${sigL3.size} distinct L3 extras · setLevel swaps extras  OK`);
+  } catch (err) { bad++; console.log(`  STALL LEVELS FAIL → ${err.message.split('\n')[0]}`); }
   // 1D decor: every decor prop ≤ 10 draw calls incl. outline; jars setFill 0/0.5/1 + jarFill Sequence runs 1 s headless
   // (reaches 'wobble', ends with fill=1, body scale back to 1, no NaN); lanterns setLit swaps material; sway props no NaN.
   try {
