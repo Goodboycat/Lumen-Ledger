@@ -120,7 +120,7 @@ borrow  → LOSE after 5 seasons (debt 1079 > 2×500) · hoarder → LOSE after 
 ```
 For comparison, the same strategies on 4A `BALANCE` (`--base`): sensible fog 0 at **S7** (then waits), hoarder **never loses**.
 
-## Knobs for a later pass (11B mobile QA / playtest)
+## Knobs for a later pass (mobile / playtest)
 - Too hard → `fogRelief 0.13` or `startFog 0.35` (both keep win@10 on 20/20 seeds in the sweep). Too easy → `fogPerDebtSeason 0.08`.
 - Real players sell fewer units than the sim (18 + 5/stall visits per season). If playtests show S10 misses, lower `saveThreshold`
   to 150 first — it moves fog 0 by about one season without touching the debt lesson.

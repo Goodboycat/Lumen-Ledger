@@ -72,7 +72,7 @@ try {
   const game = new Game(document.getElementById('game-container'));
   window.game = game;                                                                     // smoke.mjs reads game.stats / game.paused
   const params = new URLSearchParams(location.search);
-  const seasonSeconds = +params.get('season') || undefined;                               // ?season=30 → fast seasons (QA); default = BALANCE 150 s
+  const seasonSeconds = +params.get('season') || undefined;                               // ?season=30 → fast seasons (testing); default = BALANCE 150 s
   const storyData = await fetch('./data/story.json').then((r) => { if (!r.ok) throw new Error('data/story.json ' + r.status); return r.json(); });
   // Icons: every former emoji is a procedural drawing (ui/icons.js) baked to ui/icons/*.png by tools/icons_png.mjs. ?svgicons keeps inline SVG.
   if (!params.has('svgicons')) await usePngIcons('./ui/icons/');
@@ -94,7 +94,7 @@ try {
   window.audio = audio;
   // the title opened before the manifest arrived → queue its music now (plays once 'input:first' unlocks the context)
   audio.load('./audio/manifest.json').then(() => { if (ui.title?.isOpen && !audio.state.currentMusic) audio.music('title'); }).catch(() => {});
-  if (params.has('mute')) audio.setVolume({ sfx: 0, music: 0 });                           // ?mute (QA / trailer capture)
+  if (params.has('mute')) audio.setVolume({ sfx: 0, music: 0 });                           // ?mute (trailer capture)
   // 10D: save slot for the Flutter WebView (14) — copy the text out before storage is cleared, paste it back in: LUMEN1:<base64>
   window.lumenSave = { export: () => lg.save.exportText(), import: (t) => lg.save.importText(t), clear: () => lg.save.clear(), has: () => lg.save.has(), describe: () => lg.save.describe() };
   if (params.has('import')) lg.save.importText(decodeURIComponent(params.get('import')));   // ?import=LUMEN1:… (WebView hand-off)
@@ -139,8 +139,6 @@ try {
   if (params.has('cinelog')) for (const n of ['cine:showcase', 'cine:begin', 'cine:end', 'cine:lamp', 'game:start']) game.bus.on(n, (p) => console.log('[cine]', n, JSON.stringify(p || {}), 'active=' + (lg.cine?.active ?? 'none'), 'meshes=' + game.scene.children.length));
   game.start();
   requestAnimationFrame(() => requestAnimationFrame(hideLoading));                      // 11B P3: first real frame is on screen → fade the loading layer
-  // S27 QA: ?qa=<scenario> runs tools/qa_browser.js in-page and prints "[qa] …" lines (read with PlaywrightConsoleCapture — no local Chromium needed)
-  if (params.has('qa')) import('./tools/qa_browser.js').then((m) => m.runQA(params.get('qa') || 'all', { game, lg, ui })).catch((e) => console.error('[qa] load failed', e));
 } catch (e) { showError(e); }
 </script>
 </body>

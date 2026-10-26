@@ -3,7 +3,7 @@
 //   node tools/smoke.mjs demo_stalls.html --keys 1,2,3 --shots --close
 // Prints console errors, fps, draw calls, triangles, mesh count. Exit code 1 if any page error.
 // Saves screenshots to tools/shots/<page>_<n>.png when --shots is given.
-// If playwright is not installed: bash tools/setup_browser.sh  (once; if it prints FAILED, skip browser QA)
+// If playwright is not installed: bash tools/setup_browser.sh  (once; if it prints FAILED, skip the browser smoke)
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';

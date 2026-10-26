@@ -24,7 +24,7 @@ export function mountToast(root, opts = {}) {
   const bus = opts.bus || defaultBus;
   const max = opts.max || 3;
   const defDur = opts.duration || 5000;
-  // mobile QA: toasts disappeared too fast → longer defaults + reading time: ≥ 1.4 s + 75 ms per character (a 100-char tip ≈ 9 s).
+  // mobile pass: toasts disappeared too fast → longer defaults + reading time: ≥ 1.4 s + 75 ms per character (a 100-char tip ≈ 9 s).
   // Touching / hovering a toast holds it; tap still dismisses.
   const readMs = (text) => 1400 + String(text).length * 75;
 

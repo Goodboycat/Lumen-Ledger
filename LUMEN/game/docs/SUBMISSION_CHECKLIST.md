@@ -9,7 +9,7 @@ Legend: ✅ exists today · 🔜 owned by a later chat · ☐ manual step on sub
 | A1 | **Your Game** — playable, on itch.io | `lumen-ledger-web.zip` from `docs/ITCH_PAGE.md §6` → itch upload, "played in browser" | 13A recipe · ☐ upload day | recipe dry‑run OK (536 KB, `index.html` at root, 72 files) · `node tools/check.mjs` full flags ALL OK · incognito phone test after upload | ✅ recipe / ☐ upload |
 | A2 | **Concept Doc / Initial Game Design Document** | `docs/GDD.md` (pitch, pillars, core loop, FinLit mapping table, systems, controls, art, narrative, scope, accessibility) — export to PDF for the form | 8B ✅ · 13A fills §11 credits ☐ | PDF opens, 12 sections, team names filled | ✅ doc / ☐ PDF |
 | A3 | **2‑Minute Video** — footage of *actual gameplay in the submitted game* | `docs/TRAILER.md` shot list + `?demo=1` demo mode (`src/systems/demoMode.js`) → recorded MP4 1280×720 ≤ 2:00 → YouTube (unlisted) + itch trailer field | 13B 🔜 · ☐ record | video is real captured gameplay (no mock‑ups), ≤ 120 s, audio unlock tap visible or trimmed, theme card in first 5 s | 🔜 |
-| A4 | **Game Budget** | `docs/BUDGET.md` (jam build actual + funded v1.0, roles, tools, audio, QA, marketing, tiers) — export to PDF/XLSX | 13A ✅ | totals reconcile (A ≈ $7.4k · B ≈ $705k), bracketed names filled | ✅ doc / ☐ PDF |
+| A4 | **Game Budget** | `docs/BUDGET.md` (jam build actual + funded v1.0, roles, tools, audio, testing, marketing, tiers) — export to PDF/XLSX | 13A ✅ | totals reconcile (A ≈ $7.4k · B ≈ $705k), bracketed names filled | ✅ doc / ☐ PDF |
 
 ## B. Theme & content rules
 | # | Requirement | Where it is satisfied | Verify | Status |
@@ -24,7 +24,7 @@ Legend: ✅ exists today · 🔜 owned by a later chat · ☐ manual step on sub
 |---|---|---|---|
 | C1 | Title · tagline · classification · kind (HTML) · release status (Prototype) · pricing (free) | `docs/ITCH_PAGE.md §1` table | ✅ copy |
 | C2 | Upload with "This file will be played in the browser" | A1 zip | ☐ |
-| C3 | Embed: 1280 × 720 · mobile friendly · fullscreen button · click‑to‑launch (audio unlock) · scrollbars off | `docs/ITCH_PAGE.md §1`; `tools/qa_mobile.mjs` 1280×720 no‑scroll check ✅ | ✅ setting / ☐ apply |
+| C3 | Embed: 1280 × 720 · mobile friendly · fullscreen button · click‑to‑launch (audio unlock) · scrollbars off | `docs/ITCH_PAGE.md §1`; 1280×720 no‑scroll verified in the browser ✅ | ✅ setting / ☐ apply |
 | C4 | Description body (pitch, how to play, controls, lessons, good‑to‑know, credits) | `docs/ITCH_PAGE.md §2` paste block | ✅ |
 | C5 | Genre · tags (≤ 10) · inputs · accessibility · session length · language | `docs/ITCH_PAGE.md §1` | ✅ |
 | C6 | Cover image 630 × 500 | shot 1 re‑framed + logo, `LUMEN/screenshots/13A_itch/cover.png` | ☐ (shot list ready) |
@@ -39,7 +39,7 @@ Legend: ✅ exists today · 🔜 owned by a later chat · ☐ manual step on sub
 | D1 | Headless suite | `node tools/check.mjs --props --creatures --hero --abilities --economy --build --customers --ui --story --vfx --world --sandbox --game --save --audio` → ALL OK | ✅ (2026‑10‑19) |
 | D2 | Full game walk headless | included in D1 (`--game`: S1 → S3 → win → endless → lose → title, 3070 frames) | ✅ |
 | D3 | Browser smoke, 0 console errors | `bash tools/setup_browser.sh && node tools/smoke.mjs index.html --close` → ERRORS none | ✅ (12: 121–133 dc) |
-| D4 | Mobile QA 3 viewports | `node tools/qa_mobile.mjs` → 3/3 OK, 0 overflow/overlap/scroll, taps ≥ 44 px | ✅ (11B) |
+| D4 | Mobile check, 3 viewports (360×800 · 800×360 · 1280×720) | 0 overflow/overlap/scroll, taps ≥ 44 px | ✅ (11B) |
 | D5 | Perf budget | ≤ 150 draw calls in play (`docs/PERF.md`: 110–135) | ✅ |
 | D6 | Save round‑trip | `check.mjs --save` + manual: play a season, reload, CONTINUE | ✅ headless / ☐ manual |
 | D7 | Relative paths only (itch CDN sub‑path, WebView) | 11B audit; `grep -rn '"/src\|"/ui\|"/vendor' index.html ui src` → none | ✅ |

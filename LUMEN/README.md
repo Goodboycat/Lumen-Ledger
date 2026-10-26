@@ -1,7 +1,7 @@
 # LUMEN — Lumen Ledger (Zoud GameLab jam, "Make FinLit Fun", due 2026-11-15)
 
 This folder holds **only the game and the jam documents**.
-Dev material (screenshots, QA shots, demos, tests, tools, chat prompts, handoffs, plans) was moved to `../LUMEN_extras/`
+Dev material (screenshots, demos, chat prompts, handoffs, plans) was moved to `../LUMEN_extras/`
 (same relative paths, e.g. `LUMEN_extras/game/tools/check.mjs`, so it can be copied back if you need it).
 
 ```

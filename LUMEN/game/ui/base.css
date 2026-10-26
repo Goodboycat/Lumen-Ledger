@@ -33,7 +33,7 @@ body.is-touch .help { display: none; }
 
 @media (max-width: 600px) { .ribbon-title { font-size: 16px; } .stats { font-size: 10px; } }
 
-/* 11B mobile QA — tap targets ≥ 44 px on touch devices (Apple HIG). Desktop keeps the compact look. */
+/* 11B mobile pass — tap targets ≥ 44 px on touch devices (Apple HIG). Desktop keeps the compact look. */
 body.is-touch .ll-jars-foot .ll-btn, body.is-touch .ll-build-toggle { min-height: 44px; }
 body.is-touch .ll-jar input[type=range] { height: 32px; }
 body.is-touch .ll-jar input[type=range]::-webkit-slider-thumb { width: 24px; height: 24px; margin-top: -9px; }

@@ -110,7 +110,7 @@ export function mountTitle(root, opts = {}) {
     hide() {
       if (!st.open) return api;
       st.open = false; wrap.classList.add('hide'); wrap.classList.remove('open'); document.body && document.body.classList && document.body.classList.remove('ll-title-open');
-      // 11B: after the fade the layer is display:none (it stayed display:flex at opacity 0 → full-screen invisible layer, overflow in QA)
+      // 11B: after the fade the layer is display:none (it stayed display:flex at opacity 0 → full-screen invisible layer, overflowed on phones)
       clearTimeout(st.goneT); st.goneT = setTimeout(() => { if (!st.open) wrap.classList.add('gone'); }, 340);
       bus.emit('ui:title:close', { mode: st.lastMode }); return api;
     },

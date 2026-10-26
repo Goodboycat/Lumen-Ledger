@@ -34,7 +34,7 @@ export function propsByCategory(cat) {
   return Object.keys(PROP_CATALOG).filter((id) => PROP_CATALOG[id].category === cat);
 }
 
-/** Fill `tris` for every entry by building one instance (debug/QA; cheap, call once). */
+/** Fill `tris` for every entry by building one instance (debug stats; cheap, call once). */
 export function measureCatalog(level = 1) {
   const out = {};
   for (const id of Object.keys(PROP_CATALOG)) {

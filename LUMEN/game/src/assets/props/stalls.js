@@ -538,7 +538,7 @@ export const makeStallTea = (o) => makeStall('tea', o);
 export const makeStallBook = (o) => makeStall('book', o);
 export const makeStallSparkExchange = (o) => makeStall('sparkExchange', o);
 
-/** Count triangles under a root (excluding outline hulls) — for stats/QA. */
+/** Count triangles under a root (excluding outline hulls) — for stats. */
 export function countTris(root, includeOutline = false) {
   let n = 0;
   root.traverse((o) => {

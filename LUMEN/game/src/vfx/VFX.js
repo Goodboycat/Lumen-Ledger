@@ -67,7 +67,7 @@ export class DustPool {
 // ---------- Slash trail (one additive crescent quad) ----------
 export class SlashTrail {
   constructor(scene) {
-    // crescent: ring sector geometry. BUGFIX (mobile QA): the old arc was yawed +90° off the strike direction and its sweep rotated
+    // crescent: ring sector geometry. BUGFIX (mobile pass): the old arc was yawed +90° off the strike direction and its sweep rotated
     // it further round, so on screen the slash appeared on the OPPOSITE side of Pip (behind him). Now the crescent lives in a pivot:
     // the mesh is laid flat with its arc spanning the hero's FRONT half (angles 0.12π..0.88π → +Z), the pivot is yawed to the strike
     // direction and only the pivot sweeps (right → left, same way the sword swings). Every vertex stays in front of the hero.
@@ -159,7 +159,7 @@ export class PopTextPool {
     }
   }
   show(pos, text, { color = '#FFD54F', dur = 0.8, size = 1 } = {}) {
-    // mobile QA: floating texts vanished before they could be read on a phone → every pop lives POP_SLOW× longer (min POP_MIN s)
+    // mobile pass: floating texts vanished before they could be read on a phone → every pop lives POP_SLOW× longer (min POP_MIN s)
     dur = Math.max(POP_MIN, dur * POP_SLOW);
     const it = this.items.find((i) => i.life <= 0) || this.items.reduce((a, b) => (b.life < a.life ? b : a));   // reuse the OLDEST, not always #0
     const c = it.ctx; c.clearRect(0, 0, 256, 96);

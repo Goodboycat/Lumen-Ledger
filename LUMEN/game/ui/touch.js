@@ -14,7 +14,7 @@
 //     attack every 220 ms while held — `opts.repeat`); each also sets `input.actions[name]` true while held (released on up/cancel).
 //   • Portrait + landscape layouts, safe-area insets, buttons ≥ 64 px, nothing under the thumb zones of HUD / build tray.
 //   • Auto-shows when `input.isTouch` (or opts.force / `?touch=1` in the URL); hidden on desktop. `show()/hide()` override.
-//   • Multi-touch: joystick + any number of buttons at once (each control owns its own pointerId; tools/qa_touch.mjs verifies it).
+//   • Multi-touch: joystick + any number of buttons at once (each control owns its own pointerId).
 //   • Emits `ui:touch { action }` for every button press (12 maps sounds) — otherwise emits nothing.
 //   • S08: a 6-chip FinLit ability strip (Magnet / Shield / Grow / Flash / Haggle / Sweep) above the pad → `ui:touch { action: 'ability', name }`;
 //     radial cooldown sweep from `sandbox:ability:start {name, cooldown}`, shake from `sandbox:denied`. `touch.setCooldown(name, s)` / `flashDenied(name)` / `simulateAbility(name)`.

@@ -81,7 +81,7 @@ One lesson per season, in `BALANCE.lessons` order. Every lesson has (a) a **mech
 | Story data + system (pure JS) | 8A/8B | `data/story.json`, `src/systems/story.js` | 207 lines, 10 lesson cards, 6 scam scripts |
 | VFX packs | 9A/9B | `src/vfx/*` | coinFly, confetti, fog shader, savingSparkle… |
 | Integration / save / tutorial | 10A–10D | `index.html`, `src/main.js`, `src/systems/save.js` | |
-| Perf, mobile QA, audio, package, trailer, APK | 11A–14 | — | |
+| Perf, mobile pass, audio, package, trailer, APK | 11A–14 | — | |
 
 Everything talks over `core/EventBus.js`: Economy emits `eco:*`, Build `build:*`, Customers `cust:*`, Story `story:*`; UI listens and emits `ui:*`. Pure systems (economy, story) have no Three/DOM import and run in Node (`node tools/check.mjs`).
 
