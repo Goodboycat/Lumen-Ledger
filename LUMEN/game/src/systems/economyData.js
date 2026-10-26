@@ -101,7 +101,7 @@ export const UPGRADES = {
   zone_far: { id: 'zone_far', kind: 'zone', cost: 500, requires: ['zone_east', 'season:7'], effect: { zone: 3 }, text: 'Unlock the Far Point — the Lighthouse', lesson: 'delayedGratification' },
 };
 
-// ---------------------------------------------------------------- BALANCE_TUNED — see docs/balance.md for the reasoning + sim tables
+// ---------------------------------------------------------------- BALANCE_TUNED — see LUMEN_extras/game/docs/balance.md for the reasoning + sim tables
 export const BALANCE_TUNED = {
   ...BALANCE,
   startSpark: 150,           // S01 (2026-10-23): 100 → 150. Recording run 2 showed S1 income 66 vs expenses 221 — a first-time kid lost ground in the tutorial
