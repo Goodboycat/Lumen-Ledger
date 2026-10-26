@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>S31 — stall levels gallery</title>
+<style>html,body{margin:0;height:100%;background:#bfe8ff;font:13px system-ui}#hud{position:fixed;left:8px;top:8px;background:#fff9;padding:6px 10px;border-radius:8px}</style></head>
+<body><div id="hud">S31 gallery — rows: L1 / L2 / L3 · columns: 12 stall types · wheel zoom · drag orbit</div>
+<script type="module">
+// Renders every stall type at L1 (back row), L2 (middle), L3 (front) so the per-type extras can be compared at a glance.
+// Headless check: logs "GALLERY OK <n> stalls <tris> tris" (or the error) to the console.
+import * as THREE from '../../LUMEN/game/vendor/three.module.js';
+import { makeStall, STALL_TYPES, countTris } from '../../LUMEN/game/src/assets/props/stalls.js';
+try {
+  const r = new THREE.WebGLRenderer({ antialias: true }); r.setSize(innerWidth, innerHeight); r.setPixelRatio(Math.min(devicePixelRatio, 2)); document.body.appendChild(r.domElement);
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0xbfe8ff);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x88aa66, 1.1));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.4); sun.position.set(6, 12, 8); scene.add(sun);
+  scene.add(new THREE.Mesh(new THREE.PlaneGeometry(80, 40), new THREE.MeshLambertMaterial({ color: 0x7ed957 })).rotateX(-Math.PI / 2));
+  const cam = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 200);
+  let yaw = 0.0, pitch = 0.55, dist = 34, tx = 0, tz = 0;
+  const all = []; let tris = 0;
+  STALL_TYPES.forEach((t, i) => { for (let lvl = 1; lvl <= 3; lvl++) { const g = makeStall(t, { level: lvl, seed: i + 1 }); g.position.set((i - 5.5) * 3.4, 0, (lvl - 2) * 5.5); scene.add(g); all.push(g); tris += countTris(g); } });
+  const place = () => { cam.position.set(tx + Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, tz + Math.cos(yaw) * Math.cos(pitch) * dist); cam.lookAt(tx, 1, tz); };
+  let drag = null; addEventListener('pointerdown', (e) => drag = [e.clientX, e.clientY]); addEventListener('pointerup', () => drag = null);
+  addEventListener('pointermove', (e) => { if (!drag) return; yaw -= (e.clientX - drag[0]) * 0.005; pitch = Math.max(0.1, Math.min(1.4, pitch + (e.clientY - drag[1]) * 0.005)); drag = [e.clientX, e.clientY]; });
+  addEventListener('wheel', (e) => dist = Math.max(6, Math.min(60, dist + e.deltaY * 0.02)));
+  addEventListener('resize', () => { cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); r.setSize(innerWidth, innerHeight); });
+  let last = performance.now();
+  const loop = (now) => { const dt = (now - last) / 1000; last = now; for (const g of all) g.userData.update(dt); place(); r.render(scene, cam); requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+  const stat = all.filter((g) => g.userData.level === 3).map((g) => `${g.userData.stallType}:${countTris(g)}`).join(' ');
+  console.log(`GALLERY OK ${all.length} stalls ${tris} tris · L3 ${stat}`);
+  window.gallery = { all, scene, cam };
+} catch (e) { console.error('GALLERY FAIL', e.message, e.stack); }
+</script></body></html>
