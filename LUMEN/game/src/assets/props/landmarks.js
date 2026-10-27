@@ -128,41 +128,76 @@ export function makeLighthouse(opts = {}) {
 
 // ---------------------------------------------------------------------------------------
 // PIP'S COTTAGE — chunky toy house, smoking chimney, glowing window at night (userData.setLit)
+// S35 remodel: the old roof was two guessed slabs + 4-segment cones scaled 1.9× as gables (half-width 1.6 u on a 1.15 u wall) and a
+// 2.4 × 0.9 rectangle in the attic — all three poked through the roof / past the walls. The attic is now a real triangular prism
+// that exactly fills the wall span, the two slabs are computed from the pitch (eave → ridge) and sit on its surface with a uniform
+// overhang, the chimney is buried into the slope, and gable trims + a loft window are flush with the gable faces.
 // ---------------------------------------------------------------------------------------
+/** Triangular prism (gable / attic): base width w on the ground, apex height h, depth d; origin at base centre. */
+function gableGeo(w, h, d) {
+  const hw = w / 2, hd = d / 2, P = [];
+  const tri = (a, b, c) => { P.push(...a, ...b, ...c); };
+  // front (+z) and back (−z) triangles
+  tri([-hw, 0, hd], [hw, 0, hd], [0, h, hd]);
+  tri([hw, 0, -hd], [-hw, 0, -hd], [0, h, -hd]);
+  // right slope
+  tri([hw, 0, hd], [hw, 0, -hd], [0, h, -hd]); tri([hw, 0, hd], [0, h, -hd], [0, h, hd]);
+  // left slope
+  tri([-hw, 0, -hd], [-hw, 0, hd], [0, h, hd]); tri([-hw, 0, -hd], [0, h, hd], [0, h, -hd]);
+  // bottom
+  tri([-hw, 0, -hd], [hw, 0, -hd], [hw, 0, hd]); tri([-hw, 0, -hd], [hw, 0, hd], [-hw, 0, hd]);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.computeVertexNormals(); return g;
+}
 export function makeCottage(opts = {}) {
   const r = rng((opts.seed ?? 1) * 77 + 1);
   const raw = group();
-  raw.add(box(2.6, 0.25, 2.2, P.stoneDark, 0, 0, 0));
-  raw.add(box(2.3, 1.5, 1.9, C.wallCream, 0, 0.25, 0));
-  // timber frame
-  for (const x of [-1.1, 0, 1.1]) raw.add(box(0.12, 1.5, 0.1, C.wallWood, x, 0.25, 0.98));
-  raw.add(box(2.3, 0.12, 0.1, C.wallWood, 0, 1.63, 0.98));
+  const W = 2.3, D = 1.9, WALL_Y = 0.25, WALL_H = 1.5, TOP = WALL_Y + WALL_H;      // wall top y = 1.75
+  const OVER = 0.25, RISE = 0.9, RUN = W / 2 + OVER, TH = 0.16;                   // roof pitch: rise 0.9 over run 1.4
+  const ang = Math.atan2(RISE, RUN), len = Math.hypot(RUN, RISE) + 0.06;
+  const RIDGE = TOP + RISE;                                                        // 2.65
+  raw.add(box(W + 0.3, 0.25, D + 0.3, P.stoneDark, 0, 0, 0));                      // plinth
+  raw.add(box(W, WALL_H, D, C.wallCream, 0, WALL_Y, 0));
+  // timber frame (front face, flush)
+  for (const x of [-1.1, 0, 1.1]) raw.add(box(0.12, WALL_H, 0.1, C.wallWood, x, WALL_Y, D / 2 + 0.03));
+  raw.add(box(W, 0.12, 0.1, C.wallWood, 0, TOP - 0.12, D / 2 + 0.03));
   // door + window
-  raw.add(box(0.55, 0.9, 0.12, C.doorWood, -0.6, 0.25, 1.0));
-  raw.add(mesh(G.sphere(0.05, 6, 4), P.sparkGold, -0.42, 0.72, 1.07));
-  const win = box(0.5, 0.45, 0.12, C.lampGlass, 0.6, 0.75, 1.0); raw.add(win);
-  raw.add(box(0.06, 0.45, 0.14, C.wallWood, 0.6, 0.75, 1.01)); raw.add(box(0.5, 0.06, 0.14, C.wallWood, 0.6, 0.95, 1.01));
-  // roof (two slabs) + ridge + chimney
-  const roofL = box(1.55, 0.18, 2.4, C.roofBlue, -0.6, 1.75, 0); roofL.rotation.z = 0.78; roofL.position.set(-0.62, 2.2, 0); raw.add(roofL);
-  const roofR = box(1.55, 0.18, 2.4, C.roofBlue, 0.6, 1.75, 0); roofR.rotation.z = -0.78; roofR.position.set(0.62, 2.2, 0); raw.add(roofR);
-  raw.add(box(2.4, 0.9, 0.08, C.wallCream, 0, 1.73, 0)).scale.set(1, 1, 1);
-  const gableF = mesh(G.cone(0.85, 0.75, 4), C.wallCream, 0, 2.1, 0.92); gableF.rotation.y = Math.PI / 4; gableF.scale.set(1.9, 1, 0.1); raw.add(gableF);
-  const gableB = gableF.clone(); gableB.position.z = -0.92; raw.add(gableB);
-  raw.add(box(0.22, 0.18, 2.5, C.roofBlue, 0, 2.62, 0));
-  raw.add(box(0.4, 0.9, 0.4, C.chimney, 0.65, 2.1, -0.5));
-  raw.add(box(0.5, 0.12, 0.5, P.stoneDark, 0.65, 3.0, -0.5));
+  raw.add(box(0.55, 0.9, 0.12, C.doorWood, -0.6, WALL_Y, D / 2 + 0.05));
+  raw.add(mesh(G.sphere(0.05, 6, 4), P.sparkGold, -0.42, 0.72, D / 2 + 0.12));
+  const win = box(0.5, 0.45, 0.12, C.lampGlass, 0.6, 0.75, D / 2 + 0.05); raw.add(win);
+  raw.add(box(0.06, 0.45, 0.14, C.wallWood, 0.6, 0.75, D / 2 + 0.06)); raw.add(box(0.5, 0.06, 0.14, C.wallWood, 0.6, 0.95, D / 2 + 0.06));
+  // attic: one triangular prism that exactly spans the walls (no corners can poke through the roof)
+  const attic = new THREE.Mesh(gableGeo(W, RISE, D), toonMat(C.wallCream)); attic.position.y = TOP; raw.add(attic);
+  // gable trims (thin timber on both gable faces, inside the triangle) + loft window
+  for (const zs of [1, -1]) {
+    const z = zs * (D / 2 + 0.03);
+    raw.add(box(0.12, RISE - 0.1, 0.08, C.wallWood, 0, TOP, z));
+    for (const xs of [1, -1]) { const b = box(0.1, len - 0.45, 0.08, C.wallWood, 0, 0, 0); b.position.set(xs * (RUN - OVER) / 2, TOP + RISE / 2, z); b.rotation.z = -xs * ang; raw.add(b); }
+  }
+  raw.add(box(0.34, 0.3, 0.1, C.lampGlass, 0, TOP + 0.22, D / 2 + 0.04));
+  // roof slabs: centreline from eave (±RUN, TOP) to ridge (0, RIDGE), pushed out along the slope normal by half the thickness
+  const nx = Math.sin(ang), ny = Math.cos(ang);
+  for (const xs of [1, -1]) {
+    const slab = box(len, TH, D + 2 * OVER, C.roofBlue, 0, 0, 0);
+    slab.position.set(xs * (RUN / 2 + nx * TH / 2), TOP + RISE / 2 + ny * TH / 2, 0);
+    slab.rotation.z = -xs * ang; raw.add(slab);
+  }
+  raw.add(box(0.24, 0.16, D + 2 * OVER + 0.1, C.roofBlue, 0, RIDGE + ny * TH - 0.06, 0));      // ridge cap covers the V
+  // chimney: foot buried under the slope at x = 0.65 (roof height there ≈ 2.23), cap above the ridge
+  const chX = 0.65, chZ = -0.5, roofAt = RIDGE - RISE * ((chX + 0.2) / RUN);
+  raw.add(box(0.4, 3.0 - roofAt, 0.4, C.chimney, chX, roofAt, chZ));
+  raw.add(box(0.5, 0.12, 0.5, P.stoneDark, chX, 3.0, chZ));
   // flower boxes + step
-  raw.add(box(0.6, 0.15, 0.2, C.wallWood, 0.6, 0.55, 1.08));
-  for (let i = 0; i < 3; i++) raw.add(mesh(G.sphere(0.08, 6, 4), [P.glimmerPink, P.glimmerYellow, P.red][i], 0.42 + i * 0.18, 0.76, 1.1));
-  raw.add(box(0.7, 0.1, 0.4, P.stone, -0.6, 0, 1.25));
+  raw.add(box(0.6, 0.15, 0.2, C.wallWood, 0.6, 0.55, D / 2 + 0.13));
+  for (let i = 0; i < 3; i++) raw.add(mesh(G.sphere(0.08, 6, 4), [P.glimmerPink, P.glimmerYellow, P.red][i], 0.42 + i * 0.18, 0.76, D / 2 + 0.15));
+  raw.add(box(0.7, 0.1, 0.4, P.stone, -0.6, 0, D / 2 + 0.3));
   // live: window glow + chimney smoke (3 pooled puffs)
-  const glow = new THREE.Mesh(G.box(0.46, 0.41, 0.06), flatMat(C.windowGlow)); glow.position.set(0.6, 0.975, 1.08); glow.visible = false; glow.userData.noOutline = true;
+  const glow = new THREE.Mesh(G.box(0.46, 0.41, 0.06), flatMat(C.windowGlow)); glow.position.set(0.6, 0.975, D / 2 + 0.13); glow.visible = false; glow.userData.noOutline = true;
   const puffs = []; const smokeMat = new THREE.MeshToonMaterial({ color: 0xfafafa, transparent: true, opacity: 0.6 });
   for (let i = 0; i < 3; i++) { const p = new THREE.Mesh(G.sphere(0.5, 6, 4), smokeMat); p.userData.noOutline = true; p.castShadow = false; p.userData.life = i / 3; puffs.push(p); }
   const update = (dt) => {
     for (const p of puffs) {
       p.userData.life += dt / 2.4; if (p.userData.life > 1) p.userData.life -= 1;
-      const t = p.userData.life; p.position.set(0.65 + Math.sin(t * 6) * 0.15, 3.1 + t * 1.6, -0.5 + t * 0.4); p.scale.setScalar(0.18 + t * 0.35);
+      const t = p.userData.life; p.position.set(chX + Math.sin(t * 6) * 0.15, 3.1 + t * 1.6, chZ + t * 0.4); p.scale.setScalar(0.18 + t * 0.35);
       p.material.opacity = 0.55 * (1 - Easing.inCubic(t));
     }
   };
@@ -170,6 +205,7 @@ export function makeCottage(opts = {}) {
     extra: { setLit: (on) => { glow.visible = !!on; } } });
 }
 
+// ---------------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------------
 // PIER — planks over water along +x from the shore. length in tiles. Pivot at the shore end (x=0).
 // ---------------------------------------------------------------------------------------
