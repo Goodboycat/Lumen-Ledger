@@ -310,7 +310,7 @@ export class CustomerSystem {
         case 'browse': case 'pay':
           // S32: shoved off the counter mid-browse → walk back (browse restarts); mid-pay the sale still settles (no exploit, no refund)
           if (c.state === 'browse' && c.anim && !c.anim.knocked && c.stall && Math.hypot(c.target.x - c.root.position.x, c.target.z - c.root.position.z) > ARRIVE_R * 2) { this._set(c, 'walk'); break; }
-          if (c.state === 'browse') { if (c.t * 1000 >= BROWSE_MS) this._set(c, 'pay'); } else if (c.t >= 0.4) this._settle(c);
+          if (c.state === 'browse') { if (c.anim?.knocked) c.t -= dt; /* S34 / P70: the browse clock pauses mid-slide — no paying 1.6 u from the counter */ else if (c.t * 1000 >= BROWSE_MS) this._set(c, 'pay'); } else if (c.t >= 0.4) this._settle(c);
           break;
         case 'react': if (c.t >= 0.6) this._set(c, 'leave'); break;
         case 'leave': {

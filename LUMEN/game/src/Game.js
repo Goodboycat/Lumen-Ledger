@@ -77,7 +77,7 @@ export function createSandbox(game, opts = {}) {
     .concat(sb.enemies ? sb.enemies.targets() : [], helperTargets(sb)), isLand: (x, z) => sb.island.isLand(x, z) });
   sb.hero.root.position.set(0, 0, 1);
   // S16: Debt Collectors (+ Baron Gilt boss from S6). Transient — spawned by the scheduler at day 0.7, cleared at season end / win / lose.
-  sb.enemies = new EnemySystem(game, { hero: sb.hero, eco: sb.eco, island: sb.island, vfx: sb.vfx, headless,
+  sb.enemies = new EnemySystem(game, { hero: sb.hero, eco: sb.eco, island: sb.island, vfx: sb.vfx, headless, occupied: (x, z) => sb.build?.occupied?.(x, z) || null,   // S34 / P73: enemies + shoves respect stall footprints
     creatures: headless ? {} : { makeFogCollector, makeBaronGilt, VillainAnimator, FogPuffPool },
     spawnPoint: sb.world.pierSpawn || { x: 0, z: -10 }, exitPoint: sb.world.pierSpawn || { x: 0, z: -10 }, onCoin: (x, z, v) => sb.dropTip?.(x, z, v), isShielded: () => game.time < (sb.shield?.until ?? -1) });
   sb.villains = sb.enemies.list;                                 // perf LOD / blob shadows / destroySandbox already walk sb.villains
@@ -144,6 +144,7 @@ function buildScenery(sb, rnd) {
   const edge = island.landEdge(1, 0) || { x: 10, z: 0 };
   W.pier = makeProp('pier', { length: 4 }); W.pier.position.set(edge.x + 0.5, 0, edge.z + 0.5); start.group.add(W.pier);
   W.pierSpawn = { x: edge.x - 1, z: edge.z };                      // customers arrive by boat at the pier (6A default is the −Z edge)
+  take(W.pierSpawn.x, W.pierSpawn.z, 1, 1);                       // S34 / P82: the landing cell is scenery-reserved — a stall built over it trapped every leaving customer
   for (const [zone, dx, dz, seed] of [[west, 1.5, -1, 1], [east, -1, -2, 2], [far, 3.5, 2.5, 3]]) W.towers.push(place(makeProp('fog_tower', { seed }), zone.center.x + dx, zone.center.z + dz, { parent: zone.group }));
   const cliff = place(makeProp('cliff_wall', { length: 5 }), west.center.x - 1, west.center.z + 3.5, { w: 5, parent: west.group });
   W.waterfall = place(makeProp('waterfall', { height: 2.4 }), east.center.x + 2, east.center.z + 2.5, { rot: Math.PI, w: 2, d: 2, parent: east.group });
@@ -391,8 +392,16 @@ function hireHelper(sb, wantType = null, { free = false } = {}) {
 function seatHelper(sb, h, stall) {
   const at = stall ? stall.group.position : sb.hero.root.position;
   const back = new THREE.Vector3(0, 0, -0.9).applyAxisAngle(new THREE.Vector3(0, 1, 0), stall ? stall.group.rotation.y : 0);
-  h.g.position.set(at.x + back.x, 0, at.z + back.z); h.stall = stall || null;
-  h.seat = { x: at.x + back.x, z: at.z + back.z, fx: at.x - back.x * 3, fz: at.z - back.z * 3 };   // S32: remembered so a knocked helper can walk back
+  let sx = at.x + back.x, sz = at.z + back.z;
+  // S34 / P81: idle helpers (no stall) fan out around Pip on LAND instead of stacking on one (possibly water) spot
+  if (!stall) {
+    const n = sb.helpers.filter((o) => o !== h && !o.stall).length;
+    for (let k = 0; k < 8; k++) { const a = ((n + k) / 8) * Math.PI * 2 + Math.PI; const x = at.x + Math.sin(a) * 0.9, z = at.z + Math.cos(a) * 0.9; if (sb.island.isLand(x, z) && !sb.build.occupied(x, z)) { sx = x; sz = z; break; } }
+    if (!sb.island.isLand(sx, sz)) { sx = at.x; sz = at.z; }
+  }
+  h.g.position.set(sx, 0, sz); h.stall = stall || null;
+  h.seat = { x: sx, z: sz, fx: at.x - back.x * 3, fz: at.z - back.z * 3 };   // S32: remembered so a knocked helper can walk back
+  h.anim.knock?.set?.(0, 0, 0); h.anim.knockT = 0;   // S34 / P68: a mid-slide reseat must not keep sliding away from the new seat
   // S32: the seat is INSIDE its own stall's footprint cell (0.9 u behind a 2-wide counter), so the clamp must allow the helper's
   // own stall or no shove could ever move it; other stalls + water still block (caught by check.mjs --knockback).
   h.anim.canStand = (x, z) => { if (!sb.island.isLand(x, z)) return false; const o = sb.build.occupied(x, z); return !(o && o !== h.stall && o.id?.startsWith?.('stall_')); };
@@ -415,19 +424,28 @@ function updateHelperKnock(sb, h, dt) {
   const p = h.g.position, dx = h.seat.x - p.x, dz = h.seat.z - p.z, d = Math.hypot(dx, dz);
   if (d < 0.08) { p.x = h.seat.x; p.z = h.seat.z; h.returning = false; h.anim.faceToNow(new THREE.Vector3(h.seat.fx, 0, h.seat.fz)); h.anim.play(h.stall ? 'work' : 'idle'); return; }
   if (h.anim.current !== 'walk') h.anim.play('walk');
-  const step = Math.min(d, HELPER_WALK * dt); p.x += (dx / d) * step; p.z += (dz / d) * step;
+  const step = Math.min(d, HELPER_WALK * dt); const nx = p.x + (dx / d) * step, nz = p.z + (dz / d) * step;
+  // S34 / P69: the walk back respects the same clamp as the slide (other stalls / water); fully blocked → skip the detour and snap home
+  const ok = h.anim.canStand || (() => true);
+  if (ok(nx, nz)) { p.x = nx; p.z = nz; } else if (ok(nx, p.z)) p.x = nx; else if (ok(p.x, nz)) p.z = nz; else { p.x = h.seat.x; p.z = h.seat.z; }
   h.anim.faceTo(new THREE.Vector3(h.seat.x, 0, h.seat.z));
 }
 /** BUGFIX P31: a helper whose stall was sold/demolished (or who was hired with no stall) moves to the least-staffed remaining stall. */
 function reseatHelpers(sb) {
   const stalls = [...sb.build.placed.values()].filter((e) => e.id.startsWith('stall_'));
   const alive = new Set(stalls);
+  const load = (e) => sb.helpers.filter((o) => o.stall === e).length;
   for (const h of sb.helpers) {
     if (h.stall && alive.has(h.stall)) continue;
     if (!stalls.length) { if (h.stall) seatHelper(sb, h, null); continue; }
-    const load = (e) => sb.helpers.filter((o) => o !== h && o.stall === e).length;
     const target = stalls.slice().sort((a, b) => load(a) - load(b))[0];
     seatHelper(sb, h, target);
+  }
+  // S34 / P81: rebalance — while some stall has nobody and another has 2+ (or a helper idles with no stall), move one over
+  if (stalls.length) for (let guard = 0; guard < sb.helpers.length; guard++) {
+    const empty = stalls.find((e) => load(e) === 0); if (!empty) break;
+    const mover = sb.helpers.find((h) => !h.stall) || sb.helpers.find((h) => load(h.stall) >= 2); if (!mover) break;
+    seatHelper(sb, mover, empty);
   }
 }
 
@@ -692,6 +710,7 @@ function installRunWires(lg) {
         // BUGFIX P15: foot ⬆ / U key with nobody next to Pip → fall back to the lowest-level upgradable stall anywhere (nearest on ties)
         if (!e || e.scenery) { const hp = hero.root.position; e = [...build.placed.values()].filter((x) => x.category === 'stall' && x.level < 3).sort((x, y) => (x.level - y.level) || (x.group.position.distanceToSquared(hp) - y.group.position.distanceToSquared(hp)))[0] || null; }
       }
+      lg.demolishMode = false; if (ui?.build?.state) { ui.build.state.demolish = false; ui.build.refresh?.(); }   // S34 / P79: upgrading disarms demolish mode in both layers
       if (e && !e.scenery) build.upgrade(e); else bus.emit('build:denied', { id: p.id, why: p.id ? 'no stall of that type to upgrade' : 'stand next to a stall to upgrade it' });
     }
     else if (a === 'sell') {   // BUGFIX P12: tray 💰 Sell → demolish (50 % refund) the lowest-level placed prop of that type, nearest Pip on ties
@@ -730,7 +749,7 @@ function installRunWires(lg) {
   // BUGFIX B13: a placed STALL ends placement in both layers (no accidental second purchase on the next click); cheap decor/nature stay
   // armed for quick fences/paths and Esc / ✕ cancel them. build.exit() emits build:exit → the tray leaves placing.
   on('build:placed', (p) => { if (!p?.silent && build.mode === 'place' && String(p?.id).startsWith('stall_')) build.exit(); });
-  if (ui?.build) { ui.build.reset?.(); ui.build.costOf = (id) => build.cost(id); ui.build.upgradeCost = (lvl) => build.upgradeCost(lvl); ui.build.placedInfo = (id) => [...build.placed.values()].filter((x) => x.id === id).map((x) => ({ level: x.level, cost: x.cost, salvage: x.salvage || 0 })); /* BUGFIX P24: cost → real refund label */ ui.build.refresh?.(); }
+  if (ui?.build) { ui.build.reset?.(); ui.build.costOf = (id) => build.cost(id); ui.build.upgradeCost = (lvl) => build.upgradeCost(lvl); ui.build.placedInfo = (id) => [...build.placed.values()].filter((x) => x.id === id).map((x) => ({ level: x.level, cost: x.cost, salvage: x.salvage || 0, busy: build.busy.has(x.group) || !!x.group.userData.swapping }));   /* S34 / P80: tray greys ⬆/💰 mid-animation */ /* BUGFIX P24: cost → real refund label */ ui.build.refresh?.(); }
   offs.push(() => { if (ui?.build) { ui.build.upgradeCost = null; ui.build.placedInfo = null; ui.build.costOf = null; ui.build.reset?.(); } });
   // jars APPLY {pct}: move the whole pouch into the 4 jars by pct (spend stays as pouch → its share is the amount NOT moved)
   lg.applyJars = (pct = {}) => {
@@ -775,7 +794,7 @@ function installRunWires(lg) {
     if (build.mode === 'place') { build.rotate(); return 'rotate'; }
     // BUGFIX P37/P38: prefer the nearest stall that can still be upgraded; a decor pot or a maxed L3 stall between Pip and it no longer blocks U / ✋
     const e = build.nearestUpgradable(hero.root.position.x, hero.root.position.z, 2.5);
-    if (e) return build.upgrade(e) ? 'upgrade' : 'denied';
+    if (e) { lg.demolishMode = false; if (ui?.build?.state) ui.build.state.demolish = false; return build.upgrade(e) ? 'upgrade' : 'denied'; }   // S34 / P79
     const near = build.nearest(hero.root.position.x, hero.root.position.z, 2.5);
     if (near && !near.scenery && near.category === 'stall' && near.level >= 3) { bus.emit('ui:toast', { text: `${near.id.replace('stall_', '')} stall is already max level`, kind: 'info', icon: '⬆', id: 'interact', duration: 1800 }); return 'max'; }
     ui?.build?.open?.(); return 'tray';

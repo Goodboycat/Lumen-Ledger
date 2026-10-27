@@ -162,6 +162,7 @@ export function mountBuildMenu(root, opts = {}) {
   const placedOf = (id) => (typeof api.placedInfo === 'function' ? api.placedInfo(id) : [...(st.placedById.get(id)?.values() || [])]);
   function upgradeInfo(id) {
     const list = placedOf(id); if (!list.length) return { can: false, why: 'none placed yet' };
+    if (list.some((e) => e.busy)) return { can: false, why: 'building…' };   // S34 / P80: greyed while the place / level-up animation runs
     const low = list.filter((e) => (e.level || 1) < 3); if (!low.length) return { can: false, why: 'all at max level' };
     const lvl = Math.min(...low.map((e) => e.level || 1)); const cost = typeof api.upgradeCost === 'function' ? api.upgradeCost(lvl + 1) : null;
     return { can: true, lvl, to: lvl + 1, cost, poor: cost != null && cost > st.spark };
@@ -183,6 +184,7 @@ export function mountBuildMenu(root, opts = {}) {
     // S07: pre-spawned clutter (cost 0 + salvage) sells for its flat salvage bonus → label says "Salvage"
     const isSalvage = !!(sellTarget && sellTarget.salvage && !(sellTarget.cost > 0));
     const refund = isSalvage ? Math.round(sellTarget.salvage) : Math.round(sellCost * 0.5 + 1e-9);
+    sellBtn.disabled = !!(sellTarget && sellTarget.busy);   // S34 / P80
     sellBtn.style.display = n ? '' : 'none'; sellBtn.innerHTML = iconize(`${isSalvage ? '🧹 Salvage' : '💰 Sell'}${n > 1 ? ' 1' : ''} · +${refund} ✦`); sellBtn.title = isSalvage ? `clear this ${e.name || id} off the island for a ${refund} ✦ salvage bonus (frees its tiles)` : `sell your ${n > 1 ? 'lowest-level ' : ''}${e.name || id} for half its cost (upgrades refunded too)`;
     upBtn.style.display = isStall ? '' : 'none'; priceBox.style.display = isStall && n && typeof api.priceOf === 'function' ? '' : 'none';
     if (isStall && n && typeof api.priceOf === 'function') {   // B24: price control for a placed stall type (CustomerSystem.setPrice via ui:price)

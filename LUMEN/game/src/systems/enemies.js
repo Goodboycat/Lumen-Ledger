@@ -176,7 +176,9 @@ export class EnemySystem {
   _spawnOne(kind, season, i = 0) {
     const R = ENEMY_RULES[kind]; let e_home = this._spawn;
     const g = kind === 'baron' ? (this.C.makeBaronGilt ? this.C.makeBaronGilt({ seed: season }) : stub()) : (this.C.makeFogCollector ? this.C.makeFogCollector(i % 3, { seed: season * 10 + i }) : stub());
-    const anim = this.C.VillainAnimator ? new this.C.VillainAnimator(g, { vfx: this.vfx, fogPool: this.fogPool, game: this.game }) : stubAnim(g);
+    // S34 / P66: enemies manage their own knockback (e.knock, land + stall clamp) — the animator must NOT slide the root too (double knockback,
+    //   Baron sliding, water / stall clipping). knockPower 0 keeps the squash + angry flash + face-the-attacker reaction only.
+    const anim = this.C.VillainAnimator ? new this.C.VillainAnimator(g, { vfx: this.vfx, fogPool: this.fogPool, game: this.game, knockPower: 0, canStand: (x, z) => this._canStand(x, z) }) : stubAnim(g);
     // S19: each wave member lands at its own shore point (pier for #0 / the Baron, then spread ≥ 5 u apart and ≥ 6 u from Pip)
     const used = this._waveUsed || (this._waveUsed = []); const lp = this._landingPoint(i, used); used.push(lp); e_home = lp;
     const a = (i / Math.max(1, ENEMY_RULES.waveCap)) * Math.PI * 0.6 - Math.PI * 0.3;
@@ -191,6 +193,28 @@ export class EnemySystem {
     this.list.push(e); this.stats.spawned++;
     this.bus?.emit('enemy:spawn', { kind, season, powers: e.powers });
     return e;
+  }
+
+  /** S34 / P66 / P73: a walkable cell for enemies = land and not inside a placed STALL footprint (decor / paths are fine). */
+  _canStand(x, z) {
+    if (!(this.island?.isLand?.(x, z) ?? true)) return false;
+    const o = this.deps.occupied?.(x, z); return !(o && (o.id?.startsWith?.('stall_') || o.category === 'stall'));
+  }
+  /** S34 / P66: move `p` toward (nx, nz) with an axis-slide fallback; an enemy that is ALREADY off land walks freely so it can come back (no water soft-lock). */
+  _moveTo(p, nx, nz) {
+    if (this._canStand(nx, nz)) { p.x = nx; p.z = nz; return true; }
+    if (this._canStand(nx, p.z)) { p.x = nx; return true; }
+    if (this._canStand(p.x, nz)) { p.z = nz; return true; }
+    if (!(this.island?.isLand?.(p.x, p.z) ?? true)) { p.x = nx; p.z = nz; return true; }   // stranded in water → keep walking toward the target
+    return false;
+  }
+  /** S34 / P67: nearest land point between `p` and Pip (Pip is always on land) — reward coins never drop in the sea. */
+  _landNear(p) {
+    if (this._canStand(p.x, p.z)) return p;
+    const hp = this.hero?.root?.position; if (!hp) return p;
+    const dx = hp.x - p.x, dz = hp.z - p.z, L = Math.hypot(dx, dz) || 1;
+    for (let s = 0.25; s <= L + 1e-6; s += 0.25) { const x = p.x + (dx / L) * s, z = p.z + (dz / L) * s; if (this._canStand(x, z)) return { x, z }; }
+    return { x: hp.x, z: hp.z };
   }
 
   /** S20: fallback landing cell — ENEMY_RULES.baron.podium snapped to the nearest land cell (spiral search). Only used headless without island.landEdge. */
@@ -209,7 +233,7 @@ export class EnemySystem {
   hitEnemy(e, dir, power = 1) {
     if (e.state !== 'chase' || e.phase === 'air' || e.phase === 'dash') return false;
     e.hp -= 1;
-    if (e.kind === 'baron') { if (e.phase === 'warn' && e.attack) { this._cancelAttack(e); } else if (e.phase === 'fire') { this._endMinigun(e); } }
+    if (e.kind === 'baron') { if ((e.phase === 'warn' || e.phase === 'fire') && e.attack) this._cancelAttack(e); }   // S34 / P77: an interrupted minigun is a cancel, not a DODGE
     else e.knock.copy(dir).setY(0).normalize().multiplyScalar(ENEMY_RULES.knockback * power);
     e.anim.hit?.(dir, power);
     if (e.hp <= 0) this._defeat(e); else if (e.kind !== 'baron' || e.phase === 'idle') { e.anim.play?.('flee'); e._fleeAnimT = 0.45; }
@@ -219,7 +243,7 @@ export class EnemySystem {
   _defeat(e) {
     const R = ENEMY_RULES[e.kind]; e.state = 'flee'; e.fleeT = ENEMY_RULES.fleeSeconds; e.anim.play?.('flee');
     this.stats.defeated++; this.stats.sparkWon += R.reward;
-    const p = e.g.position; this.deps.onCoin?.(p.x, p.z, R.reward);
+    const p = this._landNear(e.g.position); this.deps.onCoin?.(p.x, p.z, R.reward);   // S34 / P67: coin lands on walkable ground
     this.vfx?.pop?.show?.(_v.set(p.x, 1.4, p.z).clone(), e.kind === 'baron' ? 'HARRUMPH!' : 'EEK!', { color: '#CE93D8' });
     this.vfx?.sparks?.burst?.(_v.set(p.x, 0.9, p.z).clone(), 12, 4);
     if (e.kind === 'baron') { this.stats.baronDefeats++; for (const m of this.list) if (m !== e && m.state === 'chase') { m.state = 'flee'; m.fleeT = ENEMY_RULES.fleeSeconds; m.anim.play?.('flee'); } }
@@ -248,12 +272,16 @@ export class EnemySystem {
 
   // ------------------------------------------------------------------ loop
   update(dt) {
-    if (!this.list.length) { if (this.heroSpeedMul !== 1) this._setHeroSpeed(1); this.fogPool?.update(dt); return; }
-    const hp = this.hero.root.position, t = this.game.time; let slow = 1;
+    // S34 / P78: decals + puddles keep running even when the last enemy has left (no frozen fog puddle for the rest of the season)
+    this.decals.update(dt); this.fogPool?.update(dt);
+    const t = this.game.time;
+    if (this.puddles.length) for (let i = this.puddles.length - 1; i >= 0; i--) if (t >= this.puddles[i].until) this.puddles.splice(i, 1);
+    if (!this.list.length) { if (this.heroSpeedMul !== 1) this._setHeroSpeed(1); return; }
+    const hp = this.hero.root.position; let slow = 1;
     for (let i = this.list.length - 1; i >= 0; i--) {
       const e = this.list[i], R = ENEMY_RULES[e.kind], p = e.g.position;
       // knockback decays
-      if (e.knock.lengthSq() > 1e-4) { const nx = p.x + e.knock.x * dt * 4, nz = p.z + e.knock.z * dt * 4; if (this.island?.isLand?.(nx, nz) ?? true) p.set(nx, 0, nz); e.knock.multiplyScalar(Math.max(0, 1 - 6 * dt)); }
+      if (e.knock.lengthSq() > 1e-4) { const nx = p.x + e.knock.x * dt * 4, nz = p.z + e.knock.z * dt * 4; if (this._canStand(nx, nz)) p.set(nx, 0, nz); else if (this._canStand(nx, p.z)) { p.x = nx; e.knock.z = 0; } else if (this._canStand(p.x, nz)) { p.z = nz; e.knock.x = 0; } else e.knock.set(0, 0, 0); e.knock.multiplyScalar(Math.max(0, 1 - 6 * dt)); }   // S34 / P66: land + stall clamp, axis slide
       if (e._fleeAnimT > 0) { e._fleeAnimT -= dt; if (e._fleeAnimT <= 0) e.anim.play?.(e.kind === 'baron' ? 'strut' : 'walk'); }
       if (e.state === 'home') {                                   // S16b: walking back to the pier, then stepping off
         const ex = e.home || this._exit;                                 // S19: each one walks back to the shore point it landed on
@@ -282,7 +310,7 @@ export class EnemySystem {
       if (e.kind === 'baron') { this._baronUpdate(e, dt, dist); e.anim.update?.(dt); continue; }
       if (dist > ENEMY_RULES.approachMin) {
         const nx = p.x + _d.x * R.speed * dt, nz = p.z + _d.z * R.speed * dt;
-        if (this.island?.isLand?.(nx, nz) ?? true) p.set(nx, 0, nz); else { p.x += _d.x * R.speed * dt * 0.3; }   // hug the shore
+        if (!this._moveTo(p, nx, nz)) { this._moveTo(p, p.x + _d.x * R.speed * dt * 0.3, p.z + _d.z * R.speed * dt * 0.3); }   // S34 / P66: axis-slide along the shore / stall wall (both axes)
       }
       e.anim.faceTo?.(hp);
       // contact
@@ -291,10 +319,8 @@ export class EnemySystem {
     }
     this._separate(dt);
     // S20: fog puddles slow Pip while he stands inside one
-    if (this.puddles.length) { for (let i = this.puddles.length - 1; i >= 0; i--) { const q = this.puddles[i]; if (t >= q.until) { this.puddles.splice(i, 1); continue; } if (Math.hypot(hp.x - q.x, hp.z - q.z) <= q.r) slow = Math.min(slow, ENEMY_RULES.baron.puddleMul); } }
+    for (const q of this.puddles) if (Math.hypot(hp.x - q.x, hp.z - q.z) <= q.r) slow = Math.min(slow, ENEMY_RULES.baron.puddleMul);
     if (slow !== this.heroSpeedMul) this._setHeroSpeed(slow);
-    this.decals.update(dt);
-    this.fogPool?.update(dt);
   }
 
   // ------------------------------------------------------------------ S20 Baron boss cycle (revised: slow chaser + 4 telegraphed attacks)
@@ -302,13 +328,19 @@ export class EnemySystem {
   _baronUpdate(e, dt, dist) {
     const R = ENEMY_RULES.baron, hp = this.hero.root.position, p = e.g.position, t = this.game.time;
     // contact still hurts (he is big) — not mid-jump / mid-dash (those have their own hits)
-    if (e.phase !== 'air' && e.phase !== 'dash' && dist <= R.radius && t - e.hitAt >= R.hitCooldown) { e.hitAt = t; this._hitHero(e, R.hitSpark); if (e.phase === 'idle') e.anim.play?.('taunt'); }
-    if (e.phase === 'dazed') { e.dazed -= dt; if (e.dazed <= 0) { e.phase = 'idle'; e.timers.attack = 0; e.anim.play?.('strut'); } return; }
+    // S34 / P71: no contact damage while DAZED / paralysed — those are the "hit him now!" windows
+    if (e.phase !== 'air' && e.phase !== 'dash' && e.phase !== 'dazed' && dist <= R.radius && t - e.hitAt >= R.hitCooldown) { e.hitAt = t; this._hitHero(e, R.hitSpark); if (e.phase === 'idle') e.anim.play?.('taunt'); }
+    if (e.phase === 'dazed') {
+      e.dazed -= dt;
+      if (e.dazed <= 0) { e.phase = 'idle'; e.timers.attack = 0; e.hitAt = t; if (e.anim) e.anim.timeScale = 1; e.anim.play?.('strut'); }   // hitAt: a short grace so standing on him when he gets up is not an instant 2 ✦
+      else if (e.anim && e.anim.current !== 'slipOnCoin' && e.anim.current !== 'flee') { e.anim.timeScale = 1; e.anim.play?.('idle'); }   // S34 / P76: never strut while dazed
+      return;
+    }
     if (e.phase === 'idle') {
       e.anim.faceTo?.(hp);
       if (dist > ENEMY_RULES.approachMin) {   // very slow plod toward Pip
         const nx = p.x + _d.x * R.speed * dt, nz = p.z + _d.z * R.speed * dt;
-        if (this.island?.isLand?.(nx, nz) ?? true) p.set(nx, 0, nz); else { p.x += _d.x * R.speed * dt * 0.3; }
+        if (!this._moveTo(p, nx, nz)) { this._moveTo(p, p.x + _d.x * R.speed * dt * 0.3, p.z + _d.z * R.speed * dt * 0.3); }   // S34 / P66 / P73
       }
       e.timers.attack += dt;
       if (e.timers.attack >= e.nextAttack) { e.timers.attack = 0; e.nextAttack = R.attackMin + (R.attackMax - R.attackMin) * this._rng(); this._baronPick(e, dist); }
@@ -339,10 +371,10 @@ export class EnemySystem {
     }
     if (e.phase === 'dash') {   // umbrella dash along the aimed line until the range is used up (or the shore)
       const step = R.umbrellaSpeed * dt, nx = p.x + A.dir.x * step, nz = p.z + A.dir.z * step;
-      if ((this.island?.isLand?.(nx, nz) ?? true) && A.gone < R.umbrellaRange) { p.set(nx, 0, nz); A.gone += step; } else A.gone = R.umbrellaRange;
+      if (this._canStand(nx, nz) && A.gone < R.umbrellaRange) { p.set(nx, 0, nz); A.gone += step; } else A.gone = R.umbrellaRange;   // S34 / P73: a stall wall stops the dash too
       if (!A.hit && Math.hypot(hp.x - p.x, hp.z - p.z) <= R.umbrellaRadius) {
-        A.hit = true; const took = this._hitHero(e, R.umbrellaSpark);
-        if (took > 0 || !this.deps.isShielded?.()) this._shove(hp, p, R.umbrellaKnock, A.dir);
+        A.hit = true; this._hitHero(e, R.umbrellaSpark);
+        this._shove(hp, p, R.umbrellaKnock, A.dir);   // S34 / P72: the shield blocks the Spark loss, never the push (it is a bubble)
       }
       if (A.gone >= R.umbrellaRange) this._dashEnd(e, A);
     }
@@ -415,31 +447,39 @@ export class EnemySystem {
     if (e.anim) e.anim.timeScale = 1;
     if (!A.hit) { this.stats.attacksDodged++; this.vfx?.pop?.show?.(_v.copy(this.hero.root.position).setY(1.6).clone(), 'DODGED', { color: '#A5D6A7' }); }
     this.vfx?.sparks?.burst?.(_v.set(p.x, 0.4, p.z).clone(), 10, 4); this.game.camera?.shake?.(0.18);
-    e.attack = null; e.phase = 'dazed'; e.dazed = R.umbrellaStun; e.timers.attack = 0; e.anim.play?.('slipOnCoin');
+    e.attack = null; e.phase = 'dazed'; e.dazed = R.umbrellaStun; e.timers.attack = 0; this._playDazed(e, R.umbrellaStun);
     this.vfx?.pop?.show?.(_v.set(p.x, 2.0, p.z).clone(), 'PARALYSED!', { color: '#80DEEA', dur: 1.6 });
     this.bus?.emit('enemy:dashEnd', { hit: A.hit, stun: R.umbrellaStun });
   }
-  /** Shove Pip `dist` u away from `from` (or along `dir`), staying on land. */
+  /** Shove Pip `dist` u away from `from` (or along `dir`), staying on land and out of stalls (S34 / P73: walks the line in 0.25 u steps and
+   *  stops at the first blocked sample). S34 / P75: a running hero move (dash / hammer / build …) rebases its M.start so it does not snap Pip back. */
   _shove(hp, from, dist, dir) {
     const d = Math.hypot(hp.x - from.x, hp.z - from.z);
     const nx = d > 1e-3 ? (hp.x - from.x) / d : (dir?.x ?? 0), nz = d > 1e-3 ? (hp.z - from.z) / d : (dir?.z ?? 1);
-    const tx = hp.x + nx * dist, tz = hp.z + nz * dist;
-    if (this.island?.isLand?.(tx, tz) ?? true) hp.set(tx, hp.y, tz); else if (this.island?.isLand?.(hp.x + nx, hp.z + nz) ?? true) hp.set(hp.x + nx, hp.y, hp.z + nz);
+    const x0 = hp.x, z0 = hp.z; let gx = x0, gz = z0;
+    for (let s = 0.25; s <= dist + 1e-6; s += 0.25) { const x = x0 + nx * s, z = z0 + nz * s; if (!this._canStand(x, z)) break; gx = x; gz = z; }
+    hp.set(gx, hp.y, gz);
+    const M = this.hero.moveCtx; if (M?.start && this.hero.currentMove) { M.start.x += gx - x0; M.start.z += gz - z0; }
     this.hero.recoverToLand?.();
   }
   _stompLand(e, A) {
     const R = ENEMY_RULES.baron, hp = this.hero.root.position, s = A.spots[0]; this.stats.stomps++;
     const d = Math.hypot(hp.x - s.x, hp.z - s.z); const hit = d <= s.r;
     if (hit) {
-      const took = this._hitHero(e, R.stompSpark);
-      if (took > 0 || !this.deps.isShielded?.()) this._shove(hp, s, R.stompKnock);   // shield blocks the Spark loss, not the push — it is a bubble
+      this._hitHero(e, R.stompSpark);
+      // S34 / P72: the shield blocks the Spark loss, not the push — it is a bubble. P74: a Pip standing exactly on the ring centre is shoved along the jump direction.
+      const jx = s.x - A.from.x, jz = s.z - A.from.z, jl = Math.hypot(jx, jz) || 1;
+      this._shove(hp, s, R.stompKnock, { x: jx / jl, z: jz / jl });
     } else { this.stats.attacksDodged++; this.vfx?.pop?.show?.(_v.copy(hp).setY(1.6).clone(), 'DODGED', { color: '#A5D6A7' }); }
     this.vfx?.rings?.show?.(_v.set(s.x, 0.1, s.z).clone(), { radius: s.r, color: 0xE53970, dur: 0.6 }); this.vfx?.sparks?.burst?.(_v.set(s.x, 0.4, s.z).clone(), 16, 5);
     this.game.camera?.shake?.(0.35); this.game.hitstop?.(0.06);
-    e.attack = null; e.phase = 'dazed'; e.dazed = R.dazed; e.timers.attack = 0; e.anim.play?.('slipOnCoin');
+    e.hitAt = this.game.time;   // S34 / P71: landing on Pip is the stomp hit, not an extra contact hit next frame
+    e.attack = null; e.phase = 'dazed'; e.dazed = R.dazed; e.timers.attack = 0; this._playDazed(e, R.dazed);
     this.vfx?.pop?.show?.(_v.set(e.g.position.x, 2.0, e.g.position.z).clone(), 'DAZED!', { color: '#80DEEA' });
     this.bus?.emit('enemy:stomp', { hit, dazed: R.dazed });
   }
+  /** S34 / P76: the 0.9 s slipOnCoin one-shot is stretched (animator timeScale) over the whole daze so the Baron stays down until he can act again. */
+  _playDazed(e, seconds) { e.anim.play?.('slipOnCoin'); if (e.anim) e.anim.timeScale = Math.min(1, 0.9 / Math.max(0.9, seconds)); }
   /** Pip's hit interrupts a wind-up (any telegraph): the decals fade, no attack lands. */
   _cancelAttack(e) {
     if (!e.attack) return;
@@ -473,7 +513,7 @@ export class EnemySystem {
   /** S16b: season is over — everyone still chasing turns around and WALKS back to the pier, then steps off (not a defeat). Returns how many were sent. */
   sendHome() {
     let n = 0;
-    for (const e of this.list) if (e.state === 'chase') { e.state = 'home'; e.homeT = 0; e.offT = 0; e.knock.set(0, 0, 0); if (e.kind === 'baron') { if (e.phase === 'fire') this._endMinigun(e); this._cancelAttack(e); e.phase = 'idle'; e.g.position.y = 0; e.g.scale.set(1, 1, 1); if (e.anim) e.anim.timeScale = 1; } e.anim.play?.(e.kind === 'baron' ? 'strut' : 'walk'); n++; }
+    for (const e of this.list) if (e.state === 'chase') { e.state = 'home'; e.homeT = 0; e.offT = 0; e.knock.set(0, 0, 0); if (e.kind === 'baron') { this._cancelAttack(e); e.phase = 'idle';   // S34 / P77: leaving mid-minigun is not a DODGE e.g.position.y = 0; e.g.scale.set(1, 1, 1); if (e.anim) e.anim.timeScale = 1; } e.anim.play?.(e.kind === 'baron' ? 'strut' : 'walk'); n++; }
     this._setHeroSpeed(1);
     if (n) { const h = this.hero?.root?.position; if (h) this.vfx?.pop?.show?.(_v.set(h.x, 2.1, h.z).clone(), 'season over — they leave', { color: '#B0BEC5', dur: 1.4 }); this.bus?.emit('enemy:home', { count: n }); }
     return n;

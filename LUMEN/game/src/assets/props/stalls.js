@@ -171,7 +171,7 @@ function sideCrate(x, z = 0.3) {
 // Budget: each piece ≤ ~110 tris so every stall stays ≤ 900 tris at L3 (fruit/fish are the tight ones).// Positions: left side x≈-(W/2+0.4), right side x≈+(W/2+0.4); the counter front is z≈+0.7, back wall z≈-0.5.
 // Pieces are static → baked into the level mesh by mergeGroup (flat glow materials go to the flat bucket).
 // ---------------------------------------------------------------------------------------
-const SX = W / 2 + 0.42; // side-piece x offset
+const SX = W / 2 - 0.22; // side-piece x offset — S34 / P83: inside the 2×2 footprint (was W/2+0.42 → 0.55 u overhang clipping neighbours)
 const LEVEL_EXTRAS = {
   fruit: {
     // L2: apple barrel on the left. L3: chalk price board on the right + hanging fruit garland under the awning.
