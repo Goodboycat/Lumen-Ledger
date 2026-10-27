@@ -45,7 +45,7 @@ You are **Pip**, a young *Channeler* who inherits a bankrupt island market, **Gl
 | Win | season ≥ 10 and fog ≤ 0 → Lighthouse relit → Endless |
 | Stars | +1 income ≥ 1.25 × expenses · +1 saved ≥ 20 or debt went down · +1 no new debt and fog did not grow |
 
-Balance targets (20 seeds, `tests/economy.sim.mjs --sweep`): a *sensible* player wins at S10 (17/20) or S11 (3/20); *borrow-everything* loses by S3–S5; a *hoarder* who never uses jars drifts into a slow loss at S8–S10. The story therefore ends exactly when a well-played run lights the lighthouse.
+Balance targets (20 seeds, `tests/economy.sim.mjs --sweep`, re-run S39 with the 150 Spark / 260 debt opening and the S37 three-wave customer pacing): a *sensible* player wins at S10 (20/20; fog cleared at S7×4 · S8×10 · S9×6); *borrow-everything* loses by S3 (5/20) or S5 (15/20); a *hoarder* who never uses jars loses at S8–S9 (12/20), S12 (1/20) or is still open past S12 (7/20). The story therefore ends exactly when a well-played run lights the lighthouse.
 
 ## 4. FinLit mapping (the jam requirement)
 One lesson per season, in `BALANCE.lessons` order. Every lesson has (a) a **mechanic** the player feels, (b) a **story beat**, (c) a **Ledger lesson card** (`data/story.json → lessons`).
