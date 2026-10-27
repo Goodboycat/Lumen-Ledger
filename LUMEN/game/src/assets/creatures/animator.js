@@ -35,6 +35,10 @@ const _col = new THREE.Color();
 const SAD = new THREE.Color(0x7FA6C9);      // desaturated blue-grey tint for mood 0
 const HAPPY = new THREE.Color(0xFFF2B0);    // warm highlight tint for mood 1
 const RED = new THREE.Color(P.red);
+// S32 knockback tuning (shared by Glimmers + helpers; enemies keep their own ENEMY_RULES.knockback)
+export const KNOCK_SPEED = 2.6;   // initial slide speed (u/s) at power 1 → ≈ 0.9 u travelled before the decay eats it
+export const KNOCK_DECAY = 9;     // per-second exponential decay of the slide (same feel as the S2A GlimmerController)
+export const KNOCK_STUN = 0.35;   // seconds the owning system should pause its own steering after a power-1 hit
 
 export const CREATURE_ANIMS = ['idle', 'walk', 'happy', 'sad', 'pay', 'browse', 'wait', 'angry'];
 
@@ -65,6 +69,11 @@ export class CreatureAnimator {
     this._tintables = [];
     this.body.traverse((o) => { if (o.isMesh && !o.userData.isOutline && !o.userData.noOutline && o.material && o.material.color) { o.material = o.material.clone(); o.userData.baseColor = o.material.color.clone(); this._tintables.push(o); } });
     this._angryTint = 0;
+    // S32 knockback: world-space slide applied to root (feet pivot) each update, decays exponentially. `canStand(x,z)` (optional, set
+    // by the owning system) keeps the slide on land / off stall footprints; a blocked step just stops the slide (no clipping).
+    this.knock = new THREE.Vector3(); this.knockT = 0;  // knockT: seconds left in the "stunned" window (systems pause steering while > 0)
+    this.canStand = opts.canStand || null;
+    this.knockPower = opts.knockPower ?? KNOCK_SPEED;
     this._clips = buildClips(this);
     this.play('idle');
   }
@@ -92,12 +101,39 @@ export class CreatureAnimator {
   /** Snap facing instantly. */
   faceToNow(target) { this.faceTo(target); this.root.rotation.y = Math.atan2(this.facing.x, this.facing.z); return this; }
 
-  /** Hit reaction (keeps GlimmerController API alive): squash + jiggle + angry flash. */
-  hit(dir, power = 1) { this.spring.set(-0.45 * power); this.spring.kick(-2.5 * power); this._angryTint = 1; return this; }
+  /**
+   * Hit reaction (keeps GlimmerController API alive): squash + jiggle + angry flash + S32 KNOCKBACK.
+   * dir = Vector3 from attacker → target (y ignored). The creature slides `knockPower * power` u/s away, decaying over ~0.4 s
+   * (≈ 0.9 u total at power 1), and `knockT` opens a short stun window the owning system can honour (customers stop steering,
+   * helpers walk back to their seat). Facing snaps toward the attacker so the angry face is seen.
+   */
+  hit(dir, power = 1) {
+    this.spring.set(-0.45 * power); this.spring.kick(-2.5 * power); this._angryTint = 1;
+    if (dir && dir.lengthSq && dir.lengthSq() > 1e-6) {
+      this.knock.copy(dir).setY(0).normalize().multiplyScalar(this.knockPower * power);
+      this.knockT = Math.max(this.knockT, KNOCK_STUN * Math.min(2, Math.max(0.5, power)));
+      _tmp.copy(this.root.position).sub(this.knock); this.faceTo(_tmp);   // look back at who hit you
+    }
+    return this;
+  }
+  /** True while the creature is still sliding / stunned from a hit (systems use this to pause their own steering). */
+  get knocked() { return this.knockT > 0 || this.knock.lengthSq() > 1e-4; }
+  /** Advance the knockback slide (called from update; split out so systems that manage the root themselves can call it). */
+  _knockStep(dt) {
+    if (this.knockT > 0) this.knockT = Math.max(0, this.knockT - dt);
+    const k = this.knock; if (k.lengthSq() <= 1e-4) { if (k.x || k.z) k.set(0, 0, 0); return; }
+    const p = this.root.position, nx = p.x + k.x * dt, nz = p.z + k.z * dt;
+    if (!this.canStand || this.canStand(nx, nz)) { p.x = nx; p.z = nz; }
+    else if (this.canStand(nx, p.z)) { p.x = nx; k.z = 0; }
+    else if (this.canStand(p.x, nz)) { p.z = nz; k.x = 0; }
+    else k.set(0, 0, 0);                                                    // wall: stop dead (no clipping into water/stalls)
+    k.multiplyScalar(Math.max(0, 1 - KNOCK_DECAY * dt));
+  }
 
   update(dt) {
     dt *= this.timeScale;
     this.t += dt;
+    this._knockStep(dt);
     const pose = this.pose;
     // defaults; the clip overwrites what it owns
     pose.y = 0; pose.lean = 0; pose.tilt = 0; pose.jitter = 0; pose.spin = 0;

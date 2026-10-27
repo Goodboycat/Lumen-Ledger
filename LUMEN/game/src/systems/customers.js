@@ -171,7 +171,7 @@ export class CustomerSystem {
     if (list && list.length) { const c = list.pop(); return c; }
     const root = this.creatures && this.creatures.makeGlimmer ? this.creatures.makeGlimmer(type) : fallbackBlob(type);
     root.name = 'cust_' + type;
-    const anim = this.creatures && this.creatures.CreatureAnimator ? new this.creatures.CreatureAnimator(root, { vfx: this.vfx, onCoin: (p) => this._onCoin(p) }) : null;
+    const anim = this.creatures && this.creatures.CreatureAnimator ? new this.creatures.CreatureAnimator(root, { vfx: this.vfx, onCoin: (p) => this._onCoin(p), canStand: (x, z) => this.flow.walkable(x, z) }) : null;
     if (anim) anim._cust = null;
     const info = root.userData.info || {};
     const c = {
@@ -276,6 +276,8 @@ export class CustomerSystem {
           break;
         }
         case 'walk': {
+          // S32: knocked back by Pip's sword → slide (animator owns the root while knocked), then re-path from the new spot
+          if (c.anim?.knocked) { c.field = null; c.stuck = 0; break; }
           // BUGFIX P49: walkers follow queue shifts too (the stall record is re-read so a rebuilt stall's slots are used)
           if (c.stall) { const q = this._queue(c.stall.entry); const idx = q.indexOf(c); if (idx >= 0 && idx !== c.slot) this._retarget(c); }
           const px = c.root.position.x, pz = c.root.position.z;
@@ -301,12 +303,18 @@ export class CustomerSystem {
           if (idx !== c.slot) { this._retarget(c); this._set(c, 'walk'); break; }          // shuffle forward
           if (c.waited > c.patience) { this.totals.gaveUp++; this._react(c, 'angry', 'waited'); break; }
           if (idx === 0) { this._retarget(c); this._set(c, 'walk'); }
+          // S32: a queued Glimmer that got shoved off its slot walks back to it once the slide ends
+          if (c.anim && !c.anim.knocked && Math.hypot(c.target.x - c.root.position.x, c.target.z - c.root.position.z) > ARRIVE_R * 2) { this._set(c, 'walk'); }
           break;
         }
-        case 'browse': if (c.t * 1000 >= BROWSE_MS) this._set(c, 'pay'); break;
-        case 'pay': if (c.t >= 0.4) this._settle(c); break;
+        case 'browse': case 'pay':
+          // S32: shoved off the counter mid-browse → walk back (browse restarts); mid-pay the sale still settles (no exploit, no refund)
+          if (c.state === 'browse' && c.anim && !c.anim.knocked && c.stall && Math.hypot(c.target.x - c.root.position.x, c.target.z - c.root.position.z) > ARRIVE_R * 2) { this._set(c, 'walk'); break; }
+          if (c.state === 'browse') { if (c.t * 1000 >= BROWSE_MS) this._set(c, 'pay'); } else if (c.t >= 0.4) this._settle(c);
+          break;
         case 'react': if (c.t >= 0.6) this._set(c, 'leave'); break;
         case 'leave': {
+          if (c.anim?.knocked) { c.field = null; break; }                   // S32: finish the slide before walking on
           const arrived = this._steer(c, dt);
           if (arrived) { this._playLeave(c); }
           break;
