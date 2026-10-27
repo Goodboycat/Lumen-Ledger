@@ -71,8 +71,10 @@ export function createSandbox(game, opts = {}) {
   if (sb.world.pierSpawn) sb.cust.setSpawnPoint(sb.world.pierSpawn.x, sb.world.pierSpawn.z);
 
   // ---- hero ------------------------------------------------------------------------------------------------------
-  // S16: sword targets = Glimmers (wobble only) + live enemies (knockback / defeat)
-  sb.hero = new HeroController(game, { vfx: sb.vfx, targets: () => sb.cust.active.map((c) => ({ root: c.root, hit: (d, p) => c.anim?.hit?.(d, p) })).concat(sb.enemies ? sb.enemies.targets() : []), isLand: (x, z) => sb.island.isLand(x, z) });
+  // S16: sword targets = Glimmers + live enemies (knockback / defeat). S32: every target is KNOCKED BACK (CreatureAnimator.hit slides the
+  //   root; enemies keep ENEMY_RULES.knockback) and hired helpers are targets too (they slide, grumble and walk back to their stall).
+  sb.hero = new HeroController(game, { vfx: sb.vfx, targets: () => sb.cust.active.filter((c) => c.state !== 'pooled' && c.state !== 'despawn').map((c) => ({ root: c.root, hit: (d, p) => c.anim?.hit?.(d, p) }))
+    .concat(sb.enemies ? sb.enemies.targets() : [], helperTargets(sb)), isLand: (x, z) => sb.island.isLand(x, z) });
   sb.hero.root.position.set(0, 0, 1);
   // S16: Debt Collectors (+ Baron Gilt boss from S6). Transient — spawned by the scheduler at day 0.7, cleared at season end / win / lose.
   sb.enemies = new EnemySystem(game, { hero: sb.hero, eco: sb.eco, island: sb.island, vfx: sb.vfx, headless,
@@ -111,7 +113,7 @@ export function createSandbox(game, opts = {}) {
     sb.cust.update(dt);
     sb.eco.tick(dt);
     sb.updateScheduler?.();
-    for (const h of sb.helpers) h.anim.update(dt);
+    for (const h of sb.helpers) { h.anim.update(dt); updateHelperKnock(sb, h, dt); }
     updateCoins(sb, dt);
     updatePerf(sb, dtReal);
   };
@@ -390,7 +392,29 @@ function seatHelper(sb, h, stall) {
   const at = stall ? stall.group.position : sb.hero.root.position;
   const back = new THREE.Vector3(0, 0, -0.9).applyAxisAngle(new THREE.Vector3(0, 1, 0), stall ? stall.group.rotation.y : 0);
   h.g.position.set(at.x + back.x, 0, at.z + back.z); h.stall = stall || null;
+  h.seat = { x: at.x + back.x, z: at.z + back.z, fx: at.x - back.x * 3, fz: at.z - back.z * 3 };   // S32: remembered so a knocked helper can walk back
+  h.anim.canStand = (x, z) => sb.island.isLand(x, z) && !(sb.build.occupied(x, z)?.id?.startsWith?.('stall_'));
   h.anim.faceToNow(new THREE.Vector3(at.x - back.x * 3, 0, at.z - back.z * 3)); h.anim.play(stall ? 'work' : 'idle');
+  h.returning = false;
+}
+/** S32: hired helpers as sword targets. Hitting one is harmless (no Spark cost) — it slides, flashes red, says a line, then walks back. */
+function helperTargets(sb) {
+  return sb.helpers.map((h) => ({ root: h.g, helper: h, hit: (dir, power) => {
+    h.anim.hit(dir, power); h.anim.play?.('idle'); h.returning = true; h.hitCount = (h.hitCount || 0) + 1;
+    if (h.hitCount % 3 === 1) sb.vfx?.pop?.show?.(h.g.position, HELPER_OUCH[h.type] || 'Oi!', { color: '#FFAB91' });
+    sb.game.bus.emit('helper:hit', { type: h.type, count: h.hitCount });
+  } }));
+}
+const HELPER_OUCH = { tallyOwl: 'Hoo-rude!', packMole: 'Oof!', sparkBee: 'Bzzt!', scoutFox: 'Yip!', gardenerSnail: 'Sloooow down!', guardTortoise: 'Hmph.' };
+const HELPER_WALK = 1.6;   // u/s walking back to the seat after a knockback
+/** S32: once the slide ends a knocked helper walks straight back to its seat (stalls are never between seat and shove point → no pathing). */
+function updateHelperKnock(sb, h, dt) {
+  if (!h.returning || !h.seat || h.anim.knocked) return;
+  const p = h.g.position, dx = h.seat.x - p.x, dz = h.seat.z - p.z, d = Math.hypot(dx, dz);
+  if (d < 0.08) { p.x = h.seat.x; p.z = h.seat.z; h.returning = false; h.anim.faceToNow(new THREE.Vector3(h.seat.fx, 0, h.seat.fz)); h.anim.play(h.stall ? 'work' : 'idle'); return; }
+  if (h.anim.current !== 'walk') h.anim.play('walk');
+  const step = Math.min(d, HELPER_WALK * dt); p.x += (dx / d) * step; p.z += (dz / d) * step;
+  h.anim.faceTo(new THREE.Vector3(h.seat.x, 0, h.seat.z));
 }
 /** BUGFIX P31: a helper whose stall was sold/demolished (or who was hired with no stall) moves to the least-staffed remaining stall. */
 function reseatHelpers(sb) {
