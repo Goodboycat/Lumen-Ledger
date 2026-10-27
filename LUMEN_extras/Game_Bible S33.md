@@ -1,0 +1,50 @@
+# LUMEN LEDGER — Game Bible, version **S33** (2026-10-27)
+
+Title-menu footer reads `jam build · S33` (`GAME_VERSION` in `LUMEN/game/src/Game.js`, `UI_VERSION` in `LUMEN/game/ui/index.js`).
+The full design bible (pitch, content rules, visual/tech bible, folder ownership) is unchanged and lives in
+`LUMEN_extras/game/docs/GAME_BIBLE.md`. This file records **what S33 adds** (beta-testing pass & bug audit on S32).
+
+## 1. What S33 is
+**Beta-tester bug investigation pass (P66–P83, no gameplay code modified).**
+Full details, root causes, and reproduction steps are logged in `LUMEN_extras/game/docs/PLAY_BUGS.md` (entries `P66`–`P83`), organized across the three requested focus areas plus general systems investigation:
+
+### A. Knockback Hit (`P66`–`P70`)
+| ID | Sev | Area | Summary |
+|---|---|---|---|
+| **P66** | P1 | `src/systems/enemies.js:179, 208–216`, `src/assets/creatures/animator.js:110–131` | `VillainAnimator` inherits `CreatureAnimator.hit()` with `canStand = null`. As a result: (1) **Baron Gilt slides `~0.89 u` per sword hit** despite `Game_Bible S32` stating *"Baron Gilt: never slides"*; (2) **Debt Collectors receive double knockback** (`e.knock` + `e.anim.knock` = `~1.78 u`) with `e.anim._knockStep` ignoring `island.isLand` and `build.occupied`; (3) Collectors and Baron can be knocked into water (`isLand === false`) or inside `2×2` stalls; and (4) if knocked off the **North or South shore** (`(0, -10.3) → (0, -11.2)`), `enemies.js:285, 311` (`else { p.x += _d.x * R.speed * dt * 0.3; }`) never updates `p.z`, **permanently soft-locking** the Collector or Baron in water. |
+| **P67** | P1 | `src/systems/enemies.js:222`, `src/Game.js:291` | Defeating a Collector or Baron Gilt after knocking them past the shoreline into water (`P66`, e.g., Baron at `(14.62, 0)` after 6 hits near the pier) drops the reward coin (`sb.dropTip`) at the water coordinates (`3.17 u` off land), beyond both walk pickup (`0.7 u`) and `coinMagnetDash` (`2.2 u`). |
+| **P68** | P2 | `src/Game.js:221, 391–401, 413–420` | Demolishing/selling a stall while its assigned helper is mid-knockback (`h.anim.knocked === true`) triggers `reseatHelpers()` → `seatHelper()`, which moves `h.g.position` to the new stall's seat and sets `h.returning = false` without zeroing `h.anim.knock` / `h.anim.knockT`. The helper keeps sliding `~0.35–0.9 u` away from the new stall and never walks back because `h.returning` is `false`. |
+| **P69** | P2 | `src/Game.js:413–420` | `updateHelperKnock()` walks a knocked helper back to `h.seat` in a straight line without checking `h.anim.canStand(nx, nz)`, clipping through adjacent stalls or concave water bays after axis-sliding or multi-angle hits. |
+| **P70** | P2 | `src/systems/customers.js:264, 310–314` | In `CustomerSystem.update()`, `c.t += dt` advances while `c.anim.knocked === true`, and `if (c.t * 1000 >= BROWSE_MS) this._set(c, 'pay')` is not gated by `!c.anim.knocked`. Hitting a browsing customer during the last `0.35 s` of `browse` transitions them to `pay` mid-slide (`~1.6 u` away from the counter) instead of walking back to the slot first. |
+
+### B. Boss Moves Against Player (`P71`–`P78`)
+| ID | Sev | Area | Summary |
+|---|---|---|---|
+| **P71** | P1 | `src/systems/enemies.js:305–306, 418, 439` | Baron Gilt deals contact damage (`2 ✦`) while `e.phase === 'dazed'` (the `2.5 s` post-stomp and `4.0 s` post-umbrella-dash hit windows where toasts tell the player *"Hit him now!"*). Moreover, `_stompLand` lands Baron directly on `s0` without setting `e.hitAt = t`, immediately dealing an extra `2 ✦` contact hit on the next frame if Pip's shove was blocked by water or skipped by Bubble Shield (`up to 6 ✦` lost from one stomp). |
+| **P72** | P2 | `src/systems/enemies.js:231, 344–345, 434–435` | Inverted boolean guard in `_stompLand` and Umbrella Dash: `if (took > 0 || !this.deps.isShielded?.()) this._shove(...)`. When Bubble Shield is active (`isShielded() === true`), `_hitHero()` returns `0` (`took === 0`) and `!isShielded()` is `false`, so `_shove` **never** runs when shielded, contradicting the comment `// shield blocks the Spark loss, not the push — it is a bubble`. |
+| **P73** | P2 | `src/systems/enemies.js:284, 310, 328, 342, 423–429`, `src/Game.js:80` | `Game.js` does not pass `occupied` to `EnemySystem`, and `_shove()`, Baron stomp landing, umbrella dash, and enemy chasing only check `island.isLand`, shoving Pip (`3.2 u`) or moving Baron straight inside `2×2` placed stall footprints. |
+| **P74** | P3 | `src/systems/enemies.js:423–426, 435` | `_stompLand` calls `this._shove(hp, s, R.stompKnock)` without a 4th `dir` argument. If Pip stands stationary at the ring center `s` (`d === 0`), `_shove` falls back to `dir?.z ?? 1`, always shoving Pip toward `+Z` regardless of Baron's jump direction. |
+| **P75** | P2 | `src/anim/heroAnims.js`, `src/anim/heroAbilities.js`, `src/systems/enemies.js:423` | Hero moves (`coinMagnetDash`, `dash`, `hammer`, `build`, `haggleShout`, `fogSweep`) overwrite `hero.root.position` from `M.start` every frame inside `SequencePlayer.update()` (which runs after `EnemySystem.update()`), immediately snapping Pip back and negating Baron's `_shove()`. |
+| **P76** | P2 | `src/systems/enemies.js:418, 439`, `src/assets/creatures/villains.js:396` | `slipOnCoin` is a `0.9 s` non-looping one-shot sequence that auto-returns to `this.loopSeq` (`'strut'`). During Baron's `2.5 s` stomp daze and `4.0 s` umbrella paralysis, Baron stands up and struts in place after `0.9 s` while still in `e.phase === 'dazed'`. |
+| **P77** | P2 | `src/systems/enemies.js:212, 405–411, 476` | Sword-interrupting Baron's Fog Minigun (`phase === 'fire'`) or calling `sendHome()` at season end mid-minigun calls `_endMinigun(e)` instead of `_cancelAttack(e)`, falsely awarding `attacksDodged++` and popping `"DODGED"`. |
+| **P78** | P2 | `src/systems/enemies.js:251, 294–297` | `EnemySystem.update(dt)` returns early when `!this.list.length`, skipping `this.decals.update(dt)` and `this.puddles` cleanup. Any active `4–7 s` purple fog puddle decal on the ground when the last enemy flees remains frozen on the island for the rest of the season. |
+
+### C. Stall Upgrade, Demolish & General Systems (`P79`–`P83`)
+| ID | Sev | Area | Summary |
+|---|---|---|---|
+| **P79** | P2 | `src/Game.js:685–696, 773–782`, `ui/build.js:285` | Upgrading a stall via the Build Tray footer `⬆ upgrade` button (`action: 'upgrade'`) or `U` / `✋ Interact` (`lg.interact()`) does not clear `lg.demolishMode` or `ui.build.state.demolish`, leaving demolish mode armed for the player's next tap on the island. |
+| **P80** | P3 | `ui/build.js:163–197`, `src/Game.js:733` | `placedInfo` does not pass `busy` / `swapping` state to `ui/build.js`, so `⬆ Upgrade` and `💰 Sell` remain visually enabled during the `610 ms` `buildPlace` and `561 ms` `stallLevelUp` animations and trigger a `"denied"` shake/buzzer if clicked early. |
+| **P81** | P2 | `src/Game.js:391–401, 422–432` | (1) Demolishing all stalls (or hiring a helper with 0 stalls) calls `seatHelper(sb, h, null)`, placing all helpers at `(hero.x, hero.z - 0.9)` without checking `island.isLand` (stranding helpers in water if Pip is near the north shore) and stacking them at distance `0`. (2) When new stalls are later built, `reseatHelpers()` skips helpers whose current stall is still alive (`if (h.stall && alive.has(h.stall)) continue`), never redistributing stacked helpers onto newly built stalls. |
+| **P82** | P2 | `src/Game.js:146`, `src/systems/customers.js:117, 316–320` | `pierSpawn` (`(10, 0)`) is not reserved in `build.cells` or `island.pathCells`. Placing a `2×2` stall covering `(10, 0)` blocks the exit target of all leaving customers (`state === 'leave'`), who have no stuck timer and park against the stall wall forever until `maxActive` (20) is reached and customer spawning halts completely. |
+| **P83** | P3 | `src/assets/props/stalls.js:174–372` | S31's per-type L2/L3 side pieces (`LEVEL_EXTRAS` at `x = ±1.32 u`, total width `3.08 u`) extend `0.55 u` outside each side of the stall's `2×2` (`2.0 u`) grid footprint, visually clipping into props/stalls built on adjacent cells and allowing customers/helpers to walk through them. |
+
+## 2. Verify
+```bash
+cd LUMEN/game
+node tools/check.mjs --props --creatures --hero --abilities --economy --build --customers --ui --story --vfx --world --sandbox --game --save --audio --enemies --storm --cinematics --knockback
+```
+
+## 3. Recommended Next Steps (for next chat)
+1. **Fix `P66` & `P67`**: In `EnemySystem._spawnOne()`, pass `canStand: (x, z) => (this.island?.isLand?.(x, z) ?? true) && !this.deps.occupied?.(x, z)` and `knockPower: kind === 'baron' ? 0 : undefined` (or unify Collector knockback into `CreatureAnimator.hit` only), fix the shore slide `else` branch in `enemies.js:285, 311` to slide along both X and Z, and snap `_defeat` / `dropTip` coin drops to the nearest walkable land cell.
+2. **Fix `P71`–`P78`**: Exclude `e.phase === 'dazed'` from Baron contact damage (`P71`), fix the shield shove condition (`P72`), pass `occupied` to `EnemySystem` and check it in `_shove`/movement (`P73`), pass jump `dir` to `_shove` in `_stompLand` (`P74`), stop/update hero move `M.start` on `_shove` (`P75`), hold the dazed pose for the full `e.dazed` duration (`P76`), route sword-interrupt and `sendHome()` during minigun through `_cancelAttack` (`P77`), and run `this.decals.update(dt)` / `this.puddles` cleanup before the `!this.list.length` early return (`P78`).
+3. **Fix `P68`–`P70` & `P79`–`P83`**: Zero `h.anim.knock` / `h.anim.knockT` inside `seatHelper()` (`P68`), clamp `updateHelperKnock()` with `canStand` (`P69`), pause `c.t` (or gate `pay` transition) while `c.anim.knocked` in `CustomerSystem` (`P70`), clear `demolishMode` on upgrade (`P79`), disable Upgrade/Sell buttons while `busy`/`swapping` (`P80`), clamp `seatHelper(null)` to land and rebalance stacked helpers in `reseatHelpers()` (`P81`), reserve `pierSpawn` or update `cust.spawn` on `reroute()` (`P82`), and pull `SX` in `stalls.js` closer to `W/2` (`P83`).
