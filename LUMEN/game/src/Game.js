@@ -466,7 +466,7 @@ function reseatHelpers(sb) {
 //   eco:win / eco:lose     → ending (8B finale lines) → story:finale → endless | title
 //   ui:pause {on, by}      pause reasons are OR-ed (menu ∨ dialogue ∨ ledger ∨ title) into game.paused — the only place that touches it.
 // Nothing here edits a system; it only constructs, routes and owns `lg.state`.
-export const GAME_VERSION = 'S38';   // S38 (2026-10-27): release pass — consolidates S35 (icons, dialogue, cottage, slash ribbon), S36 (drag props), S37 (first-player balance). Game_Bible S38.md in LUMEN_extras/
+export const GAME_VERSION = 'S39';   // S39 (2026-10-27): balance sweep re-run + GDD, submission dry run, size notes, P84–P85. Game_Bible S39.md in LUMEN_extras/
 export const GAME_STATES = ['title', 'playing', 'review', 'ending', 'endless'];
 export const ABILITY_KEYS = { KeyQ: 'coinMagnetDash', KeyW: 'bubbleShield', KeyE: 'growthStomp', KeyR: 'ledgerFlash', KeyF: 'haggleShout', KeyG: 'fogSweep' };   // = FINLIT[name].key (3B)
 
