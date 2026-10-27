@@ -149,8 +149,10 @@ export class HeroController {
       p.head.rotation.y = lerp(-0.6, 0.15, e);
       // Impact at ~60 % of strike
       if (!S.hitDone && t >= 0.6) { S.hitDone = true; hero._impact(S); }
+      // S35: the slash ribbon samples the REAL blade transform after this frame's pose write → VFX and animation are one thing
+      hero.deps.vfx.slash.track?.();
     }, { onEnter: () => {
-      hero.deps.vfx.slash.fire(hero.root.position, S.dir, { dur: 0.12, scale: 1.05 });
+      hero.deps.vfx.slash.fire(hero.root.position, S.dir, { dur: 0.12, scale: 1.05, blade: hero.sword });
     } });
 
     // --- Follow-through 200 ms: sword overshoots then decelerates (ease-out cubic). Small squash settle.
@@ -162,6 +164,8 @@ export class HeroController {
       hero.sword.rotation.set(lerp(0.55, 0.9, e), 0, lerp(-0.3, -0.4, e));
       p.head.rotation.y = lerp(0.15, 0.1, e);
       hero.root.position.copy(S.start).addScaledVector(S.dir, Math.min(S.reach, 0.4 + 0.06 * Math.sin(Math.PI * e)));
+      // S35: keep tracking through the overshoot (first 45 % of follow-through), then let the ribbon fade with the decelerating blade
+      if (e < 0.45) hero.deps.vfx.slash.track?.(); else hero.deps.vfx.slash.release?.();
     }, { onEnter: () => { hero.spring.set(0.08); hero.spring.kick(-1.1); }, cancellable: true });
 
     // --- Recovery 300 ms: ease-in-out back to idle pose.
@@ -174,7 +178,7 @@ export class HeroController {
       p.head.rotation.y = lerp(0.1, 0, e);
     }, { cancellable: true });
 
-    seq.then(() => { hero.state = 'idle'; hero._restPose(); });
+    seq.then(() => { hero.state = 'idle'; hero._restPose(); hero.deps.vfx.slash.release?.(); });
     return seq;
   }
 

@@ -64,45 +64,102 @@ export class DustPool {
   }
 }
 
-// ---------- Slash trail (one additive crescent quad) ----------
+// ---------- Slash trail: blade-tracking ribbon (S35) ----------
+// S35: the old crescent was a fixed quad fired once at strike start, so it never matched the sword — it lit up before the blade
+// moved and faded while the blade was still sweeping. Now the trail is a RIBBON sampled from the sword's actual world transform
+// every frame of the strike/follow phases (guard → tip), Catmull-Rom smoothed between samples and faded per vertex by age, so it
+// is synchronised with the attack animation by construction (HeroController calls fire() on strike enter, track() each frame,
+// release() when the follow-through settles). fire(pos, dir) without a blade still works (legacy crescent-ish sweep built from a
+// virtual blade) so tools/check.mjs mocks + older callers keep running.
+const TRAIL_MAX = 24, TRAIL_SUB = 4, TRAIL_LIFE = 0.16;
 export class SlashTrail {
   constructor(scene) {
-    // crescent: ring sector geometry. BUGFIX (mobile pass): the old arc was yawed +90° off the strike direction and its sweep rotated
-    // it further round, so on screen the slash appeared on the OPPOSITE side of Pip (behind him). Now the crescent lives in a pivot:
-    // the mesh is laid flat with its arc spanning the hero's FRONT half (angles 0.12π..0.88π → +Z), the pivot is yawed to the strike
-    // direction and only the pivot sweeps (right → left, same way the sword swings). Every vertex stays in front of the hero.
-    this.geo = new THREE.RingGeometry(0.55, 1.75, 18, 1, Math.PI * 0.12, Math.PI * 0.76);
-    this.mat = new THREE.MeshBasicMaterial({ color: 0xfff6c8, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false, toneMapped: false });
-    this.mesh = new THREE.Mesh(this.geo, this.mat);
-    this.mesh.rotation.x = Math.PI / 2;                       // ring XY-plane → ground plane, arc toward local +Z (= forward)
-    this.mesh.userData.noOutline = true; this.mesh.frustumCulled = false;
-    this.pivot = new THREE.Group(); this.pivot.name = 'slashTrail'; this.pivot.rotation.order = 'YXZ';
-    this.pivot.add(this.mesh); this.pivot.visible = false; this.pivot.userData.noOutline = true;
-    scene.add(this.pivot);
-    this.life = 0; this.dur = 0.12; this.fadeInEnd = 0.35; this.yaw = 0; this.baseScale = 1;
+    const maxV = (TRAIL_MAX - 1) * TRAIL_SUB * 2 + 2;
+    this.geo = new THREE.BufferGeometry();
+    this.pos = new Float32Array(maxV * 3); this.col = new Float32Array(maxV * 3);
+    this.geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3).setUsage(THREE.DynamicDrawUsage));
+    this.geo.setAttribute('color', new THREE.BufferAttribute(this.col, 3).setUsage(THREE.DynamicDrawUsage));
+    const idx = []; for (let i = 0; i < maxV / 2 - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+    this.geo.setIndex(idx); this.geo.setDrawRange(0, 0);
+    this.mat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false, toneMapped: false });
+    this.mesh = new THREE.Mesh(this.geo, this.mat); this.mesh.frustumCulled = false; this.mesh.userData.noOutline = true; this.mesh.name = 'slashTrail';
+    this.pivot = this.mesh;                                       // Game.js removes vfx.slash.pivot on reset
+    this.mesh.visible = false; scene.add(this.mesh);
+    this.samples = [];                                            // { b: Vector3 (guard), t: Vector3 (tip), age }
+    this.pool = []; for (let i = 0; i < TRAIL_MAX + 2; i++) this.pool.push({ b: new THREE.Vector3(), t: new THREE.Vector3(), age: 0 });
+    this.active = false; this.blade = null; this.color = new THREE.Color(0xfff6c8); this.scale = 1; this.life = 0;
+    this._lb = new THREE.Vector3(); this._lt = new THREE.Vector3(); this._tmp = new THREE.Vector3();
+    // legacy virtual blade (no sword object given): sweeps across the hero's front over `dur`
+    this._virt = null;
   }
-  /** Show at pos facing dir (the strike direction): a crescent in front of the hero, slightly tilted (diagonal slash). */
-  fire(pos, dir, { dur = 0.12, scale = 1, color = null } = {}) {
-    this.pivot.position.copy(pos); this.pivot.position.y += 0.9;
-    this.yaw = Math.atan2(dir.x, dir.z);
-    this.pivot.rotation.set(0, this.yaw + SLASH_SWEEP, -0.28);
-    this.baseScale = scale; this.pivot.scale.setScalar(scale);
-    if (color) this.mat.color.set(color); else this.mat.color.set(0xfff6c8);
-    this.life = this.dur = dur; this.pivot.visible = true; this.mat.opacity = 0;
+  /** Start a trail. opts.blade = Object3D of the sword (grip at origin, +Y along the blade, userData.length). */
+  fire(pos, dir, { dur = 0.12, scale = 1, color = null, blade = null } = {}) {
+    this.color.set(color || 0xfff6c8); this.scale = scale;
+    for (const s of this.samples) this.pool.push(s); this.samples.length = 0;
+    this.active = true; this.blade = blade; this.mesh.visible = true; this.life = 0;
+    this._virt = blade ? null : { pos: pos.clone(), yaw: Math.atan2(dir.x, dir.z), dur, t: 0 };
+    this.track();
   }
+  /** Sample the blade's current world transform (call once per frame while the sword is swinging). */
+  track() {
+    if (!this.active) return;
+    const s = this.pool.pop() || this.samples.shift();
+    if (this.blade) {
+      this.blade.updateWorldMatrix(true, false);
+      const L = this.blade.userData.length || 1.4;
+      s.b.set(0, 0.18, 0); this.blade.localToWorld(s.b);
+      s.t.set(0, L * 1.04, 0); this.blade.localToWorld(s.t);
+    } else {                                                      // virtual blade sweep (+0.35 → −0.35 rad, 0.55..1.75 u)
+      const v = this._virt, k = Math.min(1, v.t / v.dur), a = v.yaw + 0.35 * (1 - 2 * Easing.outCubic(k));
+      s.b.set(v.pos.x + Math.sin(a) * 0.55, v.pos.y + 0.9, v.pos.z + Math.cos(a) * 0.55);
+      s.t.set(v.pos.x + Math.sin(a) * 1.75, v.pos.y + 1.1, v.pos.z + Math.cos(a) * 1.75);
+    }
+    s.age = 0; this.samples.push(s);
+    if (this.samples.length > TRAIL_MAX) this.pool.push(this.samples.shift());
+  }
+  /** Stop recording — the ribbon fades out over TRAIL_LIFE. */
+  release() { this.active = false; this.blade = null; this._virt = null; }
   update(dt) {
-    if (this.life <= 0) return;
-    this.life -= dt;
-    const t = Math.min(1, 1 - this.life / this.dur);
-    // fade in fast, then out
-    this.mat.opacity = t < 0.3 ? Easing.outQuad(t / 0.3) * 0.95 : (1 - Easing.inQuad((t - 0.3) / 0.7)) * 0.95;
-    // sweep across the hero's front: +SWEEP → −SWEEP around the strike direction (never behind him)
-    this.pivot.rotation.y = this.yaw + SLASH_SWEEP * (1 - 2 * Easing.outCubic(t));
-    this.pivot.scale.setScalar(this.baseScale * (1 + 0.25 * t));
-    if (this.life <= 0) { this.pivot.visible = false; this.mat.opacity = 0; }
+    if (!this.mesh.visible) return;
+    if (this._virt) { this._virt.t += dt; this.track(); if (this._virt && this._virt.t >= this._virt.dur) this.release(); }
+    for (const s of this.samples) s.age += dt;
+    while (this.samples.length && this.samples[0].age >= TRAIL_LIFE) this.pool.push(this.samples.shift());
+    if (!this.samples.length) { if (!this.active) this.mesh.visible = false; this.geo.setDrawRange(0, 0); return; }
+    this._build();
+  }
+  _build() {
+    const S = this.samples, n = S.length, P = this.pos, C = this.col, c = this.color, sc = this.scale; let v = 0;
+    const put = (b, t, fade) => {
+      // b/t are the smoothed guard/tip; stretch the tip slightly past the blade (scale) for a fuller ribbon
+      const tx = b.x + (t.x - b.x) * sc, ty = b.y + (t.y - b.y) * sc, tz = b.z + (t.z - b.z) * sc;
+      P[v * 3] = b.x; P[v * 3 + 1] = b.y; P[v * 3 + 2] = b.z; C[v * 3] = c.r * fade * 0.35; C[v * 3 + 1] = c.g * fade * 0.35; C[v * 3 + 2] = c.b * fade * 0.35; v++;
+      P[v * 3] = tx; P[v * 3 + 1] = ty; P[v * 3 + 2] = tz; C[v * 3] = c.r * fade; C[v * 3 + 1] = c.g * fade; C[v * 3 + 2] = c.b * fade; v++;
+    };
+    const fadeOf = (s) => { const f = 1 - s.age / TRAIL_LIFE; return f * f; };
+    if (n === 1) { put(S[0].b, S[0].t, fadeOf(S[0])); put(S[0].b, S[0].t, fadeOf(S[0])); }
+    else {
+      const cr = (p0, p1, p2, p3, u, out) => {           // Catmull-Rom
+        const u2 = u * u, u3 = u2 * u;
+        out.x = 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * u + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * u2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * u3);
+        out.y = 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * u + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * u2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * u3);
+        out.z = 0.5 * ((2 * p1.z) + (-p0.z + p2.z) * u + (2 * p0.z - 5 * p1.z + 4 * p2.z - p3.z) * u2 + (-p0.z + 3 * p1.z - 3 * p2.z + p3.z) * u3);
+        return out;
+      };
+      for (let i = 0; i < n - 1; i++) {
+        const s0 = S[Math.max(0, i - 1)], s1 = S[i], s2 = S[i + 1], s3 = S[Math.min(n - 1, i + 2)];
+        const f1 = fadeOf(s1), f2 = fadeOf(s2);
+        for (let k = 0; k < TRAIL_SUB; k++) {
+          const u = k / TRAIL_SUB;
+          cr(s0.b, s1.b, s2.b, s3.b, u, this._lb); cr(s0.t, s1.t, s2.t, s3.t, u, this._lt);
+          put(this._lb, this._lt, f1 + (f2 - f1) * u);
+        }
+      }
+      put(S[n - 1].b, S[n - 1].t, fadeOf(S[n - 1]));
+    }
+    this.geo.attributes.position.needsUpdate = true; this.geo.attributes.color.needsUpdate = true;
+    this.geo.setDrawRange(0, Math.max(0, (v / 2 - 1) * 6));
   }
 }
-const SLASH_SWEEP = 0.35;   // rad each side of the strike direction
 export const POP_SLOW = 2.2, POP_MIN = 1.6;   // floating text: duration multiplier + minimum seconds (mobile readability)
 
 // ---------- Hit spark: star burst (instanced flat tris) ----------
