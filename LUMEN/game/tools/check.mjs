@@ -40,6 +40,7 @@ const doGame = args.includes('--game');            // 10C the whole game headles
 const doSave = args.includes('--save');            // 10D save/load + tutorial: play to S2 → autosave → fresh lg → CONTINUE → same season/spark/stalls/toasts; export/import text; lose clears
 const doPerf = args.includes('--perf');            // 11A src/systems/perf.js: BlobShadows (N discs → 1 InstancedMesh), CreatureLOD tiers + hysteresis, PixelRatioGovernor steps, countGeometries
 const doKnockback = args.includes('--knockback');  // S32 tools/gates/knockback.mjs: CreatureAnimator.hit slide/decay/stun/canStand clamp · customers knocked → walkable, re-path, sales continue, browsers walk back · helpers are sword targets (slide, helper:hit, walk back to seat)
+const doFirstPlayer = args.includes('--firstplayer'); // S37 tools/gates/firstplayer.mjs: passive beginner (3 starter stalls, fair prices, no repay) at the real 150 s season → S1 income > expenses, ≥ 15 units/season, debt still climbs, no angry queues
 const doIcons = args.includes('--icons');          // icons: ui/icons.js procedural set covers every emoji in src/ ui/ data/ index.html; SVG is strict-XML clean; ui/icons/*.png baked + manifest in sync
 const doAudio = args.includes('--audio');          // 12 src/core/Audio.js headless (no AudioContext → inert): manifest ids ↔ DEFAULT_EVENTS, bus walk counts, cooldown, duck, unknown id, destroy
 const doEnemies = args.includes('--enemies');      // S16 src/systems/enemies.js: Collector waves (size = season ≤ 5), contact −1 ✦ pouch only, Bubble Shield blocks, 2 sword hits → flee + 1 ✦ coin, Baron boss S6+ with powers, season end clears
@@ -1529,7 +1530,7 @@ if (doSandbox) {
     const names = ABILITY_NAMES(); if (names.length !== 6) throw new Error('abilities ' + names.length);
     let spark1 = sb.eco.state.spark; if (!sb.ability('coinMagnetDash')) throw new Error('magnet refused'); if (sb.ability('coinMagnetDash') !== null) throw new Error('cooldown'); run(2);
     if (!(sb.coins.length < coins0) || !(sb.eco.state.spark > spark1) || !ev['sandbox:tip']) throw new Error('magnet collected nothing');
-    run(5); if (!sb.ability('haggleShout')) throw new Error('haggle refused'); run(2); if (![...sb.haggle.values()].some((h) => h.n > 0)) throw new Error('haggle charges');
+    run(5); if (!sb.ability('haggleShout')) throw new Error('haggle refused'); run(2); if (![...sb.haggle.values()].some((h) => h.n > 0) && !(sb.stats.haggled > 0)) throw new Error('haggle charges');   // S37: with 3 waves/season a Glimmer may already have spent the charge (stats.haggled)
     run(5); if (!sb.ability('growthStomp')) throw new Error('growth refused'); run(2); if (!(sb.growth.mul > 1) || !(sb.growth.until > game.time)) throw new Error('growth pulse');
     run(5); const fog0 = sb.eco.state.fog01; if (!sb.ability('fogSweep')) throw new Error('fog refused'); run(1); const fogEff = (ev['sandbox:ability'] || []).find((a) => a.name === 'fogSweep'); if (!fogEff) throw new Error('fogSweep no push');  // bus event, not fog01 delta: a season end inside the window re-adds fog
     run(5); if (!sb.ability('bubbleShield')) throw new Error('shield refused'); run(3); if (!(sb.shield.until > game.time)) throw new Error('shield not armed');
@@ -2316,6 +2317,10 @@ if (doAudio) {
 if (doKnockback) {
   try { const { run } = await import(pathToFileURL(resolve('tools/gates/knockback.mjs')).href); bad += await run({ resolve, pathToFileURL }); }
   catch (err) { bad++; console.log('\nKNOCKBACK FAIL →', err.message.split('\n')[0]); }
+}
+if (doFirstPlayer) {
+  try { const { run } = await import(pathToFileURL(resolve('tools/gates/firstplayer.mjs')).href); bad += await run({ resolve, pathToFileURL }); }
+  catch (err) { bad++; console.log('  firstplayer gate FAIL →', err.message.split('\n')[0]); }
 }
 if (doIcons) {
   // ICONS: every emoji the game prints must map to a procedural drawing; each drawing must be valid strict XML (so the PNG bake works);

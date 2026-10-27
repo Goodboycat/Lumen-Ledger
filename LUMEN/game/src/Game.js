@@ -244,12 +244,17 @@ function wireEconomy(sb) {
 //   day01 ≥ 0.45 → one random event (4B pickEvent) — absorbed if bubbleShield is armed (eco:absorbed, Protect jar untouched)
 //   day01 ≥ 0.70 on odd seasons → Baron Gilt offers a Too-Good Deal (eco.offerScam) → player ledgerFlashes (refuse) or it is auto-refused at
 //   season end (sandbox never auto-accepts). sb.nextEvent is pre-rolled so bubbleShield can name it.
+export const CUSTOMER_TRICKLE = [0.34, 0.67];   // S37: day01 marks at which another customer wave lands (the first lands at day 0) → 3 waves/season ≈ balance.md's 18 + 5·stalls visits
 function installScheduler(sb) {
-  const { eco } = sb, bus = sb.game.bus; const S = sb.sched = { season: 0, event: false, scam: false, wave: false, warn: false };
+  const { eco } = sb, bus = sb.game.bus; const S = sb.sched = { season: 0, event: false, scam: false, wave: false, warn: false, trickle: 0 };
+  // S37 balance: ONE wave per season (6 Glimmers in S1) gave a first-time player ~60 ✦ income against ~75–140 ✦ of upkeep + interest —
+  //   debt 260 → 431 by S3 even at fair prices (headless gate --firstplayer). balance.md's sim assumes 18 + 5·stalls visits per season,
+  //   so the season now trickles CUSTOMER_TRICKLE extra waves at day 0.34 / 0.67 (≈ 18 visits in S1, 24 in S2, 30 in S3 — the numbers balance.md was tuned on).
   sb.nextEvent = pickEvent(eco, Math.max(1, eco.state.season));
   sb.updateScheduler = () => {
     const s = eco.state; if (s.ended) return;
-    if (S.season !== s.season) { S.season = s.season; S.event = false; S.scam = false; S.wave = false; S.warn = false; sb.nextEvent = pickEvent(eco, s.season); }
+    if (S.season !== s.season) { S.season = s.season; S.event = false; S.scam = false; S.wave = false; S.warn = false; S.trickle = 0; sb.nextEvent = pickEvent(eco, s.season); }
+    if (S.trickle < CUSTOMER_TRICKLE.length && s.day01 >= CUSTOMER_TRICKLE[S.trickle] && !(sb.modalOpen?.())) { S.trickle++; sb.cust.spawnWave(s.season); }
     // S17: clouds gather from day 0.30 when a storm is coming (the player has ~15 s to fill Protect)
     if (!S.warn && s.day01 >= 0.3 && sb.nextEvent === 'storm' && !S.event) { S.warn = true; sb.storm?.warn(); sb.log.push(`S${s.season} storm clouds gather`); }
     if (!S.event && s.day01 >= 0.45 && sb.nextEvent) {
