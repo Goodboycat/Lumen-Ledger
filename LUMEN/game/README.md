@@ -16,6 +16,12 @@ Useful URL flags: `?autoplay` skip the title · `?endless` start in Endless · `
 
 **Controls** — WASD/arrows move · Space/J/Enter hammer/confirm · E/F interact · **B** build menu · Q W E R F G abilities (**tap** W = Bubble Shield, **hold** W = walk; R rotates the ghost while placing) · jars panel: ↩ withdraws half a jar, **PAY BARON** repays debt from the pouch · **T** (or the ⏩ button in the Season pill) cycles time speed 1× → 2× → 3× (resets to 1× on pause, dialogue, season end) · Esc/P pause · Enter/click advances dialogue, 1–4 picks a choice. Touch: left virtual joystick, A / B / 🔨 buttons, ⏸ in the HUD. Full table in `docs/GDD.md §6`.
 
+## Knockback (S32)
+Swinging the sword at anything now **shoves it**: Glimmers slide ≈ 0.9 u away, stop steering for 0.35 s, turn to look at Pip, then re-path and
+walk back to their browse / queue slot (sales never break). **Hired helpers** are targets too — they slide off their stool, flash red, grumble
+"ouch" and walk back to their seat to resume work. Enemies keep their own knockback rules; Baron Gilt never slides.
+Headless gate: `node tools/check.mjs --knockback`.
+
 ## Stalls & upgrades (S29–S31)
 Only **one stall of each type** can stand on the island — deploy it once, then ⬆ Upgrade it (L1 → L2 → L3). The build tray shows the level
 badge on every stall card and marks a placed stall **✓ Deployed · Lx**; trying to deploy a second one is refused (ghost turns red, card shakes).
@@ -52,7 +58,7 @@ No build step, no npm, no bundler, no CDN: vanilla ES modules + one vendored lib
 ```bash
 cd LUMEN/game
 node tools/check.mjs                       # imports every src/**/*.js — ~1 s, no browser
-node tools/check.mjs --props --creatures --hero --abilities --economy --build --customers --ui --story --vfx --world --sandbox --game --save --audio --enemies --storm --cinematics
+node tools/check.mjs --props --creatures --hero --abilities --economy --build --customers --ui --story --vfx --world --sandbox --game --save --audio --enemies --storm --cinematics --knockback
                                            # full headless suite ~5 s: builds every prop/creature, runs the economy sim, walks the whole game S1→win→endless→lose
 node tests/economy.sim.mjs --sweep         # balance: sensible wins S10 17/20 seeds, borrow-everything loses S3–S5
 bash tools/setup_browser.sh && node tools/smoke.mjs index.html --shots --close   # optional browser smoke (errors, fps, draw calls, PNGs → tools/shots/)

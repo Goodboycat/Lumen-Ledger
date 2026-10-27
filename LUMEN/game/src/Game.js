@@ -443,7 +443,7 @@ function reseatHelpers(sb) {
 //   eco:win / eco:lose     → ending (8B finale lines) → story:finale → endless | title
 //   ui:pause {on, by}      pause reasons are OR-ed (menu ∨ dialogue ∨ ledger ∨ title) into game.paused — the only place that touches it.
 // Nothing here edits a system; it only constructs, routes and owns `lg.state`.
-export const GAME_VERSION = 'S31';   // S31 (2026-10-26): one stall per type (S29) · tray level badges (S30) · per-type L2/L3 stall models (S31)
+export const GAME_VERSION = 'S32';   // S32 (2026-10-27): real knockback on every sword target — Glimmers slide + re-path, hired helpers slide + walk back to their seat; headless gate check.mjs --knockback
 export const GAME_STATES = ['title', 'playing', 'review', 'ending', 'endless'];
 export const ABILITY_KEYS = { KeyQ: 'coinMagnetDash', KeyW: 'bubbleShield', KeyE: 'growthStomp', KeyR: 'ledgerFlash', KeyF: 'haggleShout', KeyG: 'fogSweep' };   // = FINLIT[name].key (3B)
 

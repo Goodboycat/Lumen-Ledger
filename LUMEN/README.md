@@ -14,7 +14,17 @@ LUMEN/
     README.md         how to play, controls, URL flags
 ```
 
-## Stalls & upgrades (S29–S31, 2026-10-26) — version shown in the title menu: `S31`
+## Knockback (S32, 2026-10-27) — version shown in the title menu: `S32`
+Every sword target now **really moves**. `CreatureAnimator.hit(dir, power)` (`src/assets/creatures/animator.js`) applies a world-space slide to the
+creature's root — `KNOCK_SPEED` 8 u/s decaying at `KNOCK_DECAY` 9/s (≈ 0.9 u travelled at power 1), a `KNOCK_STUN` 0.35 s window, an optional
+`canStand(x,z)` clamp (land + no stall) and it turns the creature to face the attacker. **Glimmers**: `CustomerSystem` pauses its steering while
+`anim.knocked`, re-paths afterwards, and browsing / queueing customers walk back to their slot — sales continue. **Hired helpers** are sword targets
+too: they slide (own stall cell allowed — the seat is inside its footprint), flash red, pop an "ouch", emit `helper:hit`, then walk back
+(1.6 u/s) to their remembered `seat` and resume work. Enemies keep their own `ENEMY_RULES.knockback`; the Baron never slides.
+Headless gate: `node tools/check.mjs --knockback` (`tools/gates/knockback.mjs`) — it caught the first tuning (2.6 u/s ≈ 0.29 u, invisible)
+and the helper clamp bug (seat inside own stall → shoves never moved it).
+
+## Stalls & upgrades (S29–S31, 2026-10-26)
 **One stall per type.** The old bug: deploying a second Fruit Stand after upgrading the first made the tray/level badge fall back to L1
 (and L1 vs L2 looked the same). Now `BuildSystem.owned(id)` / `placeBlocker(id)` deny a duplicate deploy everywhere (tray card, `enter()`,
 `place()`, `canPlace()` → ghost red, reason `duplicate`), and `load()` is tolerant: a legacy save with two of a kind keeps the highest level
