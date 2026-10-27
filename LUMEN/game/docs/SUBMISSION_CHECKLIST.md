@@ -6,7 +6,7 @@ Legend: ✅ exists today · 🔜 owned by a later chat · ☐ manual step on sub
 ## A. The four jam deliverables (required for funding consideration)
 | # | Jam requirement | Artefact | Owner | Verify | Status |
 |---|---|---|---|---|---|
-| A1 | **Your Game** — playable, on itch.io | `lumen-ledger-web.zip` from `docs/ITCH_PAGE.md §6` → itch upload, "played in browser" | 13A recipe · ☐ upload day | recipe dry‑run OK (536 KB, `index.html` at root, 72 files) · `node tools/check.mjs` full flags ALL OK · incognito phone test after upload | ✅ recipe / ☐ upload |
+| A1 | **Your Game** — playable, on itch.io | `lumen-ledger-web.zip` from `docs/ITCH_PAGE.md §6` → itch upload, "played in browser" | 13A recipe · ☐ upload day | recipe dry‑run OK (S39: 9.6 MB, `index.html` at root, 305 files) · `node tools/check.mjs` full flags ALL OK · incognito phone test after upload | ✅ recipe / ☐ upload |
 | A2 | **Concept Doc / Initial Game Design Document** | `docs/GDD.md` (pitch, pillars, core loop, FinLit mapping table, systems, controls, art, narrative, scope, accessibility) — export to PDF for the form | 8B ✅ · 13A fills §11 credits ☐ | PDF opens, 12 sections, team names filled | ✅ doc / ☐ PDF |
 | A3 | **2‑Minute Video** — footage of *actual gameplay in the submitted game* | `docs/TRAILER.md` shot list + `?demo=1` demo mode (`src/systems/demoMode.js`) → recorded MP4 1280×720 ≤ 2:00 → YouTube (unlisted) + itch trailer field | 13B 🔜 · ☐ record | video is real captured gameplay (no mock‑ups), ≤ 120 s, audio unlock tap visible or trimmed, theme card in first 5 s | 🔜 |
 | A4 | **Game Budget** | `docs/BUDGET.md` (jam build actual + funded v1.0, roles, tools, audio, testing, marketing, tiers) — export to PDF/XLSX | 13A ✅ | totals reconcile (A ≈ $7.4k · B ≈ $705k), bracketed names filled | ✅ doc / ☐ PDF |
@@ -44,7 +44,7 @@ Legend: ✅ exists today · 🔜 owned by a later chat · ☐ manual step on sub
 | D6 | Save round‑trip | `check.mjs --save` + manual: play a season, reload, CONTINUE | ✅ headless / ☐ manual |
 | D7 | Relative paths only (itch CDN sub‑path, WebView) | 11B audit; `grep -rn '"/src\|"/ui\|"/vendor' index.html ui src` → none | ✅ |
 | D8 | Audio unlock on first gesture; `?mute` works | 12 · click‑to‑launch on itch | ✅ |
-| D9 | Zip sanity after build | `unzip -l lumen-ledger-web.zip \| head` shows `index.html`, `src/`, `ui/`, `vendor/`, `data/`, `audio/` — no `tools/ tests/ docs/ demo_*` | ✅ dry‑run |
+| D9 | Zip sanity after build | `unzip -l lumen-ledger-web.zip \| head` shows `index.html`, `src/`, `ui/`, `vendor/`, `data/`, `audio/` — no `tools/ tests/ docs/ demo_*` | ✅ dry‑run S39 (no tools/tests/docs/demo in zip) |
 | D10 | Fresh‑profile play‑through on a phone from the live itch URL (one season, title → ledger) | ☐ submission day | ☐ |
 
 ## E. Android APK (bonus deliverable, Chat 14)
@@ -61,3 +61,11 @@ Legend: ✅ exists today · 🔜 owned by a later chat · ☐ manual step on sub
 4. itch: create project → paste §1 fields → upload zip (browser) + APK (Android) → embed 1280×720 → description §2 → screenshots, cover, trailer link → **Save & view** → D10 on a phone.
 5. Jam page → **Submit your project** → theme answer = `ITCH_PAGE.md §3` → attach/link GDD, video, budget as the form asks.
 6. Commit `LUMEN/README.md` row "SUBMITTED <date> <itch URL>"; push.
+
+## G. S39 dry run (2026-10-27) — checklist vs. `tools/itch_zip.sh` output
+- A1 ✅ zip builds: 9.6 MB, 305 files, `index.html` at root. A2/A4 docs exist, PDFs ☐. A3 video 🔜 (not recorded yet).
+- D9 ✅ no `tools/ tests/ docs/ demo_*` in the zip. D7 relative paths unchanged.
+- Size: 9.6 MB is fine for itch (1 GB limit) but it's ~18× the old 0.54 MB note. Biggest files: island_day.ogg 1.7 MB,
+  island_endless.ogg 1.6 MB, title.ogg 1.0 MB, fog_lose.ogg 0.7 MB, ledger.ogg 0.7 MB. Optional: re-encode music at ~64 kbps
+  to get under ~5 MB for a faster first load on phones.
+- Still open before 2026-11-15: A3 trailer, C6 cover, C7 screenshots, GDD §11 names, D10 phone play-through, D1 full suite re-run.
