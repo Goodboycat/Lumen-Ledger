@@ -84,3 +84,9 @@
   .ll-dlg-text { font-size: 13px; min-height: 36px; } .ll-dlg-body { padding: 12px 12px 10px; min-height: 64px; }
 }
 @media (orientation: portrait) and (max-width: 640px) { .ll-dlg { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 170px); } }
+
+/* S35: drawn character faces (ui/icons.js face_* → ui/icons/face_*.png) replace the CSS blob portrait */
+.ll-dlg-face { position: absolute; left: 0; right: 0; bottom: 0; height: 84px; display: flex; align-items: flex-end; justify-content: center; transform-origin: 50% 100%; }
+.ll-dlg-face .ll-ico, .ll-dlg-face .ll-face { width: 84px; height: 84px; display: block; image-rendering: auto; filter: drop-shadow(0 4px 0 var(--ink)); }
+.ll-dlg-portrait.pop .ll-dlg-face { animation: ll-portrait-pop .38s cubic-bezier(.34,1.56,.64,1); }
+.ll-dlg-box.typing .ll-dlg-face { animation: ll-talk .26s ease-in-out infinite alternate; }

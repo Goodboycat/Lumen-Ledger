@@ -150,7 +150,7 @@ export function mountHUD(root, opts = {}) {
     bus.on('eco:tick', (p) => { if (p && p.day01 != null) api.setDay(p.day01); if (p && p.season != null && p.season !== st.season) api.setSeason(p.season); }),
     bus.on('eco:win', () => { api.setFog(0); seasonTxt.innerHTML = iconize('✦ Lighthouse lit!'); }),
     bus.on('eco:lose', () => { seasonTxt.textContent = 'Fogged out…'; }),
-    bus.on('game:speed', (p) => { const s = (p && p.speed) || 1; speedBtn.textContent = s > 1 ? `⏩${s}×` : '⏩'; speedBtn.classList.toggle('on', s > 1); speedBtn.title = `Time speed ${s}× (T): 1× → 2× → 3×`; if (s > 1) retrigger(speedBtn, 'pop'); }),
+    bus.on('game:speed', (p) => { const s = (p && p.speed) || 1; speedBtn.innerHTML = iconize(s > 1 ? `⏩${s}×` : '⏩'); speedBtn.classList.toggle('on', s > 1); speedBtn.title = `Time speed ${s}× (T): 1× → 2× → 3×`; if (s > 1) retrigger(speedBtn, 'pop'); }),
   ];
 
   // self-drive (demo pages / integrator may call update(dt) themselves with selfDrive:false)

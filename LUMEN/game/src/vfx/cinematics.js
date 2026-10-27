@@ -163,7 +163,7 @@ export class CinematicDirector {
     const el = document.createElement('div'); el.className = 'll-cine'; el.setAttribute('aria-hidden', 'true');
     const top = document.createElement('div'); top.className = 'll-cine-bar top';
     const bot = document.createElement('div'); bot.className = 'll-cine-bar bot';
-    const skip = document.createElement('button'); skip.type = 'button'; skip.className = 'll-cine-skip'; skip.textContent = 'SKIP ⏭'; skip.setAttribute('aria-label', 'Skip cinematic');
+    const skip = document.createElement('button'); skip.type = 'button'; skip.className = 'll-cine-skip'; skip.innerHTML = 'SKIP ' + (typeof iconize === 'function' ? iconize('⏭') : '⏭'); skip.setAttribute('aria-label', 'Skip cinematic');
     skip.addEventListener('click', (e) => { e.stopPropagation(); this.skip(); });
     el.addEventListener('pointerdown', (e) => { e.stopPropagation(); }, true);
     el.addEventListener('click', () => this.skip());

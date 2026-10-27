@@ -18,7 +18,7 @@
 // Motion: box slide-up 320 ms outBack · portrait pop 380 ms outBack · typewriter cps (default 60 chars/s, punctuation pause ×3.5 for . ! ? and ×2 for ,) ·
 //   portrait bob while typing (talk) · choices stagger 70 ms × i (240 ms outBack) · hide: slide-down 200 ms inQuad.
 
-import { iconize, icon } from './icons.js';
+import { iconize, icon, faceIcon, iconName } from './icons.js';
 import { bus as defaultBus } from '../src/core/EventBus.js';
 
 export const SPEAKERS = {
@@ -65,7 +65,12 @@ export function mountDialogue(root, opts = {}) {
     initial.textContent = sp.cls === 'generic' ? sp.initial : '';
     portrait.classList.toggle('hidden', sp.cls === 'narrator' && !line.portrait);
     portrait.querySelectorAll('.ll-dlg-custom').forEach((n) => n.remove());
-    if (line.portrait) { const c = typeof line.portrait === 'string' ? el('div', 'll-dlg-custom', line.portrait) : line.portrait; c.classList && c.classList.add('ll-dlg-custom'); portrait.append(c); blob.style.display = 'none'; } else blob.style.display = '';
+    if (line.portrait) { const c = typeof line.portrait === 'string' ? el('div', 'll-dlg-custom', line.portrait) : line.portrait; c.classList && c.classList.add('ll-dlg-custom'); portrait.append(c); blob.style.display = 'none'; }
+    else {
+      // S35: drawn character FACE (ui/icons.js face_<who>[_<mood>], baked to ui/icons/*.png) replaces the CSS blob when one exists
+      const fname = faceIcon(sp.cls, line.mood); const has = iconName(fname) || iconName(faceIcon(sp.cls));
+      if (has) { const c = el('div', 'll-dlg-custom ll-dlg-face', icon(has, { cls: 'll-face' })); portrait.append(c); blob.style.display = 'none'; } else blob.style.display = '';
+    }
     const nm = line.name ?? sp.name; nameTag.textContent = nm; nameTag.style.display = nm ? '' : 'none';
     box.className = 'll-dlg-box sp-' + sp.cls;
     retrigger(portrait, 'pop');

@@ -182,6 +182,62 @@ def('pot', () => P('M16 36H48L44 60H20Z', C.orange) + R(13, 32, 38, 7, 3, C.oran
 def('trough', () => shadow() + P('M4 24H60L54 52H10Z', C.wood) + E(32, 25, 27, 5, C.blue) + L('M10 40H54', 2, C.woodD) + L('M14 52V60M50 52V60', 4) + hi(22, 24, 6, 1.6, 0.6));
 def('square', () => R(12, 12, 40, 40, 8, C.stone) + hi(24, 20, 7, 3, 0.5));
 
+// ---------- S35: the five emoji that still slipped through (⏩ ⏭ 🔍 🧹 📣) ----------
+def('fastforward', () => O(32, 32, 27, C.blue) + P('M14 20L30 32L14 44Z', '#fff') + P('M32 20L48 32L32 44Z', '#fff') + hi(22, 16, 7, 3, 0.35));
+def('skipnext', () => O(32, 32, 27, C.blue) + P('M16 20L36 32L16 44Z', '#fff') + R(40, 20, 7, 24, 2, '#fff') + hi(22, 16, 7, 3, 0.35));
+def('magnify', () => O(26, 26, 17, C.sky) + hi(20, 19, 5, 3, 0.7) + L('M38 38L56 56', 9) + L('M38 38L56 56', 4, C.wood));
+def('broom', () => L('M44 6L26 36', 6) + L('M44 6L26 36', 2.6, C.wood) + P('M14 34L34 40L30 60Q20 62 10 54Z', C.gold) + L('M18 42L14 56M24 44L22 58', 2, C.goldD) + R(13, 30, 22, 8, 3, C.red));
+def('megaphone', () => P('M10 26H22L48 12V52L22 38H10Z', C.red) + R(8, 24, 8, 16, 3, C.redD) + P('M22 38L20 56H28L30 40Z', C.dark) + L('M52 24Q58 32 52 40', 3.5) + L('M54 16Q64 32 54 48', 3, C.redD));
+
+// ---------- S35: character FACES for the dialogue portraits (drawn, not CSS) — face_<who>[_<mood>] ----------
+// kind: pip (orange cap of hair, skin face, sword-scarf KNOT at the collar — no more "red stick") · baron (purple, top hat, monocle)
+//       owl (Tally-Owl) · glimmer (blue blob) · collector (fog blob, purple cap). mood: neutral | happy | sad | angry | shout
+const FACE_MOODS = ['neutral', 'happy', 'sad', 'angry', 'shout'];
+function faceMouth(cx, cy, mood, w = 10) {
+  if (mood === 'happy') return P(`M${cx - w} ${cy}Q${cx} ${cy + w * 1.2} ${cx + w} ${cy}Z`, C.redD) + Pn(`M${cx - w * 0.6} ${cy + 1}Q${cx} ${cy + w * 0.9} ${cx + w * 0.6} ${cy + 1}Z`, C.pink);
+  if (mood === 'sad') return L(`M${cx - w * 0.8} ${cy + 4}Q${cx} ${cy - 4} ${cx + w * 0.8} ${cy + 4}`, 3);
+  if (mood === 'angry') return L(`M${cx - w * 0.8} ${cy + 2}L${cx + w * 0.8} ${cy}`, 3.4);
+  if (mood === 'shout') return E(cx, cy + 2, w * 0.55, w * 0.75, C.redD) + hi(cx, cy + 6, w * 0.3, w * 0.25, 0.9);
+  return L(`M${cx - w * 0.6} ${cy}Q${cx} ${cy + 4} ${cx + w * 0.6} ${cy}`, 3);
+}
+function faceEyes(lx, rx, y, mood, r = 3.2) {
+  if (mood === 'angry') return eye(lx, y + 1, r) + eye(rx, y + 1, r) + L(`M${lx - 6} ${y - 7}L${lx + 5} ${y - 3}M${rx + 6} ${y - 7}L${rx - 5} ${y - 3}`, 3);
+  if (mood === 'happy') return L(`M${lx - 4} ${y + 1}Q${lx} ${y - 5} ${lx + 4} ${y + 1}`, 3.2) + L(`M${rx - 4} ${y + 1}Q${rx} ${y - 5} ${rx + 4} ${y + 1}`, 3.2);
+  if (mood === 'sad') return eye(lx, y + 1, r) + eye(rx, y + 1, r) + L(`M${lx - 5} ${y - 6}L${lx + 4} ${y - 3}M${rx + 5} ${y - 6}L${rx - 4} ${y - 3}`, 2.4) + On(lx + 4, y + 6, 1.6, C.sky);
+  if (mood === 'shout') return eye(lx, y, r + 0.8) + eye(rx, y, r + 0.8);
+  return eye(lx, y, r) + eye(rx, y, r);
+}
+const FACES = {
+  pip: (m) => shadow(32, 60, 16)
+    + P('M14 56Q14 46 32 46Q50 46 50 56Z', C.orange)                                        // shoulders (shirt)
+    + P('M18 48Q32 54 46 48L44 54Q32 58 20 54Z', C.red) + O(44, 52, 4.2, C.red) + P('M46 54L54 60L50 50Z', C.redD)   // scarf band + knot + tail
+    + O(32, 30, 17, C.skin)                                                                  // head
+    + P('M15 28Q14 10 32 11Q50 10 49 28Q44 18 36 20Q30 14 26 20Q19 18 15 28Z', C.orangeD)    // hair cap
+    + P('M24 14Q28 4 34 10Q38 4 42 14Z', C.orangeD)                                           // tuft
+    + On(24, 38, 3, '#ff8a80', 0.55) + On(40, 38, 3, '#ff8a80', 0.55)                          // blush
+    + faceEyes(26, 38, 31, m) + faceMouth(32, 40, m, 7) + hi(24, 22, 4, 2, 0.35),
+  baron: (m) => shadow(32, 60, 18)
+    + P('M10 58Q10 44 32 44Q54 44 54 58Z', '#37474F') + P('M28 46L32 54L36 46Z', C.red)         // coat + cravat
+    + O(32, 32, 17, C.fog)                                                                    // head
+    + E(32, 15, 22, 4, INK) + R(18, 2, 28, 14, 2, '#37474F') + Rn(18, 10, 28, 4, 0, C.red)      // top hat (brim, crown, band)
+    + faceEyes(26, 38, 31, m === 'happy' ? 'neutral' : m)
+    + O(38, 31, 6.2, 'none') + L('M44 33L50 44', 2.2) + On(38, 31, 5, C.gold, 0.18)             // monocle + chain
+    + P('M22 36Q27 40 32 37Q37 40 42 36', 'none') + faceMouth(32, 42, m === 'neutral' ? 'happy' : m, 8),
+  owl: () => '',   // filled in below: the existing 'owl' drawing is reused
+  glimmer: (m) => shadow(32, 60, 16) + P('M12 56Q10 20 32 16Q54 20 52 56Q32 62 12 56Z', C.blue) + hi(22, 28, 6, 4, 0.5)
+    + P('M28 16Q32 6 36 16Z', C.blueD) + faceEyes(25, 39, 36, m, 3.6) + faceMouth(32, 46, m, 7),
+  collector: (m) => shadow(32, 60, 16) + P('M12 56Q10 22 32 18Q54 22 52 56Q32 62 12 56Z', '#9c89c4') + hi(22, 30, 6, 4, 0.4)
+    + P('M18 22Q32 6 46 22Z', '#4a148c') + R(16, 20, 32, 6, 2, '#4a148c')                      // pointy cap
+    + faceEyes(25, 39, 36, m, 3.4) + faceMouth(32, 46, m, 7),
+};
+for (const who of Object.keys(FACES)) for (const m of FACE_MOODS) {
+  const key = m === 'neutral' ? `face_${who}` : `face_${who}_${m}`;
+  if (who === 'owl') {
+    def(key, (r) => G.owl(r) + (m === 'happy' ? L('M14 26Q22 20 30 26M34 26Q42 20 50 26', 3.2) : m === 'angry' ? L('M14 16L28 22M50 16L36 22', 3.4) : m === 'sad' ? L('M14 20L28 16M50 20L36 16', 2.6) : m === 'shout' ? E(32, 42, 4, 5, C.redD) : ''));
+  } else def(key, () => FACES[who](m));
+}
+export const faceIcon = (who, mood) => `face_${who}${mood && mood !== 'neutral' && FACE_MOODS.includes(mood) ? '_' + mood : ''}`;
+
 // ---------- emoji → icon name (everything the game used to print) ----------
 export const EMOJI = {
   '🦉': 'owl', '🔨': 'hammer', '🫙': 'jar', '📒': 'ledger', '⬆️': 'upgrade', '⬆': 'upgrade', '✨': 'sparkle', '🏺': 'vase', '🌫️': 'fog', '🌫': 'fog',
@@ -195,6 +251,7 @@ export const EMOJI = {
   '💎': 'gem', '🌉': 'bridge', '🧱': 'wall', '🌿': 'bush', '🫐': 'berries', '💐': 'bouquet', '🌾': 'wheat', '🏠': 'house', '⚓': 'anchor', '🏯': 'pagoda',
   '💧': 'droplet', '🪵': 'log', '🚪': 'door', '📦': 'crate', '🛢️': 'barrel', '🛢': 'barrel', '➡️': 'signArrow', '🪧': 'signBoard', '🪑': 'bench', '🟫': 'pathDirt',
   '⬜': 'pathStone', '🎏': 'banner', '🪴': 'pot', '🛁': 'trough', '▪️': 'square', '▪': 'square', '↩': 'undo', '↩️': 'undo',
+  '⏩': 'fastforward', '⏭': 'skipnext', '🔍': 'magnify', '🧹': 'broom', '📣': 'megaphone',
 };
 
 const cache = new Map();
