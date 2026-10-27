@@ -461,7 +461,7 @@ function reseatHelpers(sb) {
 //   eco:win / eco:lose     → ending (8B finale lines) → story:finale → endless | title
 //   ui:pause {on, by}      pause reasons are OR-ed (menu ∨ dialogue ∨ ledger ∨ title) into game.paused — the only place that touches it.
 // Nothing here edits a system; it only constructs, routes and owns `lg.state`.
-export const GAME_VERSION = 'S33';   // S33 (2026-10-27): beta-test bug report P66–P83 (knockback, boss moves, stall upgrade/demolish) in LUMEN_extras/game/docs/PLAY_BUGS.md & Game_Bible S33.md
+export const GAME_VERSION = 'S36';   // S36 (2026-10-27): drag any bought prop (stalls, decor, fences) to a new spot — Game_Bible S36.md in LUMEN_extras/
 export const GAME_STATES = ['title', 'playing', 'review', 'ending', 'endless'];
 export const ABILITY_KEYS = { KeyQ: 'coinMagnetDash', KeyW: 'bubbleShield', KeyE: 'growthStomp', KeyR: 'ledgerFlash', KeyF: 'haggleShout', KeyG: 'fogSweep' };   // = FINLIT[name].key (3B)
 
@@ -792,6 +792,7 @@ function installRunWires(lg) {
   lg.interact = () => {
     if (!lg.sb || lg.game.paused || ui?.isModal?.()) return 'blocked';
     if (build.mode === 'place') { build.rotate(); return 'rotate'; }
+    if (build.mode === 'drag') { build.dragRotate(); return 'rotate'; }   // S36: ✋ rotates the prop being dragged
     // BUGFIX P37/P38: prefer the nearest stall that can still be upgraded; a decor pot or a maxed L3 stall between Pip and it no longer blocks U / ✋
     const e = build.nearestUpgradable(hero.root.position.x, hero.root.position.z, 2.5);
     if (e) { lg.demolishMode = false; if (ui?.build?.state) ui.build.state.demolish = false; return build.upgrade(e) ? 'upgrade' : 'denied'; }   // S34 / P79
@@ -834,6 +835,33 @@ function installRunWires(lg) {
     return true;
   };
   offs.push(() => { if (lg.game.input) lg.game.input.onTap = prevTap; });
+  // S36: DRAG a prop you bought (stall, decor, fence, path …) to a new spot. Press on it, move > 10 px → it lifts and follows the finger /
+  //   mouse snapped to the grid (green pad = free land, red = blocked); release → it lands there (free, keeps level & price) or snaps back.
+  //   R (desktop) / ✋ (touch) rotates it mid-drag. Not while placing a ghost, in demolish mode, paused or behind a modal. Scenery is not yours.
+  const inp = lg.game.input;
+  const prevDrag = inp ? { s: inp.onDragStart, m: inp.onDrag, e: inp.onDragEnd } : null;
+  if (inp) {
+    inp.onDragStart = (world, ev) => {
+      if (!lg.sb || lg.game.paused || ui?.isModal?.() || build.mode !== 'idle' || lg.demolishMode) return false;
+      const ray = ev && typeof inp.rayAt === 'function' ? inp.rayAt(ev.clientX, ev.clientY) : null;
+      const e = build.dragStart(world.x, world.z, ray);
+      if (!e) return false;
+      lg.dragging = e;
+      bus.emit('ui:toast', { text: `Moving ${(build.entry?.(e.id)?.name) || e.id.replace(/^stall_/, '')} — drop it on green · ${inp.isTouch ? '✋' : 'R'} rotates`, kind: 'info', icon: '✋', id: 'drag', duration: 1600 });
+      return true;
+    };
+    inp.onDrag = (world) => { if (lg.dragging) build.dragMove(world.x, world.z); };
+    inp.onDragEnd = (world, ev, cancelled) => {
+      if (!lg.dragging) return; lg.dragging = null;
+      const moved = build.dragEnd(!!cancelled);
+      if (!moved && !cancelled) bus.emit('ui:toast', { text: 'Cannot stand there — it hopped back', kind: 'warn', icon: '🚫', id: 'drag', duration: 1500 });
+    };
+  }
+  on('build:moved', () => { sb.syncStalls(); for (const h of sb.helpers) if (h.stall) seatHelper(sb, h, h.stall); });   // helpers follow their stall
+  on('build:moved', () => sb.cust?.reroute?.());
+  const dropDrag = () => { if (lg.dragging) { lg.dragging = null; build.dragEnd(true); } };
+  on('eco:season', dropDrag); on('eco:win', dropDrag); on('eco:lose', dropDrag); on('game:title', dropDrag); on('game:pause', dropDrag);
+  offs.push(() => { dropDrag(); if (inp && prevDrag) { inp.onDragStart = prevDrag.s; inp.onDrag = prevDrag.m; inp.onDragEnd = prevDrag.e; } });
   if (typeof window !== 'undefined' && window.addEventListener && !lg.opts.headless) {
     // BUGFIX B20: W is also "walk forward" (Input KEY_MOVE). A HELD W walks; a TAP of W (released within 220 ms, no other
     //   WASD/arrow key down) fires Bubble Shield. BUGFIX B21: R rotates the ghost while placing, so Ledger Flash is skipped then.
@@ -848,6 +876,7 @@ function installRunWires(lg) {
       const name = ABILITY_KEYS[e.code]; if (!name || hotkeysBlocked()) return;
       if (e.code === 'KeyW') { const k = lg.game.input?.keys; wDown = (k && MOVE_KEYS.some((c) => k.has(c))) ? 0 : (performance.now?.() || Date.now()); return; }
       if (e.code === 'KeyR' && lg.sb?.build?.mode === 'place') return;
+      if (e.code === 'KeyR' && lg.sb?.build?.mode === 'drag') { lg.sb.build.dragRotate(); return; }   // S36
       lg.ability(name);
     };
     const onKeyUp = (e) => { if (e.code !== 'KeyW' || !wDown) return; const dt = (performance.now?.() || Date.now()) - wDown; wDown = 0; if (dt <= 220 && !hotkeysBlocked()) lg.ability('bubbleShield'); };

@@ -25,6 +25,8 @@ export const DEFAULT_EVENTS = {
   'ui:build':          { sfx: 'click',       cooldown: 0.1, vol: 0.5, pick: (p) => p?.action === 'denied' ? { sfx: 'deny' } : p?.action === 'select' ? { sfx: 'click' } : { sfx: null } },
   'build:enter':       { sfx: 'pick_up',     cooldown: 0.2 },
   'build:placed':      { sfx: 'hammer',      cooldown: 0.12 },
+  'build:moved':       { sfx: 'hammer',      cooldown: 0.12, vol: 0.7 },   // S36: a dragged prop lands
+  'build:drag':        { sfx: 'pick_up',     cooldown: 0.2, pick: (p) => p?.phase === 'start' ? { sfx: 'pick_up' } : { sfx: null } },   // S36: lift
   'build:removed':     { sfx: 'crumble',     cooldown: 0.2 },
   'build:upgraded':    { sfx: 'level_up',    cooldown: 0.3 },
   'ui:build:open':     { sfx: 'tray_open',   cooldown: 0.2 },

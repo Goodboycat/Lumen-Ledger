@@ -472,7 +472,7 @@ if (doBuild) {
     const { BuildSystem, REFUND_RATIO } = await import(pathToFileURL(resolve('src/systems/build.js')).href);
     const counts = { dust: 0, ring: 0, pop: 0, shake: 0 };
     const vfx = { dust: { burst: () => counts.dust++, ring: () => counts.ring++ }, pop: { show: () => counts.pop++ }, sparks: { burst() {} } };
-    const bus = new EventBus(); const events = {}; for (const n of ['build:enter', 'build:exit', 'build:ghost', 'build:placed', 'build:removed', 'build:upgraded', 'build:denied']) bus.on(n, (p) => { (events[n] ??= []).push(p); });
+    const bus = new EventBus(); const events = {}; for (const n of ['build:enter', 'build:exit', 'build:ghost', 'build:placed', 'build:removed', 'build:upgraded', 'build:denied', 'build:moved']) bus.on(n, (p) => { (events[n] ??= []).push(p); });
     const input = { pointerWorld: new THREE.Vector3(), hasPointerWorld: true, isTouch: false, onAction: null };
     const game = { scene: new THREE.Scene(), input, sequences: new SequencePlayer(), bus, camera: { shake: () => counts.shake++ }, time: 0, systems: [], add(s) { this.systems.push(s); return s; } };
     const island = new Island({ radius: 11, seed: 7, starterProps: false });
@@ -580,6 +580,30 @@ if (doBuild) {
       if (!events['build:removed'] || events['build:removed'].at(-1).refund !== expect) throw new Error('build:removed payload');
       console.log(`  demolish: +${expect} refund (50 % of ${e.cost} incl. upgrades), buildDemolish 340 ms, group removed, cells free, stalls=0  OK`);
     } catch (err) { bad++; console.log('  demolish FAIL →', err.message); }
+    // 7b. S36 drag / move: pick a placed stall, drag it 3 cells, it lands there (same group, same level, no Spark change); blocked drop snaps back
+    try {
+      const cells = island.gridCells(); const c0 = cells.find((c) => build.canPlace('stall_fruit', c.x, c.z, 0)); if (!c0) throw new Error('no cell');
+      const e = build.place('stall_fruit', c0.x, c0.z, 0, { animate: false }); if (!e) throw new Error('place');
+      const spark0 = eco.state.spark, lvl = e.level, g = e.group, from = { cx: e.cx, cz: e.cz };
+      // find a free target anchor ≥ 3 cells away
+      const tgt = cells.find((c) => Math.abs(c.x - e.cx) + Math.abs(c.z - e.cz) >= 3 && build.canMoveTo(e, c.x, c.z, 0)); if (!tgt) throw new Error('no target');
+      const p0 = g.position.clone();
+      if (!build.dragStart(p0.x, p0.z)) throw new Error('dragStart on own stall returned null'); if (build.mode !== 'drag') throw new Error('mode');
+      if (!(g.position.y > 0.2)) throw new Error('not lifted');
+      const want = build.anchorToWorld(e.id, tgt.x, tgt.z, 0); build.dragMove(want.x, want.z); if (!build.drag.ok) throw new Error('target red');
+      if (!build.dragEnd()) throw new Error('dragEnd did not move');
+      if (e.cx !== tgt.x || e.cz !== tgt.z || build.occupied(from.cx, from.cz) === e || build.occupied(tgt.x, tgt.z) !== e) throw new Error('bookkeeping after move');
+      if (e.group !== g || e.level !== lvl || eco.state.spark !== spark0 || g.position.y !== 0) throw new Error('move changed group/level/spark/y');
+      if (!events['build:moved'] || events['build:moved'].at(-1).from.cx !== from.cx) throw new Error('build:moved payload');
+      // drag onto water → snaps back + build:denied
+      const water = (() => { for (let x = -40; x < 40; x++) for (let z = -40; z < 40; z++) if (!island.isLand(x, z)) return { x, z }; return null; })(); if (!water) throw new Error('no water');
+      build.dragStart(g.position.x, g.position.z); build.dragMove(water.x, water.z); if (build.drag.ok) throw new Error('water green');
+      const n0 = (events['build:denied'] || []).length; if (build.dragEnd()) throw new Error('moved onto water');
+      if (e.cx !== tgt.x || e.cz !== tgt.z || g.position.y !== 0 || (events['build:denied'] || []).length !== n0 + 1 || build.mode !== 'idle') throw new Error('snap back');
+      if (build.dragStart(0.5, 0.5, null) && build.drag.entry.scenery) throw new Error('dragged scenery'); if (build.mode === 'drag') build.dragEnd(true);
+      build.demolish(e, { animate: false });
+      console.log(`  S36 drag/move: dragStart lifts (y 0.35) · dragMove snaps + green/red · dragEnd → move() ${from.cx},${from.cz} → ${tgt.x},${tgt.z}, same group/level, spark unchanged, build:moved · water drop snaps back + build:denied · scenery not draggable  OK`);
+    } catch (err) { bad++; console.log('  S36 drag/move FAIL →', err.message); }
     // 8. save/load round-trip + debug overlay + clear
     try {
       const cells = island.gridCells(); let placedN = 0; const spark = eco.state.spark;

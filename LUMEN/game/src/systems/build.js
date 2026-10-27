@@ -380,8 +380,95 @@ export class BuildSystem {
     return seq || true;
   }
 
+  // --------------------------------------------------------------- S36: move / drag placed props
+  /** S36: can `entry` stand at anchor (cx,cz) with `rot`? Its OWN cells count as free (so a 1-cell nudge is legal). */
+  canMoveTo(entry, cx, cz, rot = entry.rot) {
+    if (!entry || entry.scenery) return false;
+    for (const c of this.cellsFor(entry.id, cx, cz, rot)) {
+      if (!this.isLand(c.x, c.z)) return false;
+      const o = this.cells.get(key(c.x, c.z)); if (o && o !== entry) return false;
+    }
+    return true;
+  }
+  /** S36: relocate a placed prop (anything YOU bought — stalls, decor, fences …) to anchor (cx,cz). Free, no refund / re-pay.
+   *  Keeps level, cost, salvage and the SAME group object, so helpers seated at a stall simply follow it (Game.js reseats on 'build:moved').
+   *  Returns the entry or null (emits 'build:denied' { why:'blocked' | 'busy' | 'not yours' }). */
+  move(at, cx, cz, rot, opts = {}) {
+    const entry = this._resolve(at);
+    if (!entry || entry.scenery || !this.placed.has(key(entry.cx, entry.cz))) { this._deny('not yours to move', { at }); return null; }
+    if (this.busy.has(entry.group) || entry.group.userData.swapping) { this._deny('busy', { id: entry.id }); return null; }
+    if (rot == null) rot = entry.rot;
+    if (!this.canMoveTo(entry, cx, cz, rot)) { this._deny('blocked', { id: entry.id, cx, cz, move: true }); return null; }
+    const from = { cx: entry.cx, cz: entry.cz, rot: entry.rot };
+    if (from.cx === cx && from.cz === cz && from.rot === rot) return entry;
+    this.placed.delete(key(entry.cx, entry.cz));
+    for (const c of entry.cells) if (this.cells.get(key(c.x, c.z)) === entry) this.cells.delete(key(c.x, c.z));
+    entry.cx = cx; entry.cz = cz; entry.rot = rot; entry.cells = this.cellsFor(entry.id, cx, cz, rot);
+    this.placed.set(key(cx, cz), entry);
+    for (const c of entry.cells) this.cells.set(key(c.x, c.z), entry);
+    entry.group.rotation.y = rot * Math.PI / 2;
+    entry.group.position.copy(this.anchorToWorld(entry.id, cx, cz, rot)); entry.group.position.y = 0; entry.group.scale.set(1, 1, 1);
+    this._updateDebug();
+    if (!opts.silent) {
+      if (this.vfx && opts.animate !== false) { this.vfx.dust.ring(entry.group.position, 8, 0.22); if (this.game?.camera?.shake) this.game.camera.shake(0.05); }
+      this.bus.emit('build:moved', { id: entry.id, group: entry.group, entry, from, cx, cz, rot });
+    }
+    if (this.mode === 'place' && this.ghost) this._placeGhost(this.lastPointer.x, this.lastPointer.z, true);
+    return entry;
+  }
+  /** S36: start dragging a placed prop. `ray` (THREE.Ray from the press point) picks the 3D meshes first, then the ground point (x,z).
+   *  Lifts the group 0.35 u, tints it, draws the footprint pad (green/red). Returns the entry or null when nothing of yours is there. */
+  dragStart(x, z, ray = null) {
+    if (this.mode !== 'idle') return null;
+    const e = (ray && this.pick(ray)) || this.nearest(x, z, 0.9);
+    if (!e || e.scenery || this.busy.has(e.group) || e.group.userData.swapping) return null;
+    this.mode = 'drag';
+    const [w, d] = this.footprint(e.id, 0);
+    const pad = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ color: GHOST_OK, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide }));
+    pad.rotation.x = -Math.PI / 2; pad.position.y = 0.03; pad.userData.noOutline = true; pad.name = 'dragPad'; this.parent.add(pad);
+    const p = e.group.position;
+    this.drag = { entry: e, pad, from: { cx: e.cx, cz: e.cz, rot: e.rot }, cx: e.cx, cz: e.cz, rot: e.rot, ok: true, offX: p.x - x, offZ: p.z - z, t: 0 };
+    this._dragTo(x, z, true);
+    this.bus.emit('build:drag', { id: e.id, entry: e, phase: 'start' });
+    return e;
+  }
+  /** S36: the finger / mouse is now at world (x,z) → snap the footprint under it (keeping the grab offset), tint by validity. */
+  dragMove(x, z) { if (this.mode === 'drag') this._dragTo(x, z); return this.drag ? this.drag.ok : false; }
+  _dragTo(x, z, force = false) {
+    const D = this.drag; if (!D) return;
+    const { cx, cz } = this.worldToAnchor(D.entry.id, x + D.offX, z + D.offZ, D.rot);
+    const ok = this.canMoveTo(D.entry, cx, cz, D.rot);
+    if (!force && cx === D.cx && cz === D.cz && ok === D.ok) return;
+    D.cx = cx; D.cz = cz; D.ok = ok;
+    const p = this.anchorToWorld(D.entry.id, cx, cz, D.rot);
+    D.entry.group.position.set(p.x, 0.35, p.z);
+    D.pad.position.set(p.x, 0.03, p.z); D.pad.rotation.z = D.rot * Math.PI / 2; D.pad.material.color.setHex(ok ? GHOST_OK : GHOST_BAD);
+    this.bus.emit('build:drag', { id: D.entry.id, entry: D.entry, phase: 'move', cx, cz, ok });
+  }
+  /** S36: rotate the dragged prop by 90° (R key / ✋ while dragging). */
+  dragRotate(dir = 1) {
+    const D = this.drag; if (!D) return false;
+    D.rot = (D.rot + dir + 4) % 4; D.entry.group.rotation.y = D.rot * Math.PI / 2;
+    const p = this.anchorToWorld(D.entry.id, D.cx, D.cz, D.rot); this._dragTo(p.x - D.offX, p.z - D.offZ, true); return true;
+  }
+  /** S36: release. Valid spot → move() (dust ring, 'build:moved'); blocked / cancelled → snaps back home (shake + 'build:denied'). */
+  dragEnd(cancel = false) {
+    const D = this.drag; if (!D) return null;
+    this.mode = 'idle'; this.drag = null;
+    this.parent.remove(D.pad); D.pad.geometry.dispose(); D.pad.material.dispose();
+    const e = D.entry; e.group.position.y = 0;
+    const moved = !cancel && D.ok ? this.move(e, D.cx, D.cz, D.rot) : null;
+    if (!moved) {
+      e.rot = D.from.rot; e.group.rotation.y = e.rot * Math.PI / 2; e.group.position.copy(this.anchorToWorld(e.id, e.cx, e.cz, e.rot));
+      if (!cancel) { this._deny('blocked', { id: e.id, cx: D.cx, cz: D.cz, move: true }); if (this.game?.camera?.shake) this.game.camera.shake(0.08); }
+    }
+    this.bus.emit('build:drag', { id: e.id, entry: e, phase: 'end', moved: !!moved, cancelled: cancel });
+    return moved;
+  }
+
   // --------------------------------------------------------------- per frame
   update(dt) {
+    if (this.drag) { this.drag.t += dt; this.drag.entry.group.position.y = 0.35 + Math.sin(this.drag.t * 5) * 0.04; }   // S36: held-up hover
     const input = this.game && this.game.input;
     if (this.mode === 'place' && input && input.hasPointerWorld && !input.isTouch) {
       this.lastPointer.copy(input.pointerWorld);

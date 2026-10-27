@@ -22,6 +22,10 @@ export class Input {
     this.onTap = null;       // (worldPos) => {}  fired on short tap/click without drag
     this.onAction = null;    // (name) => {}
     this.pointerDrag = -1;   // pointerId of a touch finger dragging on the canvas (not the joystick) — build ghost follows it
+    // S36: generic press-and-drag on the canvas (mouse or the non-joystick finger). onDragStart(worldAtDown, ev) returns true to CLAIM the
+    //   drag (then onDrag(world, ev) every move and onDragEnd(world, ev, cancelled) on release); a tap is never reported as a drag.
+    this.onDragStart = null; this.onDrag = null; this.onDragEnd = null;
+    this.dragging = false; this._dragId = -1; this._down = { x: 0, y: 0 };
     this._bind();
   }
 
@@ -43,6 +47,7 @@ export class Input {
     let downAt = 0, downX = 0, downY = 0;
     d.addEventListener('pointerdown', (e) => {
       pos(e); this.pointerDown = true; this.pointerDrag = e.pointerType === 'touch' ? e.pointerId : -1; downAt = performance.now(); downX = e.clientX; downY = e.clientY;
+      this._down.x = e.clientX; this._down.y = e.clientY; this._dragId = e.pointerId; this.dragging = false;
       // Touch left half → joystick; right half → tap/attack
       if (e.pointerType === 'touch') {
         const r = d.getBoundingClientRect();
@@ -64,6 +69,15 @@ export class Input {
         return;
       }
       pos(e);
+      // S36: drag detection — once the pointer that went down travels > 10 px, offer the drag to onDragStart (world point UNDER THE DOWN spot)
+      if (this.pointerDown && e.pointerId === this._dragId) {
+        if (!this.dragging && this.onDragStart && Math.hypot(e.clientX - downX, e.clientY - downY) > 10) {
+          const w = this.worldAt(downX, downY); pos(e);
+          if (w && this.onDragStart(w, e) === true) { this.dragging = true; if (e.pointerType === 'touch') this.pointerDrag = -1; }
+          else this._dragId = -1;   // declined → not offered again for this press
+        }
+        if (this.dragging && this.onDrag) { this._project(); if (this.hasPointerWorld) this.onDrag(this.pointerWorld.clone(), e); }
+      }
     });
     const up = (e) => {
       if (this.joystick.active && e.pointerId === this.joystick.id) {
@@ -72,6 +86,11 @@ export class Input {
         return;
       }
       this.pointerDown = false; if (e.pointerId === this.pointerDrag) this.pointerDrag = -1;
+      if (this.dragging && e.pointerId === this._dragId) {   // S36: a claimed drag ends here and never counts as a tap
+        this.dragging = false; this._dragId = -1; pos(e); this._project();
+        if (this.onDragEnd) this.onDragEnd(this.hasPointerWorld ? this.pointerWorld.clone() : null, e, e.type === 'pointercancel');
+        return;
+      }
       const dt = performance.now() - downAt, dist = Math.hypot(e.clientX - downX, e.clientY - downY);
       if (dt < 300 && dist < 12) {
         pos(e); this._project();
@@ -88,6 +107,12 @@ export class Input {
     this.hasPointerWorld = !!this._ray.ray.intersectPlane(this._plane, this.pointerWorld);
   }
 
+  /** S36: a THREE.Ray from the camera through a screen point (client px) — for 3D picking at the press spot, not the current pointer. */
+  rayAt(clientX, clientY) {
+    const r = this.dom.getBoundingClientRect(); const rc = this._ray2 || (this._ray2 = new THREE.Raycaster());
+    rc.setFromCamera(new THREE.Vector2(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1), this.camera);
+    return rc.ray;
+  }
   /** Project a screen point (client px) onto the ground plane → Vector3 | null. Used by the touch overlay, which sits above the canvas. */
   worldAt(clientX, clientY) {
     const r = this.dom.getBoundingClientRect();
