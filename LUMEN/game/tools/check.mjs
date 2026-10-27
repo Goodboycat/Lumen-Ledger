@@ -1419,7 +1419,8 @@ if (doEnemies) {
     // minigun dodge: Pip far outside the aim ring the whole time → 0 hits, attacksDodged++ ; a sword hit mid-burst ends it early
     const dodged0 = E.stats.attacksDodged; sb.hero.root.position.set(P.x + 3, 0, P.z); arm(b9, 2, 'minigun'); run(RB.telegraph + 0.05);
     sb.hero.root.position.set(P.x + 3, 0, P.z + 9); run(0.6); if (b9.phase !== 'fire') throw new Error('minigun ended early'); E.hitEnemy(b9, dir, 1);
-    if (b9.phase !== 'idle' || E.stats.attacksDodged !== dodged0 + 1 || ev['enemy:minigunEnd'].at(-1).hits !== 0) throw new Error('minigun dodge/interrupt ' + b9.phase + ' ' + E.stats.attacksDodged);
+    // S34 / P77: a sword interrupt is a CANCEL (enemy:baronInterrupted), never a DODGE credit
+    if (b9.phase !== 'idle' || E.stats.attacksDodged !== dodged0 || !ev['enemy:baronInterrupted']?.length) throw new Error('minigun interrupt ' + b9.phase + ' ' + E.stats.attacksDodged);
     // ---- S12: Baron + 5 minions (cap), all 5 powers · umbrella dash
     E.waveSeason = 0; E.clear(); sb.eco.state.season = 12; sb.sched.wave = false; sb.sched.season = 12; sb.eco.state.day01 = 0.71; step(); const b12 = E.baron; if (!b12 || E.list.length !== 6 || b12.powers.length !== 5) throw new Error('S12 cap');
     if (E.list.filter((e) => e.kind === 'collector').length !== ENEMY_RULES.minionCap) throw new Error('minion cap');
