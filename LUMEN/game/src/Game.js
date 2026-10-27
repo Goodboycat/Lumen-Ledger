@@ -393,7 +393,9 @@ function seatHelper(sb, h, stall) {
   const back = new THREE.Vector3(0, 0, -0.9).applyAxisAngle(new THREE.Vector3(0, 1, 0), stall ? stall.group.rotation.y : 0);
   h.g.position.set(at.x + back.x, 0, at.z + back.z); h.stall = stall || null;
   h.seat = { x: at.x + back.x, z: at.z + back.z, fx: at.x - back.x * 3, fz: at.z - back.z * 3 };   // S32: remembered so a knocked helper can walk back
-  h.anim.canStand = (x, z) => sb.island.isLand(x, z) && !(sb.build.occupied(x, z)?.id?.startsWith?.('stall_'));
+  // S32: the seat is INSIDE its own stall's footprint cell (0.9 u behind a 2-wide counter), so the clamp must allow the helper's
+  // own stall or no shove could ever move it; other stalls + water still block (caught by check.mjs --knockback).
+  h.anim.canStand = (x, z) => { if (!sb.island.isLand(x, z)) return false; const o = sb.build.occupied(x, z); return !(o && o !== h.stall && o.id?.startsWith?.('stall_')); };
   h.anim.faceToNow(new THREE.Vector3(at.x - back.x * 3, 0, at.z - back.z * 3)); h.anim.play(stall ? 'work' : 'idle');
   h.returning = false;
 }

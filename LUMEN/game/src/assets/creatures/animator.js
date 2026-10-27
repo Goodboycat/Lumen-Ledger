@@ -36,7 +36,7 @@ const SAD = new THREE.Color(0x7FA6C9);      // desaturated blue-grey tint for mo
 const HAPPY = new THREE.Color(0xFFF2B0);    // warm highlight tint for mood 1
 const RED = new THREE.Color(P.red);
 // S32 knockback tuning (shared by Glimmers + helpers; enemies keep their own ENEMY_RULES.knockback)
-export const KNOCK_SPEED = 2.6;   // initial slide speed (u/s) at power 1 → ≈ 0.9 u travelled before the decay eats it
+export const KNOCK_SPEED = 8;     // initial slide speed (u/s) at power 1 → ≈ 0.9 u travelled (v0/decay) before the decay eats it. Was 2.6 (≈0.29 u, invisible) — caught by check.mjs --knockback
 export const KNOCK_DECAY = 9;     // per-second exponential decay of the slide (same feel as the S2A GlimmerController)
 export const KNOCK_STUN = 0.35;   // seconds the owning system should pause its own steering after a power-1 hit
 

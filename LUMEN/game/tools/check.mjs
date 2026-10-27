@@ -39,6 +39,7 @@ const doSandbox = args.includes('--sandbox');      // 10B integrated systems san
 const doGame = args.includes('--game');            // 10C the whole game headless: real UI (domshim) + real story + real sandbox driven by createLumenGame's state machine
 const doSave = args.includes('--save');            // 10D save/load + tutorial: play to S2 → autosave → fresh lg → CONTINUE → same season/spark/stalls/toasts; export/import text; lose clears
 const doPerf = args.includes('--perf');            // 11A src/systems/perf.js: BlobShadows (N discs → 1 InstancedMesh), CreatureLOD tiers + hysteresis, PixelRatioGovernor steps, countGeometries
+const doKnockback = args.includes('--knockback');  // S32 tools/gates/knockback.mjs: CreatureAnimator.hit slide/decay/stun/canStand clamp · customers knocked → walkable, re-path, sales continue, browsers walk back · helpers are sword targets (slide, helper:hit, walk back to seat)
 const doIcons = args.includes('--icons');          // icons: ui/icons.js procedural set covers every emoji in src/ ui/ data/ index.html; SVG is strict-XML clean; ui/icons/*.png baked + manifest in sync
 const doAudio = args.includes('--audio');          // 12 src/core/Audio.js headless (no AudioContext → inert): manifest ids ↔ DEFAULT_EVENTS, bus walk counts, cooldown, duck, unknown id, destroy
 const doEnemies = args.includes('--enemies');      // S16 src/systems/enemies.js: Collector waves (size = season ≤ 5), contact −1 ✦ pouch only, Bubble Shield blocks, 2 sword hits → flee + 1 ✦ coin, Baron boss S6+ with powers, season end clears
@@ -2286,6 +2287,10 @@ if (doAudio) {
     console.log(`  manifest: ${sfxIds.length} sfx (all with file + synth) · ${musicIds.length} music · event map ${Object.keys(DEFAULT_EVENTS).length} bus events → ${refs.size} sfx ids referenced${unused.length ? ` (unreferenced: ${unused.join(', ')})` : ''}`);
     console.log(`  bus walk: 15 core events → 15 plays · variants scam_fell/sweep/cust_happy · 23 enemy/storm/cine stings — all real files (title orbit silent) · ambience beds: start→surf+birds, storm:hit→+rain+wind, clear→calm, title/lose→off · 5 voice blurbs by speaker (+narrator blip) · cooldown 50 ticks/0.1 s → 1 play (${audio.state.throttled} throttled) · music lose→fog_lose, title · duck on/off · ui:settings → vol · unknown id logged once · destroy → 0 listeners  OK`);
   } catch (err) { bad++; console.log('  audio FAIL →', err.message); }
+}
+if (doKnockback) {
+  try { const { run } = await import(pathToFileURL(resolve('tools/gates/knockback.mjs')).href); bad += await run({ resolve, pathToFileURL }); }
+  catch (err) { bad++; console.log('\nKNOCKBACK FAIL →', err.message.split('\n')[0]); }
 }
 if (doIcons) {
   // ICONS: every emoji the game prints must map to a procedural drawing; each drawing must be valid strict XML (so the PNG bake works);
