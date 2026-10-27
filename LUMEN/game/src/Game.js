@@ -443,7 +443,7 @@ function reseatHelpers(sb) {
 //   eco:win / eco:lose     → ending (8B finale lines) → story:finale → endless | title
 //   ui:pause {on, by}      pause reasons are OR-ed (menu ∨ dialogue ∨ ledger ∨ title) into game.paused — the only place that touches it.
 // Nothing here edits a system; it only constructs, routes and owns `lg.state`.
-export const GAME_VERSION = 'S32';   // S32 (2026-10-27): real knockback on every sword target — Glimmers slide + re-path, hired helpers slide + walk back to their seat; headless gate check.mjs --knockback
+export const GAME_VERSION = 'S33';   // S33 (2026-10-27): beta-test bug report P66–P83 (knockback, boss moves, stall upgrade/demolish) in LUMEN_extras/game/docs/PLAY_BUGS.md & Game_Bible S33.md
 export const GAME_STATES = ['title', 'playing', 'review', 'ending', 'endless'];
 export const ABILITY_KEYS = { KeyQ: 'coinMagnetDash', KeyW: 'bubbleShield', KeyE: 'growthStomp', KeyR: 'ledgerFlash', KeyF: 'haggleShout', KeyG: 'fogSweep' };   // = FINLIT[name].key (3B)
 
