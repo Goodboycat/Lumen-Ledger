@@ -65,7 +65,7 @@ bash tools/setup_browser.sh && node tools/smoke.mjs index.html --shots --close  
 ```
 
 ## Numbers that matter
-Target device: a 2018 Android phone at 60 fps. In play the game draws **110–135 draw calls** (budget ≤ 150; see `docs/PERF.md`), with creature LOD, blob shadows in one InstancedMesh, baked static props and a pixel‑ratio governor. 10 seasons ≈ 25 minutes. Zipped web build ≈ 9.6 MB (12 MB unzipped, 305 files — ~6 MB of it is OGG music; measured S39).
+Target device: a 2018 Android phone at 60 fps. In play the game draws **110–135 draw calls** (budget ≤ 150; see `docs/PERF.md`), with creature LOD, blob shadows in one InstancedMesh and baked static props (S40: the pixel‑ratio governor / low‑fps quality demotion was removed — Quality is locked to the Settings preset). 10 seasons ≈ 25 minutes. Zipped web build ≈ 9.6 MB (12 MB unzipped, 305 files — ~6 MB of it is OGG music; measured S39).
 
 ## Credits & licence
 Design, code, art and writing: **[team name]**, built with the LUMEN chat pipeline (Genspark) — ~40 documented 100‑credit sessions, each owning a folder and gated by `tools/check.mjs` (`docs/MASTER_PLAN.md`). Engine: Three.js r160, MIT. Audio: in‑engine procedural synth; optional generated SFX/music per `docs/audio_prompts.md`. Reference look: XP Hero (Supercent) — colours and camera only, no assets.

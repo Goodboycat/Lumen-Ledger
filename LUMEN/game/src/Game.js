@@ -17,7 +17,7 @@ import { attachMoves } from './anim/heroAnims.js';
 import { attachAbilities, ABILITY_NAMES, FINLIT } from './anim/heroAbilities.js';
 import { PROP_CATALOG, makeProp, STALL_TYPES, JAR_IDS, swayAll, swayDecor, updateLandmarks, makeFlowerField, makeGrassTufts } from './assets/props.js';
 import { bakeStatic, bakeShells, disposeBatch } from './assets/props/bake.js';
-import { BlobShadows, CreatureLOD, PixelRatioGovernor } from './systems/perf.js';   // 11A
+import { BlobShadows, CreatureLOD } from './systems/perf.js';   // 11A (S40: PixelRatioGovernor no longer wired — quality is locked to the Settings preset)
 import { G } from './assets/geo.js';
 import { PALETTE as P, flatMat } from './core/Toon.js';
 import { makeGlimmerAny, CreatureAnimator, HelperAnimator, makeHelper, HELPER_TYPES, registerVariants, makeFogCollector, makeBaronGilt, VillainAnimator, FogPuffPool } from './assets/creatures/index.js';
@@ -466,7 +466,7 @@ function reseatHelpers(sb) {
 //   eco:win / eco:lose     → ending (8B finale lines) → story:finale → endless | title
 //   ui:pause {on, by}      pause reasons are OR-ed (menu ∨ dialogue ∨ ledger ∨ title) into game.paused — the only place that touches it.
 // Nothing here edits a system; it only constructs, routes and owns `lg.state`.
-export const GAME_VERSION = 'S39';   // S39 (2026-10-27): balance sweep re-run + GDD, submission dry run, size notes, P84–P85. Game_Bible S39.md in LUMEN_extras/
+export const GAME_VERSION = 'S40';   // S40 (2026-10-28): low-fps protection removed (no DPR/quality auto-demotion), quality locked to Settings, AudioContext resume watchdog. Game_Bible S40.md in LUMEN_extras/
 export const GAME_STATES = ['title', 'playing', 'review', 'ending', 'endless'];
 export const ABILITY_KEYS = { KeyQ: 'coinMagnetDash', KeyW: 'bubbleShield', KeyE: 'growthStomp', KeyR: 'ledgerFlash', KeyF: 'haggleShout', KeyG: 'fogSweep' };   // = FINLIT[name].key (3B)
 
@@ -581,15 +581,9 @@ function installMenu(lg) {
     if (p.key === 'quality') applyQuality(lg, p.value);
     if (p.key === 'reduceMotion') applyReduceMotion(lg, !!p.value);
   });
-  // S02 (2026-10-23): the PixelRatioGovernor demoted the preset (high → medium → low) because the phone could not hold 50+ fps at the DPR
-  //   floor. Mirror it into the pause-menu setting (so it persists and the menu shows it) and tell the player once per step.
-  on('perf:quality', (p) => {
-    if (!p?.to) return; lg.stats.demotions = (lg.stats.demotions || 0) + 1;
-    // pause.setSetting renders the segmented control + persists; its ui:settings echo re-calls setQuality with the SAME preset — a no-op
-    // (governor.recap ignores an unchanged cap, so the DPR floor is kept).
-    if (ui?.pause?.setSetting) ui.pause.setSetting('quality', p.to); else if (ui?.pause?.settings) ui.pause.settings.quality = p.to;
-    bus.emit('ui:toast', { text: `Graphics set to ${p.to} to keep 60 fps (change it in ⏸ Settings)`, kind: 'info', icon: '⚡', id: 'perf-quality', duration: 3500 });
-  });
+  // S40 (2026-10-28): the S02 low-fps protection (PixelRatioGovernor → DPR drop → preset demotion high → medium → low, mirrored into
+  //   Settings) is REMOVED. The Quality preset is now exactly what the player picked in ⏸ Settings (default 'medium') and never moves
+  //   by itself — needed for gameplay capture, where the recorder itself lowers fps and the game kept downgrading itself to 'low'.
   applyReduceMotion(lg, !!ui?.pause?.settings?.reduceMotion);
   // BUGFIX B22: the stored quality setting is applied on boot too (was: only on a menu click, and then only the DPR).
   if (ui?.pause?.settings?.quality) applyQuality(lg, ui.pause.settings.quality);
@@ -1068,9 +1062,9 @@ function installPerf(sb) {
   if (sb.opts?.perf === false) return;
   const scene = sb.game.scene, cam = sb.game.camera?.three || sb.game.camera;
   const hasCam = !!(cam && cam.position && cam.position.isVector3);   // mock cameras in check.mjs have no position → LOD skipped
+  // S40: no PixelRatioGovernor — fps never changes DPR or the quality preset (governor stays null; the debug line falls back to the renderer DPR).
   sb.perf = { shadows: new BlobShadows(scene, 48), lod: hasCam ? new CreatureLOD(cam, sb.opts?.lod) : null, governor: null, roots: [] };
-  if (!sb.headless && sb.game.renderer) sb.perf.governor = new PixelRatioGovernor(sb.game, sb.opts?.governor);
-  sb.perf.dispose = () => { sb.perf.shadows.dispose(); sb.perf.lod?.dispose?.(); sb.perf.governor?.dispose?.(); };
+  sb.perf.dispose = () => { sb.perf.shadows.dispose(); sb.perf.lod?.dispose?.(); };
 }
 function perfRoots(sb) {
   const r = sb.perf.roots; r.length = 0;
@@ -1085,7 +1079,6 @@ function updatePerf(sb, dtReal) {
   const roots = perfRoots(sb);
   sb.perf.shadows.update(roots);
   sb.perf.lod?.update?.(roots);
-  sb.perf.governor?.update?.(dtReal ?? 1 / 60);
 }
 
 /** VFX stand-in for Node: every pool call is a no-op counter. */

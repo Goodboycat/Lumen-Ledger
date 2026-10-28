@@ -232,6 +232,23 @@ export function createAudio(opts = {}) {
   // when the context unlocks after the mode was already set (PLAY before the first gesture is impossible in practice, but resume() paths exist) → re-apply
   const _unlock = api.unlock; api.unlock = () => { const r = _unlock(); if (r && state.ambMode !== 'off') setAmbience(state.ambMode, 1); return r; };
 
+  // S40 (2026-10-28): AudioContext resume watchdog. Under heavy load (screen recorder + low fps) browsers can flip the context to
+  // 'suspended' / 'interrupted' and music + sfx silently stop. Every 1 s (and on visibility/focus/pointer/key events) we call resume()
+  // if the context is not 'running'; the music / ambience loops are plain Web Audio nodes, so they continue where they left off.
+  // Headless-safe (no window / no ctx → nothing happens). api.state.resumes counts how often we had to kick it.
+  state.resumes = 0;
+  api.keepAlive = () => {
+    const c = state.ctx; if (!c || !state.unlocked) return false;
+    if (c.state !== 'running') { state.resumes++; try { c.resume().catch(() => {}); } catch {} return true; }
+    return false;
+  };
+  if (typeof window !== 'undefined' && typeof setInterval === 'function') {
+    setInterval(api.keepAlive, 1000);
+    for (const ev of ['visibilitychange', 'focus', 'pointerdown', 'keydown', 'touchstart']) {
+      try { (ev === 'visibilitychange' ? document : window).addEventListener(ev, api.keepAlive, { passive: true }); } catch {}
+    }
+  }
+
   // ---- P1.3 bus → SFX map. Manifest "events": { "<bus event>": { sfx | music | duck | fn, cooldown, vol, when: "<payload key>" } } merged over DEFAULT_EVENTS ----
   function wireBus() {
     for (const off of offs) off(); offs.length = 0;
