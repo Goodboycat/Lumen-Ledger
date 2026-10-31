@@ -79,7 +79,7 @@ try {
 
   // UI first (title owns the screen and pauses the game), then the state machine over it.
   const ui = mountUI(root, {
-    bus: game.bus, stats: () => game.stats, input: game.input, catalog: PROP_CATALOG, seasonsToWin: 10,
+    bus: game.bus, stats: params.has('debug') ? () => game.stats : null, input: game.input,   // S41/15-0: no fps·calls pill in the HUD (playtest 1:33 "what is calls?") — ?debug / F3 keep the tiny bottom-left line catalog: PROP_CATALOG, seasonsToWin: 10,
     hasSave: () => Save.hasSave(),                                                        // 10D: localStorage slot → CONTINUE on the title (reload resumes)
     hasWon: () => Save.hasWon(),                                                          // S25: ∞ ENDLESS appears only after the first story win (lumen.unlocks)
     onOutline: setOutlineThickness, touch: true, storyData,
