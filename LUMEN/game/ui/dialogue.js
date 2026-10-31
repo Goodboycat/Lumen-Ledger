@@ -50,7 +50,9 @@ export function mountDialogue(root, opts = {}) {
   const text = el('p', 'll-dlg-text', '');
   const choices = el('div', 'll-dlg-choices');
   const next = el('button', 'll-dlg-next', '▼');
-  body.append(nameTag, text, choices, next);
+  // S41/15B: tap-to-complete hint — while typing, a tiny 'tap to complete' tag sits in the corner; after the text is done it reads 'tap to continue'
+  const hint = el('span', 'll-dlg-hint', 'tap to complete'); hint.setAttribute('aria-hidden', 'true');
+  body.append(nameTag, text, choices, next, hint);
   box.append(portrait, body);
   wrap.append(box);
   root.appendChild(wrap);
@@ -94,7 +96,7 @@ export function mountDialogue(root, opts = {}) {
     say(line) {
       if (!line) return api; if (typeof line === 'string') line = { speaker: 'narrator', text: line };
       clearTimeout(st.hideT); st.line = line; st.full = String(line.text || ''); st.shown = 0; st.acc = 0; st.typing = true;
-      text.textContent = ''; text.classList.remove('done'); box.classList.add('typing');
+      text.textContent = ''; text.classList.remove('done'); box.classList.add('typing'); hint.textContent = 'tap to complete';
       setSpeaker(line); renderChoices(line);
       bus.emit('ui:dialogue:say', { speaker: line.speaker || 'narrator', line });
       if (!st.open) { st.open = true; wrap.classList.remove('closing'); wrap.classList.add('open'); document.body && document.body.classList && document.body.classList.add('ll-dlg-open'); bus.emit('ui:dialogue:open', { line }); if (opts.pauseGame && !st.pauseEmitted) { st.pauseEmitted = true; bus.emit('ui:pause', { on: true, by: 'dialogue' }); } }
@@ -142,12 +144,14 @@ export function mountDialogue(root, opts = {}) {
     destroy() { offs.forEach((f) => f()); if (st.raf) cancelAnimationFrame(st.raf); window.removeEventListener('keydown', onKey); clearTimeout(st.hideT); wrap.remove(); },
   };
   function finishTyping() {
-    st.typing = false; box.classList.remove('typing'); text.classList.add('done');
+    st.typing = false; box.classList.remove('typing'); text.classList.add('done'); hint.textContent = (st.line && st.line.choices && st.line.choices.length) ? 'pick one' : 'tap to continue';
     if (st.line && st.line.choices && st.line.choices.length) { choices.classList.add('in'); }
     else retrigger(next, 'bounce');
   }
 
-  box.addEventListener('click', (e) => { if (e.target && e.target.classList && e.target.classList.contains('ll-dlg-choice')) return; api.advance(); });
+  box.addEventListener('click', (e) => { if (e.target && e.target.classList && e.target.classList.contains('ll-dlg-choice')) return; e.stopPropagation && e.stopPropagation(); api.advance(); });
+  // S41/15B: a tap anywhere on the dialogue layer (not just the card) completes / advances the line — the box is small on phones
+  wrap.addEventListener('click', (e) => { if (e.target === wrap) api.advance(); });
   const onKey = (e) => {
     if (!st.open) return;
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault && e.preventDefault(); api.advance(); }

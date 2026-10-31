@@ -90,3 +90,9 @@
 .ll-dlg-face .ll-ico, .ll-dlg-face .ll-face { width: 84px; height: 84px; display: block; image-rendering: auto; filter: drop-shadow(0 4px 0 var(--ink)); }
 .ll-dlg-portrait.pop .ll-dlg-face { animation: ll-portrait-pop .38s cubic-bezier(.34,1.56,.64,1); }
 .ll-dlg-box.typing .ll-dlg-face { animation: ll-talk .26s ease-in-out infinite alternate; }
+
+/* S41/15B: tap-to-complete hint (bottom-right of the card) */
+.ll-dlg-hint { position: absolute; right: 12px; bottom: 6px; font: 700 10px/1 var(--font); letter-spacing: .04em; text-transform: uppercase; opacity: .45; pointer-events: none; }
+.ll-dlg-box.typing .ll-dlg-hint { animation: ll-dlg-hint-blink 1.1s ease-in-out infinite; }
+@keyframes ll-dlg-hint-blink { 0%,100% { opacity: .25; } 50% { opacity: .6; } }
+.ll-dlg.open { pointer-events: auto; }

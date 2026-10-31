@@ -22,7 +22,9 @@ const ICON = { ok: '✔', info: 'ℹ', warn: '⚠', bad: '✖', gold: '✦' };
 
 export function mountToast(root, opts = {}) {
   const bus = opts.bus || defaultBus;
-  const max = opts.max || 3;
+  // S41/15B: ONE text channel — phones (≤640 px or touch) show a single toast at a time; desktop keeps opts.max (3).
+  const phone = () => { try { return typeof window !== 'undefined' && window.matchMedia && (window.matchMedia('(max-width: 640px)').matches || (document.body && document.body.classList.contains('is-touch'))); } catch { return false; } };
+  const maxOf = () => (opts.max === 1 || phone()) ? 1 : (opts.max || 3);
   const defDur = opts.duration || 5000;
   // mobile pass: toasts disappeared too fast → longer defaults + reading time: ≥ 1.4 s + 75 ms per character (a 100-char tip ≈ 9 s).
   // Touching / hovering a toast holds it; tap still dismisses.
@@ -31,6 +33,9 @@ export function mountToast(root, opts = {}) {
   const wrap = el('div', 'll-toasts'); wrap.id = 'll-toasts'; wrap.setAttribute('aria-live', 'polite');
   root.appendChild(wrap);
   const live = []; // { el, id, text, t, timer, count }
+  // S41/15B: while a dialogue line is on screen, toasts are HELD (queued) — two text boxes at once was the #1 "what do I read?" moment.
+  //   They are released one by one (350 ms apart) when the dialogue closes; same id/text coalesce inside the hold queue too.
+  const held = []; let holding = false; let releaseT = 0;
 
   const remove = (t) => {
     const i = live.indexOf(t); if (i < 0) return; live.splice(i, 1); clearTimeout(t.timer);
@@ -45,6 +50,13 @@ export function mountToast(root, opts = {}) {
       if (text && typeof text === 'object') { o = text; text = o.text; }
       text = String(text ?? ''); if (!text) return null;
       const kind = o.kind || 'info'; const id = o.id || null;
+      if (holding && !o.now) {
+        const same = held.find((h) => (id && h.id === id) || h.text === text);
+        if (same) { same.o = { ...o }; return same.handle; }
+        const h = { id, text, o: { ...o }, handle: { el: null, close() { const i = held.indexOf(h); if (i >= 0) held.splice(i, 1); } } };
+        held.push(h); if (held.length > 6) held.shift();
+        return h.handle;
+      }
       const want = o.duration ?? defDur;
       const duration = (want <= 0 || want < 200 || (opts.duration != null && opts.duration < 200)) ? want : Math.max(want, readMs(text));   // < 200 ms = tests / explicit
       // coalesce: same id (or same text) still visible → bump counter + restart timer
@@ -69,13 +81,21 @@ export function mountToast(root, opts = {}) {
       const t = { el: node, id, text, timer: 0, count: 1, badge, bar, handle: null };
       t.handle = { el: node, close: () => remove(t) };
       wrap.prepend(node); live.unshift(t);
-      while (live.length > max) remove(live[live.length - 1]);
+      while (live.length > maxOf()) remove(live[live.length - 1]);
       restart(t, duration);
       return t.handle;
     },
-    clear() { [...live].forEach(remove); return api; },
-    destroy() { offs.forEach((f) => f()); api.clear(); wrap.remove(); },
+    clear() { [...live].forEach(remove); held.length = 0; return api; },
+    /** S41/15B: hold (queue) toasts while a dialogue owns the text channel; release() plays them back one by one. */
+    hold(on = true) { holding = !!on; if (!holding) release(); return api; },
+    get holding() { return holding; }, get heldCount() { return held.length; },
+    destroy() { offs.forEach((f) => f()); clearTimeout(releaseT); api.clear(); wrap.remove(); },
   };
+  function release() {
+    clearTimeout(releaseT); if (holding || !held.length) return;
+    const h = held.shift(); api.push({ ...h.o, text: h.text, id: h.id || undefined, now: true });
+    if (held.length) releaseT = setTimeout(release, 350);
+  }
   function restart(t, duration) {
     clearTimeout(t.timer); if (duration > 0) t.timer = setTimeout(() => remove(t), duration);
     t.bar.style.animation = 'none'; void t.bar.offsetWidth; t.bar.style.animation = ''; t.bar.style.animationDuration = duration + 'ms';
@@ -122,6 +142,8 @@ export function mountToast(root, opts = {}) {
     on('eco:win', () => api.push({ text: 'The Lighthouse is lit! ✦', kind: 'gold', duration: 5000 }));
     on('eco:lose', () => api.push({ text: 'The Debt Fog took the island…', kind: 'bad', duration: 5000 }));
     // BUGFIX P42: gameplay toasts (incl. the 6 s demolish-mode toast with its Stop button) no longer float over the Title screen
+    on('ui:dialogue:open', () => api.hold(true));
+    on('ui:dialogue:close', () => api.hold(false));
     on('game:title', () => api.clear());
     on('ui:title:open', () => api.clear());
   }
