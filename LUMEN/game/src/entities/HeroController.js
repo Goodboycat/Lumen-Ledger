@@ -7,12 +7,13 @@ import { Easing, damp, lerp } from '../anim/Easing.js';
 import { setSquash, JellySpring, walkBob } from '../anim/SquashStretch.js';
 import { makeHero, makeSword } from '../assets/hero.js';
 
-const _dir = new THREE.Vector3(), _tmp = new THREE.Vector3();
+const _dir = new THREE.Vector3(), _tmp = new THREE.Vector3(), _cone = new THREE.Vector3();
 
 // ---------------- arm ↔ chest clearance ----------------
 // Chest = G.rbox(0.62, 0.62, 0.46) (hero.js) → half extents below, + a small skin gap. Test spheres per arm (arm-local, under the
 // 'armSplay' group): elbow-ish point of the capsule and the hand. Sword: grip, guard and 4 points along the blade (sword-local).
 const SOLID_MARGIN = 0.24;   // S41/15E: hero body radius used against solid props (stalls / decor / trees)
+const POINT_BLANK = 0.9;     // S42/16A: inside this distance the sword sweep hits regardless of angle (Collector contact radius is .75)
 const CHEST_HALF = new THREE.Vector3(0.31 + 0.015, 0.31 + 0.015, 0.23 + 0.015);
 const ARM_PTS = [[new THREE.Vector3(0, -0.22, 0), 0.1], [new THREE.Vector3(0, -0.44, 0), 0.13]];
 const SWORD_PTS = [[0, 0, 0.05], [0, 0.18, 0.05]];                                       // grip + guard (x, y, r)
@@ -191,7 +192,8 @@ export class HeroController {
       const d = _tmp.copy(t.root.position).sub(this.root.position).setY(0).length();
       if (d < bd) { bd = d; best = t; }
     }
-    if (best) outDir.copy(best.root.position).sub(this.root.position).setY(0).normalize();
+    // S42/16A: a target standing INSIDE Pip (bd ≈ 0) gives a zero vector → keep the current facing instead of a NaN/zero lunge
+    if (best && bd > 1e-3) outDir.copy(best.root.position).sub(this.root.position).setY(0).normalize();
     else outDir.set(Math.sin(this.facing), 0, Math.cos(this.facing));
     return best;
   }
@@ -204,7 +206,15 @@ export class HeroController {
     for (const t of targets) {
       _dir.copy(t.root.position).sub(this.root.position).setY(0);
       const d = _dir.length(); if (d > 2.4) continue;
-      _dir.normalize(); if (_dir.dot(S.dir) < 0.35) continue; // ~110° cone
+      // S42/16A: POINT-BLANK FIX. The strike lunges Pip ~0.2 u forward before the impact frame, so a Collector hugging him
+      //   (< 0.3 u, i.e. the one actually stealing his Spark) ended up on top of / behind him and the cone test below failed → the
+      //   swing whiffed every time at the one moment it mattered. Inside POINT_BLANK the blade's 160° sweep covers the body
+      //   regardless of angle; otherwise measure the cone from the PRE-lunge position (S.start), which is where the player aimed.
+      if (d > POINT_BLANK) {
+        _cone.copy(t.root.position).sub(S.start).setY(0);
+        if (_cone.lengthSq() > 1e-6 && _cone.normalize().dot(S.dir) < 0.35) continue; // ~110° cone
+      }
+      if (d < 1e-3) _dir.copy(S.dir); else _dir.normalize();  // degenerate (standing inside him) → knock him along the swing
       t.hit(_dir, 1);                                           // hit flash + knockback (target side)
       hitSomething = true;
       v.sparks.burst(_tmp.copy(t.root.position).setY(0.8), 10, 5);

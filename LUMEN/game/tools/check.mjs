@@ -1358,6 +1358,26 @@ if (doEnemies) {
     // hero's own sword picks enemies: spawn one in front and attack
     E.waveSeason = 0; sb.eco.state.season = 3; sb.sched.wave = false; sb.eco.state.day01 = 0.71; step(); if (E.list.length !== 3) throw new Error('S3 wave size ' + E.list.length);
     const tgt = sb.hero.deps.targets(); if (!tgt.some((t) => t.enemy)) throw new Error('hero targets lack enemies');
+    // S42/16A: POINT-BLANK — a Collector hugging Pip (0.05 / 0.2 / 0.45 u, any side) must be hit by the swing. Before 16A the lunge put him
+    //   behind the cone test and the sword whiffed at exactly the moment he was stealing Spark. Also: target ON Pip → no NaN lunge.
+    { const savedVfx = sb.hero.deps.vfx; sb.hero.deps.vfx = { dust: { burst() {}, ring() {} }, sparks: { burst() {} }, pop: { show() {} }, slash: { fire() {}, track() {}, release() {} }, flash: { flash() {} } };
+      const hp = sb.hero.root.position, others = E.list.slice(1); for (const o of others) o.g.position.set(hp.x + 40, 0, hp.z + 40);   // park the other two far away
+      const pb = E.list[0]; const offs = [[0, 0.05], [0.2, 0], [0, -0.2], [-0.3, -0.3], [0.45, 0], [0, 0]];
+      for (const [ox, oz] of offs) {
+        pb.state = 'chase'; pb.hp = 2; pb.g.position.set(hp.x + ox, 0, hp.z + oz); pb.knock.set(0, 0, 0); pb.hitAt = 99;
+        sb.hero.state = 'idle'; sb.hero.facing = Math.PI; sb.hero.root.rotation.y = Math.PI; const px = hp.x, pz = hp.z;
+        const hits0 = (ev['enemy:hit'] || []).length; sb.hero.doAttack(); for (let i = 0; i < 20; i++) { game.time += dt; game.sequences.update(dt); sb.hero.update(dt); }
+        if ((ev['enemy:hit'] || []).length !== hits0 + 1) throw new Error(`16A point-blank miss at offset (${ox},${oz})`);
+        if (!isFinite(hp.x) || !isFinite(hp.z) || Math.hypot(hp.x - px, hp.z - pz) > 0.6) throw new Error(`16A lunge went bad at (${ox},${oz}) → ${hp.x},${hp.z}`);
+        hp.set(px, 0, pz); game.sequences.update(1); sb.hero.update(1); sb.hero.state = 'idle';
+      }
+      // Far + behind must still MISS (cone intact): 1.5 u straight behind the facing
+      pb.state = 'chase'; pb.hp = 2; pb.g.position.set(hp.x, 0, hp.z - 1.5); sb.hero.facing = 0; sb.hero.root.rotation.y = 0; sb.hero.state = 'idle';
+      const hitsB = (ev['enemy:hit'] || []).length; sb.hero.doAttack(); for (let i = 0; i < 20; i++) { game.time += dt; game.sequences.update(dt); sb.hero.update(dt); }
+      // (auto-aim turns Pip toward the nearest target within 2.6 u, so this one IS hit — that is the designed behaviour; assert it so a future cone change is noticed)
+      if ((ev['enemy:hit'] || []).length !== hitsB + 1) throw new Error('16A auto-aim should still turn to a 1.5 u target');
+      game.sequences.update(1); sb.hero.update(1); sb.hero.state = 'idle'; pb.g.position.set(pb.home.x, 0, pb.home.z); for (const o of others) o.g.position.set(o.home.x, 0, o.home.z); sb.hero.deps.vfx = savedVfx; pb.hp = 2; pb.knock.set(0, 0, 0); }
+    console.log('  16A point-blank sword: 6 hugging offsets all hit, no NaN lunge, auto-aim 1.5 u  OK');
     // 5. S16b: season end → everyone WALKS back to the pier (state 'home', no longer a target, no coin), steps off within homeTimeout; hero speed reset
     // S19 / P58: the 3 land at DIFFERENT shore points (≥ 5 u apart, #0 at the pier) and ≥ 6 u from Pip; e.home remembers the landing point
     const exitP = E._exit, homes = E.list.map((e) => e.home); if (Math.hypot(homes[0].x - exitP.x, homes[0].z - exitP.z) > 1e-6) throw new Error('#0 not at the pier');
