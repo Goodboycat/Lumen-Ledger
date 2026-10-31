@@ -554,7 +554,7 @@ function installStart(lg) {
     lg.setState('playing');
     // S18: the arrival walk-in (pier → plaza) plays on a FRESH story PLAY only — before game:start so the tutorial sees cine:begin first.
     if (lg.cine && fresh && !lg._resuming && lg.mode === 'story') lg.cine.play('arrival', { sb, story: lg.story });
-    bus.emit('game:start', { mode: lg.mode, seasonsToWin: sb.eco.config.seasonsToWin, seasonSeconds: sb.eco.config.seasonSeconds });
+    bus.emit('game:start', { mode: lg.mode, seasonsToWin: sb.eco.config.seasonsToWin, seasonSeconds: sb.eco.config.seasonSeconds, resumed: !!lg._resuming, debt: sb.eco.state.debt, loanRate: sb.eco.config.loanRate });   // S41/15F: toast.js explains the inherited debt once
     return sb;
   };
   lg.teardown = () => {

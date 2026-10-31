@@ -127,6 +127,19 @@ export function mountToast(root, opts = {}) {
       const text = isCost ? `Not enough Spark${p && p.cost ? ` (need ${p.cost})` : ''}` : (why === 'owned' ? 'Already owned' : String(why).replace(/^needs (zone_|helper_)/, 'needs ').replace(/^jar /, '').replace(/^\w/, (c) => c.toUpperCase()));
       api.push({ text, kind: 'bad', id: 'denied', duration: 3200 });
     });
+    // S41/15F: debt clarity — the season report's interest line gets its own toast with a tappable PAY action (phones have no hotkey).
+    // "Debt grew +40 ✦ (20% interest) → 240 ✦" tells WHY the number went up; PAY emits the same ui:repay the HUD button does.
+    // Held while the season card / dialogue is open (15B), so it shows the moment the player is back in control.
+    on('eco:season', (r) => {
+      if (!r || !(r.interestPaid > 0) || !(r.debt > 0)) return;
+      const base = r.debt - r.interestPaid, pct = base > 0 ? Math.round(r.interestPaid / base * 100) : 0;
+      api.push({ text: `Debt grew +${r.interestPaid} ✦ (${pct}% interest) → ${r.debt} ✦. Pay it down early — interest compounds.`, kind: 'bad', icon: '🎩', id: 'interest', duration: 7000, action: { label: 'Pay', emit: 'ui:repay', payload: { source: 'hud' } } });
+    }),
+    // S41/15F: start-of-game — the inherited debt is explained once (new STORY game only, not on continue / endless)
+    on('game:start', (p) => {
+      if (!p || p.resumed || (p.mode && p.mode !== 'story') || !(p.debt > 0)) return;
+      api.push({ text: `You inherited ${p.debt} ✦ of debt from the old Glowmarket — Baron Gilt adds ${Math.round((p.loanRate || 0.2) * 100)}% every season. PAY it down from your pouch (💸) before it grows.`, kind: 'warn', icon: '🎩', id: 'debt-intro', duration: 9000, action: { label: 'Pay', emit: 'ui:repay', payload: { source: 'hud' } } });
+    }),
     on('eco:loan', (p) => p && api.push(p.kind === 'repay' ? { text: `Repaid ${p.delta} — debt ${p.debt}`, kind: 'ok', icon: '💸', id: 'loan' } : { text: `Loan +${p.delta} — the Baron smiles. Debt ${p.debt}`, kind: 'bad', icon: '🎩', id: 'loan' }));
     on('cust:angry', (p) => api.push({ text: 'A Glimmer left angry' + (p && (p.why || p.reason) ? ` (${p.why || p.reason})` : ''), kind: 'warn', icon: '😠', id: 'angry', duration: 3500 }));
     // S16/S20: Debt Collectors + Baron Gilt. The wave toast names the Baron's NEW power this season (BARON_POWERS text lives in enemies.js; the bus payload carries ids).
