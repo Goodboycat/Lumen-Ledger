@@ -71,3 +71,8 @@
 .ll-spark-pay:hover:not(:disabled) { background: #4a148c; }
 .ll-spark-pay:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 0 0 var(--ink); }
 .ll-spark-pay:disabled { opacity: .45; cursor: default; }
+
+/* S41/15A progressive HUD: staged widgets are hidden until the reveal controller shows them (ui/reveal.js) */
+.ll-staged { display: none !important; }
+.ll-reveal-in { animation: ll-reveal-in .6s cubic-bezier(.34,1.56,.64,1); }
+@keyframes ll-reveal-in { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); } }

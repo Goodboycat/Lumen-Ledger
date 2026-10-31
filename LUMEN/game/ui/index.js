@@ -7,6 +7,7 @@
 // Order matters (7A/7B/7C notes): title first (owns the screen) → HUD → jars → build → ledger → dialogue → toast → pause → touch (last: auto-hides under modals).
 // Ledger is mounted with autoOpen:false — 10C opens it on `story:review` (8B) so the story lines play BEFORE the review sheet.
 import { mountHUD } from './hud.js';
+import { mountReveal } from './reveal.js';   // S41/15A: progressive HUD (jars collapsed, staged widget reveal for tutorial skippers)
 import { mountJars } from './jars.js';
 import { mountBuildMenu } from './build.js';
 import { mountLedger } from './ledger.js';
@@ -68,9 +69,11 @@ export function mountUI(root, opts = {}) {
   if (opts.touch !== false && opts.input) add('touch', mountTouch(root, opts.input, { bus, force: opts.forceTouch }));
   // guided tutorial: hand pointer + input lock, opens on the first PLAY (opts.autoTutorial — index.html turns it on; headless checks leave it off) and from the pause menu's 📖 TUTORIAL (mounted last = on top)
   if (opts.tutorial !== false) add('tutorial', mountTutorial(root, { bus, ui, input: opts.input, auto: !!opts.autoTutorial, storageKey: opts.tutorialKey }));
+  // S41/15A: progressive HUD — jars collapsed on every new game; skippers get jars → fog → rep → speed → powers revealed one at a time (opts.reveal === false turns it off)
+  if (opts.reveal !== false) add('reveal', mountReveal(ui, { bus, storageKey: opts.tutorialKey }));
 
   /** One clock for every panel (count-ups, typewriter, fps readout). */
-  ui.update = (dt) => { ui.hud.update(dt); ui.ledger.update(dt); ui.dialogue.update(dt); ui.tutorial?.update?.(dt); };
+  ui.update = (dt) => { ui.hud.update(dt); ui.ledger.update(dt); ui.dialogue.update(dt); ui.tutorial?.update?.(dt); if (ui.reveal?.staged && !ui.isModal()) ui.reveal.update(dt); };
   /** True when any modal owns the screen (title / ledger / dialogue / pause / season card / tutorial) → the game loop should be paused. */
   ui.isModal = () => !!(ui.title?.isOpen || ui.ledger?.isOpen || ui.dialogue?.isOpen || ui.pause?.isOpen || ui.seasons?.isOpen || ui.tutorial?.isOpen);
   // B = build tray toggle, only when no modal owns the screen and not while placing (Esc cancels placing — 7A handles that one itself).
