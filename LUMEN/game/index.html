@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="ui/ledger.css">
 <link rel="stylesheet" href="ui/dialogue.css">
 <link rel="stylesheet" href="ui/toast.css">
+<link rel="stylesheet" href="ui/wave.css">
 <link rel="stylesheet" href="ui/title.css">
 <link rel="stylesheet" href="ui/pause.css">
 <link rel="stylesheet" href="ui/touch.css">
@@ -88,6 +89,7 @@ try {
     autoTutorial: !params.has('autoplay') && !params.has('notutorial'),                   // guided tutorial on the first PLAY (?notutorial / ?autoplay skip it)
   });
   const lg = createLumenGame(game, { ui, storyData, seasonSeconds, seed: +params.get('seed') || undefined, debugKeys: params.has('debug'), cinematics: !params.has('nocine') });   // S18: ?nocine = no title orbit / arrival / victory shots
+  ui.wave?.bind({ camera: game.camera.three, enemies: () => lg.sb?.enemies, hero: () => lg.sb?.hero });   // S41/15D: edge arrows project enemies through the live camera
   window.ui = ui; window.lg = lg; window.sb = () => lg.sb; window.eco = () => lg.sb?.eco;
   // 12: audio — bus→SFX map + music; AudioContext is created only inside the first gesture (bus 'input:first' below). Missing
   // Ludo.ai files fall back to the manifest's synth sketches, so the build is never silent. Volumes follow the 7C settings sliders.

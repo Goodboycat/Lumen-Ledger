@@ -133,7 +133,7 @@ export function mountToast(root, opts = {}) {
     on('enemy:wave', (p) => {
       if (!p) return;
       if (p.boss) { const n = (p.powers || []).length; api.push({ text: `Baron Gilt lands at the pier${p.count > 1 ? ` with ${p.count - 1} Collector${p.count > 2 ? 's' : ''}` : ''} — watch the red rings, step out before they land!`, kind: 'bad', icon: '🎩', id: 'wave', duration: 6500 }); if (n) api.push({ text: BARON_HINT[(p.powers || []).at(-1)] || '', kind: 'warn', icon: '⚠', id: 'wavehint', duration: 7000 }); }
-      else api.push({ text: `${p.count} Debt Collector${p.count > 1 ? 's' : ''} landed — hit them twice (⚔) or walk away (they are slower)`, kind: 'warn', icon: '🌫', id: 'wave', duration: 6000 });
+      else api.push({ text: `Hit Collectors twice (⚔) or walk away — they are slower than you`, kind: 'warn', icon: '🌫', id: 'wave', duration: 5000 });   // S41/15D: the "N landed" line is the big wave banner (ui/wave.js) now
     });
     on('enemy:defeated', (p) => p && p.kind === 'baron' && api.push({ text: `Baron Gilt retreats! +${p.reward} ✦`, kind: 'gold', icon: '🎩', id: 'baron', duration: 4500 }));
     on('enemy:stomp', (p) => p && p.hit === false && api.push({ text: 'Dodged the stomp — he is dazed, hit him now!', kind: 'ok', icon: '⚔', id: 'stomp', duration: 2500 }));

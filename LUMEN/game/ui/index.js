@@ -13,6 +13,7 @@ import { mountBuildMenu } from './build.js';
 import { mountLedger } from './ledger.js';
 import { mountDialogue } from './dialogue.js';
 import { mountToast } from './toast.js';
+import { mountWave } from './wave.js';     // S41/15D: Collector wave banner + edge arrows pointing at off-screen enemies
 import { mountTitle } from './title.js';
 import { mountPause } from './pause.js';
 import { mountTouch } from './touch.js';
@@ -20,7 +21,7 @@ import { mountSeasonInfo } from './seasons.js';
 import { mountTutorial } from './tutorial.js';
 
 export const UI_VERSION = 'S40';
-export const UI_CSS = ['ui/base.css', 'ui/hud.css', 'ui/jars.css', 'ui/build.css', 'ui/ledger.css', 'ui/dialogue.css', 'ui/toast.css', 'ui/title.css', 'ui/pause.css', 'ui/touch.css', 'ui/seasons.css', 'ui/tutorial.css'];
+export const UI_CSS = ['ui/base.css', 'ui/hud.css', 'ui/jars.css', 'ui/build.css', 'ui/ledger.css', 'ui/dialogue.css', 'ui/toast.css', 'ui/wave.css', 'ui/title.css', 'ui/pause.css', 'ui/touch.css', 'ui/seasons.css', 'ui/tutorial.css'];
 
 /**
  * @param {HTMLElement} root  overlay root (#game-root). Panels append themselves; the canvas stays underneath.
@@ -40,6 +41,7 @@ export function mountUI(root, opts = {}) {
   add('ledger', mountLedger(root, { bus, seasonsToWin, autoOpen: false, selfDrive: false }));
   add('dialogue', mountDialogue(root, { bus, pauseGame: opts.pauseGame !== false, selfDrive: false, cps: opts.cps }));
   add('toast', mountToast(root, { bus, max: 3 }));
+  add('wave', mountWave(root, { bus }));   // S41/15D — index.html binds camera/enemies via ui.wave.bind({...}) once the sandbox exists
   // S11: ONE Escape dispatcher. Panels no longer listen for Escape themselves (hotkey:false / noEsc) — a single capture-phase window
   // listener walks a priority stack and the FIRST layer that owns the screen consumes the press:
   //   tutorial → season card → dialogue (swallowed: Enter/tap advance, Esc never opens pause over a line) → build (placing/demolish →
@@ -73,7 +75,7 @@ export function mountUI(root, opts = {}) {
   if (opts.reveal !== false) add('reveal', mountReveal(ui, { bus, storageKey: opts.tutorialKey }));
 
   /** One clock for every panel (count-ups, typewriter, fps readout). */
-  ui.update = (dt) => { ui.hud.update(dt); ui.ledger.update(dt); ui.dialogue.update(dt); ui.tutorial?.update?.(dt); if (ui.reveal?.staged && !ui.isModal()) ui.reveal.update(dt); };
+  ui.update = (dt) => { ui.hud.update(dt); ui.ledger.update(dt); ui.dialogue.update(dt); ui.tutorial?.update?.(dt); if (ui.wave) { if (ui.isModal()) ui.wave.setVisible(false); else { ui.wave.setVisible(true); ui.wave.update(dt); } } if (ui.reveal?.staged && !ui.isModal()) ui.reveal.update(dt); };
   /** True when any modal owns the screen (title / ledger / dialogue / pause / season card / tutorial) → the game loop should be paused. */
   ui.isModal = () => !!(ui.title?.isOpen || ui.ledger?.isOpen || ui.dialogue?.isOpen || ui.pause?.isOpen || ui.seasons?.isOpen || ui.tutorial?.isOpen);
   // B = build tray toggle, only when no modal owns the screen and not while placing (Esc cancels placing — 7A handles that one itself).
