@@ -12,6 +12,7 @@ const _dir = new THREE.Vector3(), _tmp = new THREE.Vector3();
 // ---------------- arm ↔ chest clearance ----------------
 // Chest = G.rbox(0.62, 0.62, 0.46) (hero.js) → half extents below, + a small skin gap. Test spheres per arm (arm-local, under the
 // 'armSplay' group): elbow-ish point of the capsule and the hand. Sword: grip, guard and 4 points along the blade (sword-local).
+const SOLID_MARGIN = 0.24;   // S41/15E: hero body radius used against solid props (stalls / decor / trees)
 const CHEST_HALF = new THREE.Vector3(0.31 + 0.015, 0.31 + 0.015, 0.23 + 0.015);
 const ARM_PTS = [[new THREE.Vector3(0, -0.22, 0), 0.1], [new THREE.Vector3(0, -0.44, 0), 0.13]];
 const SWORD_PTS = [[0, 0, 0.05], [0, 0.18, 0.05]];                                       // grip + guard (x, y, r)
@@ -220,11 +221,21 @@ export class HeroController {
     }
   }
 
-  /** BUGFIX P11: furthest distance ≤ dist along dir (from the current position) that is still land, in 0.05 u steps. No isLand dep → dist. */
+  /** S41/15E: can Pip stand at (x,z)? land AND not inside a solid prop. (vx,vz) = travel direction → the solid test also looks
+   *  SOLID_MARGIN ahead so the body (radius ≈ .3) stops at the prop's face instead of its centre line. No deps → always free. */
+  free(x, z, vx = 0, vz = 0) {
+    const d = this.deps || {}; if (d.isLand && !d.isLand(x, z)) return false;
+    const solid = d.isSolid; if (!solid) return true;
+    if (solid(x, z)) return false;
+    const l = Math.hypot(vx, vz); if (l < 1e-6) return true;
+    return !solid(x + vx / l * SOLID_MARGIN, z + vz / l * SOLID_MARGIN);
+  }
+
+  /** BUGFIX P11: furthest distance ≤ dist along dir (from the current position) that is still land (S41/15E: and not solid), in 0.05 u steps. No isLand dep → dist. */
   landReach(dir, dist, step = 0.05) {
-    const isLand = this.deps && this.deps.isLand; if (!isLand) return dist;
+    const d0 = this.deps || {}; if (!d0.isLand && !d0.isSolid) return dist;
     const o = this.root.position; let ok = 0, m = 0.04;   // BUGFIX P20: margin keeps the reach off the exact cell edge
-    for (let d = step; d <= dist + 1e-6; d += step) { if (!isLand(o.x + dir.x * d, o.z + dir.z * d) || !isLand(o.x + dir.x * (d + m), o.z + dir.z * (d + m))) break; ok = d; }
+    for (let d = step; d <= dist + 1e-6; d += step) { if (!this.free(o.x + dir.x * d, o.z + dir.z * d) || !this.free(o.x + dir.x * (d + m), o.z + dir.z * (d + m))) break; ok = d; }
     return Math.min(ok, dist);
   }
 
@@ -233,7 +244,7 @@ export class HeroController {
    * position directly), pull it back onto the nearest land cell so walking works again. Returns true when a correction was made.
    */
   recoverToLand() {
-    const isLand = this.deps && this.deps.isLand; if (!isLand) return false;
+    const d0 = this.deps || {}; if (!d0.isLand && !d0.isSolid) return false; const isLand = (x, z) => this.free(x, z);   // S41/15E: "land" = standable (not inside a prop either)
     const o = this.root.position; if (isLand(o.x, o.z)) return false;
     const cx = Math.round(o.x), cz = Math.round(o.z); let best = null, bd = Infinity;
     for (let r = 1; r <= 3 && !best; r++) {
@@ -280,7 +291,13 @@ export class HeroController {
       this.vel.x = damp(this.vel.x, _dir.x * targetSpeed, 14, dt);
       this.vel.z = damp(this.vel.z, _dir.z * targetSpeed, 14, dt);
       const nx = this.root.position.x + this.vel.x * dt, nz = this.root.position.z + this.vel.z * dt;
-      if (!this.deps.isLand || this.deps.isLand(nx, nz)) { this.root.position.x = nx; this.root.position.z = nz; }
+      // S41/15E: props are SOLID now (deps.isSolid = BuildSystem.occupied → stalls, decor, trees, plaza scenery) — Pip used to walk
+      //   straight through stalls. Blocked diagonally → slide along the wall (x-only, then z-only) instead of stopping dead.
+      const px = this.root.position.x, pz = this.root.position.z;
+      if (!this.free(px, pz)) this.recoverToLand();                                  // a stall was built on top of us (or an old save) → step out
+      else if (this.free(nx, nz, this.vel.x, this.vel.z)) { this.root.position.x = nx; this.root.position.z = nz; }
+      else if (this.free(nx, pz, this.vel.x, 0)) { this.root.position.x = nx; this.vel.z = 0; }
+      else if (this.free(px, nz, 0, this.vel.z)) { this.root.position.z = nz; this.vel.x = 0; }
       else { this.vel.set(0, 0, 0); }
 
       const sp = Math.hypot(this.vel.x, this.vel.z);

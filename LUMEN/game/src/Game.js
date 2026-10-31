@@ -74,7 +74,8 @@ export function createSandbox(game, opts = {}) {
   // S16: sword targets = Glimmers + live enemies (knockback / defeat). S32: every target is KNOCKED BACK (CreatureAnimator.hit slides the
   //   root; enemies keep ENEMY_RULES.knockback) and hired helpers are targets too (they slide, grumble and walk back to their stall).
   sb.hero = new HeroController(game, { vfx: sb.vfx, targets: () => sb.cust.active.filter((c) => c.state !== 'pooled' && c.state !== 'despawn').map((c) => ({ root: c.root, hit: (d, p) => c.anim?.hit?.(d, p) }))
-    .concat(sb.enemies ? sb.enemies.targets() : [], helperTargets(sb)), isLand: (x, z) => sb.island.isLand(x, z) });
+    .concat(sb.enemies ? sb.enemies.targets() : [], helperTargets(sb)), isLand: (x, z) => sb.island.isLand(x, z),
+    isSolid: (x, z) => { const o = sb.build?.occupied?.(x, z); return !!o && !o.ghost && !o.lifted; } });   // S41/15E: every occupied cell (stall / decor / nature / plaza scenery) blocks Pip — customers already route around them
   sb.hero.root.position.set(0, 0, 1);
   // S16: Debt Collectors (+ Baron Gilt boss from S6). Transient — spawned by the scheduler at day 0.7, cleared at season end / win / lose.
   sb.enemies = new EnemySystem(game, { hero: sb.hero, eco: sb.eco, island: sb.island, vfx: sb.vfx, headless, occupied: (x, z) => sb.build?.occupied?.(x, z) || null,   // S34 / P73: enemies + shoves respect stall footprints
