@@ -24,7 +24,9 @@
 .ll-card-cost { font-size: 11px; font-weight: 900; color: #7a4a00; background: var(--gold); border: 2px solid var(--ink); border-radius: 999px; padding: 0 7px; }
 .ll-card-cost.free { background: var(--grass); color: var(--ink); }
 .ll-card-fp { position: absolute; top: 3px; right: 4px; font-size: 8px; font-weight: 800; opacity: .55; }
-.ll-card.poor { opacity: .6; } .ll-card.poor .ll-card-cost { background: #ffcdd2; color: #b71c1c; }
+.ll-card.poor { opacity: .75; filter: grayscale(.55); background: #f3eee6; } .ll-card.poor .ll-card-icon { opacity: .55; }
+.ll-card.poor .ll-card-cost { background: #ffcdd2; color: #b71c1c; font-size: 9.5px; padding: 0 5px; white-space: nowrap; } /* S41/15C: "🔒 need N more" */
+.ll-card.poor:not(.locked)::after { content: '🔒'; position: absolute; right: 3px; top: 2px; font-size: 11px; line-height: 1; filter: none; }
 .ll-card.locked { opacity: .5; filter: grayscale(.8); cursor: not-allowed; }
 .ll-card.locked::after { content: var(--ll-ico-lock); line-height: 0; position: absolute; left: 4px; top: 2px; font-size: 11px; }
 .ll-card.locked .ll-card-cost::before { content: ''; }
