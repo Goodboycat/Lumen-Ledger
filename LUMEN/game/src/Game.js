@@ -467,7 +467,8 @@ function reseatHelpers(sb) {
 //   eco:win / eco:lose     → ending (8B finale lines) → story:finale → endless | title
 //   ui:pause {on, by}      pause reasons are OR-ed (menu ∨ dialogue ∨ ledger ∨ title) into game.paused — the only place that touches it.
 // Nothing here edits a system; it only constructs, routes and owns `lg.state`.
-export const GAME_VERSION = 'S40';   // S40 (2026-10-28): low-fps protection removed (no DPR/quality auto-demotion), quality locked to Settings, AudioContext resume watchdog. Game_Bible S40.md in LUMEN_extras/
+export const GAME_VERSION = 'S41';   // S41 (2026-10-31): playtest-readability pass 15-0…15F — no fps/calls HUD pill, progressive HUD reveal, one text channel, unaffordable build cards, Collector wave banner + edge arrows, solid props, debt-clarity toasts. Game_Bible S41.md in LUMEN_extras/
+// S40:   // S40 (2026-10-28): low-fps protection removed (no DPR/quality auto-demotion), quality locked to Settings, AudioContext resume watchdog. Game_Bible S40.md in LUMEN_extras/
 export const GAME_STATES = ['title', 'playing', 'review', 'ending', 'endless'];
 export const ABILITY_KEYS = { KeyQ: 'coinMagnetDash', KeyW: 'bubbleShield', KeyE: 'growthStomp', KeyR: 'ledgerFlash', KeyF: 'haggleShout', KeyG: 'fogSweep' };   // = FINLIT[name].key (3B)
 

@@ -16,6 +16,15 @@ Useful URL flags: `?autoplay` skip the title · `?endless` start in Endless · `
 
 **Controls** — WASD/arrows move · Space/J/Enter hammer/confirm · E/F interact · **B** build menu · Q W E R F G abilities (**tap** W = Bubble Shield, **hold** W = walk; R rotates the ghost while placing) · jars panel: ↩ withdraws half a jar, **PAY BARON** repays debt from the pouch · **T** (or the ⏩ button in the Season pill) cycles time speed 1× → 2× → 3× (resets to 1× on pause, dialogue, season end) · Esc/P pause · Enter/click advances dialogue, 1–4 picks a choice. Touch: left virtual joystick, A / B / 🔨 buttons, ⏸ in the HUD. Full table in `docs/GDD.md §6`.
 
+## Playtest readability pass (S41)
+From the Oct-31 phone playtest (new player, 25 min): **15‑0** the fps·calls pill is gone from the HUD (only `?debug` / F3) · **15A** progressive HUD —
+jars start collapsed on a new game and the widgets reveal in stages (jars → fog → rep → speed → powers) with a toast each, so tutorial skippers still
+meet them (`ui/reveal.js`) · **15B** one text channel — toasts are held while dialogue is open and released 350 ms apart, phones show one toast at a
+time, dialogue is tap‑to‑complete then tap‑to‑continue · **15C** build cards that you cannot afford say so before the tap (🔒 + "need N more" on the
+cost pill, greyed card) · **15D** Collector waves get a red ribbon banner and edge arrows that point at off‑screen enemies (`ui/wave.js`) · **15E**
+stalls, decor and scenery are solid for Pip (wall‑slide, no walking through props) · **15F** debt clarity — the season interest shows as its own toast
+("Debt grew +40 ✦ (20 % interest) → 240 ✦") with a tappable **Pay** action, and a new story game explains the inherited debt once.
+
 ## Knockback (S32)
 Swinging the sword at anything now **shoves it**: Glimmers slide ≈ 0.9 u away, stop steering for 0.35 s, turn to look at Pip, then re-path and
 walk back to their browse / queue slot (sales never break). **Hired helpers** are targets too — they slide off their stool, flash red, grumble
