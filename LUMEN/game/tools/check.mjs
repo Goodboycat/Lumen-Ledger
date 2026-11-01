@@ -1314,6 +1314,36 @@ if (doUI) {
     pause.destroy(); if (pause.el.parentNode) throw new Error('destroy'); localStorage.removeItem('t.settings'); document.body.classList.remove('ll-reduce-motion');
     console.log(`  pause: normalize/load/save pure (clamp, broken JSON → defaults) · Esc → ui:pause{on,menu} · RESUME → off · SETTINGS expand · quality high → ui:settings + localStorage · outline 0.06 → onOutline "thick" · reduce motion body class · no emit on unchanged · RESTART/TITLE double-tap → ui:restart / ui:title · ui:title:open force-close · ui:pause:request · canOpen · destroy (${ev['ui:settings'].length} ui:settings)  OK`);
   } catch (err) { bad++; console.log('  pause FAIL →', err.message); }
+
+  // S42/16B task 2: ui/nudge.js — "Touch here!" hand on the ⏩ button. Pure timing on the DOM shim: bored predicate true for idleS → show
+  //   (ui:nudge on) · predicate false → hide + timer reset · ui:speed / game:speed>1 / modal open / eco:season hide · cooldown + maxShows cap ·
+  //   game:start resets counts · game:title disarms until game:start. The bubble click emits ui:speed {cycle:true, source:'nudge'}.
+  try {
+    const { mountNudge, NUDGE_DEFAULTS } = await import(pathToFileURL(resolve('ui/nudge.js')).href);
+    const nb = new EventBus(); const nev = []; nb.on('ui:nudge', (p) => nev.push(p)); const sp = []; nb.on('ui:speed', (p) => sp.push(p));
+    const nroot = document.createElement('div'); document.body.appendChild(nroot);
+    const nd = mountNudge(nroot, { bus: nb, idleS: 2, cooldownS: 5, maxShows: 2 });
+    let bored = false; nd.bind({ bored: () => bored });
+    const run = (s) => { for (let i = 0; i < Math.round(s / 0.05); i++) nd.update(0.05); };
+    run(3); if (nd.visible || nev.length) throw new Error('showed while not bored');
+    bored = true; run(1.9); if (nd.visible) throw new Error('showed before idleS'); run(0.2);
+    if (!nd.visible || nev.length !== 1 || !nev[0].on || nev[0].why !== 'bored') throw new Error('did not show after idleS ' + JSON.stringify(nev));
+    bored = false; run(0.05); if (nd.visible || nev.length !== 2 || nev[1].on || nev[1].why !== 'busy') throw new Error('did not hide when busy ' + JSON.stringify(nev));
+    bored = true; run(2.1); if (nd.visible) throw new Error('re-showed inside cooldown');          // cooldown 5 s from the show
+    run(5.2); if (!nd.visible) throw new Error('did not re-show after cooldown');   // 2.9 s cooldown left + 2 s idle if (nd.shows !== 2) throw new Error('shows ' + nd.shows);
+    nb.emit('ui:speed', { cycle: true }); if (nd.visible) throw new Error('ui:speed did not hide');
+    run(10); if (nd.visible) throw new Error('maxShows cap ignored (shows ' + nd.shows + ')');
+    nb.emit('game:start', { mode: 'story' }); if (nd.shows !== 0) throw new Error('game:start did not reset');
+    run(2.1); if (!nd.visible) throw new Error('no show after reset');
+    nb.emit('eco:season', {}); if (nd.visible) throw new Error('eco:season did not hide');
+    run(7.5); if (!nd.visible) throw new Error('no show after season cooldown'); nb.emit('game:speed', { speed: 2 }); if (nd.visible) throw new Error('game:speed 2 did not hide');
+    nb.emit('ui:ledger:open', {}); run(6); nd.show(); nb.emit('ui:ledger:open', {}); if (nd.visible) throw new Error('modal did not hide');
+    nb.emit('game:title', {}); bored = true; run(5); if (nd.visible) throw new Error('showed on the title (disarmed)');
+    nb.emit('game:start', {}); run(2.1); if (!nd.visible) throw new Error('did not re-arm on game:start');
+    const bub = nroot.querySelector('.ll-nudge-bubble'); if (bub && bub.click) { bub.click(); if (!sp.length || sp[sp.length - 1].source !== 'nudge') throw new Error('bubble click did not emit ui:speed cycle'); if (nd.visible) throw new Error('bubble click did not hide'); }
+    nd.destroy(); if (NUDGE_DEFAULTS.idleS !== 7 || NUDGE_DEFAULTS.maxShows !== 3) throw new Error('defaults changed');
+    console.log(`  nudge (S42): bored ${2}s → show · busy → hide · cooldown + maxShows cap · ui:speed / game:speed / modal / eco:season hide · game:title disarms, game:start re-arms · bubble click → ui:speed{cycle}  OK`);
+  } catch (err) { bad++; console.log('  nudge FAIL →', err.message); }
 }
 
 if (doEnemies) {
