@@ -37,3 +37,6 @@ LUMEN/game/tools/node_modules/
 LUMEN_extras/game/tools/node_modules/
 qa_run2/node_modules
 recordings/
+
+# itch build artefact (rebuild: bash LUMEN/game/tools/itch_zip.sh)
+lumen-ledger-web.zip
