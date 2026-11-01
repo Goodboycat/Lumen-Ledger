@@ -78,6 +78,7 @@ WIP always · an unreachable budget is a measurement → record, loosen to measu
 ## Next (sequential from here)
 17Z 17A 17B 17C 17D 17E (phase 17 World v3 skeleton — prompts in `game/docs/prompts/17*.md`, written by 17Z on 2026-11-01) · 18Z … (MASTER_PLAN_V5 §1) · 13B trailer · 14 Flutter APK.
 
+| 16B | Sword combo + lock-on (S43): `src/combat/Combat.js` 3-hit combo (buffer + recovery cancel), soft lock-on, `installCombat`, `check.mjs --combat`; P2/P3 (heroAnims slash2/3/parry, touch hold/dash, demo_combat) carried | game/src/combat/Combat.js, src/entities/HeroController.js, src/Game.js, tools/check.mjs, docs/HANDOFF_16B.md | ✅ (P1) |
 | 17Z | Plan phase 17: HANDOFF_17Z + 5 prompts (17A Regions.js gates/load/unload/return paths · 17B hub region + gate posts · 17C puzzle base · 17D Map.js data · 17E installRegions wiring + demo_world3 + world3 playtest slice) — docs only, no code | game/docs/HANDOFF_17Z.md, game/docs/prompts/17A–17E | ✅ |
 
 ## Test

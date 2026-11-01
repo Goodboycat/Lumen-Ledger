@@ -16,6 +16,15 @@ Useful URL flags: `?autoplay` skip the title · `?endless` start in Endless · `
 
 **Controls** — WASD/arrows move · Space/J/Enter hammer/confirm · E/F interact · **B** build menu · Q W E R F G abilities (**tap** W = Bubble Shield, **hold** W = walk; R rotates the ghost while placing) · jars panel: ↩ withdraws half a jar, **PAY BARON** repays debt from the pouch · **T** (or the ⏩ button in the Season pill) cycles time speed 1× → 2× → 3× (resets to 1× on pause, dialogue, season end) · Esc/P pause · Enter/click advances dialogue, 1–4 picks a choice. Touch: left virtual joystick, A / B / 🔨 buttons, ⏸ in the HUD. Full table in `docs/GDD.md §6`.
 
+## Sword combo + lock-on (S43)
+**16B P1** — `src/combat/Combat.js` is the new hero ↔ enemy resolver. Pressing attack three times chains **slash1** (forehand, 120/90/260 ms) →
+**slash2** (backhand, 100/90/240) → **slash3** (360° spin, 180/140/420, power 2, double knockback, bigger hit‑stop). A press during the swing is
+**buffered** and fires when recovery starts; a press in the first 350 ms of recovery **cancels** into the next step; letting recovery run out resets
+the combo. Soft **lock‑on**: the nearest enemy within 5 u and ±70° of the stick (or Pip's facing) becomes the target — Pip strafes while walking and
+every strike auto‑aims at it. Hits: `t.hit(dir, power)` once per step, in‑world sparks + 'POW!' + slash ribbon, **no ScreenFlash**; Glimmers only
+wobble (`cust:bonked`), never take damage. Bus: `combat:hit / miss / combo / lock`. `installCombat(sb, game)` in `Game.js`; `HeroController.doAttack`
+routes to it. Gate: `node tools/check.mjs --combat`.
+
 ## Readability pass 2 + sword fix (S42)
 From the second phone playtest: **16A** a Collector hugging Pip (< 0.9 u) is hit by the sword regardless of angle (the cone is measured from Pip's
 pre‑lunge position, no NaN lunge on a zero‑distance target) · **16B** the HUD **Debt‑Fog bar is gone** — the purple fog on the island itself is the
