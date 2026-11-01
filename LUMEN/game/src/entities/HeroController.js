@@ -367,7 +367,7 @@ export class HeroController {
     if (this.state === 'attack') {
       // spring layered on top of attack squash (follow-through settle)
       const s = this.spring.update(dt);
-      if (this.attack.currentName === 'follow' || this.attack.currentName === 'recovery') p.body.scale.y += s * 0.6;
+      if (this.attack.currentName === 'follow' || this.attack.currentName === 'recovery') p.body.scale.y = Math.min(2.5, Math.max(0.3, p.body.scale.y + s * 0.6)); // S44: clamped (spring is bounded now, belt + braces)
       p.body.position.y = damp(p.body.position.y, 0, 14, dt);
       p.body.rotation.x = damp(p.body.rotation.x, 0, 14, dt); p.body.rotation.z = damp(p.body.rotation.z, 0, 14, dt);
       p.legL.rotation.x = damp(p.legL.rotation.x, 0.3, 12, dt); p.legR.rotation.x = damp(p.legR.rotation.x, -0.3, 12, dt);
