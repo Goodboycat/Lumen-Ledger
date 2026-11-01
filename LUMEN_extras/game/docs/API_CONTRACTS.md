@@ -192,3 +192,11 @@ coinBurst, coinFly(from,to,onArrive), confetti, sparkTrail, fogShader(fog01), sa
 ### Audio (Chat 12) — `src/core/Audio.js`
 `Audio.load(manifest)`, `Audio.play(id,{vol,pitch})`, `Audio.music(id)`, listens to bus events and maps them to SFX.
 ### Save (Chat 10) — `src/systems/save.js` localStorage, versioned.
+
+### Regions (17A) — `src/world/regions/Regions.js` PURE JS (0 meshes) · data `data/regions.json`
+- `createRegions({ scene, island, bus, flags:()=>Object, data }) → R` · `R.list: Region[]` · `R.current` (id|null) · `R.at(x,z) → id|null` · `R.isLand(x,z)` (hub island ∪ registered region grounds)
+- `R.register(id, { group, isLand(x,z), anchors:{enter, pier, campfire}, returnPath:{from, to, unlocked} })` — biome IDs call this; hub = 17B. Unregistered = sealed (`tryEnter` → 'noregion', `isLand` false).
+- `R.gates: Gate[]` ({id:'from>to', from, to, need, pos:{x,z}, open}) · `R.canOpen(gate) = hasFlag(flags(), need)` · `R.tryEnter(gateId) → 'open'|'locked'|'noregion'` · `R.hintFor(gate) → string`
+- `R.update(dt, heroPos)` — 1-frame debounce, swaps `group.visible`, sets `userData.animators[].paused`, fires events · `R.useReturn(id, heroPos)` / `R.unlockReturn(id)` · `R.nearestPier(x,z)` · `R.destroy()`
+- bus: `region:enter {id, from}` · `region:gate {id, state:'locked'|'open', need}` · `region:load {id}` · `region:unload {id}` · `region:return {id, to}`
+- `hasFlag(flags, need)` pure: need = `{power?, mission?, keys?, rep?}` — every present key must hold (flags = `{powers:Set, missions:Set, keys, rep}`; powers: sparkTether electricOrb bubbleWalk lumenLantern heatStomp)
