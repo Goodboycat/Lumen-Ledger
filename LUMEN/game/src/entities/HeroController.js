@@ -274,6 +274,7 @@ export class HeroController {
 
   /** Trigger attack (from input). Returns true if started. */
   doAttack() {
+    if (this.combat) return this.combat.attack();             // S43/16B: 3-hit combo + lock-on live in src/combat/Combat.js (installCombat)
     if (this.state === 'attack' && !this.attack.canCancel) return false;
     if (this.state !== 'attack') this.recoverToLand();      // BUGFIX P21: never start a swing from a water coordinate
     this.state = 'attack';
@@ -287,6 +288,7 @@ export class HeroController {
     const inp = this.game.input, p = this.p, ov = this.inputOverride;
     if (this.state !== 'attack') this.recoverToLand();     // BUGFIX P11/P21: runs BEFORE the attack press so mashing ⚔ on a shore edge cannot skip it
     if (!ov && inp.pressed('attack')) this.doAttack();
+    this.combat?.update(dt);                                   // S43/16B: buffered combo chaining + soft lock-on refresh
 
     if (this.state === 'attack') {
       // allow steering input to be buffered as facing only
@@ -311,9 +313,11 @@ export class HeroController {
       else { this.vel.set(0, 0, 0); }
 
       const sp = Math.hypot(this.vel.x, this.vel.z);
+      const lockT = this.combat?.target?.root;                 // S43/16B: locked on → strafe (face the enemy while walking)
+      if (lockT) { _dir.copy(lockT.position).sub(this.root.position).setY(0); if (_dir.lengthSq() > 1e-4) { this.facing = dampAngle(this.facing, Math.atan2(_dir.x, _dir.z), 12, dt); this.root.rotation.y = this.facing; } }
       if (sp > 0.3) {
         const yaw = Math.atan2(this.vel.x, this.vel.z);
-        this.facing = dampAngle(this.facing, yaw, 16, dt);
+        if (!lockT) this.facing = dampAngle(this.facing, yaw, 16, dt);
         this.root.rotation.y = this.facing;
         if (!this.moving) { this.moving = true; }
         const prev = this.walkPhase;

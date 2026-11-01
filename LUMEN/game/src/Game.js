@@ -13,6 +13,7 @@ import { VFX } from './vfx/VFX.js';
 import { installPack1 } from './vfx/pack1.js';
 import { installPack2 } from './vfx/pack2.js';
 import { HeroController } from './entities/HeroController.js';
+import { installCombat } from './combat/Combat.js';
 import { attachMoves } from './anim/heroAnims.js';
 import { attachAbilities, ABILITY_NAMES, FINLIT } from './anim/heroAbilities.js';
 import { PROP_CATALOG, makeProp, STALL_TYPES, JAR_IDS, swayAll, swayDecor, updateLandmarks, makeFlowerField, makeGrassTufts } from './assets/props.js';
@@ -85,6 +86,7 @@ export function createSandbox(game, opts = {}) {
   // S17: storm weather look (sky/fog slate, dim lights, wind ×3, streaks, DOM rain). Scheduler: warn at day 0.30 when the pre-rolled event is a storm, hit at 0.45, clear 3 s later.
   sb.storm = new StormWeather(game, { lights: game.lights, container: game.container, headless, reduceMotion: () => !!sb.reduceMotion });
   attachMoves(sb.hero); attachAbilities(sb.hero);
+  installCombat(sb, game);                                       // S43/16B: 3-hit sword combo + soft lock-on (hero.doAttack → combat.attack)
   game.followTarget = sb.hero.root.position;
   if (game.camera?.snapTo) { game.camera.zoom = 1.25; game.camera.snapTo(sb.hero.root.position); }
 
