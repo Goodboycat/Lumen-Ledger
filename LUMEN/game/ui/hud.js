@@ -50,7 +50,9 @@ export function mountHUD(root, opts = {}) {
   const speedBtn = el('button', 'll-speed', '⏩'); speedBtn.type = 'button'; speedBtn.title = 'Time speed (T): 1× → 2× → 3×'; speedBtn.setAttribute('aria-label', 'Time speed');
   speedBtn.addEventListener('click', (e) => { e.stopPropagation && e.stopPropagation(); bus.emit('ui:speed', { cycle: true, source: 'hud' }); });
   season.append(seasonTxt, day, speedBtn);
-  const fog = el('div', 'll-fog');
+  // S42/16B: the Debt-Fog BAR is no longer shown (the purple fog on the island IS the indicator). The element stays mounted (hidden by
+  //   hud.css `.ll-fog { display:none }`) so hud.setFog / the eco:fog wiring / the --ui gate keep working; nothing else reads it.
+  const fog = el('div', 'll-fog'); fog.setAttribute('aria-hidden', 'true');
   const fogTrack = el('div', 'll-fog-track'); const fogFill = el('div', 'll-fog-fill'); fogTrack.append(fogFill);
   const fogPct = el('span', 'll-fog-pct', '35%');
   fog.append(el('span', 'll-fog-label', 'DEBT FOG'), fogTrack, fogPct);

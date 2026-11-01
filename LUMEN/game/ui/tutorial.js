@@ -8,7 +8,7 @@
 //   • Opens by itself on the FIRST new game (ui:start story/endless → game:start) unless localStorage says it was finished/skipped.
 //     Also opens on `ui:tutorial` (the pause menu's 📖 TUTORIAL button) — replay any time.
 //   • 11 steps; a cartoon hand 👆 bobs next to the part of the screen it explains: joystick · ⚔ attack · ✋ interact · 🔨 Build ·
-//     🚀 Deploy / ⬆ Upgrade · the 4 FinLit jars · the Debt Fog bar · the Season pill · ⏸ pause button. On desktop (no touch pad)
+//     🚀 Deploy / ⬆ Upgrade · the 4 FinLit jars · the Debt Fog (on the island, S42) · the Season pill · ⏸ pause button. On desktop (no touch pad)
 //     the joystick / attack / interact steps point at keycap chips (WASD · Space · E) drawn by the tutorial itself.
 //   • INPUT LOCK while open: four dark shade panels surround a "hole" over the target, so the ONLY things that can be touched are
 //     the spot under the hand and the tutorial's own dialogue card (Next / Back / Skip). Look-only steps put a transparent cover in
@@ -51,8 +51,9 @@ export const TUTORIAL_STEPS = [
     text: 'Pick a card, then <b>🚀 Deploy</b> places a new stall on the ground, and <b>⬆ Upgrade</b> levels up the one you already have — bigger stall, more Spark.' },
   { id: 'jars',     title: '🫙 The 4 money jars', target: '#ll-jars', mode: 'act',
     text: 'Split your Spark: <b>Spend</b>, <b>Save</b>, <b>Invest</b> and <b>Protect</b>. Drag a jar and the others rebalance, then tap <b>APPLY</b> to move real Spark from your pouch into the jars. Try it — or tap <b>Next</b> to keep your Spark for now.' },
-  { id: 'fog',      title: '🌫 Debt Fog', target: '.ll-hud .ll-fog', mode: 'look',
-    text: 'This bar is the <b>Debt Fog</b>. Borrowing and bad deals make it grow; saving and smart choices push it back. At 100 % the island is lost!' },
+  // S42/16B: the HUD fog bar is gone — the step now talks about the purple fog on the island itself (no target → centred card)
+  { id: 'fog',      title: '🌫 Debt Fog', mode: 'look',
+    text: 'See the <b>purple fog</b> creeping over the shore? That is the <b>Debt Fog</b>. Borrowing and bad deals make it roll inland; saving and paying the Baron push it back. If it swallows the island, it is lost!' },
   { id: 'season',   title: '📅 Season', target: '.ll-hud .ll-season', mode: 'look',
     text: 'Each <b>Season</b> is one market day with one money lesson. When the day bar fills you get your Ledger and stars. Tap this pill any time to read the lesson.' },
   { id: 'pause',    title: '⏸ Pause', target: '.ll-pause-fab', keys: 'Esc', mode: 'look',

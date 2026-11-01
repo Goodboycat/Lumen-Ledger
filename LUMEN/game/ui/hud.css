@@ -26,6 +26,8 @@
 .ll-season .ll-speed:active { transform: translateY(2px); box-shadow: none; }
 .ll-season .ll-speed.on { background: var(--blue); color: #fff; }
 .ll-season .ll-speed.pop { animation: ll-pulse .3s cubic-bezier(.34,1.56,.64,1); }
+/* S42/16B: the Debt-Fog bar is HIDDEN — the fog on the island is the indicator. The node stays (hud.setFog / gates). */
+.ll-fog { display: none !important; }
 .ll-fog { width: 100%; background: var(--paper); border: 3px solid var(--ink); border-radius: 999px; padding: 3px 4px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 6px; }
 .ll-fog-label { font-size: 10px; font-weight: 900; color: var(--fog); padding-left: 6px; letter-spacing: .5px; white-space: nowrap; }
 .ll-fog-track { flex: 1; height: 12px; border: 2px solid var(--ink); border-radius: 8px; background: #fff; overflow: hidden; position: relative; }
@@ -72,6 +74,9 @@
 .ll-spark-pay:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 0 0 var(--ink); }
 .ll-spark-pay:disabled { opacity: .45; cursor: default; }
 
+/* S42/16B: season pill only — lesson tag + ⓘ badge removed from under the pill (nobody reads it; the pill is still tappable) */
+.ll-season-tag { display: none !important; }
+.ll-season .ll-season-info { display: none; }
 /* S41/15A progressive HUD: staged widgets are hidden until the reveal controller shows them (ui/reveal.js) */
 .ll-staged { display: none !important; }
 .ll-reveal-in { animation: ll-reveal-in .6s cubic-bezier(.34,1.56,.64,1); }

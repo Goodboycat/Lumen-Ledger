@@ -83,7 +83,7 @@ export function mountSeasonInfo(root, opts = {}) {
           <li>💰 During the day: build stalls, sell to Glimmers, pick up tips, and split your Spark into the four jars.</li>
           <li>📒 When the bar is full the season ends: the <b>Ledger</b> shows income, interest earned / paid, upkeep, and gives you up to ★★★.</li>
           <li>🌫️ Every season Baron Gilt's debt grows by 20 % interest, Save pays you 5 %, Invest moves 8 ± 4 %. Events and too-good deals pop up.</li>
-          <li>🗼 <b>To win:</b> get through ${seasonsToWin} seasons and push the Debt Fog bar down to 0 %. If the fog fills the island, you lose.</li>
+          <li>🗼 <b>To win:</b> get through ${seasonsToWin} seasons and push the purple Debt Fog back off the shore (pay the Baron, keep saving). If the fog swallows the island, you lose.</li>
           <li>📘 Each season teaches one money lesson (below). The tip tells you what to try this season.</li>
         </ul>
         <h3>The ${seasonsToWin} lessons</h3>

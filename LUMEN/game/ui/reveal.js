@@ -11,7 +11,7 @@
 //   • Skippers (Skip pressed before the jar step, or ?notutorial on a first run): the widgets appear ONE AT A TIME, each with a
 //     one-line toast, on the moment it first matters — or after a fallback delay so nothing stays hidden for long:
 //       jars   → first sale (cust:paid)               fallback 20 s
-//       fog    → first fog rise (eco:fog delta>0)     fallback 35 s (or any eco:loan)
+//       (fog bar removed in S42 — the island fog itself is the indicator)
 //       rep    → 3rd sale                              fallback 50 s
 //       speed  → 60 s of play (waiting for customers)  (or an eco:season report)
 //       powers → first ⚔ attack / 75 s                 (touch strip only; desktop keys always work)
@@ -20,11 +20,11 @@
 
 import { bus as defaultBus } from '../src/core/EventBus.js';
 
-export const REVEAL_ORDER = ['jars', 'fog', 'rep', 'speed', 'powers'];
-export const REVEAL_FALLBACK_S = { jars: 20, fog: 35, rep: 50, speed: 60, powers: 75 };
+// S42/16B: 'fog' dropped — the HUD Debt-Fog bar is hidden (the purple fog on the island is the indicator). reveal('fog') is a no-op.
+export const REVEAL_ORDER = ['jars', 'rep', 'speed', 'powers'];
+export const REVEAL_FALLBACK_S = { jars: 20, rep: 50, speed: 60, powers: 75 };
 const TOAST = {
   jars:   { text: '🫙 Money jars unlocked — tap the jar header to split your Spark into Spend · Save · Invest · Protect.', icon: '🫙' },
-  fog:    { text: '🌫 Debt Fog bar — debt and bad deals make it grow. At 100 % the island is lost; paying the Baron lifts it.', icon: '🌫' },
   rep:    { text: '★ Reputation — happy Glimmers raise it, fair prices keep it. More stars = more customers.', icon: '★' },
   speed:  { text: '⏩ Waiting for customers? Tap ⏩ (or T) to speed up time: 1× → 2× → 3×.', icon: '⏩' },
   powers: { text: '✨ FinLit powers unlocked — the chips above the buttons: Magnet · Shield · Grow · Flash · Haggle · Sweep.', icon: '✨' },
