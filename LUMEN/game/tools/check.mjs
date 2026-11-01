@@ -15,6 +15,7 @@
 // Works with no Playwright, no Chromium, no GPU. Three.js r160 runs in Node for geometry/materials.
 // Use this after EVERY file you write. Use tools/smoke.mjs (browser) only once at the end.
 import { readdirSync, statSync } from 'node:fs';
+import * as fs from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -44,6 +45,7 @@ const doFirstPlayer = args.includes('--firstplayer'); // S37 tools/gates/firstpl
 const doIcons = args.includes('--icons');          // icons: ui/icons.js procedural set covers every emoji in src/ ui/ data/ index.html; SVG is strict-XML clean; ui/icons/*.png baked + manifest in sync
 const doAudio = args.includes('--audio');          // 12 src/core/Audio.js headless (no AudioContext → inert): manifest ids ↔ DEFAULT_EVENTS, bus walk counts, cooldown, duck, unknown id, destroy
 const doEnemies = args.includes('--enemies');      // S16 src/systems/enemies.js: Collector waves (size = season ≤ 5), contact −1 ✦ pouch only, Bubble Shield blocks, 2 sword hits → flee + 1 ✦ coin, Baron boss S6+ with powers, season end clears
+const doCombat = args.includes('--combat');        // S43/16B src/combat/Combat.js: 3-hit combo (buffer in strike, cancel in recovery) → combat:combo {3}, blob at 1.2 u takes 3 hits → down, lock-on ≤5 u/70°, Glimmers only bonked, no ScreenFlash in the combo path
 const doStorm = args.includes('--storm');          // S17 src/vfx/storm.js: StormWeather headless — warn at day 0.30 (target 0.45), hit at 0.45 (→1, sky/fog/lights/wind gain ×3), auto-clear 4 s later, season end clears, shield absorb clears, dispose restores
 const doCine = args.includes('--cinematics');    // S18 src/vfx/cinematics.js: CinematicDirector headless through createLumenGame — title showcase orbit (sandbox reused by PLAY), arrival walk-in (inputOverride, story held, tutorial waits for cine:end), SKIP, victory lighthouse (lamp lit by the shot, ending lines held), reduceMotion cut, ?nocine off
 const doWorld = args.includes('--world');          // 10A integrated world: bakeStatic batches + Island v2 + every content pack placed headless (mirrors demo_world.html), counts meshes ≤ budget              // 9A/9B VFX packs: installPack1/installPack2 on a mock VFX+scene, fire every effect, step headless, check pools drain, 0 NaN, draw calls
@@ -1893,6 +1895,65 @@ if (doSave) {
       console.log(`  5. S25 ENDLESS hidden on a fresh title → forced story win → lumen.unlocks{endless} → button shown · persists after save clear → ENDLESS starts  OK`); }
     if (TUTORIAL_GATES.length !== 5) throw new Error('TUTORIAL_GATES');
   } catch (err) { bad++; console.log('  save FAIL →', err.message, process.env.STACK ? err.stack : ''); }
+}
+if (doCombat) {
+  // S43/16B: headless sandbox (same harness as --enemies). Spawn a S3 wave, park two Collectors far away, give #0 hp 3 and stand it 1.2 u in
+  // front of Pip. Three presses — (1) idle, (2) during slash1's strike (buffered → chains when recovery starts), (3) during slash2's recovery
+  // (cancel) — must reach combo 3, land 3 hits and defeat the blob. Then: lock-on picks the enemy inside 5 u / 70° and drops it outside; a
+  // Glimmer in the arc is only `cust:bonked` (never enemy:hit); a press after slash3 is ignored until it ends; combo resets to 0 at the end.
+  try {
+    const THREE = await import(pathToFileURL(resolve('vendor/three.module.js')).href);
+    const { SequencePlayer, HitStop } = await import(pathToFileURL(resolve('src/anim/Sequencer.js')).href);
+    const { EventBus } = await import(pathToFileURL(resolve('src/core/EventBus.js')).href);
+    const { tweens } = await import(pathToFileURL(resolve('src/anim/Tween.js')).href);
+    const { createSandbox } = await import(pathToFileURL(resolve('src/Game.js')).href);
+    const { COMBO_STEPS, BUFFER_MS, LOCK_RANGE } = await import(pathToFileURL(resolve('src/combat/Combat.js')).href);
+    console.log('\nCOMBAT (16B / S43):');
+    const bus = new EventBus(); const ev = {}; for (const n of ['enemy:hit', 'enemy:defeated', 'combat:hit', 'combat:miss', 'combat:combo', 'combat:lock', 'cust:bonked']) bus.on(n, (p) => { (ev[n] ??= []).push(p); });
+    const game = { scene: new THREE.Scene(), bus, sequences: new SequencePlayer(), tweens, hitStop: new HitStop(), input: { pointerWorld: new THREE.Vector3(), hasPointerWorld: false, move: new THREE.Vector2(), actions: {}, pressed: () => false }, camera: { zoom: 1, shake() {} }, time: 0, timeScale: 1, followTarget: null, systems: [], add(s) { this.systems.push(s); return s; }, hitstop() {} };
+    const sb = createSandbox(game, { headless: true, seasonSeconds: 30, seed: 3 });
+    const H = sb.hero, C = H.combat, E = sb.enemies; if (!C || sb.combat !== C) throw new Error('installCombat did not attach hero.combat / sb.combat');
+    if (COMBO_STEPS.length !== 3 || COMBO_STEPS[2].power !== 2) throw new Error('COMBO_STEPS table changed');
+    let flashed = 0; H.deps.vfx = { dust: { burst() {}, ring() {} }, sparks: { burst() {} }, pop: { show() {} }, slash: { fire() {}, track() {}, release() {} }, flash: { flash() { flashed++; } } };
+    const dt = 1 / 60, step = () => { game.time += dt; game.sequences.update(dt); H.update(dt); }; const n = (k) => (ev[k] || []).length;
+    E.spawnWave(3); if (E.list.length !== 3) throw new Error('S3 wave size ' + E.list.length);
+    const hp = H.root.position, others = E.list.slice(1); for (const o of others) o.g.position.set(hp.x + 40, 0, hp.z + 40);
+    const pb = E.list[0]; const place = (dx, dz) => { pb.state = 'chase'; pb.g.position.set(hp.x + dx, 0, hp.z + dz); pb.knock.set(0, 0, 0); pb.hitAt = 99; };
+    place(0, 1.2); pb.hp = 3; H.facing = 0; H.root.rotation.y = 0; step();
+    // lock-on: in front at 1.2 u → locked
+    if (!C.target || C.target.enemy !== pb) throw new Error('lock-on missed a Collector 1.2 u ahead'); if (n('combat:lock') < 1 || ev['combat:lock'].at(-1).id == null) throw new Error('combat:lock not emitted');
+    // (1) press idle → slash1; (2) press in strike → buffered; chains to slash2 at recovery start
+    if (!H.doAttack()) throw new Error('attack() refused from idle'); if (C.combo !== 1 || H.state !== 'attack') throw new Error('combo should be 1');
+    while (H.attack.currentName !== 'strike') step(); step(); H.doAttack(); if (!C.buffered) throw new Error('press during strike was not buffered');
+    let guard = 0; while (C.step !== 1 && guard++ < 120) step(); if (C.step !== 1) throw new Error('buffered press did not chain into slash2'); if (n('enemy:hit') !== 1) throw new Error('slash1 hit count ' + n('enemy:hit'));
+    // (3) press during slash2 recovery (≤ BUFFER_MS) → cancel into slash3
+    guard = 0; while (!(C.step === 1 && H.attack.currentName === 'recovery') && guard++ < 120) step(); if (guard >= 120) throw new Error('slash2 never reached recovery');
+    place(0, 1.2); if (!H.doAttack() || C.step !== 2 || C.combo !== 3) throw new Error('recovery press did not cancel into slash3 (step ' + C.step + ')');
+    guard = 0; const before3 = n('enemy:hit'); while (C.playing && guard++ < 200) { if (H.attack.currentName === 'anticipation') place(0, 1.2); step(); if (guard === 5 && H.doAttack()) throw new Error('press during slash3 anticipate must be ignored'); }
+    if (JSON.stringify((ev['combat:combo'] || []).map((c) => c.n)) !== '[1,2,3]') throw new Error('combat:combo sequence ' + JSON.stringify(ev['combat:combo']));
+    if (n('enemy:hit') !== before3 + 1 || n('enemy:hit') !== 3) throw new Error('3-press combo landed ' + n('enemy:hit') + ' hits'); if (n('combat:hit') !== 3) throw new Error('combat:hit ' + n('combat:hit'));
+    if (pb.hp !== 0 || pb.state !== 'flee' || n('enemy:defeated') !== 1) throw new Error(`hp 3 blob not down after 3 hits (hp ${pb.hp}, ${pb.state})`);
+    if (C.combo !== 0 || C.step !== -1 || H.state !== 'idle') throw new Error('combo did not reset after slash3'); if (!isFinite(hp.x) || !isFinite(hp.z)) throw new Error('NaN position');
+    if (flashed) throw new Error('ScreenFlash called ' + flashed + '× in the combo path'); if (/flash\.flash\(/.test(fs.readFileSync('src/combat/Combat.js', 'utf8'))) throw new Error('Combat.js references flash.flash');
+    const hc = fs.readFileSync('src/entities/HeroController.js', 'utf8'); if (!/if \(this\.combat\) return this\.combat\.attack\(\)/.test(hc)) throw new Error('HeroController.doAttack does not route to combat');
+    console.log(`  3-press combo → combat:combo [1,2,3], 3 hits, hp-3 blob down · buffer ${BUFFER_MS} ms · no ScreenFlash  OK`);
+    // lock-on geometry: 4 u ahead → locked; 6 u → dropped (null); 4 u behind (facing +z, enemy at −z) → not locked
+    place(0, 4); pb.hp = 2; H.facing = 0; H.root.rotation.y = 0; step(); if (C.target?.enemy !== pb) throw new Error('lock-on missed 4 u ahead');
+    place(0, LOCK_RANGE + 1); step(); if (C.target) throw new Error('lock-on held beyond LOCK_RANGE'); if (ev['combat:lock'].at(-1).id !== null) throw new Error('combat:lock {null} missing on drop');
+    place(0, -4); step(); if (C.target) throw new Error('lock-on grabbed an enemy behind Pip');
+    // stick direction wins over facing: stick UP (screen up = −z world) → the enemy behind is now "ahead"
+    game.input.move.set(0, 1); step(); if (C.target?.enemy !== pb) throw new Error('lock-on ignores stick direction'); game.input.move.set(0, 0);
+    // Glimmer in the arc → cust:bonked only, never enemy:hit; a target is hit once per step
+    pb.g.position.set(hp.x + 40, 0, hp.z + 40); step();
+    const bonks0 = n('cust:bonked'), eh0 = n('enemy:hit'); const fake = { root: new THREE.Object3D(), cust: { id: 'g1' }, hits: 0, hit() { this.hits++; } }; fake.root.position.set(hp.x, 0, hp.z + 1);
+    const savedT = H.deps.targets; H.deps.targets = () => [fake]; H.facing = 0; H.root.rotation.y = 0;
+    H.doAttack(); guard = 0; while (C.playing && guard++ < 100) step(); H.deps.targets = savedT;
+    if (fake.hits !== 1 || n('cust:bonked') !== bonks0 + 1 || n('enemy:hit') !== eh0) throw new Error(`Glimmer bonk wrong (hits ${fake.hits}, bonked +${n('cust:bonked') - bonks0}, enemy:hit +${n('enemy:hit') - eh0})`);
+    // whiff → combat:miss, and the chain still works with no target (no NaN)
+    const miss0 = n('combat:miss'); H.doAttack(); guard = 0; while (C.playing && guard++ < 100) step(); if (n('combat:miss') !== miss0 + 1) throw new Error('combat:miss not emitted on a whiff'); if (!isFinite(hp.x)) throw new Error('NaN after whiff');
+    C.destroy(); if (H.combat || H.attack.name !== 'swordAttack') throw new Error('destroy did not restore the reference swing');
+    console.log(`  lock-on: 4 u ahead ✓ · ${LOCK_RANGE + 1} u dropped ✓ · behind ignored ✓ · stick dir wins ✓ · Glimmer bonked not hurt · whiff → combat:miss · destroy restores  OK`);
+  } catch (err) { bad++; console.log('  combat FAIL →', err.message.split('\n')[0]); }
 }
 if (doStorm) {
   // S17: headless sandbox; force the pre-rolled event to 'storm' and walk the scheduler through warn → hit → clear.
