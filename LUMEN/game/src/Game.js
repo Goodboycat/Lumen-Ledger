@@ -498,6 +498,17 @@ export function createLumenGame(game, opts = {}) {
   };
   lg._offs.push(bus.on('ui:speed', (p) => { if (!lg.sb || (lg.state !== 'playing' && lg.state !== 'endless')) return; const next = p?.cycle ? SPEEDS[(SPEEDS.indexOf(lg.speed) + 1) % SPEEDS.length] : p?.speed; lg.setSpeed(next); }));
   lg._offs.push(bus.on('game:paused', (p) => { if (p?.paused && lg.speed !== 1) lg.setSpeed(1, { silent: true }); }));
+  // ---- S42/16B speed-up nudge: ui.nudge shows a "Touch here!" hand on ⏩ after ~7 s of nothing happening. "Bored" = playing at 1×,
+  //   no Collector chasing, no Glimmer on the island, no pending deal, not in build/placing mode. Game.js owns the predicate; ui/nudge.js the timing.
+  lg.isBored = () => {
+    const sb = lg.sb; if (!sb || (lg.state !== 'playing' && lg.state !== 'endless') || game.paused || lg.speed !== 1) return false;
+    if (sb.eco?.pendingOffer || sb.modalOpen?.()) return false;
+    if (sb.enemies?.active?.length) return false;
+    if (sb.cust?.active?.some((c) => c.state !== 'pooled' && c.state !== 'despawn')) return false;
+    if (ui?.build?.isOpen || ui?.build?.state?.placing || ui?.build?.state?.demolish) return false;
+    return true;
+  };
+  ui?.nudge?.bind?.({ bored: lg.isBored });
   for (const ev of ['eco:season', 'eco:win', 'eco:lose', 'game:title', 'game:state']) lg._offs.push(bus.on(ev, () => { if (lg.speed !== 1) lg.setSpeed(1, { silent: true }); }));
   if (typeof window !== 'undefined') { const onKey = (e) => { if (e.code !== 'KeyT' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return; const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return; if (!lg.sb || game.paused || ui?.isModal?.()) return; bus.emit('ui:speed', { cycle: true, source: 'key' }); }; window.addEventListener('keydown', onKey); lg._offs.push(() => window.removeEventListener('keydown', onKey)); }
   on('ui:pause', (p) => lg.pause(p?.by || 'menu', !!p?.on));
