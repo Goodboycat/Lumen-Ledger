@@ -16,6 +16,14 @@ Useful URL flags: `?autoplay` skip the title · `?endless` start in Endless · `
 
 **Controls** — WASD/arrows move · Space/J/Enter hammer/confirm · E/F interact · **B** build menu · Q W E R F G abilities (**tap** W = Bubble Shield, **hold** W = walk; R rotates the ghost while placing) · jars panel: ↩ withdraws half a jar, **PAY BARON** repays debt from the pouch · **T** (or the ⏩ button in the Season pill) cycles time speed 1× → 2× → 3× (resets to 1× on pause, dialogue, season end) · Esc/P pause · Enter/click advances dialogue, 1–4 picks a choice. Touch: left virtual joystick, A / B / 🔨 buttons, ⏸ in the HUD. Full table in `docs/GDD.md §6`.
 
+## Readability pass 2 + sword fix (S42)
+From the second phone playtest: **16A** a Collector hugging Pip (< 0.9 u) is hit by the sword regardless of angle (the cone is measured from Pip's
+pre‑lunge position, no NaN lunge on a zero‑distance target) · **16B** the HUD **Debt‑Fog bar is gone** — the purple fog on the island itself is the
+meter (tutorial step became a centred card about the island fog; `ui/reveal.js` no longer stages a `fog` widget) and the season lesson tag + ⓘ are
+removed from the Season pill · **16B** a cartoon hand with a **"Touch here!"** bubble appears under the ⏩ button after 7 s of nothing happening
+(1×, no Collectors chasing, no Glimmers on the island, no deal open, not building — `lg.isBored`), at most 3 times per game with a 45 s cooldown;
+tapping the bubble cycles the speed (`ui/nudge.js`). Gate: `node tools/check.mjs --ui` (nudge section).
+
 ## Playtest readability pass (S41)
 From the Oct-31 phone playtest (new player, 25 min): **15‑0** the fps·calls pill is gone from the HUD (only `?debug` / F3) · **15A** progressive HUD —
 jars start collapsed on a new game and the widgets reveal in stages (jars → fog → rep → speed → powers) with a toast each, so tutorial skippers still
