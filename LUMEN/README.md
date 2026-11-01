@@ -17,7 +17,7 @@ LUMEN/
 ## Release pass (S38, 2026-10-27) — version shown in the title menu: `S38`
 Gathers the S35–S37 work: blade-tracking slash ribbon, cottage remodel, dialogue rewrite (150 Spark / 260 debt), drawn icons and faces,
 **drag-to-move bought props** (S36), and **3 customer waves per season** for first-time players (S37). `GAME_VERSION` and `UI_VERSION` are now `S38`.
-Web build: `lumen-ledger-web.zip` (`bash game/tools/itch_zip.sh`). Report: `LUMEN_extras/Game_Bible S38.md`.
+Web build: `lumen-ledger-web.zip` (`bash game/tools/itch_zip.sh`). Report: `LUMEN_extras/Game_Bible S44.md` (latest; S44 = stretched-characters-at-speed-×3 bugfix).
 
 ## Knockback (S32, 2026-10-27) — version shown in the title menu: `S32`
 Every sword target now **really moves**. `CreatureAnimator.hit(dir, power)` (`src/assets/creatures/animator.js`) applies a world-space slide to the
