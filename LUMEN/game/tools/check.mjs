@@ -45,6 +45,7 @@ const doFirstPlayer = args.includes('--firstplayer'); // S37 tools/gates/firstpl
 const doIcons = args.includes('--icons');          // icons: ui/icons.js procedural set covers every emoji in src/ ui/ data/ index.html; SVG is strict-XML clean; ui/icons/*.png baked + manifest in sync
 const doAudio = args.includes('--audio');          // 12 src/core/Audio.js headless (no AudioContext → inert): manifest ids ↔ DEFAULT_EVENTS, bus walk counts, cooldown, duck, unknown id, destroy
 const doEnemies = args.includes('--enemies');      // S16 src/systems/enemies.js: Collector waves (size = season ≤ 5), contact −1 ✦ pouch only, Bubble Shield blocks, 2 sword hits → flee + 1 ✦ coin, Baron boss S6+ with powers, season end clears
+const doRegions = args.includes('--regions');      // 17A src/world/regions/Regions.js: 7 regions / 6 gates from data/regions.json, at(), debounce enter, load/unload (visible + animators paused), flags → canOpen, sealed → noregion, isLand union, destroy
 const doCombat = args.includes('--combat');        // S43/16B src/combat/Combat.js: 3-hit combo (buffer in strike, cancel in recovery) → combat:combo {3}, blob at 1.2 u takes 3 hits → down, lock-on ≤5 u/70°, Glimmers only bonked, no ScreenFlash in the combo path
 const doStorm = args.includes('--storm');          // S17 src/vfx/storm.js: StormWeather headless — warn at day 0.30 (target 0.45), hit at 0.45 (→1, sky/fog/lights/wind gain ×3), auto-clear 4 s later, season end clears, shield absorb clears, dispose restores
 const doCine = args.includes('--cinematics');    // S18 src/vfx/cinematics.js: CinematicDirector headless through createLumenGame — title showcase orbit (sandbox reused by PLAY), arrival walk-in (inputOverride, story held, tutorial waits for cine:end), SKIP, victory lighthouse (lamp lit by the shot, ending lines held), reduceMotion cut, ?nocine off
@@ -1895,6 +1896,55 @@ if (doSave) {
       console.log(`  5. S25 ENDLESS hidden on a fresh title → forced story win → lumen.unlocks{endless} → button shown · persists after save clear → ENDLESS starts  OK`); }
     if (TUTORIAL_GATES.length !== 5) throw new Error('TUTORIAL_GATES');
   } catch (err) { bad++; console.log('  save FAIL →', err.message, process.env.STACK ? err.stack : ''); }
+}
+if (doRegions) {
+  console.log('\n17A REGIONS:');
+  try {
+    const t0 = Date.now();
+    const { createRegions, hasFlag, emptyFlags } = await import(pathToFileURL(resolve('src/world/regions/index.js')).href);
+    const { EventBus } = await import(pathToFileURL(resolve('src/core/EventBus.js')).href);
+    const data = JSON.parse(fs.readFileSync('data/regions.json', 'utf8'));
+    const bus = new EventBus(); const ev = {}; for (const n of ['region:enter', 'region:gate', 'region:load', 'region:unload', 'region:return']) bus.on(n, (p) => (ev[n] ??= []).push(p));
+    const flags = emptyFlags();
+    const R = createRegions({ island: { isLand: (x, z) => x * x + z * z < 121 }, bus, flags: () => flags, data });
+    if (R.list.length !== 7 || R.gates.length !== 6) throw new Error(`regions ${R.list.length} gates ${R.gates.length}`);
+    if (R.gates.some((g) => R.canOpen(g))) throw new Error('a gate opens with empty flags');
+    for (const g of R.gates) if (!g.need || typeof g.need !== 'object') throw new Error(`gate ${g.id} has no need`);
+    // hero on the hub → 2 frames → current hub, 1 enter
+    const hubG = { visible: true, userData: { animators: [{ paused: false }] } }; R.register('hub', { group: hubG });
+    const pos = { x: 0, y: 0, z: 1 }; R.update(1 / 60, pos); R.update(1 / 60, pos);
+    if (R.current !== 'hub' || (ev['region:enter'] || []).length !== 1) throw new Error(`current ${R.current} enters ${(ev['region:enter'] || []).length}`);
+    // rootwood sealed → noregion; register → load + hub unload/hidden
+    pos.x = -34;
+    if (R.tryEnter('hub>rootwood') !== 'noregion') throw new Error('sealed region should be noregion');
+    if (R.isLand(-34, 0)) throw new Error('isLand true before register');
+    R.update(1 / 60, pos); if (R.current !== 'hub') throw new Error('debounce: 1 frame moved region'); R.update(1 / 60, pos);
+    if (R.current !== 'rootwood') throw new Error(`current after 2 frames ${R.current}`);
+    if (hubG.visible || !hubG.userData.animators[0].paused) throw new Error('hub group not hidden/paused');
+    if (!(ev['region:unload'] || []).some((e) => e.id === 'hub')) throw new Error('no region:unload hub');
+    const rwG = { visible: true, userData: {} }; R.register('rootwood', { group: rwG, isLand: (x, z) => Math.hypot(x + 34, z) < 12 });
+    if (!(ev['region:load'] || []).some((e) => e.id === 'rootwood') || !rwG.visible) throw new Error('no region:load rootwood');
+    if (!R.isLand(-34, 0)) throw new Error('isLand false after register');
+    // flags
+    flags.powers.add('sparkTether');
+    const opens = R.gates.filter((g) => R.canOpen(g)).map((g) => g.id);
+    if (opens.join() !== 'hub>crags') throw new Error(`sparkTether opens ${opens.join(',') || 'nothing'}`);
+    if (hasFlag({ ...emptyFlags(), keys: 4 }, R.gate('orchard>citadel').need)) throw new Error('keys:4 alone opened citadel');
+    if (!hasFlag({ powers: new Set(['heatStomp']), keys: 4 }, R.gate('orchard>citadel').need)) throw new Error('keys 4 + heatStomp should open citadel');
+    R.register('crags', { group: { visible: true, userData: {} } });
+    if (R.tryEnter('hub>crags') !== 'open' || (ev['region:gate'] || []).at(-1)?.state !== 'open') throw new Error('tryEnter crags not open');
+    if (R.tryEnter('hub>mines') !== 'noregion') throw new Error('mines sealed should be noregion');
+    if (!R.hintFor('hub>tidepools').includes('Electric Orb') || /spark\b.*\d|\d+ ?spark/i.test(R.hintFor('hub>tidepools'))) throw new Error('hint must name the action, never a price: ' + R.hintFor('hub>tidepools'));
+    // return path + pier
+    if (R.useReturn('rootwood', pos)) throw new Error('return path used while locked');
+    R.unlockReturn('rootwood'); if (!R.useReturn('rootwood', pos) || pos.x !== -12 || (ev['region:return'] || []).length !== 1) throw new Error('useReturn failed');
+    const pier = R.nearestPier(0, 0); if (typeof pier.x !== 'number' || typeof pier.z !== 'number') throw new Error('nearestPier shape');
+    R.destroy();
+    let n = 0; for (const s of bus.map.values()) n += s.size; const mine = 5;   // only this gate's 5 listeners remain
+    if (n !== mine || R.current !== null) throw new Error(`destroy left ${n - mine} listeners, current ${R.current}`);
+    const ms = Date.now() - t0; if (ms > 1000) throw new Error(`took ${ms} ms`);
+    console.log(`  regions OK → 7 regions · 6 gates (all locked empty) · debounce 2 frames · load/unload visible+paused · sparkTether → hub>crags only · sealed → noregion · return path · ${ms} ms`);
+  } catch (err) { bad++; console.log('  regions FAIL →', err.message.split('\n')[0]); }
 }
 if (doCombat) {
   // S43/16B: headless sandbox (same harness as --enemies). Spawn a S3 wave, park two Collectors far away, give #0 hp 3 and stand it 1.2 u in
