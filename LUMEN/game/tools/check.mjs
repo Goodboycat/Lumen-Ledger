@@ -46,6 +46,7 @@ const doIcons = args.includes('--icons');          // icons: ui/icons.js procedu
 const doAudio = args.includes('--audio');          // 12 src/core/Audio.js headless (no AudioContext → inert): manifest ids ↔ DEFAULT_EVENTS, bus walk counts, cooldown, duck, unknown id, destroy
 const doEnemies = args.includes('--enemies');      // S16 src/systems/enemies.js: Collector waves (size = season ≤ 5), contact −1 ✦ pouch only, Bubble Shield blocks, 2 sword hits → flee + 1 ✦ coin, Baron boss S6+ with powers, season end clears
 const doRegions = args.includes('--regions');      // 17A src/world/regions/Regions.js: 7 regions / 6 gates from data/regions.json, at(), debounce enter, load/unload (visible + animators paused), flags → canOpen, sealed → noregion, isLand union, destroy
+const doSpring = args.includes('--spring');        // S44 JellySpring/setSquash stability at speed ×3 + low fps (tests/spring.test.mjs, pure Node)
 const doCombat = args.includes('--combat');        // S43/16B src/combat/Combat.js: 3-hit combo (buffer in strike, cancel in recovery) → combat:combo {3}, blob at 1.2 u takes 3 hits → down, lock-on ≤5 u/70°, Glimmers only bonked, no ScreenFlash in the combo path
 const doStorm = args.includes('--storm');          // S17 src/vfx/storm.js: StormWeather headless — warn at day 0.30 (target 0.45), hit at 0.45 (→1, sky/fog/lights/wind gain ×3), auto-clear 4 s later, season end clears, shield absorb clears, dispose restores
 const doCine = args.includes('--cinematics');    // S18 src/vfx/cinematics.js: CinematicDirector headless through createLumenGame — title showcase orbit (sandbox reused by PLAY), arrival walk-in (inputOverride, story held, tutorial waits for cine:end), SKIP, victory lighthouse (lamp lit by the shot, ending lines held), reduceMotion cut, ?nocine off
@@ -1896,6 +1897,15 @@ if (doSave) {
       console.log(`  5. S25 ENDLESS hidden on a fresh title → forced story win → lumen.unlocks{endless} → button shown · persists after save clear → ENDLESS starts  OK`); }
     if (TUTORIAL_GATES.length !== 5) throw new Error('TUTORIAL_GATES');
   } catch (err) { bad++; console.log('  save FAIL →', err.message, process.env.STACK ? err.stack : ''); }
+}
+if (doSpring) {
+  // S44 BUGFIX: bodies stretched tall + wide at speed ×2/×3 (worst in Spark Storm) — the JellySpring integrator diverged for dt ≥ ~0.12 s.
+  const { spawnSync } = await import('node:child_process');
+  console.log('\nSPRING (S44):');
+  const t = spawnSync(process.execPath, ['--test', 'tests/spring.test.mjs'], { encoding: 'utf8' });
+  const pass = /^# pass (\d+)/m.exec(t.stdout || '')?.[1], fail = /^# fail (\d+)/m.exec(t.stdout || '')?.[1];
+  if (t.status !== 0 || fail !== '0') { bad++; console.log('  tests/spring.test.mjs FAIL →', (t.stdout || '').split('\n').filter((l) => l.startsWith('not ok')).slice(0, 5).join(' | ') || (t.stderr || '').split('\n')[0]); }
+  else console.log(`  tests/spring.test.mjs → ${pass} pass, 0 fail OK`);
 }
 if (doRegions) {
   console.log('\n17A REGIONS:');
