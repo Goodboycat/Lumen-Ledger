@@ -212,3 +212,8 @@ coinBurst, coinFly(from,to,onArrive), confetti, sparkTrail, fogShader(fog01), sa
 - `R.update(dt, heroPos)` — 1-frame debounce, swaps `group.visible`, sets `userData.animators[].paused`, fires events · `R.useReturn(id, heroPos)` / `R.unlockReturn(id)` · `R.nearestPier(x,z)` · `R.destroy()`
 - bus: `region:enter {id, from}` · `region:gate {id, state:'locked'|'open', need}` · `region:load {id}` · `region:unload {id}` · `region:return {id, to}`
 - `hasFlag(flags, need)` pure: need = `{power?, mission?, keys?, rep?}` — every present key must hold (flags = `{powers:Set, missions:Set, keys, rep}`; powers: sparkTether electricOrb bubbleWalk lumenLantern heatStomp)
+
+## Season length (41C)
+- `BALANCE.seasonCurve = [70, 90, 110, 130, 150]` (S ≥ 5 → 150); `economy.seasonSecondsFor(season)` pure; `config.seasonSeconds` kept as fallback, `opts.seasonSeconds` → `config.seasonSecondsOverride` wins (tests).
+- `eco:season` payload gains `seasonSeconds` (next season's length); `game:start` carries the first. `hud.setSeasonSeconds(sec)` scales the day bar + S1-only "70 s" chip.
+- Scheduler marks stay day01 fractions in ONE table `SCHEDULER_MARKS` (Game.js): waves 0/0.34/0.67, warn 0.30, event 0.45, scam 0.70, Collectors 0.70 — **S1 Collector at 0.55** (one, hp 1, drops 2 ✦).
