@@ -17,6 +17,7 @@ import { installCombat } from './combat/Combat.js';
 import { attachMoves } from './anim/heroAnims.js';
 import { attachAbilities, ABILITY_NAMES, FINLIT } from './anim/heroAbilities.js';
 import { installVerbChain } from './systems/verbChain.js';
+import { installUnlocks } from './systems/unlocks.js';                          // 41D: 2 starters + 4 earned by ledger stars
 import { PROP_CATALOG, makeProp, STALL_TYPES, JAR_IDS, swayAll, swayDecor, updateLandmarks, makeFlowerField, makeGrassTufts } from './assets/props.js';
 import { bakeStatic, bakeShells, disposeBatch } from './assets/props/bake.js';
 import { BlobShadows, CreatureLOD } from './systems/perf.js';   // 11A (S40: PixelRatioGovernor no longer wired — quality is locked to the Settings preset)
@@ -106,6 +107,7 @@ export function createSandbox(game, opts = {}) {
   if (opts.starterStalls !== false) placeStarterStalls(sb);
   sb.syncWorld();
   installDebugKeys(sb);
+  installUnlocks(sb, game.bus, { all: opts.allAbilities === true });               // 41D: wraps sb.ability → 'locked' until earned
 
   // ---- loop ------------------------------------------------------------------------------------------------------
   sb.update = (dt, _g, dtReal) => {
@@ -1041,6 +1043,7 @@ function applySnapshot(lg, sb, snap) {
   if (snap.jars) { lg.jarPct = { ...snap.jars }; lg.ui?.jars?.setPct?.(snap.jars); }
   if (snap.autoApply != null) { lg.autoApply = !!snap.autoApply; lg.ui?.jars?.setAuto?.(lg.autoApply, 'restore'); }   // S03
   if (snap.cust && sb.cust?.load) sb.cust.load(snap.cust);                               // BUGFIX B16: per-stall prices (+ sale totals) survive CONTINUE
+  sb.unlocks?.restore?.(snap);                                                           // 41D: v2 abilities/starsTotal (v1 → starters)
   lg.ui?.hud?.sync?.(eco.state); lg.ui?.jars?.setBalances?.(eco.state.jars); lg.ui?.jars?.setDebt?.(eco.state.debt, eco.state.spark); lg.ui?.build?.setSpark?.(eco.state.spark);
   if (lg.story && lg.state === 'playing') lg.story.onSeasonStart?.(eco.state.season);   // 8B: no-op if this season's opening already played (saved mid-season); plays it if the save was taken at the review
 }

@@ -12,7 +12,9 @@
 // snapshot. Anything missing in an old save falls back to the fresh-sandbox value (forward-compatible by omission).
 
 export const SAVE_KEY = 'lumen.save';
-export const SAVE_VERSION = 1;                // bump the MAJOR when a snapshot can no longer be applied; minor changes stay v1 (fields optional)
+export const SAVE_VERSION = 2;                // 41D: v2 adds abilities[] + starsTotal; v1 snapshots still parse (migrate → ABILITY_START, 0 ★)
+export const SAVE_VERSIONS_OK = [1, 2];
+//               // bump the MAJOR when a snapshot can no longer be applied; minor changes stay v1 (fields optional)
 export const EXPORT_PREFIX = 'LUMEN1:';
 
 function storageOf(storage) {
@@ -45,6 +47,8 @@ export function snapshot(lg) {
     jars: lg.ui?.jars?.getPct?.() || lg.jarPct || null,
     autoApply: !!lg.autoApply,                                        // S03: the ⚡ AUTO jars toggle
     hero: heroPos(sb),
+    abilities: sb.unlocks ? [...sb.unlocks.abilities] : undefined,            // 41D (v2)
+    starsTotal: sb.unlocks ? sb.unlocks.starsTotal : undefined,               // 41D (v2)
     cust: typeof sb.cust?.serialize === 'function' ? sb.cust.serialize() : null,     // BUGFIX B16: per-stall prices + sale totals
     // BUGFIX P41: mid-season saves (⌂ TITLE while playing) resume at the same day01 with the scheduler's "event / scam already fired" flags,
     //   so CONTINUE does not replay the season. Saves taken at the review start the next season fresh (midSeason false).
@@ -70,7 +74,7 @@ export function parseSnapshot(raw) {
   if (!raw) return null;
   let d = raw;
   if (typeof raw === 'string') { try { d = JSON.parse(raw); } catch (_) { return null; } }
-  if (!d || typeof d !== 'object' || Math.floor(+d.v || 0) !== SAVE_VERSION) return null;
+  if (!d || typeof d !== 'object' || !SAVE_VERSIONS_OK.includes(Math.floor(+d.v || 0))) return null;
   if (!d.eco) return null;
   // BUGFIX B18: validate the nested payloads here, so a corrupt slot never advertises CONTINUE and then throws inside resume.
   let eco = d.eco; if (typeof eco === 'string') { try { eco = JSON.parse(eco); } catch (_) { return null; } }
@@ -83,6 +87,8 @@ export function parseSnapshot(raw) {
   if (d.jars != null && typeof d.jars !== 'object') return null;
   if (d.hero != null && (typeof d.hero !== 'object' || !Number.isFinite(+d.hero.x) || !Number.isFinite(+d.hero.z))) return null;
   if (d.cust != null && (typeof d.cust !== 'object' || (d.cust.prices != null && !Array.isArray(d.cust.prices)))) return null;
+  if (d.abilities != null && (!Array.isArray(d.abilities) || d.abilities.some((a) => typeof a !== 'string'))) return null;
+  if (Math.floor(+d.v) < 2) { d.abilities = ['coinMagnetDash', 'bubbleShield']; d.starsTotal = 0; }   // 41D migrate v1 → start set
   return d;
 }
 
@@ -133,6 +139,7 @@ export function describe(snap) {
   if (s?.season != null) parts.push(`Season ${s.season}`);
   if (s?.spark != null) parts.push(`${Math.round(s.spark)} Spark`);
   if (Array.isArray(snap.build)) parts.push(`${snap.build.filter((e) => String(e.id).startsWith('stall_')).length} stalls`);
+  if (Array.isArray(snap.abilities)) parts.push(`${snap.abilities.length}/6 abilities`);
   if (snap.mode === 'endless') parts.push('Endless');
   return parts.join(' · ');
 }
