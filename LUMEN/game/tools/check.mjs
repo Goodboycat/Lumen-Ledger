@@ -47,6 +47,7 @@ const doAudio = args.includes('--audio');          // 12 src/core/Audio.js headl
 const doEnemies = args.includes('--enemies');      // S16 src/systems/enemies.js: Collector waves (size = season ≤ 5), contact −1 ✦ pouch only, Bubble Shield blocks, 2 sword hits → flee + 1 ✦ coin, Baron boss S6+ with powers, season end clears
 const doRegions = args.includes('--regions');      // 17A src/world/regions/Regions.js: 7 regions / 6 gates from data/regions.json, at(), debounce enter, load/unload (visible + animators paused), flags → canOpen, sealed → noregion, isLand union, destroy
 const doBarks = args.includes('--barks');          // 41A tools/checks/barks.mjs: story.json barks ≤ 60 chars, opening = 2 lines, ≥ 5 story:bark in 12 s headless, 0 replay on resume, mountBarks destroy clean
+const doVerbs = args.includes('--verbs');          // 41B src/systems/verbChain.js: tests/verbs.test.mjs (scripted chain, idle auto-complete, skip/resume, destroy)
 const doTelemetry = args.includes('--telemetry');  // 40A src/systems/telemetry.js: unit tests + headless createLumenGame S1→S3 → session has play/firstStall(player-placed)/firstSale/s2/s3, sparkHandled ≤ sparkTotal (ratio printed = S44 baseline), quit on ui:title, export parses, destroy → listeners restored
 const doSpring = args.includes('--spring');        // S44 JellySpring/setSquash stability at speed ×3 + low fps (tests/spring.test.mjs, pure Node)
 const doCombat = args.includes('--combat');        // S43/16B src/combat/Combat.js: 3-hit combo (buffer in strike, cancel in recovery) → combat:combo {3}, blob at 1.2 u takes 3 hits → down, lock-on ≤5 u/70°, Glimmers only bonked, no ScreenFlash in the combo path
@@ -1919,6 +1920,14 @@ if (doSave) {
       console.log(`  5. S25 ENDLESS hidden on a fresh title → forced story win → lumen.unlocks{endless} → button shown · persists after save clear → ENDLESS starts  OK`); }
     if (TUTORIAL_GATES.length !== 5) throw new Error('TUTORIAL_GATES');
   } catch (err) { bad++; console.log('  save FAIL →', err.message, process.env.STACK ? err.stack : ''); }
+}
+if (doVerbs) {
+  const { spawnSync } = await import('node:child_process');
+  console.log('\n41B VERBS:');
+  const t = spawnSync(process.execPath, ['--test', 'tests/verbs.test.mjs'], { encoding: 'utf8' });
+  const pass = /^# pass (\d+)/m.exec(t.stdout || '')?.[1], fail = /^# fail (\d+)/m.exec(t.stdout || '')?.[1];
+  if (t.status !== 0 || fail !== '0') { bad++; console.log('  tests/verbs.test.mjs FAIL →', (t.stdout || '').split('\n').filter((l) => l.startsWith('not ok')).slice(0, 5).join(' | ')); }
+  else console.log(`  tests/verbs.test.mjs → ${pass} pass, 0 fail OK`);
 }
 if (doTelemetry) {
   const { spawnSync } = await import('node:child_process');
