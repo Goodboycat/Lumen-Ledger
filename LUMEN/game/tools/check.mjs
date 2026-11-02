@@ -845,7 +845,7 @@ if (doStory) {
     const story = new StorySystem(eco, { data, bus });
     const drain = (pick = 1) => { let n = 0; while (story.isPlaying && n++ < 300) bus.emit(story.line?.choices ? 'ui:choice' : 'ui:advance', { index: pick }); };
     bus.emit('ui:start', { mode: 'story' });
-    if (!story.isPlaying || ev['story:line'].length !== 1 || !/Season 1/.test(ev['story:line'][0].text)) throw new Error('ui:start did not open S1');
+    if (!story.isPlaying || ev['story:line'].length !== 1 || ev['story:line'][0].speaker !== 'owl') throw new Error('ui:start did not open S1');
     if (!ev['story:toast'] || ev['story:toast'][0].id !== 't_move') throw new Error('t_move toast on ui:start');
     drain(); if (ev['story:end'].length !== 1) throw new Error('story:end after opening ×' + ev['story:end']?.length);
     let reviews = 0, lessons = [], scams = 0; const season0 = BALANCE.seasonSeconds || 150;

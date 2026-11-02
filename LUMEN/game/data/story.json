@@ -117,7 +117,7 @@
     {
      "speaker": "owl",
      "text": "Welcome, Channeler. Glowmarket owes Baron Gilt 260 Spark — that purple haze is his Debt Fog. Sell, save, pay him, and keep the lantern lit.",
-     "mood": "calm"
+     "mood": "happy"
     },
     {
      "speaker": "pip",
@@ -457,7 +457,7 @@
      },
      {
       "speaker": "pip",
-      "text": "Secret, urgent, guaranteed: the three magic words that mean 'run'. I also learned what an asterisk is. It's a tiny star that eats money."
+      "text": "Secret, urgent, guaranteed: the three alarm words that mean 'run'. I also learned what an asterisk is. It's a tiny star that eats money."
      }
     ],
     "low": [

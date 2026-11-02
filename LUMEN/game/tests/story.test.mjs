@@ -22,7 +22,7 @@ const drain = (bus, story, pick = 1, max = 200) => { let n = 0; while (story.isP
 
 // ---- pure helpers
 ok(pickLedgerVariant(0) === 'low' && pickLedgerVariant(1) === 'low' && pickLedgerVariant(2) === 'default' && pickLedgerVariant(3) === 'high', 'pickLedgerVariant 0/1 low · 2 default · 3 high');
-ok(linesFor(data, 'opening', 1).length >= 6 && linesFor(data, 'ledger', 4, 'high')[1].speaker === 'baron' && linesFor(data, 'event', 'storm').length === 1 && linesFor(data, 'scam', 'quickFlip').length === 2 && linesFor(data, 'nope', 1).length === 0, 'linesFor opening/ledger/event/scam, unknown → []');
+ok(linesFor(data, 'opening', 1).length === 2 && linesFor(data, 'opening', 2).length >= 2 && linesFor(data, 'ledger', 4, 'high')[1].speaker === 'baron' && linesFor(data, 'event', 'storm').length === 1 && linesFor(data, 'scam', 'quickFlip').length === 2 && linesFor(data, 'nope', 1).length === 0, 'linesFor opening/ledger/event/scam, unknown → []');
 ok(linesFor(null, 'opening', 1).length === 0 && linesFor(data, 'ledger', 99, 'low').length === 0, 'linesFor never throws on missing data');
 
 // ---- season 1 opening via update() (autoplay), one line at a time, story:end once
@@ -30,7 +30,7 @@ ok(linesFor(null, 'opening', 1).length === 0 && linesFor(data, 'ledger', 99, 'lo
   const { bus, eco, ev, story } = mk();
   ok(!story.isPlaying && !ev['story:line'], 'nothing plays before update()');
   story.update(0.016);
-  ok(story.isPlaying && ev['story:line'].length === 1 && ev['story:line'][0].speaker === 'narrator' && /Season 1/.test(ev['story:line'][0].text) && ev['story:begin'][0].group === 'opening' && ev['story:begin'][0].season === 1, 'update() → season 1 opening, first line = narrator title card');
+  ok(story.isPlaying && ev['story:line'].length === 1 && ev['story:line'][0].speaker === 'owl' && /Baron/.test(ev['story:line'][0].text) && ev['story:begin'][0].group === 'opening' && ev['story:begin'][0].season === 1, 'update() → season 1 opening (41A: 2 lines, Owl states the goal first)');
   story.update(1); story.update(1);
   ok(ev['story:line'].length === 1, 'no auto-advance by default (waits for ui:advance)');
   bus.emit('ui:advance', {});
@@ -154,7 +154,7 @@ ok(linesFor(null, 'opening', 1).length === 0 && linesFor(data, 'ledger', 99, 'lo
   const { bus, eco, ev, story } = mk({ autoplay: false, autoAdvance: true, lineGap: 0.1 });
   bus.emit('eco:event', { id: 'storm' }); ok(!story.isPlaying, 'autoplay:false ignores bus');
   story.onSeasonStart(1); let t = 0; while (story.isPlaying && t < 100) { story.update(0.05); t += 0.05; }
-  ok(!story.isPlaying && ev['story:line'].length === data.seasons[0].opening.length && t > 0.8, `autoAdvance drives lines every lineGap (took ${t.toFixed(2)} s)`);
+  ok(!story.isPlaying && ev['story:line'].length === data.seasons[0].opening.length && t > 0.15, `autoAdvance drives lines every lineGap (took ${t.toFixed(2)} s)`);
   // 10 seasons: sensible strategy, story driven by hand
   let lessons = [], lines = 0, variants = [];
   for (let s = 1; s <= BALANCE.seasonsToWin; s++) {
@@ -166,8 +166,8 @@ ok(linesFor(null, 'opening', 1).length === 0 && linesFor(data, 'ledger', 99, 'lo
     lines = ev['story:line'].length;
   }
   ok(lessons.join() === BALANCE.lessons.join(), '10 seasons → 10 lessons in BALANCE order: ' + lessons.join(','));
-  // mid lines are not expected here: the loop never ticks day01 past 0.5 (mid is covered above). Floor = 10 × (opening ≥ 6 + ledger 2).
-  ok(ev['story:review'].length === 10 && lines >= 10 * (6 + 2) && !ev['story:line'].some((l) => !l.speaker || !l.text), `10 reviews · ${lines} lines total · all lines have speaker+text (variants ${variants.join('')})`);
+  // mid lines are not expected here: the loop never ticks day01 past 0.5 (mid is covered above). Floor = 10 × (opening ≥ 2 (41A) + ledger 2).
+  ok(ev['story:review'].length === 10 && lines >= 10 * (2 + 2) && !ev['story:line'].some((l) => !l.speaker || !l.text), `10 reviews · ${lines} lines total · all lines have speaker+text (variants ${variants.join('')})`);
   if (eco.state.ended === 'win') { story.onWin(); while (story.isPlaying) story.update(0.2); }
   ok(eco.state.season === 11 && (eco.state.ended !== 'win' || ev['story:finale']?.[0].endless === true), `economy after S10: ended=${eco.state.ended} debt=${eco.state.debt} fog=${eco.state.fog01.toFixed(2)}`);
   story.destroy(); ok(!story.isPlaying && story.pending === 0, 'destroy()');
