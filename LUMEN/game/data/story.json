@@ -8,7 +8,8 @@
   "lineShape": "{ speaker, text, mood?, choices?[{id,text}] } — exactly what ui/dialogue.js (story:line) renders. speaker ∈ speakers below.",
   "lessonShape": "{ id, title, lesson, tip } — exactly what ui/ledger.js (story:lesson) renders. id = Economy BALANCE.lessons[season-1].",
   "toastShape": "{ id, text, icon?, kind?, trigger } — ui/toast.js (story:toast). trigger = bus event name 8B listens to, fired once per run.",
-  "ledgerVariants": "ledger.low = 0–1 stars · ledger.default = 2 stars · ledger.high = 3 stars (8B picks by report.stars)."
+  "ledgerVariants": "ledger.low = 0–1 stars · ledger.default = 2 stars · ledger.high = 3 stars (8B picks by report.stars).",
+  "barks41A": "41A: seasons[0].opening = 2 lines; openings 2-10 = narrator title + 1 Owl line; the cut lines live condensed (<= 60 chars) in barks.seasonStart[n] and fire as speech bubbles after the opening closes; seasons[n].mid lines are spoken as barks at day01 >= 0.5 (no modal)."
  },
  "speakers": {
   "pip": {
@@ -182,26 +183,8 @@
      "text": "Season 2 — Needs and Wants"
     },
     {
-     "speaker": "pip",
-     "text": "Tally-Owl! The Tool Smith has a GOLDEN awning. I need one. For the fruit. Fruit loves gold, probably.",
-     "mood": "happy"
-    },
-    {
-     "speaker": "owl",
-     "text": "Now imagine the fruit stall with a roof that does not leak, and ask yourself which of the two actually keeps the Glimmers coming back."
-    },
-    {
-     "speaker": "pip",
-     "text": "…the roof. Fine. The roof. The fruit will just have to be rained on in a NON-golden way.",
-     "mood": "sad"
-    },
-    {
      "speaker": "owl",
      "text": "Needs come first, and that means upkeep, repairs and the walk to the pier. Wants can wait one season, because unlike fruit they do not spoil."
-    },
-    {
-     "speaker": "collector",
-     "text": "Levy notice! The Baron reminds you his interest is growing nicely. Have a dreadful day!"
     }
    ],
    "mid": [
@@ -261,25 +244,7 @@
     },
     {
      "speaker": "owl",
-     "text": "There are grey clouds gathering over the Far Point, and Spark Storms tend to arrive at this time of year without sending an invitation first."
-    },
-    {
-     "speaker": "pip",
-     "text": "An invitation? Storms are supposed to send invitations?! That's the most polite thing I've heard about weather."
-    },
-    {
-     "speaker": "owl",
      "text": "They break things, and broken things cost Spark. If that Spark is already sitting in Protect, a storm is just a bill; if it is not, the wind scatters a tenth of whatever sits in Save and Invest, and what is still owed becomes a loan — and the lender will be him."
-    },
-    {
-     "speaker": "baron",
-     "text": "Did somebody say loan? Terrible weather we are having. Wonderful weather for lending!",
-     "mood": "happy"
-    },
-    {
-     "speaker": "pip",
-     "text": "So the Protect jar is a bodyguard for my other jars. A jar bodyguard. I'll fill it before the sky gets rude.",
-     "mood": "shout"
     }
    ],
    "mid": [
@@ -338,27 +303,8 @@
      "text": "Season 4 — Two Kinds of Interest"
     },
     {
-     "speaker": "pip",
-     "text": "Tally-Owl, the Save jar grew overnight. By ITSELF. Is it alive? Should I feed it? Does it bite?",
-     "mood": "happy"
-    },
-    {
      "speaker": "owl",
      "text": "It is working as intended: Save pays you 5 % every season, and that is what good interest looks like, Spark that keeps working while you sleep."
-    },
-    {
-     "speaker": "owl",
-     "text": "The Baron's loan is the same word pointing the other way, 20 % a season growing on top of itself. Bad interest also works while you sleep, except that it works against you."
-    },
-    {
-     "speaker": "baron",
-     "text": "Pointing the other way! How poetic. Shall I round your balance UP for you? No charge. Well — one small charge.",
-     "mood": "happy"
-    },
-    {
-     "speaker": "pip",
-     "text": "Wait, so my jar has the nice kind of interest and the Baron has the evil twin? Repay the evil twin first. Got it.",
-     "mood": "shout"
     }
    ],
    "mid": [
@@ -417,25 +363,7 @@
     },
     {
      "speaker": "owl",
-     "text": "The Baron has grown bored of waiting, so expect visitors bearing wonderful offers. I should mention that 'wonderful offer' is his second favourite phrase."
-    },
-    {
-     "speaker": "collector",
-     "text": "Psst. Exclusive deal. Today only. Guaranteed. Don't tell the owl.",
-     "mood": "happy"
-    },
-    {
-     "speaker": "pip",
-     "text": "Secret, urgent AND guaranteed? That sounds wonderful. Tally-Owl, why is your face doing that thing?",
-     "mood": "shout"
-    },
-    {
-     "speaker": "owl",
      "text": "Precisely. A genuine offer survives a night's sleep, whereas a Too-Good Deal cannot, because it depends on you deciding before you have had time to think."
-    },
-    {
-     "speaker": "owl",
-     "text": "Look for the tells: a sense of hurry, a request for secrecy, the word 'guaranteed', and his personal favourite, a very tiny asterisk."
     }
    ],
    "mid": [
@@ -494,26 +422,8 @@
      "text": "Season 6 — The Quiet Jar"
     },
     {
-     "speaker": "pip",
-     "text": "Tally-Owl, I did the sums. Twice, because the first time I didn't believe me. Save earned MORE this season and I didn't add a single coin. Is the jar cheating?",
-     "mood": "happy"
-    },
-    {
      "speaker": "owl",
      "text": "Your interest has started earning interest of its own, so the jar is now paying you on the Spark it already paid you earlier. That is compounding, and this is the good kind."
-    },
-    {
-     "speaker": "owl",
-     "text": "Start small, start early, and leave it alone. Those three habits have built more lighthouses than any treasure chest ever did."
-    },
-    {
-     "speaker": "baron",
-     "text": "Compounding is MY word. Give it back.",
-     "mood": "angry"
-    },
-    {
-     "speaker": "pip",
-     "text": "You can't own a word, Baron. I checked. Well, I asked an owl. Same thing."
     }
    ],
    "mid": [
@@ -571,26 +481,8 @@
      "text": "Season 7 — Cover"
     },
     {
-     "speaker": "collector",
-     "text": "Introducing Fog-Proof Insurance™! Covers everything*! No paperwork! *Terms do not exist.",
-     "mood": "happy"
-    },
-    {
-     "speaker": "owl",
-     "text": "Real cover tells you exactly what it covers and exactly how you make a claim. If there are no terms, then there is no cover, only a fee."
-    },
-    {
-     "speaker": "pip",
-     "text": "Insurance? Is that a spell? Can I buy it from the Tool Smith? Does it come with a ribbon?"
-    },
-    {
      "speaker": "owl",
      "text": "That would be the Protect jar. It absorbs storms, leaky roofs and Collector 'levies' so that one bad day cannot undo a good season, and the Guard Tortoise helps it absorb even more."
-    },
-    {
-     "speaker": "pip",
-     "text": "So real cover names what it covers and how to claim. And the Baron's version names a price and an asterisk. I'm learning to count asterisks now. It's a skill.",
-     "mood": "shout"
     }
    ],
    "mid": [
@@ -648,26 +540,8 @@
      "text": "Season 8 — Many Baskets"
     },
     {
-     "speaker": "glimmer",
-     "text": "Fish is cheap this season! Everyone has fish! Too much fish!",
-     "mood": "sad"
-    },
-    {
-     "speaker": "pip",
-     "text": "If my whole market were fish stalls I'd be in trouble right now. So THAT'S why you keep saying 'spread'. I thought it was a bread thing."
-    },
-    {
      "speaker": "owl",
      "text": "That is diversification in a single sentence: different stalls, different jars and different Glimmers, so that when one of them dips, the others carry you through."
-    },
-    {
-     "speaker": "baron",
-     "text": "I have a hot tip. Put EVERYTHING in Quick-Flip Spark Notes. I personally know the fellow who prints them.",
-     "mood": "happy"
-    },
-    {
-     "speaker": "owl",
-     "text": "'I personally know' is not a plan, Baron, it is a tell, and I have heard that particular one many times before."
     }
    ],
    "mid": [
@@ -726,27 +600,8 @@
      "text": "Season 9 — The Long Wait"
     },
     {
-     "speaker": "pip",
-     "text": "The Far Point is ALMOST affordable. Almost! Baron, if I borrowed just a tiny— why is everyone looking at me like that?",
-     "mood": "happy"
-    },
-    {
-     "speaker": "baron",
-     "text": "Say no more! Pre-approved! Ink still wet!",
-     "mood": "happy"
-    },
-    {
      "speaker": "owl",
      "text": "Pip, one more season of saving buys the Far Point outright. Borrowing would buy it today, but then you would keep paying for it every season afterwards."
-    },
-    {
-     "speaker": "pip",
-     "text": "…Future-Pip is a customer too. And Future-Pip would be furious. Future-Pip sounds exhausting. I'll wait.",
-     "mood": "sad"
-    },
-    {
-     "speaker": "owl",
-     "text": "Treat your wants well: decide you want it, price it, save for it, and then buy it twice as happily."
     }
    ],
    "mid": [
@@ -806,25 +661,6 @@
     {
      "speaker": "owl",
      "text": "Ten seasons ago the goal was a single sentence: relight the Lighthouse. Then we priced it, split it into seasons, and hit the targets one by one."
-    },
-    {
-     "speaker": "pip",
-     "text": "Goal divided by seasons left equals this season's target. I wrote it on the fruit stall. The Glimmers think it's a price. Nobody has paid it yet.",
-     "mood": "happy"
-    },
-    {
-     "speaker": "baron",
-     "text": "You cannot relight it. The Fog is MINE. I have asterisks on it!",
-     "mood": "angry"
-    },
-    {
-     "speaker": "owl",
-     "text": "The Fog is a debt, Baron, and debts tend to go very quiet once they have been paid."
-    },
-    {
-     "speaker": "pip",
-     "text": "Last season. Ten seasons ago I didn't know what a debt was. Now I have a plan with a DEADLINE. Who am I?",
-     "mood": "shout"
     }
    ],
    "mid": [
@@ -1440,6 +1276,191 @@
     "speaker": "owl",
     "text": "Into the jar — now it is a plan, not a pile."
    }
-  ]
+  ],
+  "seasonStart": {
+   "2": [
+    {
+     "speaker": "pip",
+     "text": "The Tool Smith has a GOLDEN awning. I need one.",
+     "at": 0.8
+    },
+    {
+     "speaker": "owl",
+     "text": "A leak-free roof keeps Glimmers coming. Gold does not.",
+     "at": 4.2
+    },
+    {
+     "speaker": "pip",
+     "text": "Fine. The roof. Non-golden rain it is.",
+     "at": 7.6
+    },
+    {
+     "speaker": "collector",
+     "text": "Levy notice! The Baron's interest is growing nicely!",
+     "at": 11.0
+    }
+   ],
+   "3": [
+    {
+     "speaker": "owl",
+     "text": "Grey clouds over the Far Point. Storms send no invitation.",
+     "at": 0.8
+    },
+    {
+     "speaker": "baron",
+     "text": "Did somebody say loan? Wonderful weather for lending!",
+     "at": 4.2
+    },
+    {
+     "speaker": "pip",
+     "text": "Protect is a bodyguard for my other jars. Fill it first.",
+     "at": 7.6
+    }
+   ],
+   "4": [
+    {
+     "speaker": "pip",
+     "text": "The Save jar grew overnight. By ITSELF. Does it bite?",
+     "at": 0.8
+    },
+    {
+     "speaker": "owl",
+     "text": "The Baron's loan is interest pointing the other way.",
+     "at": 4.2
+    },
+    {
+     "speaker": "baron",
+     "text": "Shall I round your balance UP? No charge. One small charge.",
+     "at": 7.6
+    },
+    {
+     "speaker": "pip",
+     "text": "Repay the evil twin first. Got it.",
+     "at": 11.0
+    }
+   ],
+   "5": [
+    {
+     "speaker": "collector",
+     "text": "Psst. Exclusive deal. Today only. Don't tell the owl.",
+     "at": 0.8
+    },
+    {
+     "speaker": "pip",
+     "text": "Secret, urgent AND guaranteed? Owl, why that face?",
+     "at": 4.2
+    },
+    {
+     "speaker": "owl",
+     "text": "The tells: hurry, secrecy, 'guaranteed', a tiny asterisk.",
+     "at": 7.6
+    }
+   ],
+   "6": [
+    {
+     "speaker": "pip",
+     "text": "Save earned MORE and I added nothing. Is the jar cheating?",
+     "at": 0.8
+    },
+    {
+     "speaker": "owl",
+     "text": "Start small, start early, leave it alone.",
+     "at": 4.2
+    },
+    {
+     "speaker": "baron",
+     "text": "Compounding is MY word. Give it back.",
+     "at": 7.6
+    },
+    {
+     "speaker": "pip",
+     "text": "You can't own a word, Baron. I asked an owl.",
+     "at": 11.0
+    }
+   ],
+   "7": [
+    {
+     "speaker": "collector",
+     "text": "Fog-Proof Insurance! Covers everything*! *No terms exist.",
+     "at": 0.8
+    },
+    {
+     "speaker": "owl",
+     "text": "No terms means no cover, only a fee.",
+     "at": 4.2
+    },
+    {
+     "speaker": "pip",
+     "text": "I'm learning to count asterisks now. It's a skill.",
+     "at": 7.6
+    }
+   ],
+   "8": [
+    {
+     "speaker": "glimmer",
+     "text": "Fish is cheap! Everyone has fish! Too much fish!",
+     "at": 0.8
+    },
+    {
+     "speaker": "pip",
+     "text": "If my whole market were fish stalls I'd be sunk.",
+     "at": 4.2
+    },
+    {
+     "speaker": "baron",
+     "text": "Hot tip: put EVERYTHING in Quick-Flip Spark Notes.",
+     "at": 7.6
+    },
+    {
+     "speaker": "owl",
+     "text": "'I personally know a fellow' is a tell, Baron.",
+     "at": 11.0
+    }
+   ],
+   "9": [
+    {
+     "speaker": "pip",
+     "text": "The Far Point is ALMOST affordable. If I borrowed a tiny-",
+     "at": 0.8
+    },
+    {
+     "speaker": "baron",
+     "text": "Say no more! Pre-approved! Ink still wet!",
+     "at": 4.2
+    },
+    {
+     "speaker": "pip",
+     "text": "Future-Pip would be furious. I'll wait.",
+     "at": 7.6
+    },
+    {
+     "speaker": "owl",
+     "text": "Decide it, price it, save for it, buy it twice as happily.",
+     "at": 11.0
+    }
+   ],
+   "10": [
+    {
+     "speaker": "pip",
+     "text": "Goal divided by seasons left. I wrote it on the fruit stall.",
+     "at": 0.8
+    },
+    {
+     "speaker": "baron",
+     "text": "You cannot relight it. The Fog is MINE. I have asterisks!",
+     "at": 4.2
+    },
+    {
+     "speaker": "owl",
+     "text": "The Fog is a debt, Baron. Paid debts go very quiet.",
+     "at": 7.6
+    },
+    {
+     "speaker": "pip",
+     "text": "Last season. I have a plan with a DEADLINE. Who am I?",
+     "at": 11.0
+    }
+   ]
+  }
  }
 }

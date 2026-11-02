@@ -94,7 +94,13 @@ export class StorySystem {
   onMid(n = this.state.season) {
     if (this.state.midPlayed === n) return false;
     this.state.midPlayed = n;
-    return this._play('mid', linesFor(this.data, 'mid', n), { season: n });
+    // 41A P2: the mid-season line is a BARK (Owl bubble, no modal) unless opts.midModal. Lines are staggered 3.4 s apart so max 2 bubbles overlap.
+    const lines = linesFor(this.data, 'mid', n);
+    if (this.opts.midModal) return this._play('mid', lines, { season: n });
+    if (!lines.length) return false;
+    this.bark(lines[0], 'mid'); for (let i = 1; i < lines.length; i++) this._barkTimers.push({ at: this._barkClock + i * 3.4, line: lines[i], group: 'mid' });
+    this.bus.emit('story:groupEnd', { group: 'mid', season: n, bark: true });
+    return true;
   }
   onSeasonEnd(report) {
     const n = report?.season || this.state.season || 1;
@@ -190,10 +196,11 @@ export class StorySystem {
     this.bus.emit('story:bark', p); return p;
   }
   /** Fire a bark GROUP once per run (`barks.firstCoin` …). Timed groups (walkIn) are scheduled by `at` on the update clock. */
-  barkGroup(name) {
-    const lines = this.data?.barks?.[name]; if (!lines || !lines.length || this.state.barksPlayed.includes(name)) return false;
-    this.state.barksPlayed.push(name); this._barkClock = 0;
-    for (const l of lines) { if (l.at > 0) this._barkTimers.push({ at: l.at, line: l, group: name }); else this.bark(l, name); }
+  barkGroup(name, sub = null) {
+    let lines = this.data?.barks?.[name]; if (sub != null) lines = lines?.[sub]; const key = sub != null ? name + ':' + sub : name;
+    if (!Array.isArray(lines) || !lines.length || this.state.barksPlayed.includes(key)) return false;
+    this.state.barksPlayed.push(key); const t0 = this._barkClock;
+    for (const l of lines) { if (l.at > 0) this._barkTimers.push({ at: t0 + l.at, line: l, group: key }); else this.bark(l, key); }
     return true;
   }
   /** dt seconds. Mid-season trigger + optional auto-advance (demo/tests). */
@@ -276,6 +283,7 @@ export class StorySystem {
     this.bus.emit('story:groupEnd', { group: cur.group, ...cur.meta });
     if (!this.queue.length) this.bus.emit('story:end', { group: cur.group, ...cur.meta });   // closes the dialogue box only when nothing follows
     if (cur.onDone) cur.onDone();
+    if (cur.group === 'opening' && cur.meta?.season > 1) this.barkGroup('seasonStart', String(cur.meta.season));   // 41A P2: the trimmed opening lines return as bubbles
   }
 }
 

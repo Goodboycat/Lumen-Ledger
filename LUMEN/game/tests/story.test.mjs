@@ -39,9 +39,12 @@ ok(linesFor(null, 'opening', 1).length === 0 && linesFor(data, 'ledger', 99, 'lo
   ok(!story.isPlaying && ev['story:line'].length === data.seasons[0].opening.length && ev['story:end'].length === 1 && ev['story:end'][0].group === 'opening', `drained opening in ${n} advances · story:end once`);
   ok(story.onSeasonStart(1) === false && ev['story:line'].length === data.seasons[0].opening.length, 'opening never replays for the same season');
   // mid-season at day01 ≥ 0.5, once
-  eco.state.day01 = 0.49; story.update(0); ok(!story.isPlaying, 'no mid before 0.5');
-  eco.state.day01 = 0.5; story.update(0); ok(story.isPlaying && story.line.text === data.seasons[0].mid[0].text, 'mid fires at day01 0.5');
-  drain(bus, story); story.update(0); ok(!story.isPlaying && story.state.midPlayed === 1, 'mid once per season');
+  // 41A P2: the mid line is a BARK (story:bark bubble, no modal) — opts.midModal restores the old dialogue group
+  const barks = []; bus.on('story:bark', (p) => barks.push(p));
+  eco.state.day01 = 0.49; story.update(0); ok(!story.isPlaying && !barks.length, 'no mid before 0.5');
+  eco.state.day01 = 0.5; story.update(0); ok(!story.isPlaying && barks.length === 1 && barks[0].text === data.seasons[0].mid[0].text && barks[0].group === 'mid', 'mid fires at day01 0.5 as a bark (no modal)');
+  story.update(3.5); ok(barks.length === data.seasons[0].mid.length && story.state.midPlayed === 1, 'mid lines staggered, once per season');
+  story.update(5); ok(barks.length === data.seasons[0].mid.length, 'mid does not replay');
 }
 
 // ---- season end: lesson first, ledger variant by stars, story:review after lines; next opening on ui:continue
