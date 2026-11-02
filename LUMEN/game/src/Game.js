@@ -248,7 +248,9 @@ function wireEconomy(sb) {
 //   day01 ≥ 0.45 → one random event (4B pickEvent) — absorbed if bubbleShield is armed (eco:absorbed, Protect jar untouched)
 //   day01 ≥ 0.70 on odd seasons → Baron Gilt offers a Too-Good Deal (eco.offerScam) → player ledgerFlashes (refuse) or it is auto-refused at
 //   season end (sandbox never auto-accepts). sb.nextEvent is pre-rolled so bubbleShield can name it.
-export const CUSTOMER_TRICKLE = [0.34, 0.67];   // S37: day01 marks at which another customer wave lands (the first lands at day 0) → 3 waves/season ≈ balance.md's 18 + 5·stalls visits
+// 41C: ONE table of day01 marks (43 will move them per season — edit here only). waves = customer trickle, warn/event/scam = 4B/S17, wave = enemies.
+export const SCHEDULER_MARKS = { trickle: [0.34, 0.67], warn: 0.30, event: 0.45, scam: 0.70, wave: (season) => (season === 1 ? 0.55 : 0.70) };
+export const CUSTOMER_TRICKLE = SCHEDULER_MARKS.trickle;   // S37: day01 marks at which another customer wave lands (the first lands at day 0) → 3 waves/season ≈ balance.md's 18 + 5·stalls visits
 function installScheduler(sb) {
   const { eco } = sb, bus = sb.game.bus; const S = sb.sched = { season: 0, event: false, scam: false, wave: false, warn: false, trickle: 0 };
   // S37 balance: ONE wave per season (6 Glimmers in S1) gave a first-time player ~60 ✦ income against ~75–140 ✦ of upkeep + interest —
@@ -270,7 +272,8 @@ function installScheduler(sb) {
     // S16: the Baron's Debt Collectors land right after the Too-Good Deal moment (day 0.7, EVERY season — even seasons too, else no fight on S2/S4)
     if (sb._stormClearAt != null && sb.game.time >= sb._stormClearAt) { sb._stormClearAt = null; sb.storm?.clear(3); }   // S17/S21: only when STORM.holdSeconds > 0 (default 0 = whole season; eco:season clears it)
     // P62: the wave waits while the Baron's deal (or any dialogue) is on screen — Collectors land the moment the box closes, not frozen behind it
-    if (!S.wave && s.day01 >= 0.7 && sb.enemies?.enabled !== false && !eco.pendingOffer && !(sb.modalOpen?.())) { S.wave = true; const w = sb.enemies.spawnWave(s.season); if (w.length) sb.log.push(`S${s.season} wave ${w.length} (${w.map((e) => e.kind).join(',')})`); }
+    // 41C: S1 wave lands earlier (0.55, one Collector hp 1) so the sword has a job before the first ledger; S ≥ 2 stay at 0.70 (after the Baron's offer).
+    if (!S.wave && s.day01 >= SCHEDULER_MARKS.wave(s.season) && sb.enemies?.enabled !== false && !eco.pendingOffer && !(sb.modalOpen?.())) { S.wave = true; const w = sb.enemies.spawnWave(s.season); if (w.length) sb.log.push(`S${s.season} wave ${w.length} (${w.map((e) => e.kind).join(',')})`); }
   };
   sb._offs.push(bus.on('eco:season', () => { if (eco.pendingOffer) { eco.refuseOffer(); sb.log.push('deal expired → refused'); } }));
 }

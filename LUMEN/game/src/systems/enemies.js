@@ -38,6 +38,8 @@ import * as THREE from '../../vendor/three.module.js';
 
 export const ENEMY_RULES = {
   collector: { hp: 2, speed: 2.9, radius: 0.75, hitSpark: 1, hitCooldown: 1.1, reward: 1 },
+  // 41C: the Season-1 Collector is a first-sword lesson — one, hp 1, slow, pays 2 ✦, no contact damage for the first `grace` s after it lands.
+  collectorS1: { hp: 1, speed: 1.6, radius: 0.75, hitSpark: 1, hitCooldown: 1.1, reward: 2, grace: 2 },
   // S20 (revised): very slow chaser. podium kept only as a fallback landing spot when there is no shore point.
   baron:     { hp: 6, speed: 1.1, homeSpeed: 2.4, radius: 0.95, hitSpark: 2, hitCooldown: 1.4, reward: 3, podium: { x: 0, z: -4.5 },   // P60: reward 5 → 3
                attackMin: 2, attackMax: 4, attackEvery: 3, telegraph: 0.8, cannonRadius: 1.3, cannonSpark: 1, puddleSeconds: 4, puddleMul: 0.6,
@@ -173,8 +175,10 @@ export class EnemySystem {
     this.bus?.emit('enemy:wave', { season, count: out.length, boss: season >= ENEMY_RULES.bossFrom, powers: season >= ENEMY_RULES.bossFrom ? baronPowersFor(season) : [] });
     return out;
   }
+  /** 41C: rules row for a live enemy (S1 Collector uses the gentler `collectorS1` row). */
+  rulesFor(e) { return (e.kind === 'collector' && e.season === 1 && ENEMY_RULES.collectorS1) || ENEMY_RULES[e.kind]; }
   _spawnOne(kind, season, i = 0) {
-    const R = ENEMY_RULES[kind]; let e_home = this._spawn;
+    const R = (kind === 'collector' && season === 1 && ENEMY_RULES.collectorS1) || ENEMY_RULES[kind]; let e_home = this._spawn;
     const g = kind === 'baron' ? (this.C.makeBaronGilt ? this.C.makeBaronGilt({ seed: season }) : stub()) : (this.C.makeFogCollector ? this.C.makeFogCollector(i % 3, { seed: season * 10 + i }) : stub());
     // S34 / P66: enemies manage their own knockback (e.knock, land + stall clamp) — the animator must NOT slide the root too (double knockback,
     //   Baron sliding, water / stall clipping). knockPower 0 keeps the squash + angry flash + face-the-attacker reaction only.
@@ -187,7 +191,7 @@ export class EnemySystem {
     if (kind === 'baron') { podium = this._podium(); if (!this.island?.isLand?.(lp.x, lp.z) && !this.island?.landEdge) g.position.set(podium.x, 0, podium.z); }   // S20 (revised): the boss lands at the pier like everyone else; podium only as a headless fallback
     this.game.scene?.add(g);
     if (this.fogPool && (i > 0 || kind === 'baron')) this.fogPool.spawn?.(_v.set(g.position.x, 0.3, g.position.z), _d.set(0, 1, 0), kind === 'baron' ? 10 : 6);   // arrival puff so it does not look like popping in
-    const e = { kind, g, root: g, anim, hp: R.hp, maxHp: R.hp, state: 'chase', hitAt: -99, knock: new THREE.Vector3(), fleeT: 0, powers: kind === 'baron' ? baronPowersFor(season) : [], timers: { attack: kind === 'baron' ? R.attackEvery * 0.5 : 0, summon: 0 }, season, i, home: e_home,
+    const e = { kind, g, root: g, anim, hp: R.hp, maxHp: R.hp, state: 'chase', hitAt: R.grace ? (this.game?.time || 0) + R.grace - R.hitCooldown : -99, /* 41C: S1 grace → first contact hit only after `grace` s */ knock: new THREE.Vector3(), fleeT: 0, powers: kind === 'baron' ? baronPowersFor(season) : [], timers: { attack: kind === 'baron' ? R.attackEvery * 0.5 : 0, summon: 0 }, season, i, home: e_home,
       podium, attack: null, dazed: 0, phase: 'idle', nextAttack: kind === 'baron' ? R.attackMin : 0 };   // S20 boss fields: attack = the telegraphed attack in flight, dazed = recovery window, phase 'idle'|'warn'|'air'|'fire'|'dash'|'dazed'
     anim.play?.(kind === 'baron' ? 'strut' : 'walk');
     this.list.push(e); this.stats.spawned++;
@@ -241,7 +245,7 @@ export class EnemySystem {
     return true;
   }
   _defeat(e) {
-    const R = ENEMY_RULES[e.kind]; e.state = 'flee'; e.fleeT = ENEMY_RULES.fleeSeconds; e.anim.play?.('flee');
+    const R = this.rulesFor(e); e.state = 'flee'; e.fleeT = ENEMY_RULES.fleeSeconds; e.anim.play?.('flee');
     this.stats.defeated++; this.stats.sparkWon += R.reward;
     const p = this._landNear(e.g.position); this.deps.onCoin?.(p.x, p.z, R.reward);   // S34 / P67: coin lands on walkable ground
     this.vfx?.pop?.show?.(_v.set(p.x, 1.4, p.z).clone(), e.kind === 'baron' ? 'HARRUMPH!' : 'EEK!', { color: '#CE93D8' });
@@ -279,7 +283,7 @@ export class EnemySystem {
     if (!this.list.length) { if (this.heroSpeedMul !== 1) this._setHeroSpeed(1); return; }
     const hp = this.hero.root.position; let slow = 1;
     for (let i = this.list.length - 1; i >= 0; i--) {
-      const e = this.list[i], R = ENEMY_RULES[e.kind], p = e.g.position;
+      const e = this.list[i], R = this.rulesFor(e), p = e.g.position;
       // knockback decays
       if (e.knock.lengthSq() > 1e-4) { const nx = p.x + e.knock.x * dt * 4, nz = p.z + e.knock.z * dt * 4; if (this._canStand(nx, nz)) p.set(nx, 0, nz); else if (this._canStand(nx, p.z)) { p.x = nx; e.knock.z = 0; } else if (this._canStand(p.x, nz)) { p.z = nz; e.knock.x = 0; } else e.knock.set(0, 0, 0); e.knock.multiplyScalar(Math.max(0, 1 - 6 * dt)); }   // S34 / P66: land + stall clamp, axis slide
       if (e._fleeAnimT > 0) { e._fleeAnimT -= dt; if (e._fleeAnimT <= 0) e.anim.play?.(e.kind === 'baron' ? 'strut' : 'walk'); }
