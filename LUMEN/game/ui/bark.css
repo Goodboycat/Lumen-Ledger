@@ -1,0 +1,21 @@
+/* LUMEN LEDGER — Barks (Chat 41A): small speech bubbles projected from a 3D anchor (hero / owl / baron). Extends ui/base.css tokens.
+   Motion: pop-in 260 ms outBack · fade-out 220 ms inQuad · never pauses the game, never takes input (pointer-events none). */
+.ll-barks { position: absolute; inset: 0; z-index: 30; pointer-events: none; overflow: hidden; font-family: var(--font); }
+.ll-bark { position: absolute; left: 0; top: 0; max-width: min(260px, 72vw); padding: 7px 11px 8px; border: 3px solid var(--ink); border-radius: 14px;
+  background: var(--paper); color: var(--ink); font-weight: 700; font-size: 14px; line-height: 1.25; box-shadow: 0 3px 0 var(--ink);
+  transform: translate(-50%, -100%); transform-origin: 50% 100%; will-change: transform, opacity; animation: ll-bark-in .26s cubic-bezier(.34,1.56,.64,1) both; }
+.ll-bark.out { animation: ll-bark-out .22s cubic-bezier(.55,0,1,.45) both; }
+/* tail pointing down at the anchor */
+.ll-bark::after { content: ''; position: absolute; left: 50%; bottom: -11px; width: 12px; height: 12px; margin-left: -6px; background: var(--paper);
+  border-right: 3px solid var(--ink); border-bottom: 3px solid var(--ink); transform: rotate(45deg); }
+.ll-bark.tail-left::after { left: 22px; } .ll-bark.tail-right::after { left: auto; right: 16px; margin-left: 0; }
+.ll-bark .who { display: block; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; opacity: .6; margin-bottom: 1px; }
+/* speaker tint (same palette as dialogue portraits) */
+.ll-bark.pip { border-color: var(--ink); background: #FFF3E0; } .ll-bark.pip .who { color: #E65100; }
+.ll-bark.owl { background: #F3E9DC; } .ll-bark.owl .who { color: #6D4C2A; }
+.ll-bark.baron { background: #EDE4F7; } .ll-bark.baron .who { color: var(--fog); }
+.ll-bark.collector { background: #E0F7FA; }
+@keyframes ll-bark-in { from { opacity: 0; transform: translate(-50%, -100%) scale(.6); } to { opacity: 1; transform: translate(-50%, -100%) scale(1); } }
+@keyframes ll-bark-out { from { opacity: 1; } to { opacity: 0; transform: translate(-50%, -112%) scale(.92); } }
+@media (max-width: 480px) { .ll-bark { font-size: 13px; max-width: min(220px, 78vw); } }
+@media (prefers-reduced-motion: reduce) { .ll-bark, .ll-bark.out { animation-duration: .01s; } }

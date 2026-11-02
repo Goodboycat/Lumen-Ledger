@@ -24,6 +24,7 @@
 <link rel="stylesheet" href="ui/toast.css">
 <link rel="stylesheet" href="ui/wave.css">
 <link rel="stylesheet" href="ui/nudge.css">
+<link rel="stylesheet" href="ui/bark.css">
 <link rel="stylesheet" href="ui/title.css">
 <link rel="stylesheet" href="ui/pause.css">
 <link rel="stylesheet" href="ui/touch.css">
@@ -92,6 +93,7 @@ try {
   const lg = createLumenGame(game, { ui, storyData, seasonSeconds, seed: +params.get('seed') || undefined, debugKeys: params.has('debug'), cinematics: !params.has('nocine'),
     telemetryEndpoint: params.get('telemetry') || null });   // S18: ?nocine = no title orbit / arrival / victory shots · 40A: ?telemetry=<url> opts in to a POST per session (default OFF)
   ui.wave?.bind({ camera: game.camera.three, enemies: () => lg.sb?.enemies, hero: () => lg.sb?.hero });   // S41/15D: edge arrows project enemies through the live camera
+  ui.barks?.bind({ camera: game.camera.three, hero: () => lg.sb?.hero, owl: () => lg.sb?.owl || lg.sb?.helpers?.owl || lg.sb?.hero, baron: () => lg.sb?.enemies?.baron || lg.sb?.enemies?.active?.find?.((e) => e.kind === 'baron') || lg.sb?.hero });   // 41A: speech bubbles project through the live camera (missing anchor → hero)
   window.ui = ui; window.lg = lg; window.sb = () => lg.sb; window.eco = () => lg.sb?.eco;
   // 12: audio — bus→SFX map + music; AudioContext is created only inside the first gesture (bus 'input:first' below). Missing
   // Ludo.ai files fall back to the manifest's synth sketches, so the build is never silent. Volumes follow the 7C settings sliders.
