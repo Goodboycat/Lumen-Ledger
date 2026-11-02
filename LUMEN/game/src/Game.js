@@ -16,6 +16,7 @@ import { HeroController } from './entities/HeroController.js';
 import { installCombat } from './combat/Combat.js';
 import { attachMoves } from './anim/heroAnims.js';
 import { attachAbilities, ABILITY_NAMES, FINLIT } from './anim/heroAbilities.js';
+import { installVerbChain } from './systems/verbChain.js';
 import { PROP_CATALOG, makeProp, STALL_TYPES, JAR_IDS, swayAll, swayDecor, updateLandmarks, makeFlowerField, makeGrassTufts } from './assets/props.js';
 import { bakeStatic, bakeShells, disposeBatch } from './assets/props/bake.js';
 import { BlobShadows, CreatureLOD } from './systems/perf.js';   // 11A (S40: PixelRatioGovernor no longer wired — quality is locked to the Settings preset)
@@ -537,7 +538,7 @@ export function createLumenGame(game, opts = {}) {
   lg.update = (dt, _g, dtReal) => {
     ui?.update?.(dtReal ?? dt);                                                       // UI animates even while the game is paused
     lg.cine?.update(dtReal ?? dt);                                                    // S18: cinematics run on the real clock (title is paused)
-    if (lg.sb && !game.paused) { lg.story?.update?.(dt); emitTick(lg); lg.tut?.update?.(dt); }
+    if (lg.sb && !game.paused) { lg.story?.update?.(dt); emitTick(lg); lg.tut?.update?.(dt); lg.verbs?.update?.(dt); }
   };
   game.add({ update: (dt, g, dtReal) => lg.update(dt, g, dtReal) });
   lg.destroy = () => { for (const f of offs) f(); offs.length = 0; lg.teardown?.(); lg.cine?.dispose?.(); lg.cine = null; };
@@ -999,6 +1000,7 @@ function installSave(lg) {
   on('game:start', () => { if (!lg._resuming) ui?.title?.setHasSave?.(lg.save.has()); });
   on('ui:jar', (p) => { if (p?.pct) lg.jarPct = { ...p.pct }; });
   installTutorialGates(lg);
+  installVerbChain(lg);                                                          // 41B: diegetic verb chain (src/systems/verbChain.js)
 }
 // 40A: funnel telemetry. Pure recorder on the bus (src/systems/telemetry.js); storage = opts.storage || localStorage || memory; clock = performance.now.
 //   Quit point is captured on ui:title / eco:lose / eco:win (inside the module) and on pagehide / tab hidden (here). lg.telemetry.export() is what
