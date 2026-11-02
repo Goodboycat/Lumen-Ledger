@@ -45,11 +45,12 @@ export function mountHUD(root, opts = {}) {
   const season = el('div', 'll-season');
   const seasonTxt = el('span', null, 'Season 1 / 10');
   const day = el('span', 'll-day'); const dayFill = el('i'); day.append(dayFill);
+  const lenChip = el('span', 'll-season-len', '70 s'); lenChip.title = 'Season 1 is a short 70 s season'; lenChip.hidden = true;   // 41C: S1-only chip; bar width scales with seasonSeconds
   // S28: time speed ⏩ — the player often waits for customers with nothing to do. Cycles 1× → 2× → 3× → 1× (also key T).
   //   Emits 'ui:speed' {cycle:true}; Game.js owns game.timeScale and answers with 'game:speed' {speed} which relabels the button.
   const speedBtn = el('button', 'll-speed', '⏩'); speedBtn.type = 'button'; speedBtn.title = 'Time speed (T): 1× → 2× → 3×'; speedBtn.setAttribute('aria-label', 'Time speed');
   speedBtn.addEventListener('click', (e) => { e.stopPropagation && e.stopPropagation(); bus.emit('ui:speed', { cycle: true, source: 'hud' }); });
-  season.append(seasonTxt, day, speedBtn);
+  season.append(seasonTxt, day, lenChip, speedBtn);
   // S42/16B: the Debt-Fog BAR is no longer shown (the purple fog on the island IS the indicator). The element stays mounted (hidden by
   //   hud.css `.ll-fog { display:none }`) so hud.setFog / the eco:fog wiring / the --ui gate keep working; nothing else reads it.
   const fog = el('div', 'll-fog'); fog.setAttribute('aria-hidden', 'true');
@@ -106,8 +107,10 @@ export function mountHUD(root, opts = {}) {
       if (n !== st.season) { st.season = n; retrigger(season, 'pop'); }
       seasonTxt.textContent = n > seasonsToWin ? `Endless · S${n}` : `Season ${n} / ${seasonsToWin}`;
       if (day01 != null) api.setDay(day01);
+      lenChip.hidden = n !== 1;   // 41C: "70 s" chip on S1 only
       return api;
     },
+    setSeasonSeconds(sec) { const s = Math.max(20, Math.min(150, +sec || 150)); day.style.width = Math.round(54 * s / 150) + 'px'; lenChip.textContent = Math.round(s) + ' s'; return api; },   // 41C: shorter season → shorter day bar
     setDay(day01) { st.day01 = clamp01(+day01 || 0); dayFill.style.width = (st.day01 * 100).toFixed(1) + '%'; return api; },
     setFog(f01, { flash } = {}) {
       const prev = st.fog01; st.fog01 = clamp01(+f01 || 0);
@@ -145,11 +148,12 @@ export function mountHUD(root, opts = {}) {
   // ---------------------------------------------------------------- bus wiring
   const offs = [
     bus.on('eco:spark', (p) => { if (p && p.spark != null) api.setSpark(p.spark); }),
-    bus.on('eco:season', (r) => { if (!r) return; api.setSeason((r.season || 0) + 1, 0); if (r.fog01 != null) api.setFog(r.fog01); if (r.debt != null) api.setDebt(r.debt); if (r.spark != null) api.setSpark(r.spark, { silent: true }); if (r.reputation != null) api.setReputation(r.reputation); }),
+    bus.on('eco:season', (r) => { if (!r) return; api.setSeason((r.season || 0) + 1, 0); if (r.seasonSeconds) api.setSeasonSeconds(r.seasonSeconds); if (r.fog01 != null) api.setFog(r.fog01); if (r.debt != null) api.setDebt(r.debt); if (r.spark != null) api.setSpark(r.spark, { silent: true }); if (r.reputation != null) api.setReputation(r.reputation); }),
     bus.on('eco:fog', (p) => { if (p && p.fog01 != null) api.setFog(p.fog01); }),
     bus.on('eco:loan', (p) => { if (p && p.debt != null) api.setDebt(p.debt); }),
     bus.on('eco:denied', () => { retrigger(spark, 'shake'); }),
     bus.on('eco:tick', (p) => { if (p && p.day01 != null) api.setDay(p.day01); if (p && p.season != null && p.season !== st.season) api.setSeason(p.season); }),
+    bus.on('game:start', (p) => { if (p && p.seasonSeconds) api.setSeasonSeconds(p.seasonSeconds); }),   // 41C
     bus.on('eco:win', () => { api.setFog(0); seasonTxt.innerHTML = iconize('✦ Lighthouse lit!'); }),
     bus.on('eco:lose', () => { seasonTxt.textContent = 'Fogged out…'; }),
     bus.on('game:speed', (p) => { const s = (p && p.speed) || 1; speedBtn.innerHTML = iconize(s > 1 ? `⏩${s}×` : '⏩'); speedBtn.classList.toggle('on', s > 1); speedBtn.title = `Time speed ${s}× (T): 1× → 2× → 3×`; if (s > 1) retrigger(speedBtn, 'pop'); }),

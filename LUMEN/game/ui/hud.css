@@ -81,3 +81,5 @@
 .ll-staged { display: none !important; }
 .ll-reveal-in { animation: ll-reveal-in .6s cubic-bezier(.34,1.56,.64,1); }
 @keyframes ll-reveal-in { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); } }
+.ll-season .ll-season-len { font-size: 10px; padding: 0 6px; border: 2px solid var(--ink); border-radius: 999px; background: var(--blue); color: #fff; line-height: 14px; }   /* 41C: S1-only "70 s" chip */
+.ll-season .ll-season-len[hidden] { display: none; }
