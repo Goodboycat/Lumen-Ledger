@@ -76,7 +76,11 @@ WIP always · an unreachable budget is a measurement → record, loosen to measu
 | 13A | Jam package: `docs/ITCH_PAGE.md` (itch form fields, paste-ready page body: pitch · how to play · controls · 10-lesson table · credits, theme statement, **6-shot screenshot list**, **itch zip recipe dry-run OK 536 KB / index.html at root**) · `docs/BUDGET.md` (jam build ≈ $7.4k imputed vs funded v1.0 ≈ $705k: people, tools, audio, QA + learning study, marketing, 3 tiers, risks) · `game/README.md` rewritten (run / flags / folder map / tests / credits) · `docs/SUBMISSION_CHECKLIST.md` (4 jam deliverables → files, theme rules, itch fields, 10 quality gates, APK rows, submission-day runbook) · Missing: real names in `[brackets]`, screenshots capture (with 13B), PDF exports | game/README.md, docs/ITCH_PAGE.md, docs/BUDGET.md, docs/SUBMISSION_CHECKLIST.md, docs/HANDOFF_13A.md | ✅ |
 
 ## Next (sequential from here)
-17Z 17A 17B 17C 17D 17E (phase 17 World v3 skeleton — prompts in `game/docs/prompts/17*.md`, written by 17Z on 2026-11-01) · 18Z … (MASTER_PLAN_V5 §1) · 13B trailer · 14 Flutter APK.
+40A 40B 41A 41B 41C 41D 42A 42B 42C 42D 43Z 44Z 45Z   (MASTER_PLAN_V6 "One game, not two" — prompts in `game/docs/prompts/4*.md`, written 2026-11-02)
+
+## Frozen (STOP NOTICE 2026-11-02 — do not continue, do not delete)
+17B 17C 17D 17E 18Z … 30Z (World v3 / biomes / Citadel / story v2 per MASTER_PLAN_V5) · 13B trailer · 14 Flutter APK — re-enter only via 44Z/45Z.
+Previously listed: 17Z 17A 17B 17C 17D 17E (phase 17 World v3 skeleton — prompts in `game/docs/prompts/17*.md`, written by 17Z on 2026-11-01) · 18Z … (MASTER_PLAN_V5 §1) · 13B trailer · 14 Flutter APK.
 
 | 16B | Sword combo + lock-on (S43): `src/combat/Combat.js` 3-hit combo (buffer + recovery cancel), soft lock-on, `installCombat`, `check.mjs --combat`; P2/P3 (heroAnims slash2/3/parry, touch hold/dash, demo_combat) carried | game/src/combat/Combat.js, src/entities/HeroController.js, src/Game.js, tools/check.mjs, docs/HANDOFF_16B.md | ✅ (P1) |
 | 17Z | Plan phase 17: HANDOFF_17Z + 5 prompts (17A Regions.js gates/load/unload/return paths · 17B hub region + gate posts · 17C puzzle base · 17D Map.js data · 17E installRegions wiring + demo_world3 + world3 playtest slice) — docs only, no code | game/docs/HANDOFF_17Z.md, game/docs/prompts/17A–17E | ✅ |

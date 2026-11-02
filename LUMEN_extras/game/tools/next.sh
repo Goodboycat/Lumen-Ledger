@@ -4,7 +4,7 @@
 # Order = the "Next" section of /home/user/webapp/LUMEN/README.md, left to right.
 set -e
 cd "$(dirname "$0")/.."            # → game/
-README=../README.md
+README=../README.md; [ -f ../README_pipeline.md ] && README=../README_pipeline.md; [ -f ../../LUMEN_extras/README_pipeline.md ] && README=../../LUMEN_extras/README_pipeline.md   # v6: the Done/Next tables live in LUMEN_extras/README_pipeline.md since the 2026-10-21 split
 # IDs in the "## Next" section, in order (10A 10B … 12 13A 13B 14)
 IDS=$(awk '/^## Next/{f=1;next} /^## /{f=0} f' "$README" | grep -oE '\b[0-9]{1,2}[A-D]?\b' | awk '!seen[$0]++')
 NEXT=""; HALF=""

@@ -1,3 +1,5 @@
+> **SUPERSEDED 2026-11-02 — FROZEN from phase 17 on. Read `MASTER_PLAN_V6.md` instead. Kept as history only.**
+
 # MASTER PLAN v5 — Lumen Ledger v2 (2026-10-19). THE ONLY CURRENT PLAN. `MASTER_PLAN.md` (v3.2) is v1 history.
 
 v1 (IDs 0–13A) is **done** in 4 days. v2 turns it into the game in `docs/VISION_V2.md`. Rules: `docs/START_HERE.md` (v5 delta at

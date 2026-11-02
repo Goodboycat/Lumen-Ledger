@@ -1,5 +1,9 @@
 # START HERE — read this first (every chat, every time). ~2 minutes.
 
+> **STOP NOTICE (2026-11-02, user decision).** Phases **17 onward of MASTER_PLAN_V5 are FROZEN** (17B–17E, 18Z–30Z, 13B, 14).
+> Do not continue, start, or delete them. The plan now in force is **`docs/MASTER_PLAN_V6.md`** ("One game, not two": instrument →
+> first 90 s → physical Spark → season scripts). `README "## Next"` lists only v6 IDs (`40A 40B 41A … 45Z`); `next.sh` picks from there.
+
 You are one of ~40 Genspark chats building ONE browser game, **Lumen Ledger**, for the Zoud GameLab
 jam (theme "Make FinLit Fun", deadline Nov 15 2026). You have **100 credits** and ONE deliverable.
 Your chat ID is in the user's message. Your task file is `docs/prompts/<ID>_*.md`.
