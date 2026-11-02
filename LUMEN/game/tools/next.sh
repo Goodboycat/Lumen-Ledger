@@ -6,13 +6,15 @@ set -e
 cd "$(dirname "$0")/.."            # → game/
 README=../README.md; [ -f ../../LUMEN_extras/README_pipeline.md ] && README=../../LUMEN_extras/README_pipeline.md   # v6: the Done/Next tables live in LUMEN_extras/README_pipeline.md since the 2026-10-21 split
 # IDs in the "## Next" section, in order (10A 10B … 12 13A 13B 14)
+PD=docs/prompts; [ -d ../../LUMEN_extras/game/docs/prompts ] && PD=../../LUMEN_extras/game/docs/prompts   # v6: prompts + HANDOFFs live in LUMEN_extras since the 2026-10-21 split
+HD=docs; [ -d ../../LUMEN_extras/game/docs ] && HD=../../LUMEN_extras/game/docs
 IDS=$(awk '/^## Next/{f=1;next} /^## /{f=0} f' "$README" | grep -oE '\b[0-9]{1,2}[A-D]?\b' | awk '!seen[$0]++')
 NEXT=""; HALF=""
 for id in $IDS; do
   if grep -qE "^\| *$id *\|" "$README"; then continue; fi          # has a Done row → done
-  PROMPT=$(ls docs/prompts/${id}_*.md 2>/dev/null | head -1 || true)
-  if [ -z "$PROMPT" ]; then echo "  (skip $id — no docs/prompts/${id}_*.md; it is not a sandbox chat)"; continue; fi
-  if [ -e "docs/HANDOFF_$id.md" ]; then HALF="$id"; NEXT="$id"; break; fi
+  PROMPT=$(ls $PD/${id}_*.md 2>/dev/null | head -1 || true)
+  if [ -z "$PROMPT" ]; then echo "  (skip $id — no $PD/${id}_*.md; it is not a sandbox chat)"; continue; fi
+  if [ -e "$HD/HANDOFF_$id.md" ]; then HALF="$id"; NEXT="$id"; break; fi
   # owned files already on disk but no row → also half-done
   for f in $(grep -i "^Owned" "$PROMPT" | grep -oE "game/[A-Za-z0-9_./-]+" | sed 's#^game/##'); do
     case "$f" in docs/*|*props.js|*index.js) continue;; esac       # shared/registration files don't count
@@ -21,7 +23,7 @@ for id in $IDS; do
   NEXT="$id"; break
 done
 if [ -z "$NEXT" ]; then echo "NEXT: none — every ID in README \"Next\" has a Done row. Add IDs to \"Next\" or stop."; exit 0; fi
-P=$(ls docs/prompts/${NEXT}_*.md | head -1)
+P=$(ls $PD/${NEXT}_*.md | head -1)
 # v4.1: show the predecessor's last WIP commits for this ID so an axed chat's trail is visible at once (0 credits)
 LASTWIP=$(cd /home/user/webapp 2>/dev/null && git log --oneline -n 3 --grep="WIP $NEXT" 2>/dev/null || true)
 if [ -n "$HALF" ]; then
