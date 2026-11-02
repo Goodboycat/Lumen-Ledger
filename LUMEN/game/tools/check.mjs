@@ -1946,6 +1946,11 @@ if (doTelemetry) {
     const ms = Date.now() - t0; if (ms > 4000) throw new Error('run took ' + ms + ' ms');
     console.log(`  headless S1→S3 (20 s/season): play ${S.steps.play}s · firstStall ${S.steps.firstStall}s (player, not starter) · firstSale ${S.steps.firstSale}s · firstCoinInHand ${S.steps.firstCoinInHand ?? 'never'} · s2 ${S.steps.s2}s · s3 ${S.steps.s3}s · quit ${S.quit.state}@S${S.quit.season} · export 1 session ${JSON.stringify(exp[0]).length} B · ${ms} ms  OK`);
     console.log(`  BASELINE (S44) Spark through Pip's hands: ${S.sparkHandled}/${S.sparkTotal} = ${(ratio * 100).toFixed(1)} %  (PLAN v6 §5 target ≥ 80 % after 42A)`);
+    // 40B smoke: funnel.mjs --synthetic 3 (20 s seasons) must exit 0 and print the table (≤ 3 s)
+    const f0 = Date.now(); const f = spawnSync(process.execPath, ['tools/funnel.mjs', '--synthetic', '3', '--season', '20', '--quiet'], { encoding: 'utf8' });
+    if (f.status !== 0 || !/firstSale\s+3\s+100 %/.test(f.stdout || '')) throw new Error('funnel.mjs --synthetic 3 → ' + (f.stderr || f.stdout || '').split('\n').filter(Boolean).slice(-2).join(' | '));
+    const fx = spawnSync(process.execPath, ['tools/funnel.mjs', 'tests/fixtures/funnel.json', '--md'], { encoding: 'utf8' }); if (fx.status !== 0 || !/\| play \| 3 \| 100 %/.test(fx.stdout || '')) throw new Error('funnel.mjs fixture → ' + (fx.stderr || '').split('\n')[0]);
+    console.log(`  40B funnel.mjs --synthetic 3 (20 s/season) + fixture --md → exit 0, table printed · ${Date.now() - f0} ms  OK`);
   } catch (err) { bad++; console.log('  telemetry FAIL →', err.message); }
 }
 if (doSpring) {

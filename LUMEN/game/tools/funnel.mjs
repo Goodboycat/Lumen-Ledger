@@ -88,7 +88,7 @@ export async function synthetic(N = 20, { seasonSeconds = 150, stallAt = 30, cap
       step(); if (ui.dialogue.isOpen) drain();
       if (ui.ledger.isOpen) { ui.ledger.skip(); ui.ledger.continue(); step(); drain(); }
       if (!placed && clock >= stallAt * 1000 && !ui.isModal()) {           // the one stall the average player places
-        const id = 'stall_' + STALL_PICKS[i % STALL_PICKS.length]; eco.state.spark = Math.max(eco.state.spark, 400);   // average player has saved up by 30 s
+        const picks = STALL_PICKS.filter((k) => !lg.sb.build.placeBlocker('stall_' + k)); const id = 'stall_' + picks[i % picks.length]; eco.state.spark = Math.max(eco.state.spark, 400);   // average player has saved up by 30 s
         bus.emit('ui:build', { action: 'select', id });
         for (const [cx, cz] of [[1, 1], [2, 1], [1, 2], [-1, 1], [1, -1], [3, 3], [-2, -2], [0, 3]]) { if (lg.sb.build.canPlace(id, cx, cz)) { lg.sb.build.moveTo(cx, cz); break; } }
         bus.emit('ui:build', { action: 'confirm' }); bus.emit('ui:build', { action: 'cancel' }); placed = true;
