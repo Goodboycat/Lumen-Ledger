@@ -41,6 +41,7 @@ const doGame = args.includes('--game');            // 10C the whole game headles
 const doSave = args.includes('--save');            // 10D save/load + tutorial: play to S2 → autosave → fresh lg → CONTINUE → same season/spark/stalls/toasts; export/import text; lose clears
 const doPerf = args.includes('--perf');            // 11A src/systems/perf.js: BlobShadows (N discs → 1 InstancedMesh), CreatureLOD tiers + hysteresis, PixelRatioGovernor steps, countGeometries
 const doKnockback = args.includes('--knockback');  // S32 tools/gates/knockback.mjs: CreatureAnimator.hit slide/decay/stun/canStand clamp · customers knocked → walkable, re-path, sales continue, browsers walk back · helpers are sword targets (slide, helper:hit, walk back to seat)
+const doTill = args.includes('--till');            // 42A tools/gates/till.mjs: sales → counters (toTill, pouch untouched), walk/magnet collect, cap+spill, sweep tax, handled ratio ≥ 0.8, +0 meshes, destroy clean
 const doFirstPlayer = args.includes('--firstplayer'); // S37 tools/gates/firstplayer.mjs: passive beginner (3 starter stalls, fair prices, no repay) at the real 150 s season → S1 income > expenses, ≥ 15 units/season, debt still climbs, no angry queues
 const doIcons = args.includes('--icons');          // icons: ui/icons.js procedural set covers every emoji in src/ ui/ data/ index.html; SVG is strict-XML clean; ui/icons/*.png baked + manifest in sync
 const doAudio = args.includes('--audio');          // 12 src/core/Audio.js headless (no AudioContext → inert): manifest ids ↔ DEFAULT_EVENTS, bus walk counts, cooldown, duck, unknown id, destroy
@@ -2586,6 +2587,10 @@ if (doKnockback) {
 if (doFirstPlayer) {
   try { const { run } = await import(pathToFileURL(resolve('tools/gates/firstplayer.mjs')).href); bad += await run({ resolve, pathToFileURL }); }
   catch (err) { bad++; console.log('  firstplayer gate FAIL →', err.message.split('\n')[0]); }
+}
+if (doTill) {
+  try { const { run } = await import(pathToFileURL(resolve('tools/gates/till.mjs')).href); bad += await run({ resolve, pathToFileURL }); }
+  catch (err) { bad++; console.log('  till gate FAIL →', err.message.split('\n')[0]); }
 }
 if (doIcons) {
   // ICONS: every emoji the game prints must map to a procedural drawing; each drawing must be valid strict XML (so the PNG bake works);
