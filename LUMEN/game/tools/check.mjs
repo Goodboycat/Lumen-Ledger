@@ -46,6 +46,7 @@ const doIcons = args.includes('--icons');          // icons: ui/icons.js procedu
 const doAudio = args.includes('--audio');          // 12 src/core/Audio.js headless (no AudioContext → inert): manifest ids ↔ DEFAULT_EVENTS, bus walk counts, cooldown, duck, unknown id, destroy
 const doEnemies = args.includes('--enemies');      // S16 src/systems/enemies.js: Collector waves (size = season ≤ 5), contact −1 ✦ pouch only, Bubble Shield blocks, 2 sword hits → flee + 1 ✦ coin, Baron boss S6+ with powers, season end clears
 const doRegions = args.includes('--regions');      // 17A src/world/regions/Regions.js: 7 regions / 6 gates from data/regions.json, at(), debounce enter, load/unload (visible + animators paused), flags → canOpen, sealed → noregion, isLand union, destroy
+const doBarks = args.includes('--barks');          // 41A tools/checks/barks.mjs: story.json barks ≤ 60 chars, opening = 2 lines, ≥ 5 story:bark in 12 s headless, 0 replay on resume, mountBarks destroy clean
 const doTelemetry = args.includes('--telemetry');  // 40A src/systems/telemetry.js: unit tests + headless createLumenGame S1→S3 → session has play/firstStall(player-placed)/firstSale/s2/s3, sparkHandled ≤ sparkTotal (ratio printed = S44 baseline), quit on ui:title, export parses, destroy → listeners restored
 const doSpring = args.includes('--spring');        // S44 JellySpring/setSquash stability at speed ×3 + low fps (tests/spring.test.mjs, pure Node)
 const doCombat = args.includes('--combat');        // S43/16B src/combat/Combat.js: 3-hit combo (buffer in strike, cancel in recovery) → combat:combo {3}, blob at 1.2 u takes 3 hits → down, lock-on ≤5 u/70°, Glimmers only bonked, no ScreenFlash in the combo path
@@ -2588,4 +2589,5 @@ if (doIcons) {
   } catch (err) { bad++; console.log('  icons FAIL →', err.message); }
 }
 console.log(bad ? `\n${bad} FAILURE(S)` : '\nALL OK ✅');
+if (doBarks) { const { checkBarks } = await import(pathToFileURL(resolve('tools/checks/barks.mjs')).href); bad += await checkBarks(); }
 process.exit(bad ? 1 : 0);
