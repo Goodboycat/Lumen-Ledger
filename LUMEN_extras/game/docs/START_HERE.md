@@ -71,6 +71,7 @@ Every ID gets its own HANDOFF + row + commit, so if YOU get axed mid-loop the ne
 The user never reads mid-chat and does nothing manually; nobody is waiting for a report.
 
 ## The only 10 rules (+ Rule 0 above: push every commit to GitHub)
+0b. **A file too large to read in one go (> ~600 lines / > 40 KB — `wc -l` first) is split into smaller files BEFORE reading it** (e.g. `MASTER_PLAN_V6.md` → one file per section, `check.mjs` → one module per section under `tools/checks/`, re-exported from the original name). Reading a 2 000-line file costs the next chat 5+ credits every time; splitting it once costs 1. Added 2026-11-02 by the user.
 1. **Read ≤ 8 credits**: this file → `GAME_BIBLE.md` → the API_CONTRACTS sections your task names →
    skim ONLY the Foundation files you import. Do not read other chats' prompt files.
 2. **Write files early and often.** Files on disk are the deliverable. A chat that dies at 95 credits with

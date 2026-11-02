@@ -200,6 +200,11 @@ coinBurst, coinFly(from,to,onArrive), confetti, sparkTrail, fogShader(fog01), sa
 - bus out: `telemetry:mark {step, t}` · Game.js `installTelemetry(lg)` → `lg.telemetry`, `opts.telemetryEndpoint`, `opts.telemetry:false` to skip, pagehide/visibility hidden → `end('pagehide')` · index.html `?telemetry=<url>`, `window.lumenTelemetry.{export,summary,clear}`
 - **42A contract:** every coin that reaches the pouch through Pip's hands must be `eco.earn(v, 'till:<how>')` or `'tip:<how>'` — that is the PLAN §5 "Spark through Pip's hands" metric.
 
+### Funnel (40B) — `tools/funnel.mjs` PURE NODE (reads 40A export)
+- `node tools/funnel.mjs <sessions.json|-> [--md]` → n sessions · % reaching play→firstStall→firstSale→firstCoinInHand→s2→s3 + median t · quit histogram (season × day01 decile × reason) · mean sparkHandled/sparkTotal · mean modalSeconds (0–90 s); `resumed:true` sessions excluded, missing steps "n/a".
+- `--synthetic N [--season S=150] [--out f] [--quiet]` → N headless average-player sessions on a game-time clock (`createLumenGame(..., { telemetryNow: () => ms })`) · `--compare a.json b.json [--md]` → Δ columns. Exports `analyze(sessions)`, `render(R,{md})`, `renderCompare`, `synthetic(N,opts)`.
+- Baseline file: `docs/FUNNEL_BASELINE.md` + `tools/shots/funnel_synthetic_2026-11-02.json` (41A–41D / 45 compare against it). `check.mjs --telemetry` smokes `--synthetic 3 --season 20` + `tests/fixtures/funnel.json`.
+
 ### Regions (17A) — `src/world/regions/Regions.js` PURE JS (0 meshes) · data `data/regions.json`
 - `createRegions({ scene, island, bus, flags:()=>Object, data }) → R` · `R.list: Region[]` · `R.current` (id|null) · `R.at(x,z) → id|null` · `R.isLand(x,z)` (hub island ∪ registered region grounds)
 - `R.register(id, { group, isLand(x,z), anchors:{enter, pier, campfire}, returnPath:{from, to, unlocked} })` — biome IDs call this; hub = 17B. Unregistered = sealed (`tryEnter` → 'noregion', `isLand` false).
