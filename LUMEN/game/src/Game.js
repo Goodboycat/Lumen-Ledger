@@ -107,7 +107,7 @@ export function createSandbox(game, opts = {}) {
   if (opts.starterStalls !== false) placeStarterStalls(sb);
   sb.syncWorld();
   installDebugKeys(sb);
-  installUnlocks(sb, game.bus, { all: opts.allAbilities === true });               // 41D: wraps sb.ability → 'locked' until earned
+  installUnlocks(sb, game.bus, { all: opts.allAbilities === true || (!!opts.headless && opts.allAbilities !== false) });   // 41D: gated in the real game; headless checks/sims keep all 6 unless allAbilities:false
 
   // ---- loop ------------------------------------------------------------------------------------------------------
   sb.update = (dt, _g, dtReal) => {
