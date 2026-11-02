@@ -79,3 +79,5 @@
 .ll-unlock-tag { font: 800 10px/1 'Nunito', system-ui, sans-serif; letter-spacing: .12em; color: #ffd36b; }
 .ll-unlock-title { margin: 3px 0 2px; font: 800 15px/1.2 'Nunito', system-ui, sans-serif; color: #fff4d6; }
 .ll-unlock-body { margin: 0; font: 600 12px/1.35 'Nunito', system-ui, sans-serif; color: #ffeec2; opacity: .9; }
+
+.ll-ledger-row.hidden-zero { display: none; }   /* 42A */
