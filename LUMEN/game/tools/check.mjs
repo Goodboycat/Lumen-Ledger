@@ -1574,6 +1574,23 @@ if (doSandbox) {
       console.log(`  S07 clutter: 6 salvageable props (bench/sign/crate/barrel/pot/trough, cost 0) → crate salvaged +6 ✦, cell freed, stalls unchanged, salvage persists in serialize()  OK`);
     }
     sb.keys.exit(); if (sb.build.mode === 'place') throw new Error('exit');
+    // 41C (additive): season curve + S1 Collector. A second sandbox WITHOUT opts.seasonSeconds so the curve is live (the one above is the 30 s accelerated run).
+    { const b2 = new EventBus(); const ev2 = {}; for (const n of ['eco:season', 'enemy:wave']) b2.on(n, (p) => { (ev2[n] ??= []).push(p); });
+      const g2 = { ...game, scene: new THREE.Scene(), bus: b2, sequences: new SequencePlayer(), tweens, time: 0, systems: [] };
+      const s2 = createSandbox(g2, { headless: true, seed: 3 });
+      if (s2.eco.seasonSecondsFor(1) !== 70 || s2.eco.seasonSecondsFor(2) !== 90 || s2.eco.seasonSecondsFor(5) !== 150 || s2.eco.seasonSecondsFor(9) !== 150) throw new Error('41C seasonCurve ' + [1, 2, 5, 9].map((n) => s2.eco.seasonSecondsFor(n)).join('/'));
+      const st2 = () => { g2.time += dt; g2.sequences.update(dt); g2.tweens.update(dt); for (const x of g2.systems) x.update?.(dt); if (s2.eco.pendingOffer) s2.eco.refuseOffer(); };
+      const until = (pred, maxS) => { for (let i = 0; i < maxS * 30 && !pred(); i++) st2(); return pred(); };
+      if (!until(() => s2.eco.state.day01 >= 0.55, 70)) throw new Error('41C day01 never reached 0.55'); const tWave = g2.time; st2(); st2();
+      if (!ev2['enemy:wave'] || ev2['enemy:wave'][0].count !== 1 || ev2['enemy:wave'][0].season !== 1) throw new Error('41C S1 wave at 0.55: ' + JSON.stringify(ev2['enemy:wave']?.[0]));
+      const c = s2.enemies.list[0]; if (!c || c.kind !== 'collector' || c.hp !== 1 || s2.enemies.rulesFor(c).reward !== 2) throw new Error('41C S1 Collector hp 1 / reward 2');
+      if (!(tWave > 36 && tWave < 41)) throw new Error('41C S1 wave time ' + tWave.toFixed(1) + ' s (want ≈ 38.5 = 0.55 × 70)');
+      if (!until(() => s2.eco.state.season === 2, 40)) throw new Error('41C S1 did not end'); const tEnd = g2.time;
+      if (!(tEnd > 69 && tEnd < 72)) throw new Error('41C S1 length ' + tEnd.toFixed(1) + ' s (want 70)');
+      if (ev2['eco:season']?.[0]?.seasonSeconds !== 90) throw new Error('41C eco:season.seasonSeconds ' + ev2['eco:season']?.[0]?.seasonSeconds);
+      s2.dispose?.();
+      console.log(`  41C: seasonCurve 70/90/110/130/150 (S9 → 150) · S1 Collector ×1 (hp 1, reward 2) landed at ${tWave.toFixed(1)} s (day 0.55) · S1 ended at ${tEnd.toFixed(1)} s · eco:season.seasonSeconds 90  OK`);
+    }
     // 3. two seasons (auto end) + E (manual end) → 3 reports
     run(65); if (sb.stats.seasons !== 2 || sb.stats.reports.length !== 2) throw new Error('seasons ' + sb.stats.seasons);
     const r = sb.keys.endSeason(); if (!r || sb.stats.reports.length !== 3 || r.season !== 3) throw new Error('E end season');
