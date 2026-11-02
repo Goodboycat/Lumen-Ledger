@@ -78,13 +78,8 @@ WIP always · an unreachable budget is a measurement → record, loosen to measu
 ## Next (sequential from here)
 40A 40B ~~41A~~ ~~41B~~ ~~41C~~ 41D 42A 42B 42C 42D 43Z 44Z 45Z   (MASTER_PLAN_V6 "One game, not two" — prompts in `game/docs/prompts/4*.md`, written 2026-11-02)
 
-## 41B DONE 2026-11-02 (minimal) — and the ANTI-STALL RULE for every task
+## 41B DONE 2026-11-02 (minimal)
 41B was re-opened by the user by name and closed in one chat as a 1-new-file task (`src/systems/verbChain.js` + 3 Game.js lines + test). See `game/docs/HANDOFF_41B.md`.
-Two earlier chats died on 41B by READING (prompt + Game.js line ranges + tutorial.js + combat/jars hooks) and writing nothing. Rule for ALL tasks now:
-1. Read the prompt once. Then at most 2 targeted `grep -n` calls for hooks. Never `sed`/Read big ranges of Game.js (110 KB) or ui/*.js.
-2. If you catch yourself writing "I have enough context, let me check a few remaining hooks" — STOP checking and write the code now. Unknown hooks → guess, then let the check tell you.
-3. Prefer a NEW small module + ≤ 5 lines of glue over rewriting an existing big file.
-4. Commit + push after every file. An unpushed chat is a wasted chat.
 
 ## Frozen (STOP NOTICE 2026-11-02 — do not continue, do not delete)
 17B 17C 17D 17E 18Z … 30Z (World v3 / biomes / Citadel / story v2 per MASTER_PLAN_V5) · 13B trailer · 14 Flutter APK — re-enter only via 44Z/45Z.
