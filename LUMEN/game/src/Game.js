@@ -34,6 +34,7 @@ import { StorySystem } from './systems/story.js';
 import { Economy } from './systems/economy.js';
 import * as Save from './systems/save.js';
 import { createTelemetry } from './systems/telemetry.js';
+import { createTills, tillCap } from './systems/till.js';
 
 export const SANDBOX_VERSION = '10B';
 export const STALL_PICKS = STALL_TYPES.slice(0, 9);          // keys 1–9 → stall types
@@ -101,6 +102,7 @@ export function createSandbox(game, opts = {}) {
   sb.pick = 0;                                                   // current stall pick index (keys 1–9)
   wireEconomy(sb);
   wireAbilities(sb);
+  installTills(sb);                                              // 42A: customers pay the stall's counter, Pip collects (walk / dash / helper / season sweep)
   // BUGFIX P65: the starter footprints' SCENERY reservation must go even when starterStalls:false (CONTINUE) — otherwise build.load(snap.build)
   //   rejects the 3 saved starter stalls ("scenery" cell) and a resumed run silently loses them (check.mjs --save: stalls 9/12).
   for (const s of STARTER_STALLS) freeStarterCells(sb, s);
@@ -122,6 +124,7 @@ export function createSandbox(game, opts = {}) {
     sb.updateScheduler?.();
     for (const h of sb.helpers) { h.anim.update(dt); updateHelperKnock(sb, h, dt); }
     updateCoins(sb, dt);
+    sb.till?.tickHelpers?.(dt, sb.helpers);                         // 42A P2: seated helpers empty their till every 12 s
     updatePerf(sb, dtReal);
   };
   installPerf(sb);
@@ -282,10 +285,46 @@ function installScheduler(sb) {
 }
 // tip coins: spin, bob, walk-over pickup (≤ 0.7 u) → eco.earn; one instanced mesh refresh per frame
 function updateCoins(sb, dt) {
-  if (!sb.coins.length) { if (sb.coinMesh.count) sb.syncCoins(); return; }
   const hp = sb.hero.root.position;
+  // 42A: walk-over till collect — Pip within TILL_WALK u of a counter that holds money empties it into the pouch
+  if (sb.till) { sb._tillT = (sb._tillT || 0) + dt; for (const t of sb.till.tills.values()) if (t.amount > 0 && Math.hypot(t.pos.x - hp.x, t.pos.z - hp.z) <= TILL_WALK) sb.till.collect(t.stallId, 'walk'); }
+  if (!sb.coins.length) { if (sb.coinMesh.count !== (sb.tillCoins?.length || 0)) sb.syncCoins(); else if (sb.tillCoins?.length) sb.syncCoins(); return; }
   for (let i = sb.coins.length - 1; i >= 0; i--) { const c = sb.coins[i]; c.t += dt; c.position.y = 0.12 + Math.sin(c.t * 4) * 0.04; if (Math.hypot(c.position.x - hp.x, c.position.z - hp.z) <= 0.7) sb.collectCoin(c, 'walk'); }
   sb.syncCoins();
+}
+// 42A — tills. coinLayer = stacks of ≤ 8 coin instances on each counter, drawn by the SAME InstancedMesh as the ground tips
+//   (indices after sb.coins; 0 new draw calls). Walk-over collect (updateCoins), coinMagnetDash collects every till ≤ 2.2 u of the dash path
+//   (wireAbilities CTX), season end sweeps what is left into the pouch minus SWEEP_TAX (ledger row, P2), seated helpers auto-collect (P2).
+export const TILL_WALK = 1.1, TILL_MAGNET = 2.2;
+function installTills(sb) {
+  const { eco, vfx, hero } = sb, bus = sb.game.bus;
+  sb.tillCoins = [];                                   // [{ position: Vector3, t, scale }] composed into sb.coinMesh after the ground coins
+  const stacks = new Map();                            // stallId → coin objects
+  const coinLayer = {
+    setStack(stallId, n, pos, counterY = 0.9, { scale = 1 } = {}) {
+      let arr = stacks.get(stallId); if (!arr) { arr = []; stacks.set(stallId, arr); }
+      while (arr.length > n) { const c = arr.pop(); const i = sb.tillCoins.indexOf(c); if (i >= 0) sb.tillCoins.splice(i, 1); }
+      while (arr.length < n) { const c = { position: new THREE.Vector3(), t: Math.random() * 6, scale: 1, till: stallId }; arr.push(c); sb.tillCoins.push(c); }
+      arr.forEach((c, i) => { const col = i % 4, row = (i / 4) | 0; c.position.set(pos.x - 0.27 + col * 0.18, counterY + 0.03 + row * 0.07, pos.z + (row ? 0.1 : -0.08)); c.scale = scale; });
+      sb._tillDirty = true;
+    },
+    clear(stallId) { coinLayer.setStack(stallId, 0, { x: 0, z: 0 }); stacks.delete(stallId); },
+    spill(pos, value) { return sb.dropTip(pos.x, pos.z, value); },
+    fly(pos, y, amount, how) { const from = new THREE.Vector3(pos.x, y, pos.z), to = hero.root.position.clone().setY(1.1);
+      vfx.coinFly?.(from, to, null, { count: Math.min(6, Math.max(1, Math.round(amount / 5))) }); vfx.pop?.show?.(from.clone().setY(y + 0.6), `+${amount}`, { color: '#FFD54F', dur: 0.8, size: how === 'magnet' ? 1.15 : 1 }); },
+  };
+  sb.till = createTills({ bus, eco, build: sb.build, vfx, coinLayer, stats: sb.stats });
+  sb.cust.till = sb.till;                              // customers.js _settle: economy.sell({ toTill }) + till.pay
+  // compose: ground coins first (their indices are stable for 3B's magnet), till stacks after — one setMatrixAt pass, one needsUpdate
+  const im = sb.coinMesh, baseSync = sb.syncCoins, _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _e = new THREE.Euler();
+  sb.syncCoins = () => { baseSync(); const n0 = sb.coins.length, room = Math.max(0, im.instanceMatrix.count - n0); const list = sb.tillCoins.slice(0, room);
+    list.forEach((c, i) => { _q.setFromEuler(_e.set(Math.PI / 2, 0, c.t)); _s.setScalar(c.scale); _m.compose(c.position, _q, _s); im.setMatrixAt(n0 + i, _m); }); im.count = n0 + list.length; im.instanceMatrix.needsUpdate = true; };
+  // helpers' auto-collect pop (optional on HelperAnimator)
+  // P2: season end → every counter is swept into the pouch minus the Collector tax; the ledger shows the red row (ui/ledger reads r.tillSweep)
+  sb._offs.push(bus.on('eco:season', (r) => { const sw = sb.till.sweep(); if (sw.swept > 0 && r) { r.tillSweep = sw; sb.log.push(`S${r.season} counters swept ${sw.swept} (tax ${sw.tax})`); } }));
+  sb._offs.push(bus.on('till:full', (p) => { const t = sb.till.get(p.stallId); if (t) vfx.pop?.show?.(new THREE.Vector3(t.pos.x, 1.6, t.pos.z), 'FULL', { color: '#FF7043', dur: 1.0, size: 1.1 }); }));
+  sb._offs.push(bus.on('build:placed', () => sb.till.refresh()));
+  sb._offs.push(bus.on('build:loaded', () => sb.till.refresh()));
 }
 function countStalls(sb) { let n = 0; for (const e of sb.build.placed.values()) if (e.id.startsWith('stall_')) n++; return n; }
 // P2: hero abilities (3B) touch the economy through ctx callbacks + the bus. Nothing in 3B/4A/6A is edited; the glue is:
@@ -323,10 +362,12 @@ function wireAbilities(sb) {
   const CTX = {
     // magnet: with joystick input the dash follows the stick (3B); idle → aim at the richest cluster = nearest coin, dash far enough to reach it (≤ 6 u)
     coinMagnetDash: () => {
-      const ctx = { coins: sb.coins.slice(), radius: 2.2, onCollect: (c) => sb.collectCoin(c, 'magnet') };
+      // 42A: till stacks are magnet targets too — each stack's first coin stands in for the whole till (collect empties it)
+      const tillTargets = sb.till ? [...sb.till.tills.values()].filter((t) => t.amount > 0).map((t) => ({ position: new THREE.Vector3(t.pos.x, 0.9, t.pos.z), value: t.amount, till: t.stallId })) : [];
+      const ctx = { coins: sb.coins.slice().concat(tillTargets), radius: TILL_MAGNET, onCollect: (c) => c.till ? sb.till.collect(c.till, 'magnet') : sb.collectCoin(c, 'magnet') };
       const hp = hero.root.position, inp = game.input;
-      if (!(inp?.move?.lengthSq() > 0.05) && sb.coins.length) {
-        let best = null, bd = Infinity; for (const c of sb.coins) { const d = Math.hypot(c.position.x - hp.x, c.position.z - hp.z); if (d < bd) { bd = d; best = c; } }
+      if (!(inp?.move?.lengthSq() > 0.05) && ctx.coins.length) {
+        let best = null, bd = Infinity; for (const c of ctx.coins) { const d = Math.hypot(c.position.x - hp.x, c.position.z - hp.z); if (d < bd) { bd = d; best = c; } }
         if (best) { ctx.dir = new THREE.Vector3(best.position.x - hp.x, 0, best.position.z - hp.z).normalize(); ctx.dashDist = Math.min(6, Math.max(1, bd + 0.5)); }
       }
       return ctx;
@@ -682,6 +723,7 @@ export function destroySandbox(sb) {
   const freeMerged = (root) => root && root.traverse((o) => { if (o.isMesh && o.geometry && /^merged_/.test(o.name)) o.geometry.dispose(); });
   if (sb.hero?.root) { freeMerged(sb.hero.root); game.scene.remove(sb.hero.root); }
   for (const p of Object.values(sb.hero?.props || {})) if (p?.parent === game.scene) game.scene.remove(p);   // 3A coin + 3B magnetCoins/rings/arc live in world space
+  sb.till?.destroy?.(); if (sb.cust) sb.cust.till = null;                            // 42A
   if (sb.coinMesh) { game.scene.remove(sb.coinMesh); sb.coinMesh.geometry?.dispose?.(); }
   for (const h of sb.helpers || []) { h.anim?.dispose?.(); freeMerged(h.g); game.scene.remove(h.g); }
   for (const v of (sb.villains || []).slice()) { const g = v.g || v.root || v; freeMerged(g); g.removeFromParent?.(); }
