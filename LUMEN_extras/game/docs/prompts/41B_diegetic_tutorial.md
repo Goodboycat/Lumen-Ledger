@@ -1,5 +1,4 @@
-# ⛔ STOPPED 2026-11-02 — DO NOT DO THIS TASK. Close this file now.
-User order: two chats were axed reading this prompt and the Game.js/tutorial hooks it names, producing nothing. 41B has a ⛔ row in README_pipeline so next.sh skips it. Run `bash tools/next.sh` and do what it prints (41C onward). Do not read further.
+# ✅ DONE 2026-11-02 (minimal scope) — see docs/HANDOFF_41B.md. Do not redo.
 
 ---
 
