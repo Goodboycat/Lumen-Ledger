@@ -217,3 +217,10 @@ coinBurst, coinFly(from,to,onArrive), confetti, sparkTrail, fogShader(fog01), sa
 - `BALANCE.seasonCurve = [70, 90, 110, 130, 150]` (S ≥ 5 → 150); `economy.seasonSecondsFor(season)` pure; `config.seasonSeconds` kept as fallback, `opts.seasonSeconds` → `config.seasonSecondsOverride` wins (tests).
 - `eco:season` payload gains `seasonSeconds` (next season's length); `game:start` carries the first. `hud.setSeasonSeconds(sec)` scales the day bar + S1-only "70 s" chip.
 - Scheduler marks stay day01 fractions in ONE table `SCHEDULER_MARKS` (Game.js): waves 0/0.34/0.67, warn 0.30, event 0.45, scam 0.70, Collectors 0.70 — **S1 Collector at 0.55** (one, hp 1, drops 2 ✦).
+
+## Unlocks (41D)
+- `src/systems/unlocks.js`: `ABILITY_START = ['coinMagnetDash','bubbleShield']` · `ABILITY_UNLOCKS = [{id:'growthStomp',stars:3},{id:'ledgerFlash',stars:6},{id:'haggleShout',stars:9},{id:'fogSweep',stars:12}]` (cumulative ★, max one unlock per season) · `installUnlocks(sb, bus, {all})`.
+- `sb.abilities: Set<string>` · `sb.ability(name)` → `'locked'` + bus `ability:locked {name,stars,have}` when not unlocked (no cooldown, no vfx) · bus `ability:unlock {id,stars,key,title,lesson}` · `eco.state.starsTotal` mirrors `sb.unlocks.starsTotal` · `eco:win` → all six.
+- Game.js emits `ui:abilities {abilities,starsTotal}` on `game:state` / `ability:unlock` (HUD chips + touch strip sync). Save v2: `{abilities:[], starsTotal}`; v1 → starters + 0.
+- Story: `barks.abilityUnlock[id]` fired on the `ui:continue` after an unlock. Ledger shows one "NEW ABILITY" card per unlock.
+
