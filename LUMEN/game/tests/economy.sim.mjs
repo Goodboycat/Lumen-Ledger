@@ -64,7 +64,7 @@ export function run(name, s, print = true, balance = null) {
   if (print) console.log(`${'S'.padStart(2)} ${pad('income')} ${pad('expens')} ${pad('+int')} ${pad('-int')} ${pad('debt')} ${pad('save')} ${pad('invest')} ${pad('prot')} ${pad('spark')} ${pad('fog')} ${pad('stars', 5)}  events / lesson`);
   for (let season = 1; season <= 12 && !eco.state.ended; season++) {
     built = STRATEGIES[name](eco, season, built);
-    eco.tick(eco.config.seasonSeconds);
+    eco.tick(eco.seasonSecondsFor(season));
     const r = eco.endSeason();
     if (fogZero === null && r.fog01 <= 0) fogZero = r.season;
     if (print) console.log(`${pad(r.season, 2)} ${pad(r.income)} ${pad(r.expenses)} ${pad(r.interestEarned)} ${pad(r.interestPaid)} ${pad(r.debt)} ${pad(r.jars.save)} ${pad(r.jars.invest)} ${pad(r.jars.protect)} ${pad(r.spark)} ${pad(r.fog01.toFixed(2))} ${pad('★'.repeat(r.stars) || '-', 5)}  ${r.events.join(',') || '-'} / ${r.lessonId}`);

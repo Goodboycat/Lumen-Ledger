@@ -25,7 +25,10 @@ import { bus as defaultBus } from '../core/EventBus.js';
 
 // ---------------------------------------------------------------- BALANCE (Chat 4B may override via constructor config)
 export const BALANCE = {
-  seasonSeconds: 150,            // one Season = 150 s of play (10 Seasons ≈ 25 min)
+  seasonSeconds: 150,            // fallback / test override (opts.seasonSeconds or config.seasonSeconds wins when seasonCurve is absent or seasonSecondsOverride is set)
+  seasonCurve: [70, 90, 110, 130, 150],   // 41C: S1 = 70 s dense tutorial season, S2 90 … S5+ 150 (seasonSecondsFor(season))
+  seasonScaleInterest: false,    // 41C: also scale debt interest by the season length (default off — hoarder would stop losing)
+  seasonScaleCosts: true,        // 41C: per-season upkeep (+ interest if seasonScaleInterest) scale by seasonSecondsFor(s)/150 for S1–S4 (shorter season = less rent/interest due)
   seasonsToWin: 10,              // story run length
   startSpark: 120,               // Pip's pouch at the start
   startDebt: 200,                // the inherited Glowmarket debt (lesson 1: you cannot ignore it)
@@ -172,10 +175,16 @@ export class Economy {
   _freshLedger() { return { income: 0, expenses: 0, interestEarned: 0, interestPaid: 0, saved: 0, invested: 0, protected: 0, absorbed: 0, exposed: 0, loansTaken: 0, repaid: 0, sales: 0, units: 0, events: [], scamsAccepted: 0, scamsRefused: 0 }; }
 
   // ------------------------------------------------ time
+  /** 41C: length in seconds of `season`. config.seasonSecondsOverride (set by createSandbox opts.seasonSeconds / tests) wins, else the
+   *  curve (S ≥ curve.length → last entry), else the flat config.seasonSeconds (old saves / --base). Pure. */
+  seasonSecondsFor(season = this.state?.season || 1) { return seasonSecondsFor(this.config, season); }
+  /** 41C: cost multiplier for per-season interest + upkeep = seasonSecondsFor(s)/150 (S1 0.47, S2 0.6, S3 0.73, S4 0.87, S5+ 1). */
+  seasonCostScale(season = this.state?.season || 1) { return this.config.seasonScaleCosts === false ? 1 : Math.min(1, this.seasonSecondsFor(season) / 150); }
+
   /** Advance the season clock. dt in SECONDS. Auto-ends the season at day01 ≥ 1 when autoSeason. */
   tick(dt) {
     if (this.state.ended || !(dt > 0)) return;
-    this.state.day01 += dt / this.config.seasonSeconds;
+    this.state.day01 += dt / this.seasonSecondsFor(this.state.season);
     if (this.state.day01 >= 1) {
       if (this.autoSeason) this.endSeason();
       else this.state.day01 = 1;
@@ -480,14 +489,15 @@ export class Economy {
     const investReturn = round(s.jars.invest * investRate);
     s.jars.invest += investReturn;
     // BAD interest, compounding (scam loans use the hidden higher rate)
-    const rate = (s.scamRate ? Math.max(c.loanRate, s.scamRate) : c.loanRate) * (s.season === 1 ? (c.season1RateMul ?? 1) : 1);   // S01: gentler S1
+    const kS = this.seasonCostScale(season);   // 41C: shorter season → proportionally less interest + upkeep due (balance.md "Season curve")
+    const rate = (s.scamRate ? Math.max(c.loanRate, s.scamRate) : c.loanRate) * (s.season === 1 ? (c.season1RateMul ?? 1) : 1) * (c.seasonScaleInterest ? kS : 1);   // S01: gentler S1 · 41C: interest NOT scaled by default (debt is the clock; scaling it broke the hoarder band)
     const interestPaid = round(s.debt * rate);
     s.debt += interestPaid;
     // upkeep (routine cost: pouch → Spend jar → forced debt; the Protect jar is for shocks, NOT rent)
     // BUGFIX C01: upgraded stalls cost their promised extra upkeep, Pack Mole cuts STALL upkeep −20 %, helpers are paid wages
     const stallUpkeep = round((c.upkeepPerStall * s.stalls + (s.stallUpkeepExtra || 0)) * this.mod('upkeepMul', 1));
     const wages = this.helperWages();
-    const upkeep = c.baseUpkeep + stallUpkeep + wages;
+    const upkeep = round((c.baseUpkeep + stallUpkeep + wages) * kS);   // 41C: scaled by the season length
     const repBonus = this.mod('reputationBonus', 0); if (repBonus) s.reputation = clamp(s.reputation + repBonus, 0, 1);   // Gardener Snail
     const upkeepRes = this.applyLoss(upkeep, 'upkeep', { useProtect: false });
     // fog rules
@@ -515,6 +525,7 @@ export class Economy {
     this.history.push(report);
     this.ledger = this._freshLedger();
     s.season++; s.day01 = 0;
+    report.seasonSeconds = this.seasonSecondsFor(s.season);   // 41C: NEXT season's length so the HUD day bar scales
     this.bus.emit('eco:season', report);
     // win / lose
     if (this.isLose()) { s.ended = 'lose'; this.bus.emit('eco:lose', { season, reason: s.fog01 >= c.fogLoseAt ? 'fog' : 'debt' }); }
@@ -549,6 +560,14 @@ export class Economy {
   }
   /** Snapshot for HUD (7A): cheap plain object. */
   summary() { const s = this.state; return { spark: s.spark, jars: { ...s.jars }, debt: s.debt, fog01: s.fog01, season: s.season, day01: +s.day01.toFixed(4), reputation: +s.reputation.toFixed(3), netWorth: this.netWorth(), ended: s.ended }; }
+}
+
+/** 41C pure helper: seconds for `season` given a BALANCE-shaped config (see Economy#seasonSecondsFor). */
+export function seasonSecondsFor(config, season = 1) {
+  if (config.seasonSecondsOverride > 0) return config.seasonSecondsOverride;
+  const cv = config.seasonCurve;
+  if (Array.isArray(cv) && cv.length) return cv[Math.min(cv.length, Math.max(1, season | 0)) - 1];
+  return config.seasonSeconds || 150;
 }
 
 function mergeConfig(base, over) {

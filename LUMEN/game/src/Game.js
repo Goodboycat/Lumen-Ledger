@@ -61,7 +61,7 @@ export function createSandbox(game, opts = {}) {
   // ---- systems ------------------------------------------------------------------------------------------------------
   const bus = game.bus;
   sb.eco = makeEconomy({ bus, seed: opts.seed ?? 1, autoSeason: true }, opts.balance);
-  if (opts.seasonSeconds) sb.eco.config.seasonSeconds = opts.seasonSeconds;
+  if (opts.seasonSeconds) { sb.eco.config.seasonSeconds = opts.seasonSeconds; sb.eco.config.seasonSecondsOverride = opts.seasonSeconds; }   // 41C: tests/accelerated runs override the season curve
   sb.build = new BuildSystem(game, { island: sb.island, economy: sb.eco, catalog: PROP_CATALOG, vfx: sb.vfx });
   // scenery cells are "occupied" for Build (ghost turns red) and Customers (flow field routes around) without touching 5/6A code
   const SCENERY = { id: 'scenery', category: 'scenery', group: new THREE.Group(), cells: [], cx: 0, cz: 0, rot: 0, level: 0, cost: 0, scenery: true };
@@ -573,7 +573,7 @@ function installStart(lg) {
     lg.setState('playing');
     // S18: the arrival walk-in (pier → plaza) plays on a FRESH story PLAY only — before game:start so the tutorial sees cine:begin first.
     if (lg.cine && fresh && !lg._resuming && lg.mode === 'story') lg.cine.play('arrival', { sb, story: lg.story });
-    bus.emit('game:start', { mode: lg.mode, seasonsToWin: sb.eco.config.seasonsToWin, seasonSeconds: sb.eco.config.seasonSeconds, resumed: !!lg._resuming, debt: sb.eco.state.debt, loanRate: sb.eco.config.loanRate });   // S41/15F: toast.js explains the inherited debt once
+    bus.emit('game:start', { mode: lg.mode, seasonsToWin: sb.eco.config.seasonsToWin, seasonSeconds: sb.eco.seasonSecondsFor(sb.eco.state.season), resumed: !!lg._resuming, debt: sb.eco.state.debt, loanRate: sb.eco.config.loanRate });   // S41/15F: toast.js explains the inherited debt once
     return sb;
   };
   lg.teardown = () => {

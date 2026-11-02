@@ -106,7 +106,7 @@ export const BALANCE_TUNED = {
   ...BALANCE,
   startSpark: 150,           // S01 (2026-10-23): 100 → 150. Recording run 2 showed S1 income 66 vs expenses 221 — a first-time kid lost ground in the tutorial
                              //   season. Debt/interest stay (the Baron's scam core); the pouch gets 1 stall + a buffer instead. Sweep: sensible win@10 ×20/20.
-  startDebt: 260,            // the inherited debt is the first-season antagonist (sensible clears it by S3–4)
+  startDebt: 300,            // 41C (2026-11-02): 260 → 300. Upkeep now scales with the 70/90/110/130 s season curve, which let the hoarder survive (4/10 lose); 300 restores hoarder lose 10/10, sensible still win@10 ×20, borrow lose ×20
   season1RateMul: 0.75,      // S01/P03 (2026-10-23): Season 1 interest 52 → 39 ✦ (15 %). Recording run 2: S1 income 66 vs expenses 221 (interest 52 + upkeep 49)
                              //   → debt 260 → 315 even with careful play. 0.5 broke the 'hoarder loses ≥ 8/10' gate (never repays → S1 interest is its clock);
                              //   0.75 keeps every sweep gate (sensible win@10 ×20/20, borrow lose S3–5, hoarder lose 8/10) and still softens the tutorial season.

@@ -33,10 +33,10 @@ ok(typeof Economy === 'function' && BALANCE && EVENTS && SCAMS && UPGRADES, 'exp
 // ---- tick / season clock
 {
   const e = mk();
-  e.tick(75); ok(near(e.state.day01, 0.5), 'tick(75 s) → day01 0.5 of a 150 s season');
-  e.tick(74.9); ok(e.state.season === 1 && e.state.day01 < 1, 'just before season end still season 1');
+  e.tick(35); ok(near(e.state.day01, 0.5), 'tick(35 s) → day01 0.5 of the 70 s S1 (41C seasonCurve)'); ok(e.seasonSecondsFor(1) === 70 && e.seasonSecondsFor(5) === 150 && e.seasonSecondsFor(9) === 150, 'seasonSecondsFor 70/150/150');
+  e.tick(34.9); ok(e.state.season === 1 && e.state.day01 < 1, 'just before season end still season 1');
   let seasonEv = null; e.bus.on('eco:season', (r) => { seasonEv = r; });
-  e.tick(0.2); ok(e.state.season === 2 && seasonEv && seasonEv.season === 1 && near(e.state.day01, 0), 'tick past 150 s → endSeason() auto, eco:season emitted, season 2, day01 reset');
+  e.tick(0.2); ok(e.state.season === 2 && seasonEv && seasonEv.season === 1 && near(e.state.day01, 0), 'tick past 70 s → endSeason() auto, eco:season emitted, season 2, day01 reset'); ok(seasonEv.seasonSeconds === 90, 'eco:season carries next seasonSeconds 90');
   const m = mk({}, { autoSeason: false }); m.tick(1000); ok(m.state.season === 1 && m.state.day01 === 1, 'autoSeason:false → clock parks at day01=1, season does not end');
   const t = mk(); t.tick(-5); t.tick(NaN); ok(t.state.day01 === 0, 'tick ignores negative / NaN dt');
 }
@@ -95,7 +95,7 @@ ok(typeof Economy === 'function' && BALANCE && EVENTS && SCAMS && UPGRADES, 'exp
   const r = e.endSeason();
   ok(r.interestEarned === 10 && e.state.jars.save === 210, 'savings earn 5 %/season (200 → 210)');
   ok(r.investRate >= 0.04 - 1e-9 && r.investRate <= 0.12 + 1e-9 && e.state.jars.invest === 100 + r.investReturn, 'invest returns 8 % ± 4 %');
-  ok(r.interestPaid === 0 && r.upkeep === BALANCE.baseUpkeep, 'no debt → no interest paid; upkeep = base + per-stall');
+  ok(r.interestPaid === 0 && r.upkeep === Math.round(BALANCE.baseUpkeep * 70 / 150), 'no debt → no interest paid; upkeep = (base + per-stall) × 70/150 (41C)');
   ok(r.lessonId === 'budgeting' && r.stars >= 0 && r.stars <= 3 && Number.isInteger(r.stars), 'report has lessonId (season 1 = budgeting) + stars 0..3');
   ok(r.season === 1 && e.state.season === 2 && e.history.length === 1 && e.ledger.income === 0, 'season advanced, history pushed, ledger reset');
   ok(near(r.fogDelta, -0.1) && near(e.state.fog01, 0.4), 'debt 0 & save ≥ threshold → fog −0.10');
