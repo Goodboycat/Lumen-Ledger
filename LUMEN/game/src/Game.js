@@ -1003,7 +1003,7 @@ function installSave(lg) {
 function installTelemetry(lg) {
   const { bus, ui, opts } = lg; if (opts.telemetry === false) return;
   let storage = opts.storage || null; if (!storage) { try { if (typeof localStorage !== 'undefined') storage = localStorage; } catch (_) { storage = null; } }
-  const now = (typeof performance !== 'undefined' && performance.now) ? () => performance.now() : () => Date.now();
+  const now = opts.telemetryNow || ((typeof performance !== 'undefined' && performance.now) ? () => performance.now() : () => Date.now());   // 40B: synthetic runs pass game-time ms
   const win = typeof window !== 'undefined' ? window : null;
   const T = createTelemetry({ bus, storage: storage || undefined, now, endpoint: opts.telemetryEndpoint || null, isModal: () => !!ui?.isModal?.(), version: lg.version,
     touch: !!(win && ('ontouchstart' in win)), w: win?.innerWidth | 0, h: win?.innerHeight | 0 });
