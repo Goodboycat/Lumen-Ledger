@@ -46,6 +46,7 @@ const doIcons = args.includes('--icons');          // icons: ui/icons.js procedu
 const doAudio = args.includes('--audio');          // 12 src/core/Audio.js headless (no AudioContext → inert): manifest ids ↔ DEFAULT_EVENTS, bus walk counts, cooldown, duck, unknown id, destroy
 const doEnemies = args.includes('--enemies');      // S16 src/systems/enemies.js: Collector waves (size = season ≤ 5), contact −1 ✦ pouch only, Bubble Shield blocks, 2 sword hits → flee + 1 ✦ coin, Baron boss S6+ with powers, season end clears
 const doRegions = args.includes('--regions');      // 17A src/world/regions/Regions.js: 7 regions / 6 gates from data/regions.json, at(), debounce enter, load/unload (visible + animators paused), flags → canOpen, sealed → noregion, isLand union, destroy
+const doTelemetry = args.includes('--telemetry');  // 40A src/systems/telemetry.js: unit tests + headless createLumenGame S1→S3 → session has play/firstStall(player-placed)/firstSale/s2/s3, sparkHandled ≤ sparkTotal (ratio printed = S44 baseline), quit on ui:title, export parses, destroy → listeners restored
 const doSpring = args.includes('--spring');        // S44 JellySpring/setSquash stability at speed ×3 + low fps (tests/spring.test.mjs, pure Node)
 const doCombat = args.includes('--combat');        // S43/16B src/combat/Combat.js: 3-hit combo (buffer in strike, cancel in recovery) → combat:combo {3}, blob at 1.2 u takes 3 hits → down, lock-on ≤5 u/70°, Glimmers only bonked, no ScreenFlash in the combo path
 const doStorm = args.includes('--storm');          // S17 src/vfx/storm.js: StormWeather headless — warn at day 0.30 (target 0.45), hit at 0.45 (→1, sky/fog/lights/wind gain ×3), auto-clear 4 s later, season end clears, shield absorb clears, dispose restores
@@ -1897,6 +1898,55 @@ if (doSave) {
       console.log(`  5. S25 ENDLESS hidden on a fresh title → forced story win → lumen.unlocks{endless} → button shown · persists after save clear → ENDLESS starts  OK`); }
     if (TUTORIAL_GATES.length !== 5) throw new Error('TUTORIAL_GATES');
   } catch (err) { bad++; console.log('  save FAIL →', err.message, process.env.STACK ? err.stack : ''); }
+}
+if (doTelemetry) {
+  const { spawnSync } = await import('node:child_process');
+  console.log('\n40A TELEMETRY:');
+  const t = spawnSync(process.execPath, ['--test', 'tests/telemetry.test.mjs'], { encoding: 'utf8' });
+  const pass = /^# pass (\d+)/m.exec(t.stdout || '')?.[1], fail = /^# fail (\d+)/m.exec(t.stdout || '')?.[1];
+  if (t.status !== 0 || fail !== '0') { bad++; console.log('  tests/telemetry.test.mjs FAIL →', (t.stdout || '').split('\n').filter((l) => l.startsWith('not ok')).slice(0, 5).join(' | ') || (t.stderr || '').split('\n')[0]); }
+  else console.log(`  tests/telemetry.test.mjs → ${pass} pass, 0 fail OK`);
+  try {
+    const t0 = Date.now();
+    const { installDomShim } = await import(pathToFileURL(resolve('tools/domshim.mjs')).href); installDomShim();
+    const THREE = await import(pathToFileURL(resolve('vendor/three.module.js')).href);
+    const { SequencePlayer, HitStop } = await import(pathToFileURL(resolve('src/anim/Sequencer.js')).href);
+    const { EventBus } = await import(pathToFileURL(resolve('src/core/EventBus.js')).href);
+    const { tweens } = await import(pathToFileURL(resolve('src/anim/Tween.js')).href);
+    const { createLumenGame, STALL_PICKS } = await import(pathToFileURL(resolve('src/Game.js')).href);
+    const { mountUI } = await import(pathToFileURL(resolve('ui/index.js')).href);
+    const { PROP_CATALOG } = await import(pathToFileURL(resolve('src/assets/props.js')).href);
+    const { readFileSync } = await import('node:fs'); const storyData = JSON.parse(readFileSync(resolve('data/story.json'), 'utf8'));
+    const mem = new Map(); const storage = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
+    const bus = new EventBus(); const listeners = () => { let n = 0; for (const s of bus.map.values()) n += s.size; return n; };
+    const game = { scene: new THREE.Scene(), bus, sequences: new SequencePlayer(), tweens, hitStop: new HitStop(), input: { pointerWorld: new THREE.Vector3(), hasPointerWorld: false, move: new THREE.Vector2(), joystick: new THREE.Vector2(), actions: {}, pressed: () => false, press() {} }, camera: { zoom: 1, shake() {}, snapTo() {} }, time: 0, timeScale: 1, paused: false, followTarget: null, systems: [], stats: { fps: 60, drawCalls: 0 }, add(s) { this.systems.push(s); return s; }, hitstop() {} };
+    document.body.innerHTML = '';
+    const ui = mountUI(document.body, { bus, stats: () => game.stats, input: game.input, catalog: PROP_CATALOG, seasonsToWin: 10, touch: false, version: 'check' });
+    const L0 = listeners();
+    const lg = createLumenGame(game, { ui, storyData, headless: true, seasonSeconds: 20, seed: 3, storage, cinematics: false });
+    const T = lg.telemetry; if (!T || typeof T.export !== 'function') throw new Error('lg.telemetry missing');
+    const dt = 1 / 30; const step = () => { game.time += dt; game.sequences.update(dt); game.tweens.update(dt); for (const s of game.systems) s.update?.(game.paused ? 0 : dt, game, dt); };
+    const drain = () => { let n = 0; while (ui.dialogue.isOpen && n < 40) { if (ui.dialogue.line?.choices) ui.dialogue.choose(1); else { ui.dialogue.skip(); ui.dialogue.advance(); } step(); n++; } return n; };
+    ui.title.buttons.story.click(); step(); drain();
+    const S = T.session; if (!S || S.steps.play == null) throw new Error('play not marked on PLAY');
+    if (S.steps.firstStall != null) throw new Error('STARTER_STALLS must not count as firstStall');
+    // the player places a stall through the real tray path
+    lg.sb.eco.state.spark = 400; bus.emit('ui:build', { action: 'select', id: 'stall_' + STALL_PICKS[2] }); lg.sb.build.moveTo(1, 1); bus.emit('ui:build', { action: 'confirm' }); bus.emit('ui:build', { action: 'cancel' });
+    if (S.steps.firstStall == null) throw new Error('firstStall not marked after a player stall');
+    const eco = lg.sb.eco;
+    for (let s = 1; s <= 2; s++) { let guard = 0; while (eco.state.season === s && !ui.ledger.isOpen && guard++ < 60 * 30) { step(); if (ui.dialogue.isOpen) drain(); } if (!ui.ledger.isOpen) throw new Error(`S${s}: ledger never opened`); ui.ledger.skip(); ui.ledger.continue(); step(); drain(); }
+    if (eco.state.season !== 3) throw new Error('season ' + eco.state.season);
+    for (const k of ['play', 'firstStall', 'firstSale', 's2', 's3']) if (S.steps[k] == null) throw new Error('step missing: ' + k + ' ' + JSON.stringify(S.steps));
+    if (!(S.sparkTotal > 0) || S.sparkHandled < 0 || S.sparkHandled > S.sparkTotal) throw new Error(`spark totals ${S.sparkHandled}/${S.sparkTotal}`);
+    const ratio = S.sparkHandled / S.sparkTotal;
+    bus.emit('ui:title'); if (!S.quit || !['playing', 'review'].includes(S.quit.state)) throw new Error('quit ' + JSON.stringify(S.quit));
+    const exp = JSON.parse(T.export()); if (exp.length !== 1 || exp[0].id !== S.id) throw new Error('export ' + exp.length);
+    if (JSON.stringify(exp[0]).length > 1024) throw new Error('session > 1 KB: ' + JSON.stringify(exp[0]).length);
+    lg.destroy(); ui.destroy(); const L1 = listeners(); if (L1 > L0) throw new Error(`listeners after destroy ${L1} > before install ${L0}`);
+    const ms = Date.now() - t0; if (ms > 4000) throw new Error('run took ' + ms + ' ms');
+    console.log(`  headless S1→S3 (20 s/season): play ${S.steps.play}s · firstStall ${S.steps.firstStall}s (player, not starter) · firstSale ${S.steps.firstSale}s · firstCoinInHand ${S.steps.firstCoinInHand ?? 'never'} · s2 ${S.steps.s2}s · s3 ${S.steps.s3}s · quit ${S.quit.state}@S${S.quit.season} · export 1 session ${JSON.stringify(exp[0]).length} B · ${ms} ms  OK`);
+    console.log(`  BASELINE (S44) Spark through Pip's hands: ${S.sparkHandled}/${S.sparkTotal} = ${(ratio * 100).toFixed(1)} %  (PLAN v6 §5 target ≥ 80 % after 42A)`);
+  } catch (err) { bad++; console.log('  telemetry FAIL →', err.message); }
 }
 if (doSpring) {
   // S44 BUGFIX: bodies stretched tall + wide at speed ×2/×3 (worst in Spark Storm) — the JellySpring integrator diverged for dt ≥ ~0.12 s.

@@ -27,7 +27,7 @@ export function createTelemetry(opts = {}) {
   const now = opts.now || (() => Date.now());
   const endpoint = opts.endpoint || null, enabled = opts.enabled !== false, isModal = opts.isModal || null;
   const T = { session: null, enabled, endpoint, key: opts.key || TELEMETRY_KEY, max: opts.max || TELEMETRY_MAX };
-  let offs = [], ctx = { state: 'title', season: 0, day01: 0 }, lastTick = null;
+  let offs = [], ctx = { state: 'title', season: 0, day01: 0, prev: 'title' }, lastTick = null;
 
   const fresh = () => ({ id: rid(), startedAt: now(), at: Date.now(), version: opts.version || null, touch: !!opts.touch, w: opts.w | 0, h: opts.h | 0,
     steps: {}, quit: null, seasonsPlayed: 0, sparkHandled: 0, sparkTotal: 0, modalSeconds: 0 });
@@ -40,7 +40,8 @@ export function createTelemetry(opts = {}) {
   };
   T.end = (reason = 'unknown', info = {}) => {
     if (!enabled || !T.session || T.session.quit) return false;
-    T.session.quit = { state: info.state ?? ctx.state, season: info.season ?? ctx.season, day01: +(+(info.day01 ?? ctx.day01)).toFixed(2), reason, t: tOf() };
+    const state = info.state ?? (ctx.state === 'title' ? ctx.prev : ctx.state);                 // Game.js flips to 'title' before our ui:title handler runs
+    T.session.quit = { state, season: info.season ?? ctx.season, day01: +(+(info.day01 ?? ctx.day01)).toFixed(2), reason, t: tOf() };
     T.flush(); return true;
   };
   T.readAll = () => { try { const j = JSON.parse(storage.getItem(T.key) || '[]'); return Array.isArray(j) ? j : []; } catch (_) { return []; } };
@@ -59,7 +60,7 @@ export function createTelemetry(opts = {}) {
   const on = (n, f) => offs.push(bus.on(n, f));
   on('ui:start', (p) => { if (!enabled) return; if (T.session && T.session.quit) T.session = null; const s = ensure(); s.mode = p?.mode || 'story'; ctx = { state: 'playing', season: 1, day01: 0 }; lastTick = null; T.mark('play'); });
   on('game:start', (p) => { if (!enabled) return; const s = ensure(); if (p?.resumed) s.resumed = true; ctx.state = 'playing'; if (s.steps.play == null) T.mark('play'); });
-  on('game:state', (p) => { if (p?.state) ctx.state = p.state; });
+  on('game:state', (p) => { if (p?.state) { ctx.prev = p.prev || ctx.state; ctx.state = p.state; } });
   on('build:placed', (p) => { if (!p || !/^stall_/.test(p.id || '')) return; if (p.entry?.scenery || p.starter || p.entry?.starter) return; T.mark('firstStall', { id: p.id }); });
   on('eco:sale', () => T.mark('firstSale'));
   on('eco:spark', (p) => {

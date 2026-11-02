@@ -193,6 +193,13 @@ coinBurst, coinFly(from,to,onArrive), confetti, sparkTrail, fogShader(fog01), sa
 `Audio.load(manifest)`, `Audio.play(id,{vol,pitch})`, `Audio.music(id)`, listens to bus events and maps them to SFX.
 ### Save (Chat 10) — `src/systems/save.js` localStorage, versioned.
 
+### Telemetry (40A) — `src/systems/telemetry.js` PURE JS (storage injected, network OFF by default)
+- `createTelemetry({ bus, storage?, now?:()=>ms, endpoint?, enabled?, isModal?, version?, touch?, w?, h? }) → T` · `T.session = { id, startedAt, steps:{play, firstStall, firstSale, firstCoinInHand, s2, s3}, quit:{state, season, day01, reason, t}|null, seasonsPlayed, sparkHandled, sparkTotal, modalSeconds, touch, w, h }` (times in s from PLAY)
+- `T.mark(step, data?)` idempotent per session · `T.end(reason, {state,season,day01}?)` once · `T.flush()` → ring buffer `storage['lumen.telemetry']` (max 50) + `sendBeacon(endpoint)` if set · `T.export()` → JSON string · `T.summary()` → `{reachedS2, reachedS3, tFirstStall, tFirstSale, tFirstCoin, modalSeconds, handledRatio, quit}` · `T.clear()` · `T.destroy()` → 0 listeners
+- bus in: `ui:start` → play (new session after a quit) · `build:placed {id:'stall_*'}` (not `entry.scenery` / `starter`) → firstStall · `eco:sale` → firstSale · `eco:spark {delta>0}` → sparkTotal; reason `tip:*` | `till:*` → sparkHandled + firstCoinInHand · `eco:season {season}` → s2/s3 · `eco:tick` → modalSeconds (first 90 s, via `isModal`) · `ui:title` / `eco:lose` / `eco:win` → quit
+- bus out: `telemetry:mark {step, t}` · Game.js `installTelemetry(lg)` → `lg.telemetry`, `opts.telemetryEndpoint`, `opts.telemetry:false` to skip, pagehide/visibility hidden → `end('pagehide')` · index.html `?telemetry=<url>`, `window.lumenTelemetry.{export,summary,clear}`
+- **42A contract:** every coin that reaches the pouch through Pip's hands must be `eco.earn(v, 'till:<how>')` or `'tip:<how>'` — that is the PLAN §5 "Spark through Pip's hands" metric.
+
 ### Regions (17A) — `src/world/regions/Regions.js` PURE JS (0 meshes) · data `data/regions.json`
 - `createRegions({ scene, island, bus, flags:()=>Object, data }) → R` · `R.list: Region[]` · `R.current` (id|null) · `R.at(x,z) → id|null` · `R.isLand(x,z)` (hub island ∪ registered region grounds)
 - `R.register(id, { group, isLand(x,z), anchors:{enter, pier, campfire}, returnPath:{from, to, unlocked} })` — biome IDs call this; hub = 17B. Unregistered = sealed (`tryEnter` → 'noregion', `isLand` false).

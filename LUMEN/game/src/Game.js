@@ -31,6 +31,7 @@ import { CustomerSystem } from './systems/customers.js';
 import { StorySystem } from './systems/story.js';
 import { Economy } from './systems/economy.js';
 import * as Save from './systems/save.js';
+import { createTelemetry } from './systems/telemetry.js';
 
 export const SANDBOX_VERSION = '10B';
 export const STALL_PICKS = STALL_TYPES.slice(0, 9);          // keys 1–9 → stall types
@@ -526,6 +527,7 @@ export function createLumenGame(game, opts = {}) {
   installSeasonLoop(lg);
   installMenu(lg);
   installSave(lg);                                                                  // 10D: autosave + ui:start {mode:'continue'} + tutorial gates
+  installTelemetry(lg);                                                             // 40A: anonymous funnel recorder (PLAN v6 §5); network off unless opts.telemetryEndpoint
   installCinematics(lg);                                                            // S18: title orbit showcase · arrival walk-in · victory lighthouse
 
   // ---- loop: UI clock + story clock + HUD day bar -------------------------------------------------------------------------
@@ -994,6 +996,22 @@ function installSave(lg) {
   on('game:start', () => { if (!lg._resuming) ui?.title?.setHasSave?.(lg.save.has()); });
   on('ui:jar', (p) => { if (p?.pct) lg.jarPct = { ...p.pct }; });
   installTutorialGates(lg);
+}
+// 40A: funnel telemetry. Pure recorder on the bus (src/systems/telemetry.js); storage = opts.storage || localStorage || memory; clock = performance.now.
+//   Quit point is captured on ui:title / eco:lose / eco:win (inside the module) and on pagehide / tab hidden (here). lg.telemetry.export() is what
+//   tools/funnel.mjs (40B) reads. Nothing here awaits or touches ui:start timing.
+function installTelemetry(lg) {
+  const { bus, ui, opts } = lg; if (opts.telemetry === false) return;
+  let storage = opts.storage || null; if (!storage) { try { if (typeof localStorage !== 'undefined') storage = localStorage; } catch (_) { storage = null; } }
+  const now = (typeof performance !== 'undefined' && performance.now) ? () => performance.now() : () => Date.now();
+  const win = typeof window !== 'undefined' ? window : null;
+  const T = createTelemetry({ bus, storage: storage || undefined, now, endpoint: opts.telemetryEndpoint || null, isModal: () => !!ui?.isModal?.(), version: lg.version,
+    touch: !!(win && ('ontouchstart' in win)), w: win?.innerWidth | 0, h: win?.innerHeight | 0 });
+  lg.telemetry = T;
+  const ctx = () => ({ state: lg.state, season: lg.sb?.eco?.state?.season, day01: lg.sb?.eco?.state?.day01 });
+  if (win) { const hide = () => { if (lg.sb) T.end('pagehide', ctx()); else T.flush(); }; const vis = () => { if (document.visibilityState === 'hidden') hide(); };
+    win.addEventListener('pagehide', hide); document.addEventListener('visibilitychange', vis); lg._offs.push(() => { win.removeEventListener('pagehide', hide); document.removeEventListener('visibilitychange', vis); }); }
+  lg._offs.push(() => T.destroy());
 }
 // Put a snapshot onto a freshly started sandbox. Economy: deserialize into a throwaway, then copy state/ledger/history/pendingOffer so the
 // live instance keeps its bus + config (seasonSeconds etc.). Build: load() places silently at no cost. Helpers: re-hire without paying.
