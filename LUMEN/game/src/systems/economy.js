@@ -227,9 +227,12 @@ export class Economy {
     const c = this.config;
     if (sold > 0 && ratio <= 1.1) this.state.reputation = clamp(this.state.reputation + c.repGainFair, 0, 1);
     else if (ratio >= 1.4 || sold === 0) this.state.reputation = clamp(this.state.reputation - c.repLossGouge, 0, 1);
-    if (paid > 0) { this._addSpark(paid, 'sale'); this.ledger.income += paid; }
+    // 42A: opts.toTill → the money lands on the stall's counter (till.js), NOT in the pouch. The ledger still counts the sale
+    //   (sales/units/income) — the ledger reports sales, the pouch reports cash; that difference IS the lesson. Pouch += only on T.collect.
+    const toTill = !!opts.toTill;
+    if (paid > 0) { if (!toTill) this._addSpark(paid, 'sale'); this.ledger.income += paid; }
     this.ledger.sales++; this.ledger.units += sold;
-    const out = { paid, mood: +mood.toFixed(3), sold, fair: info.fair, happy, stallId, glimmerType, price };
+    const out = { paid, amount: paid, mood: +mood.toFixed(3), sold, fair: info.fair, happy, stallId, glimmerType, price, toTill, ok: sold > 0 };
     this.bus.emit('eco:sale', out);
     return out;
   }
