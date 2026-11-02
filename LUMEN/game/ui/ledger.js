@@ -81,10 +81,16 @@ export function mountLedger(root, opts = {}) {
   const lessonBody = el('p', 'll-lesson-body', '');
   const lessonTip = el('p', 'll-lesson-tip', '');
   lesson.append(lessonTag, lessonTitle, lessonBody, lessonTip);
+  // 41D: "NEW ABILITY" reward card — shown once per ability:unlock that arrived for this review (after the stars count-up).
+  const unlockCard = el('aside', 'll-unlock'); unlockCard.hidden = true;
+  const unlockTag = el('span', 'll-unlock-tag', 'NEW ABILITY'); const unlockTitle = el('h3', 'll-unlock-title', ''); const unlockBody = el('p', 'll-unlock-body', '');
+  unlockCard.append(unlockTag, unlockTitle, unlockBody);
+  let pendingUnlock = null;
+  const offUnlock = bus.on('ability:unlock', (e) => { if (e?.id) pendingUnlock = e; });
   const foot = el('footer', 'll-ledger-foot');
   const btn = el('button', 'll-btn ll-ledger-continue', 'CONTINUE ▸');
   foot.append(btn);
-  sheet.append(head, table, chips, stars, starTxt, lesson, foot);
+  sheet.append(head, table, chips, stars, starTxt, unlockCard, lesson, foot);
   wrap.append(backdrop, sheet);
   root.appendChild(wrap);
 
@@ -145,6 +151,9 @@ export function mountLedger(root, opts = {}) {
       // lesson card
       const L = o.lesson || st.pendingLesson || lessons[report.lessonId] || null; st.pendingLesson = null; fillLesson(L);
       lesson.classList.remove('in'); later(rowsEnd() + STAR_GAP * 3 + 120, () => lesson.classList.add('in'));
+      // 41D unlock card (one per review; hidden when nothing unlocked)
+      const U = pendingUnlock; pendingUnlock = null; unlockCard.classList.remove('in'); unlockCard.hidden = !U; st.unlockShown = U ? U.id : null;
+      if (U) { unlockTitle.textContent = `${U.title || U.id}  [${U.key || ''}]`; unlockBody.textContent = U.lesson || ''; later(rowsEnd() + STAR_GAP * 3 + 60, () => unlockCard.classList.add('in')); }
       // button
       btn.classList.remove('in'); btn.disabled = true; later(rowsEnd() + STAR_GAP * 3 + 420, () => { btn.classList.add('in'); btn.disabled = false; });
       btn.innerHTML = iconize(st.outcome === 'win' ? 'ENDLESS MODE ▸' : st.outcome === 'lose' ? 'TRY AGAIN ▸' : 'CONTINUE ▸');
@@ -182,7 +191,7 @@ export function mountLedger(root, opts = {}) {
         if (r.t >= ROW_COUNT_MS) { r.val.textContent = fmt(r.target); retrigger(r.val, 'pop'); }
       }
     },
-    destroy() { clearTimers(); offs.forEach((f) => f()); if (st.raf) cancelAnimationFrame(st.raf); window.removeEventListener('keydown', onKey); wrap.remove(); },
+    destroy() { clearTimers(); offs.forEach((f) => f()); offUnlock?.(); if (st.raf) cancelAnimationFrame(st.raf); window.removeEventListener('keydown', onKey); wrap.remove(); },
   };
 
   btn.addEventListener('click', () => { if (!btn.disabled) api.continue(); });

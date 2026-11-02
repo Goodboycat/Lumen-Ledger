@@ -72,3 +72,10 @@
   .ll-ledger-row { font-size: 13px; padding: 3px 8px; } .ll-ledger-row .ll-ledger-val { font-size: 14px; } .ll-ledger-row.net .ll-ledger-val { font-size: 17px; }
   .ll-ledger-stars i { font-size: 32px; }
 }
+/* 41D — NEW ABILITY reward card (shown after the stars when ability:unlock arrived for this review) */
+.ll-unlock { display: block; margin: 8px 0 2px; padding: 8px 12px; border-radius: 12px; background: linear-gradient(135deg, rgba(255,211,107,.22), rgba(127,224,255,.18)); border: 2px solid #ffd36b; opacity: 0; transform: translateY(14px) scale(.96); transition: opacity .32s, transform .32s cubic-bezier(.34,1.56,.64,1); }
+.ll-unlock.in { opacity: 1; transform: none; }
+.ll-unlock[hidden] { display: none; }
+.ll-unlock-tag { font: 800 10px/1 'Nunito', system-ui, sans-serif; letter-spacing: .12em; color: #ffd36b; }
+.ll-unlock-title { margin: 3px 0 2px; font: 800 15px/1.2 'Nunito', system-ui, sans-serif; color: #fff4d6; }
+.ll-unlock-body { margin: 0; font: 600 12px/1.35 'Nunito', system-ui, sans-serif; color: #ffeec2; opacity: .9; }
