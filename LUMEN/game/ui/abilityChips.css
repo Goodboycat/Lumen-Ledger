@@ -1,0 +1,17 @@
+/* 41D — ability chips (Q W E R F G). Locked = dim + ★cost. DOM only. */
+.ll-abil { position: absolute; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; gap: 6px; z-index: 19; pointer-events: none; }
+.ll-abil-chip { pointer-events: auto; position: relative; display: flex; flex-direction: column; align-items: center; min-width: 54px; padding: 4px 8px 5px; border-radius: 10px; border: 2px solid rgba(255,235,180,.55); background: rgba(30,28,48,.78); color: #ffeec2; font: 700 11px/1.1 'Nunito', system-ui, sans-serif; cursor: pointer; overflow: hidden; transition: transform .15s, opacity .2s; }
+.ll-abil-chip:hover:not(:disabled) { transform: translateY(-2px); }
+.ll-abil-key { font-size: 14px; color: #ffd36b; }
+.ll-abil-name { font-size: 10px; opacity: .9; }
+.ll-abil-cost { display: none; font-size: 10px; color: #ffd36b; margin-top: 1px; }
+.ll-abil-chip.locked { opacity: .45; border-style: dashed; filter: grayscale(.8); cursor: not-allowed; }
+.ll-abil-chip.locked .ll-abil-cost { display: block; }
+.ll-abil-chip.locked .ll-abil-name { display: none; }
+.ll-abil-chip.pop { animation: ll-abil-pop .5s cubic-bezier(.34,1.56,.64,1); border-color: #ffd36b; box-shadow: 0 0 14px rgba(255,211,107,.8); }
+.ll-abil-chip.shake { animation: ll-shake .32s; }
+.ll-abil-chip.cooling::after { content: ''; position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: #7fe0ff; transform-origin: left; animation: ll-abil-cd var(--cd, 5s) linear forwards; }
+@keyframes ll-abil-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
+@keyframes ll-abil-cd { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+body.ll-dlg-open .ll-abil, body.ll-modal .ll-abil { opacity: .25; }
+@media (pointer: coarse) { .ll-abil { display: none; } }   /* touch: 7C pad owns the buttons (41D P2 adds earned chips above it) */

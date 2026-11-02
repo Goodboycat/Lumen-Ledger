@@ -785,6 +785,9 @@ function installRunWires(lg) {
     const ok = eco.allocate(d); if (ok) bus.emit('game:allocated', { moved, deltas: d, spark: eco.state.spark }); return ok;
   };
   on('ui:jar:apply', (p) => lg.applyJars(p?.pct));
+  on('ui:ability', (p) => p?.name && lg.ability(p.name));                                        // 41D chips click
+  lg.syncAbilities = () => { const u = lg.sb?.unlocks; if (u) bus.emit('ui:abilities', { abilities: u.abilities, starsTotal: u.starsTotal }); };
+  on('game:state', () => lg.syncAbilities()); on('ability:unlock', () => lg.syncAbilities());  // 41D HUD chips follow the set
   // S03: AUTO ("pay yourself first") — while on, every SALE (eco:spark reason 'sale' / tips) is split by the current sliders the moment it lands.
   //   The fractional remainder is carried over (lg.autoCarry) so 7 ✦ sales at 30 % still fill the Save jar over time. Persisted in the save (autoApply).
   lg.autoApply = !!lg.autoApply; lg.autoCarry = { save: 0, invest: 0, protect: 0 };

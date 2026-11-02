@@ -15,7 +15,8 @@ import { mountDialogue } from './dialogue.js';
 import { mountToast } from './toast.js';
 import { mountWave } from './wave.js';     // S41/15D: Collector wave banner + edge arrows pointing at off-screen enemies
 import { mountNudge } from './nudge.js';   // S42/16B: 'Touch here!' hand on the ⏩ button when nothing is happening
-import { mountBarks } from './bark.js';    // 41A: speech bubbles projected from hero/owl/baron (story:bark) — never modal
+import { mountBarks } from './bark.js';
+import { mountAbilityChips } from './abilityChips.js';   // 41D: six ability chips, locked = dim + ★ cost    // 41A: speech bubbles projected from hero/owl/baron (story:bark) — never modal
 import { mountTitle } from './title.js';
 import { mountPause } from './pause.js';
 import { mountTouch } from './touch.js';
@@ -45,7 +46,8 @@ export function mountUI(root, opts = {}) {
   add('toast', mountToast(root, { bus, max: 3 }));
   add('wave', mountWave(root, { bus }));   // S41/15D — index.html binds camera/enemies via ui.wave.bind({...}) once the sandbox exists
   if (opts.nudge !== false) add('nudge', mountNudge(root, { bus }));   // S42/16B — Game.js binds the bored() predicate via ui.nudge.bind({...})
-  if (opts.barks !== false) add('barks', mountBarks(root, { bus }));   // 41A — index.html binds camera/hero/owl/baron via ui.barks.bind({...})
+  if (opts.barks !== false) add('barks', mountBarks(root, { bus }));
+  if (opts.abilityChips !== false) add('abilityChips', mountAbilityChips(root, { bus }));   // 41D — Game.js emits ui:abilities on start/resume   // 41A — index.html binds camera/hero/owl/baron via ui.barks.bind({...})
   // S11: ONE Escape dispatcher. Panels no longer listen for Escape themselves (hotkey:false / noEsc) — a single capture-phase window
   // listener walks a priority stack and the FIRST layer that owns the screen consumes the press:
   //   tutorial → season card → dialogue (swallowed: Enter/tap advance, Esc never opens pause over a line) → build (placing/demolish →
