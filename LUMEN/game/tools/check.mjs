@@ -1638,7 +1638,7 @@ if (doGame) {
     ui.title.buttons.story.click();
     if (lg.state !== 'playing' || !lg.sb || !lg.story || ui.title.isOpen) throw new Error('PLAY → ' + lg.state);
     const m0 = meshes(); if (m0 < 20) throw new Error('scene meshes after start ' + m0);
-    step(); if (!ui.dialogue.isOpen || !game.paused || !/Season 1/.test(ev['story:line'][0].text)) throw new Error('S1 opening in dialogue: open ' + ui.dialogue.isOpen + ' paused ' + game.paused);
+    step(); if (!ui.dialogue.isOpen || !game.paused || ev['story:line'][0].speaker !== 'owl') throw new Error('S1 opening in dialogue: open ' + ui.dialogue.isOpen + ' paused ' + game.paused);
     const d1 = drain(); if (ui.dialogue.isOpen || game.paused) throw new Error('drain S1 opening: ' + d1 + ' lines, paused ' + game.paused);
     console.log(`  1. title (paused) → PLAY → sandbox ${m0} meshes + story · S1 opening ${d1} lines in the 7B box (paused by dialogue) · Enter ×${d1} → playing, unpaused  OK`);
     // 2. seasons 1 → 3 by the clock: mid line → eco:season → ledger lines → story:review → ledger (paused) → CONTINUE → next opening → playing
