@@ -1,3 +1,8 @@
+# ⛔ STOPPED 2026-11-02 — DO NOT DO THIS TASK. Close this file now.
+User order: two chats were axed reading this prompt and the Game.js/tutorial hooks it names, producing nothing. 41B has a ⛔ row in README_pipeline so next.sh skips it. Run `bash tools/next.sh` and do what it prints (41C onward). Do not read further.
+
+---
+
 # Chat 41B — Diegetic tutorial: five verbs, no overlay
 Needs: 41A barks · 10D installTutorialGates · 5 build · 10B coins (`sb.dropTip`) · S36 drag props · decor crate (1D)      Blocked-by: 41A
 Owned (only these files): ui/tutorial.js (rewrite; keep the export names `mountTutorial/destroy` so index.js compiles), ui/tutorial.css, src/Game.js (`installTutorialGates` replaced by `installVerbChain`, ≤ 60 lines), data/story.json `tutorial` (new shape), check.mjs (additive `--verbs`), tools/qa_tutorial.mjs (update the asserts to the new flow)

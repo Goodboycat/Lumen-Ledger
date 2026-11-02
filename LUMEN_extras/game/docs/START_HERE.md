@@ -8,6 +8,9 @@ You are one of ~40 Genspark chats building ONE browser game, **Lumen Ledger**, f
 jam (theme "Make FinLit Fun", deadline Nov 15 2026). You have **100 credits** and ONE deliverable.
 Your chat ID is in the user's message. Your task file is `docs/prompts/<ID>_*.md`.
 
+## RULE -1 — 41B IS STOPPED (user order 2026-11-02)
+41B (verb-chain tutorial) killed two chats purely on reading cost. Never open `prompts/41B_*.md`, never read Game.js tutorial gates for it. `next.sh` skips it (⛔ row). General corollary: if `next.sh` points at an ID whose TRAIL shows ≥ 2 chats with no code commit, write a ⛔ row and move on — do not become the third.
+
 ## RULE 0 — GITHUB IS THE BACKUP (added 2026-10-19, read before anything else)
 The whole `/home/user/webapp` repo is mirrored at **https://github.com/Goodboycat/Lumen-Ledger** (branch `main`). An axed chat loses
 its sandbox; it does NOT lose what it pushed. So **every commit is pushed, immediately, pass or fail**. Nothing is "ready enough" to push —
