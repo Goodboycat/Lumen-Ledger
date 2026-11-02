@@ -69,7 +69,9 @@ export class StorySystem {
     this.data = opts.data || null;
     this.opts = { autoplay: true, autoAdvance: false, lineGap: 0.12, midAt: 0.5, ledgerLinesBeforeReview: true, tutorial: true, ...opts };
     this.held = false;                                                                  // S18: hold() defers new groups (cinematics)
-    this.state = { season: 0, midPlayed: 0, openingPlayed: 0, endedPlayed: 0, toastsFired: [], scamsSeen: [], eventsSeen: [], finale: null, choicesMade: 0 };
+    this.state = { season: 0, midPlayed: 0, openingPlayed: 0, endedPlayed: 0, toastsFired: [], scamsSeen: [], eventsSeen: [], finale: null, choicesMade: 0, barksPlayed: [] };
+    this._barkTimers = [];    // 41A: [{ at, line, group }] pending timed barks (walk-in); drained by update(dt)
+    this._barkClock = 0;
     this.queue = [];          // [{ group, lines, i, onDone, meta }]
     this.current = null;      // group being played
     this.line = null;         // line currently shown (awaiting advance / choice)
@@ -179,8 +181,24 @@ export class StorySystem {
     this.bus.emit('story:toast', { id: t.id, text: t.text, icon: t.icon || '🦉', kind: t.kind || 'info', trigger });
     return t;
   }
+  // ---------------------------------------------------------------- 41A barks (kind 'bark': a timed speech bubble, never a modal line)
+  /** Emit `story:bark` for one line. Speaker → default anchor (pip→hero · owl→owl · baron→baron). */
+  bark(line, group = 'bark') {
+    if (!line || !line.text) return null;
+    const anchor = line.anchor || ({ pip: 'hero', owl: 'owl', baron: 'baron' }[line.speaker] || 'hero');
+    const p = { speaker: line.speaker || 'owl', text: line.text, anchor, ttl: line.ttl || 3.2, group };
+    this.bus.emit('story:bark', p); return p;
+  }
+  /** Fire a bark GROUP once per run (`barks.firstCoin` …). Timed groups (walkIn) are scheduled by `at` on the update clock. */
+  barkGroup(name) {
+    const lines = this.data?.barks?.[name]; if (!lines || !lines.length || this.state.barksPlayed.includes(name)) return false;
+    this.state.barksPlayed.push(name); this._barkClock = 0;
+    for (const l of lines) { if (l.at > 0) this._barkTimers.push({ at: l.at, line: l, group: name }); else this.bark(l, name); }
+    return true;
+  }
   /** dt seconds. Mid-season trigger + optional auto-advance (demo/tests). */
   update(dt = 0) {
+    if (this._barkTimers.length) { this._barkClock += dt; const due = this._barkTimers.filter((t) => t.at <= this._barkClock); if (due.length) { this._barkTimers = this._barkTimers.filter((t) => t.at > this._barkClock); for (const t of due) this.bark(t.line, t.group); } }
     const eco = this.economy?.state;
     if (eco && !this.state.finale) {
       if (this.state.openingPlayed === 0 && eco.season >= 1 && this.opts.autoplay) this.onSeasonStart(eco.season);   // season 1 only; later seasons wait for ui:continue
@@ -196,11 +214,11 @@ export class StorySystem {
   clear() { this.queue.length = 0; this.current = null; this.line = null; this.pendingOffer = null; this.bus.emit('story:end', { group: 'clear' }); }
   destroy() { for (const off of this._offs) off(); this._offs.length = 0; this.clear(); }
 
-  serialize() { return { v: 1, state: { ...this.state, toastsFired: [...this.state.toastsFired], scamsSeen: [...this.state.scamsSeen], eventsSeen: [...this.state.eventsSeen] } }; }
+  serialize() { return { v: 1, state: { ...this.state, toastsFired: [...this.state.toastsFired], scamsSeen: [...this.state.scamsSeen], eventsSeen: [...this.state.eventsSeen], barksPlayed: [...this.state.barksPlayed] } }; }
   static deserialize(json, economy, opts = {}) {
     const s = new StorySystem(economy, opts);
     const j = typeof json === 'string' ? JSON.parse(json) : json;
-    if (j?.state) Object.assign(s.state, j.state, { toastsFired: [...(j.state.toastsFired || [])], scamsSeen: [...(j.state.scamsSeen || [])], eventsSeen: [...(j.state.eventsSeen || [])] });
+    if (j?.state) Object.assign(s.state, j.state, { toastsFired: [...(j.state.toastsFired || [])], scamsSeen: [...(j.state.scamsSeen || [])], eventsSeen: [...(j.state.eventsSeen || [])], barksPlayed: [...(j.state.barksPlayed || [])] });
     return s;
   }
 
@@ -216,6 +234,11 @@ export class StorySystem {
     on('ui:advance', () => { this.next(); });
     on('ui:choice', (p) => { if (this.line?.choices) this.choose(p?.index ?? 0); });
     on('ui:start', (p) => { if (p?.mode !== 'continue' && this.economy && this.state.openingPlayed === 0) this.onSeasonStart(this.economy.state.season); });
+    // 41A barks: walk-in on a fresh start; first-* one-shots on their world events (absent in story.json = never)
+    on('game:start', (p) => { if (!p?.resumed) this.barkGroup('walkIn'); });
+    on('eco:spark', (p) => { if (typeof p?.reason === 'string' && p.reason.startsWith('tip')) this.barkGroup('firstCoin'); });
+    on('build:placed', (p) => { const id = p?.id || p?.entry?.id || p?.e?.id || ''; if (String(id).startsWith('stall_')) this.barkGroup('firstStall'); });
+    on('jars:deposit', () => this.barkGroup('firstDeposit'));
     // tutorial triggers (one listener per distinct trigger name in the data)
     const triggers = new Set((this.data?.tutorial || []).map((t) => t.trigger));
     for (const tr of triggers) on(tr, () => this.tutorialFor(tr));
