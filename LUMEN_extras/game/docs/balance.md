@@ -125,3 +125,20 @@ For comparison, the same strategies on 4A `BALANCE` (`--base`): sensible fog 0 a
 - Real players sell fewer units than the sim (18 + 5/stall visits per season). If playtests show S10 misses, lower `saveThreshold`
   to 150 first — it moves fog 0 by about one season without touching the debt lesson.
 - `winRequiresSeasons: false` gives Endless mode: fog 0 + debt 0 wins immediately (≈ S8–9 for sensible).
+
+## Season length curve (41C) — `BALANCE.seasonCurve = [70, 90, 110, 130, 150]`
+- `economy.seasonSecondsFor(s)` (pure): `config.seasonSecondsOverride` (tests / `opts.seasonSeconds`) → curve (S ≥ 5 → 150) → flat `seasonSeconds:150` fallback (old saves, `--base`).
+- **Cost formula**: per-season upkeep and loan interest are multiplied by `seasonCostScale(s) = min(1, seasonSecondsFor(s)/150)` → S1 0.47 · S2 0.60 · S3 0.73 · S4 0.87 · S5+ 1.00. Income is per-customer so a shorter season already earns less; scaling the fixed costs keeps S1 *tight but winnable*. `startDebt` 260 → 300 to keep the hoarder band losing.
+- `eco:season` payload carries `seasonSeconds` (the **next** season's length); `game:start` carries the first one. `hud.setSeasonSeconds(sec)` scales the day bar (54 px × len/150) and shows a "70 s" chip on S1 only.
+- Scheduler marks (one table at the top of `installScheduler`) stay day01 fractions; S1 Collector wave at 0.55 (one, hp 1, 1.6 u/s, 2 s contact grace, drops 2 ✦), S ≥ 2 at 0.70.
+
+`node tests/economy.sim.mjs --seasons70` (sensible, mean of seeds 1–5, cost scale = len/150):
+```
+ S   len  scale  income  expens    -int     net   spark    ✦/s
+ 1    70   0.47     216     151      23      43      23   3.09
+ 2    90   0.60     235      45       7     182      17   2.61
+ 3   110   0.73     254     166       0      88       4   2.31
+ 4   130   0.87     367     252       0     114       8   2.82
+ 5   150   1.00     499      76       0     423     104   3.32
+```
+Bands after 41C (`--sweep`, 20 seeds): sensible **win@10 ×20** (fog→0 S7×12 S8×3 S9×5) · borrow lose@3×7 lose@5×13 · hoarder lose@7–9 ×17, open ×3. Pre-41C band was sensible ≈ 17/20 — the shorter early seasons with scaled costs are slightly *easier* for a sensible player and still punish borrow/hoarder.

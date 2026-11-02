@@ -13,6 +13,7 @@ import { EventBus } from '../src/core/EventBus.js';
 const args = process.argv.slice(2);
 const useBase = args.includes('--base');
 const sweep = args.includes('--sweep');
+const seasons70 = args.includes('--seasons70');   // 41C: per-season income/expenses S1–S5 at the curve lengths (sensible, seeds 1–5 mean)
 const seed = +(args.find((a) => !a.startsWith('--')) ?? 1);
 const types = Object.keys(BALANCE.glimmers);
 const pad = (v, n = 7) => String(v).padStart(n);
@@ -75,7 +76,22 @@ export function run(name, s, print = true, balance = null) {
 
 const isMain = process.argv[1] && import.meta.url.endsWith(process.argv[1].split('/').pop());
 if (!isMain) { /* imported by a tuner / check.mjs: export only */ }
-else if (sweep) {
+else if (seasons70) {
+  // 41C: sensible strategy, seeds 1..5; per-season mean income / expenses / interest paid / net at the season-curve lengths.
+  const N = 5, acc = {}; const origLog = console.log; console.log = () => {};
+  for (let sd = 1; sd <= N; sd++) {
+    overrideBalance = null; const eco = makeEco(sd); let built = 0;
+    for (let season = 1; season <= 5 && !eco.state.ended; season++) {
+      built = STRATEGIES.sensible(eco, season, built); eco.tick(eco.seasonSecondsFor(season)); const r = eco.endSeason();
+      const a = acc[season] ||= { len: eco.seasonSecondsFor(season), scale: eco.seasonCostScale(season), inc: 0, exp: 0, intp: 0, spark: 0, n: 0 };
+      a.inc += r.income; a.exp += r.expenses; a.intp += r.interestPaid; a.spark += r.spark; a.n++;
+    }
+  }
+  console.log = origLog;
+  console.log(`== --seasons70 · sensible · mean of seeds 1–${N} · cost scale = len/150`);
+  console.log(`${pad('S', 2)} ${pad('len', 5)} ${pad('scale', 6)} ${pad('income')} ${pad('expens')} ${pad('-int')} ${pad('net')} ${pad('spark')} ${pad('✦/s', 6)}`);
+  for (const [k, a] of Object.entries(acc)) console.log(`${pad(k, 2)} ${pad(a.len, 5)} ${pad(a.scale.toFixed(2), 6)} ${pad((a.inc / a.n).toFixed(0))} ${pad((a.exp / a.n).toFixed(0))} ${pad((a.intp / a.n).toFixed(0))} ${pad(((a.inc - a.exp - a.intp) / a.n).toFixed(0))} ${pad((a.spark / a.n).toFixed(0))} ${pad((a.inc / a.n / a.len).toFixed(2), 6)}`);
+} else if (sweep) {
   for (const name of Object.keys(STRATEGIES)) {
     const hist = {}, fz = {};
     for (let s = 1; s <= 20; s++) { const r = run(name, s, false); const k = `${r.ended || 'open'}@${r.ended ? r.seasons : '12+'}`; hist[k] = (hist[k] || 0) + 1; const z = 'S' + (r.fogZero ?? '—'); fz[z] = (fz[z] || 0) + 1; }
