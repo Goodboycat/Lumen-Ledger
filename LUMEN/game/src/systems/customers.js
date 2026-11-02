@@ -373,8 +373,11 @@ export class CustomerSystem {
     const price = this.price(s.id), fair = this.fair(s.id);
     let r;
     // BUGFIX B10: the stall's CURRENT level (live BuildSystem entry) is passed so paid L2/L3 upgrades apply their sales multiplier
-    if (this.economy && this.economy.sell) r = this.economy.sell(s.id, c.type, price, { level: (s.entry && s.entry.level) || s.level || 1 });
+    // 42A: when a till system is attached the sale goes to the STALL's counter (economy.sell toTill → pouch untouched), Pip collects it later
+    const toTill = !!this.till;
+    if (this.economy && this.economy.sell) r = this.economy.sell(s.id, c.type, price, { level: (s.entry && s.entry.level) || s.level || 1, toTill });
     else { r = { paid: price, sold: 1, fair, happy: price <= fair * 1.1, mood: 1 }; }
+    if (toTill && r.paid > 0) this.till.pay(s.id, r.amount ?? r.paid, { type: c.type });
     const ratio = fair > 0 ? price / fair : 1;
     let mood, reaction;
     if (ratio > 1.4) { mood = 0.1; reaction = 'angry'; }                       // rip-off → angry (cust:angry)
