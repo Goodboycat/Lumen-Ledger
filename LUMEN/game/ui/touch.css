@@ -82,3 +82,8 @@ body.is-touch .help { display: none; }
   .ll-touch-ab { width: 42px; height: 42px; } .ll-touch-ab-ico { font-size: 18px; } .ll-touch-ab-lab { display: none; }
 }
 @media (max-width: 360px) { .ll-touch-ab { width: 40px; height: 46px; min-width: 40px; } .ll-touch-abilities { gap: 4px; } }
+
+/* 41D earned abilities: locked chips are hidden on touch (desktop HUD shows the star cost); pop on unlock */
+.ll-touch-ab.locked { display: none; }
+.ll-touch-ab.pop { animation: ll-touch-ab-pop .5s cubic-bezier(.34,1.56,.64,1); }
+@keyframes ll-touch-ab-pop { 0% { transform: scale(.4); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }

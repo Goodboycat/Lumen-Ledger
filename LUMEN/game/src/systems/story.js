@@ -246,6 +246,9 @@ export class StorySystem {
     on('eco:spark', (p) => { if (typeof p?.reason === 'string' && p.reason.startsWith('tip')) this.barkGroup('firstCoin'); });
     on('build:placed', (p) => { const id = p?.id || p?.entry?.id || p?.e?.id || ''; if (String(id).startsWith('stall_')) this.barkGroup('firstStall'); });
     on('jars:deposit', () => this.barkGroup('firstDeposit'));
+    // 41D: one Owl bark per earned ability, fired when the review closes (ability:unlock arrives mid-ledger; the bark waits for CONTINUE)
+    on('ability:unlock', (p) => { if (p?.id) this._pendingUnlockBark = p.id; });
+    on('ui:continue', () => { const id = this._pendingUnlockBark; this._pendingUnlockBark = null; if (id) this.barkGroup('abilityUnlock', id); });
     // tutorial triggers (one listener per distinct trigger name in the data)
     const triggers = new Set((this.data?.tutorial || []).map((t) => t.trigger));
     for (const tr of triggers) on(tr, () => this.tutorialFor(tr));

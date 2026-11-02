@@ -201,6 +201,10 @@ export function mountTouch(root, input, opts = {}) {
     bus.on('build:enter', () => { api.setEnabled('attack', false); strip.classList.add('placing'); }), bus.on('build:exit', () => { api.setEnabled('attack', true); strip.classList.remove('placing'); }),
     // S08: the sandbox answers every ability — success → cooldown sweep (COOLDOWN_S from the payload or 5 s) · refused → shake
     bus.on('sandbox:ability:start', (p) => { if (p?.name && abilities[p.name]) api.setCooldown(p.name, p.cooldown ?? 5); }),
+    // 41D: earned abilities — locked chips are hidden until ability:unlock / ui:abilities says otherwise (starters always visible)
+    bus.on('ui:abilities', (p) => { const set = p?.abilities; for (const [n, a] of Object.entries(abilities)) a.el.classList.toggle('locked', !!set && !set.has(n)); }),
+    bus.on('ability:unlock', (p) => { const a = p?.id && abilities[p.id]; if (a) { a.el.classList.remove('locked'); a.el.classList.add('pop'); setTimeout(() => a.el.classList.remove('pop'), 500); } }),
+    bus.on('ability:locked', (p) => { if (p?.name && abilities[p.name]) api.flashDenied(p.name); }),
     bus.on('sandbox:denied', (p) => { if (p?.name && abilities[p.name]) api.flashDenied(p.name); }),
     bus.on('ui:build:open', () => strip.classList.add('tray')), bus.on('ui:build:close', () => strip.classList.remove('tray')),
   ];
