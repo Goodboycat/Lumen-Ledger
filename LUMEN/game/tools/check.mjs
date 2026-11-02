@@ -1129,7 +1129,7 @@ if (doUI) {
   // skip() → all final, stars on/off, lesson card from LESSONS + story:lesson override, CONTINUE → ui:continue {outcome}, eco:win/eco:lose headers,
   // dialogue typewriter cps + punctuation pauses, story:line queue, advance → ui:advance / hide, choices → ui:choice + keys 1–4, ui:pause on/off,
   // toast push/coalesce ×N/max/clear + bus listeners (build:placed, eco:denied, eco:event, cust:angry ×2 coalesce).
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); const ROW_WAIT = 90 * 5 + 40; // ledger row stagger 90 ms × 5 + net row
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); const ROW_WAIT = 90 * 6 + 40; // ledger row stagger 90 ms × 6 rows (42A added tillTax) + net row
   ['ui:continue', 'ui:ledger:open', 'ui:ledger:close', 'ui:choice', 'ui:advance', 'ui:pause', 'ui:dialogue:open', 'ui:dialogue:close'].forEach(rec);
   console.log('\nUI (7B):');
   // 4. Ledger
