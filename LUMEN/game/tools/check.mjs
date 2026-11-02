@@ -1588,6 +1588,9 @@ if (doSandbox) {
       if (!until(() => s2.eco.state.season === 2, 40)) throw new Error('41C S1 did not end'); const tEnd = g2.time;
       if (!(tEnd > 69 && tEnd < 72)) throw new Error('41C S1 length ' + tEnd.toFixed(1) + ' s (want 70)');
       if (ev2['eco:season']?.[0]?.seasonSeconds !== 90) throw new Error('41C eco:season.seasonSeconds ' + ev2['eco:season']?.[0]?.seasonSeconds);
+      // 41C P3: a v1 snapshot from a flat-150 s save (S44-era) resumes onto the curve — the next season uses seasonSecondsFor.
+      { const old = new (s2.eco.constructor)({ ...s2.eco.config, seasonCurve: undefined, seasonSecondsOverride: 0, seasonSeconds: 150 }); old.state.season = 3; old.state.day01 = 0.4;
+        const re = s2.eco.constructor.deserialize(old.serialize()); if (re.state.season !== 3 || re.seasonSecondsFor() !== 110 || re.seasonSecondsFor(4) !== 130) throw new Error('41C P3 save resume: S' + re.state.season + ' len ' + re.seasonSecondsFor() + ' next ' + re.seasonSecondsFor(4)); }
       s2.dispose?.();
       console.log(`  41C: seasonCurve 70/90/110/130/150 (S9 → 150) · S1 Collector ×1 (hp 1, reward 2) landed at ${tWave.toFixed(1)} s (day 0.55) · S1 ended at ${tEnd.toFixed(1)} s · eco:season.seasonSeconds 90  OK`);
     }
