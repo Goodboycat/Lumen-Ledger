@@ -44,6 +44,7 @@ export const LEDGER_ROWS = [
   ['investReturn',   'Invest return',       +1],
   ['expenses',       'Expenses & upkeep',   -1],
   ['interestPaid',   'Loan interest  20 %', -1],
+  ['tillTax',        'Left on counters  −10 % (Collector tax)', -1],   // 42A: unswept till money at season end
 ];
 
 export function mountLedger(root, opts = {}) {

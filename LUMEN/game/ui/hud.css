@@ -14,6 +14,12 @@
 .ll-spark.shake { animation: ll-shake .36s linear; }
 .ll-spark-debt { font-size: 10px; font-weight: 800; color: #4a148c; background: #e9dcff; border: 2px solid var(--ink); border-radius: 8px; padding: 1px 6px; margin-left: 4px; display: none; }
 .ll-spark.has-debt .ll-spark-debt { display: inline-block; }
+/* 42A: Spark still sitting on the stall counters (not yet in the pouch) */
+.ll-spark-till { font-size: 10px; font-weight: 800; color: #5d4037; background: #ffe9a8; border: 2px solid var(--ink); border-radius: 8px; padding: 1px 6px; margin-left: 4px; display: none; }
+.ll-spark.has-till .ll-spark-till { display: inline-block; }
+.ll-spark-till.hot { animation: ll-till-hot 0.9s ease-in-out infinite; background: #ffcc80; }
+@keyframes ll-till-hot { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+@media (prefers-reduced-motion: reduce) { .ll-spark-till.hot { animation: none; outline: 2px solid #ff7043; } }
 
 /* Center: season chip + fog bar */
 .ll-mid { display: flex; flex-direction: column; align-items: center; gap: 5px; flex: 1; max-width: 340px; animation: ll-bounce-in .55s .08s cubic-bezier(.34,1.56,.64,1) both; }

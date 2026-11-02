@@ -70,16 +70,17 @@ export function createTills({ bus, eco, build, vfx = null, coinLayer = null, sta
         emit('till:full', { stallId: t.stallId, amount: cap, overflow: over, spilled });
         if (spilled > 0) T.spill(t.stallId, spilled);
       }
-      if (kept > 0) { t.amount = round(t.amount + kept); if (stats) stats.tillPaid = round((stats.tillPaid || 0) + kept); emit('till:change', { stallId: t.stallId, amount: t.amount, delta: kept, meta }); }
+      if (kept > 0) { t.amount = round(t.amount + kept); if (stats) stats.tillPaid = round((stats.tillPaid || 0) + kept); emit('till:change', { stallId: t.stallId, amount: t.amount, delta: kept, cap, meta }); }
       sync(t);
       return kept;
     },
     collect(id, how = 'walk') {
       const t = tills.get(key(id)); if (!t || t.amount <= 0) return 0;
       const amount = t.amount; t.amount = 0; t.fullAt = -1;
-      eco?.earn?.(amount, 'till:' + how);
+      // pouch += amount. NOT eco.earn: the ledger already counted this income at the sale (toTill) — only the cash moves now
+      if (eco?._addSpark) eco._addSpark(amount, 'till:' + how); else eco?.earn?.(amount, 'till:' + how);
       if (stats) { stats.tillCollected = round((stats.tillCollected || 0) + amount); stats['tillCollected_' + how] = round((stats['tillCollected_' + how] || 0) + amount); }
-      emit('till:change', { stallId: t.stallId, amount: 0, delta: -amount, how });
+      emit('till:change', { stallId: t.stallId, amount: 0, delta: -amount, cap: tillCap(t.level), how });
       emit('till:collect', { stallId: t.stallId, amount, how, pos: { ...t.pos } });
       if (how !== 'sweep') coinLayer?.fly?.(t.pos, t.counterY, amount, how);
       sync(t);
@@ -99,9 +100,9 @@ export function createTills({ bus, eco, build, vfx = null, coinLayer = null, sta
       let swept = 0; for (const t of tills.values()) swept += t.amount; swept = round(swept);
       if (swept <= 0) return { swept: 0, tax: 0, net: 0 };
       const taxed = round(swept * tax), net = round(swept - taxed);
-      for (const t of tills.values()) if (t.amount > 0) { const a = t.amount; t.amount = 0; t.fullAt = -1; emit('till:change', { stallId: t.stallId, amount: 0, delta: -a, how: 'sweep' }); sync(t); }
-      eco?.earn?.(net, 'till:sweep');
-      if (eco?.ledger) { eco.ledger.expenses = round((eco.ledger.expenses || 0) + taxed); eco.ledger.tillTax = round((eco.ledger.tillTax || 0) + taxed); eco.ledger.tillSwept = round((eco.ledger.tillSwept || 0) + swept); }
+      for (const t of tills.values()) if (t.amount > 0) { const a = t.amount; t.amount = 0; t.fullAt = -1; emit('till:change', { stallId: t.stallId, amount: 0, delta: -a, cap: tillCap(t.level), how: 'sweep' }); sync(t); }
+      if (eco?._addSpark) eco._addSpark(net, 'till:sweep'); else eco?.earn?.(net, 'till:sweep');
+      if (eco?.ledger) { eco.ledger.expenses = round((eco.ledger.expenses || 0) + taxed); eco.ledger.tillTax = round((eco.ledger.tillTax || 0) + taxed); eco.ledger.tillSwept = round((eco.ledger.tillSwept || 0) + swept); }   // call BEFORE endSeason so the tax lands in this season's report
       if (stats) { stats.tillSwept = round((stats.tillSwept || 0) + swept); stats.tillTax = round((stats.tillTax || 0) + taxed); }
       emit('till:collect', { stallId: null, amount: net, tax: taxed, swept, how: 'sweep' });
       return { swept, tax: taxed, net };

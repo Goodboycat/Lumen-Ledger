@@ -321,7 +321,9 @@ function installTills(sb) {
     list.forEach((c, i) => { _q.setFromEuler(_e.set(Math.PI / 2, 0, c.t)); _s.setScalar(c.scale); _m.compose(c.position, _q, _s); im.setMatrixAt(n0 + i, _m); }); im.count = n0 + list.length; im.instanceMatrix.needsUpdate = true; };
   // helpers' auto-collect pop (optional on HelperAnimator)
   // P2: season end → every counter is swept into the pouch minus the Collector tax; the ledger shows the red row (ui/ledger reads r.tillSweep)
-  sb._offs.push(bus.on('eco:season', (r) => { const sw = sb.till.sweep(); if (sw.swept > 0 && r) { r.tillSweep = sw; sb.log.push(`S${r.season} counters swept ${sw.swept} (tax ${sw.tax})`); } }));
+  // the sweep runs BEFORE the report is built, so the tax is this season's expense and the ledger shows the red "Left on counters" row
+  const baseEnd = eco.endSeason.bind(eco);
+  eco.endSeason = (...a) => { const sw = sb.till.sweep(); const r = baseEnd(...a); if (r) { r.tillSwept = sw.swept; r.tillTax = sw.tax; if (sw.swept > 0) sb.log.push(`S${r.season} counters swept ${sw.swept} (tax ${sw.tax})`); } return r; };
   sb._offs.push(bus.on('till:full', (p) => { const t = sb.till.get(p.stallId); if (t) vfx.pop?.show?.(new THREE.Vector3(t.pos.x, 1.6, t.pos.z), 'FULL', { color: '#FF7043', dur: 1.0, size: 1.1 }); }));
   sb._offs.push(bus.on('build:placed', () => sb.till.refresh()));
   sb._offs.push(bus.on('build:loaded', () => sb.till.refresh()));

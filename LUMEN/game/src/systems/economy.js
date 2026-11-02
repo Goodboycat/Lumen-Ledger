@@ -517,7 +517,7 @@ export class Economy {
     if (L.saved >= c.starSaveMin || (debtBefore > 0 && s.debt < debtBefore)) stars++;
     if (s.debt <= debtBefore && s.fog01 <= fogBefore) stars++;
     const report = {
-      season, income, expenses, interestEarned, interestPaid, investReturn, investRate: +investRate.toFixed(3), upkeep, wages,
+      season, income, expenses, interestEarned, interestPaid, investReturn, investRate: +investRate.toFixed(3), upkeep, wages, tillTax: L.tillTax || 0, tillSwept: L.tillSwept || 0,   // 42A
       upkeepDebt: upkeepRes.debt, saved: L.saved, invested: L.invested, protected: L.protected, absorbed: L.absorbed,
       loansTaken: L.loansTaken, repaid: L.repaid, sales: L.sales, units: L.units, events: L.events.slice(),
       scamsAccepted: L.scamsAccepted, scamsRefused: L.scamsRefused,

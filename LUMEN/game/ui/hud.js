@@ -37,8 +37,9 @@ export function mountHUD(root, opts = {}) {
   const debtChip = el('span', 'll-spark-debt', 'debt 0');
   // S05: quick PAY button inside the debt chip — repaying the Baron is the win path, and the jars panel (with PAY BARON) is collapsed
   //   on phones during dialogue. Emits the same 'ui:repay' {amount} the jars button does (Game.js caps it by the pouch).
+  const tillChip = el('span', 'll-spark-till', 'on counters 0'); tillChip.title = 'Spark your customers paid that is still sitting on the counters — walk over a stall (or dash) to pocket it';   // 42A
   const payBtn = el('button', 'll-spark-pay', 'PAY'); payBtn.type = 'button'; payBtn.title = 'Pay the Baron from your pouch (stops the interest, lifts the Fog)'; payBtn.disabled = true;
-  spark.append(sparkCol, debtChip, payBtn);
+  spark.append(sparkCol, debtChip, tillChip, payBtn);
   payBtn.addEventListener('click', (e) => { e.stopPropagation && e.stopPropagation(); api.pay(); });
 
   const mid = el('div', 'll-mid');
@@ -148,6 +149,10 @@ export function mountHUD(root, opts = {}) {
   // ---------------------------------------------------------------- bus wiring
   const offs = [
     bus.on('eco:spark', (p) => { if (p && p.spark != null) api.setSpark(p.spark); }),
+    // 42A: "on counters" chip = Σ tills; pulses (CSS .hot) while any till is ≥ 60 % of its cap. Hidden at 0 so the header stays calm before the first sale.
+    bus.on('till:change', (p) => { if (!p) return; st.tills = st.tills || {}; st.tills[p.stallId] = { amount: p.amount || 0, cap: p.cap || 40 }; let sum = 0, hot = false; for (const t of Object.values(st.tills)) { sum += t.amount; if (t.amount >= 0.6 * t.cap) hot = true; }
+      tillChip.textContent = 'on counters ' + Math.round(sum); spark.classList.toggle('has-till', sum > 0); tillChip.classList.toggle('hot', hot); }),
+    bus.on('game:start', () => { st.tills = {}; spark.classList.remove('has-till'); tillChip.classList.remove('hot'); }),
     bus.on('eco:season', (r) => { if (!r) return; api.setSeason((r.season || 0) + 1, 0); if (r.seasonSeconds) api.setSeasonSeconds(r.seasonSeconds); if (r.fog01 != null) api.setFog(r.fog01); if (r.debt != null) api.setDebt(r.debt); if (r.spark != null) api.setSpark(r.spark, { silent: true }); if (r.reputation != null) api.setReputation(r.reputation); }),
     bus.on('eco:fog', (p) => { if (p && p.fog01 != null) api.setFog(p.fog01); }),
     bus.on('eco:loan', (p) => { if (p && p.debt != null) api.setDebt(p.debt); }),
