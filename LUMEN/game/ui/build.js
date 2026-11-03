@@ -19,6 +19,7 @@
 
 import { iconize, icon } from './icons.js';
 import { bus as defaultBus } from '../src/core/EventBus.js';
+import { PREFS } from '../src/systems/customers.js';   // 44B: "wanted by: elder, critic" in the stall detail (types whose weight ≥ 1.5 for that stall kind)
 
 export const ICONS = {
   stall_fruit: '🍎', stall_bread: '🥖', stall_lantern: '🏮', stall_fish: '🐟', stall_flower: '🌷', stall_tool: '🔨', stall_cloth: '🧵', stall_pottery: '🏺',
@@ -168,13 +169,14 @@ export function mountBuildMenu(root, opts = {}) {
     const lvl = Math.min(...low.map((e) => e.level || 1)); const cost = typeof api.upgradeCost === 'function' ? api.upgradeCost(lvl + 1) : null;
     return { can: true, lvl, to: lvl + 1, cost, poor: cost != null && cost > st.spark };
   }
+  const wantedBy = (id) => { const k = String(id).replace(/^stall_/, ''); return Object.keys(PREFS).filter((t) => (PREFS[t][k] ?? 0) >= 1.5); };   // 44B
   function refreshDetail() {
     const id = st.selected, e = id && catalog[id];
     wrap.classList.toggle('has-detail', !!e); if (!e) return;
     const cost = costOf(id), n = countOf(id), lvl = ownedLevel(id);
     detIcon.innerHTML = iconize(iconFn(id, e));
     const isStall = e.category === 'stall';
-    detInfo.innerHTML = iconize(`<b>${e.name || id}</b><small>${lvl ? `✓ yours · ${LEVEL_NAMES[lvl] || 'L' + lvl}` : (cost ? cost + ' ✦' : 'free')} · ${(e.footprint || [1, 1]).join('×')}${n && !isStall ? ` · ${n} placed` : ''}</small>`);
+    detInfo.innerHTML = iconize(`<b>${e.name || id}</b><small>${lvl ? `✓ yours · ${LEVEL_NAMES[lvl] || 'L' + lvl}` : (cost ? cost + ' ✦' : 'free')} · ${(e.footprint || [1, 1]).join('×')}${n && !isStall ? ` · ${n} placed` : ''}${isStall && wantedBy(id).length ? `<br>wanted by: ${wantedBy(id).join(', ')}` : ''}</small>`);
     const poor = !affordable(cost);
     // S29: an owned stall type cannot be deployed twice — the button says so and hands over to ⬆ Upgrade
     deployBtn.disabled = lvl > 0 || poor; deployBtn.classList.toggle('poor', poor && !lvl); deployBtn.classList.toggle('owned', lvl > 0);
