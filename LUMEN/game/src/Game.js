@@ -810,6 +810,7 @@ export function destroySandbox(sb) {
   for (const h of sb.helpers || []) { h.anim?.dispose?.(); freeMerged(h.g); game.scene.remove(h.g); }
   for (const v of (sb.villains || []).slice()) { const g = v.g || v.root || v; freeMerged(g); g.removeFromParent?.(); }
   sb.enemies?.dispose?.();                                                            // S16: fog puff pool + list
+  sb.unlocks?.destroy?.();                                                            // 43A: 41D unlocks kept 2 bus listeners (eco:season/eco:win) alive after destroy — found by --seasons
   sb.storm?.dispose?.();                                                              // S17: streak mesh + DOM overlay, sky/lights restored
   // customers: active roots are released into the pool first (keeps their state machine consistent), then every pooled root is freed
   for (const c of sb.cust?.active?.slice?.() || []) sb.cust._release(c);
