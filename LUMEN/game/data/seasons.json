@@ -1,17 +1,222 @@
 {
   "version": 1,
-  "_doc": "43A season scripts. day01 marks. trickle = extra customer waves (first wave is always at day 0). scamKind: npc | baron | null. forceEvent overrides pickEvent. novelty.at is also a mark (season:novelty). Rule: no mark kind equals the previous season's same mark (|d| >= 0.02). endless rotates rows 6..10 (43D: the wrap S10→S11=row 6 also obeys the gap rule; raidDouble novelty ARMS the S6 wave 0.04 day before it lands). See LUMEN_extras/game/docs/HANDOFF_43Z.md.",
+  "_doc": "43A season scripts. day01 marks. trickle = extra customer waves (first wave is always at day 0). scamKind: npc | baron | null. forceEvent overrides pickEvent. novelty.at is also a mark (season:novelty). Rule: no mark kind equals the previous season's same mark (|d| >= 0.02). endless rotates rows 6..10 (43D: the wrap S10→S11=row 6 also obeys the gap rule; raidDouble novelty ARMS the S6 wave 0.04 day before it lands). See LUMEN_extras/game/docs/HANDOFF_43Z.md. 44C demand: { stallKind: mult } on S2–S10 (S1 none). Exactly one mult ≥ 1.3 = HOT, one ≤ 0.7 = COLD; 0.3 ≤ mult ≤ 2; hot/cold differ from the previous season (incl. the S10→S11 rotate wrap). fair price × mult (economy.stallInfo) and PREFS weight × mult (customers) at read time.",
   "seasons": {
-    "1":  { "len": 70,  "trickle": [0.34, 0.67],       "warn": null, "event": null, "forceEvent": null,    "scam": null, "scamKind": null,    "wave": 0.55, "novelty": null },
-    "2":  { "len": 90,  "trickle": [0.30, 0.62],       "warn": 0.22, "event": 0.48, "forceEvent": "storm", "scam": null, "scamKind": null,    "wave": 0.72, "novelty": { "id": "stormWarning", "at": 0.22 } },
-    "3":  { "len": 110, "trickle": [0.25, 0.55, 0.80], "warn": 0.35, "event": 0.40, "forceEvent": null,    "scam": 0.66, "scamKind": "npc",   "wave": 0.75, "novelty": { "id": "nightMarket",  "at": 0.60 } },
-    "4":  { "len": 130, "trickle": [0.33, 0.58],       "warn": 0.28, "event": 0.52, "forceEvent": null,    "scam": 0.64, "scamKind": "baron", "wave": 0.70, "novelty": { "id": "baronVisit",   "at": 0.64 } },
-    "5":  { "len": 150, "trickle": [0.28, 0.52, 0.76], "warn": 0.31, "event": 0.44, "forceEvent": null,    "scam": 0.68, "scamKind": "npc",   "wave": 0.73, "novelty": { "id": "pickyGlimmer", "at": 0.20 } },
-    "6":  { "len": 150, "trickle": [0.36, 0.58],       "warn": 0.24, "event": 0.50, "forceEvent": null,    "scam": null, "scamKind": null,    "wave": 0.66, "novelty": { "id": "raidDouble",   "at": 0.62 } },
-    "7":  { "len": 150, "trickle": [0.27, 0.54, 0.81], "warn": 0.33, "event": 0.46, "forceEvent": null,    "scam": 0.70, "scamKind": "npc",   "wave": 0.74, "novelty": { "id": "nightMarket",  "at": 0.58 } },
-    "8":  { "len": 150, "trickle": [0.32, 0.57],       "warn": 0.24, "event": 0.42, "forceEvent": "storm", "scam": 0.62, "scamKind": "baron", "wave": 0.71, "novelty": { "id": "stormWarning", "at": 0.24 } },
-    "9":  { "len": 150, "trickle": [0.29, 0.53, 0.78], "warn": 0.30, "event": 0.49, "forceEvent": null,    "scam": 0.67, "scamKind": "npc",   "wave": 0.76, "novelty": { "id": "pickyGlimmer", "at": 0.18 } },
-    "10": { "len": 150, "trickle": [0.31, 0.61],       "warn": 0.27, "event": 0.45, "forceEvent": null,    "scam": 0.65, "scamKind": "baron", "wave": 0.69, "novelty": { "id": "baronVisit",   "at": 0.65 } },
-    "endless": { "rotate": ["6", "7", "8", "9", "10"] }
+    "1": {
+      "len": 70,
+      "trickle": [
+        0.34,
+        0.67
+      ],
+      "warn": null,
+      "event": null,
+      "forceEvent": null,
+      "scam": null,
+      "scamKind": null,
+      "wave": 0.55,
+      "novelty": null
+    },
+    "2": {
+      "len": 90,
+      "trickle": [
+        0.3,
+        0.62
+      ],
+      "warn": 0.22,
+      "event": 0.48,
+      "forceEvent": "storm",
+      "scam": null,
+      "scamKind": null,
+      "wave": 0.72,
+      "novelty": {
+        "id": "stormWarning",
+        "at": 0.22
+      },
+      "demand": {
+        "lantern": 1.5,
+        "flower": 0.6
+      }
+    },
+    "3": {
+      "len": 110,
+      "trickle": [
+        0.25,
+        0.55,
+        0.8
+      ],
+      "warn": 0.35,
+      "event": 0.4,
+      "forceEvent": null,
+      "scam": 0.66,
+      "scamKind": "npc",
+      "wave": 0.75,
+      "novelty": {
+        "id": "nightMarket",
+        "at": 0.6
+      },
+      "demand": {
+        "tea": 1.5,
+        "tool": 0.6
+      }
+    },
+    "4": {
+      "len": 130,
+      "trickle": [
+        0.33,
+        0.58
+      ],
+      "warn": 0.28,
+      "event": 0.52,
+      "forceEvent": null,
+      "scam": 0.64,
+      "scamKind": "baron",
+      "wave": 0.7,
+      "novelty": {
+        "id": "baronVisit",
+        "at": 0.64
+      },
+      "demand": {
+        "cloth": 1.4,
+        "fruit": 0.7
+      }
+    },
+    "5": {
+      "len": 150,
+      "trickle": [
+        0.28,
+        0.52,
+        0.76
+      ],
+      "warn": 0.31,
+      "event": 0.44,
+      "forceEvent": null,
+      "scam": 0.68,
+      "scamKind": "npc",
+      "wave": 0.73,
+      "novelty": {
+        "id": "pickyGlimmer",
+        "at": 0.2
+      },
+      "demand": {
+        "pottery": 1.4,
+        "toy": 0.6
+      }
+    },
+    "6": {
+      "len": 150,
+      "trickle": [
+        0.36,
+        0.58
+      ],
+      "warn": 0.24,
+      "event": 0.5,
+      "forceEvent": null,
+      "scam": null,
+      "scamKind": null,
+      "wave": 0.66,
+      "novelty": {
+        "id": "raidDouble",
+        "at": 0.62
+      },
+      "demand": {
+        "tool": 1.5,
+        "tea": 0.6
+      }
+    },
+    "7": {
+      "len": 150,
+      "trickle": [
+        0.27,
+        0.54,
+        0.81
+      ],
+      "warn": 0.33,
+      "event": 0.46,
+      "forceEvent": null,
+      "scam": 0.7,
+      "scamKind": "npc",
+      "wave": 0.74,
+      "novelty": {
+        "id": "nightMarket",
+        "at": 0.58
+      },
+      "demand": {
+        "lantern": 1.4,
+        "bread": 0.7
+      }
+    },
+    "8": {
+      "len": 150,
+      "trickle": [
+        0.32,
+        0.57
+      ],
+      "warn": 0.24,
+      "event": 0.42,
+      "forceEvent": "storm",
+      "scam": 0.62,
+      "scamKind": "baron",
+      "wave": 0.71,
+      "novelty": {
+        "id": "stormWarning",
+        "at": 0.24
+      },
+      "demand": {
+        "bread": 1.5,
+        "fish": 0.6
+      }
+    },
+    "9": {
+      "len": 150,
+      "trickle": [
+        0.29,
+        0.53,
+        0.78
+      ],
+      "warn": 0.3,
+      "event": 0.49,
+      "forceEvent": null,
+      "scam": 0.67,
+      "scamKind": "npc",
+      "wave": 0.76,
+      "novelty": {
+        "id": "pickyGlimmer",
+        "at": 0.18
+      },
+      "demand": {
+        "book": 1.4,
+        "cloth": 0.6
+      }
+    },
+    "10": {
+      "len": 150,
+      "trickle": [
+        0.31,
+        0.61
+      ],
+      "warn": 0.27,
+      "event": 0.45,
+      "forceEvent": null,
+      "scam": 0.65,
+      "scamKind": "baron",
+      "wave": 0.69,
+      "novelty": {
+        "id": "baronVisit",
+        "at": 0.65
+      },
+      "demand": {
+        "toy": 1.5,
+        "lantern": 0.6
+      }
+    },
+    "endless": {
+      "rotate": [
+        "6",
+        "7",
+        "8",
+        "9",
+        "10"
+      ]
+    }
   }
 }
