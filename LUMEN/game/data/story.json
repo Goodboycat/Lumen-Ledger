@@ -1250,6 +1250,11 @@
         "text": "{who} came for {what} and found none. Empty hands, empty till."
       }
     ],
+    "demand": [
+      { "speaker": "owl", "text": "New season, new appetites. {hot} sells itself; {cold} needs a kinder price." },
+      { "speaker": "owl", "text": "Everyone wants {hot} this season. Nobody is thinking about {cold}." },
+      { "speaker": "owl", "text": "Watch the signs: {hot} is hot, {cold} is cold. Fair moved, your price did not." }
+    ],
     "wantsWho": {
       "saver": "Savers",
       "spender": "Spenders",

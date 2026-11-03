@@ -264,8 +264,29 @@ function wireEconomy(sb) {
     const sign = sb.build?.owned?.(id)?.group?.userData?.slots?.sign; if (!sign || !sb.cust) return null;
     const fair = sb.cust.fair(id), ratio = fair > 0 ? sb.cust.price(id) / fair : 1, tint = sb.signTintOf(ratio);
     sign.traverse((m) => { if (!m.isMesh || !m.material) return; if (!m.material.userData?.signTint) { m.material = m.material.clone(); m.material.userData.signTint = true; m.userData.disposable = true; } m.material.color?.setHex?.(SIGN_TINT[tint]); });   // headless stub materials have no .color
-    sign.userData.priceTint = tint; return { id, ratio, tint };
+    sign.userData.priceTint = tint; sb.signGlyph(id, sign); return { id, ratio, tint };
   };
+  // 44C: HOT ▲ (warm) / COLD ▼ (cool) glyph on the sign — one tiny cone mesh per sign, shared geometry+material, hidden when demand is ×1.
+  const GLYPH = { hot: { geo: null, mat: null, hex: 0xFF8A50 }, cold: { geo: null, mat: null, hex: 0x6FB7FF } };
+  const glyphParts = (k) => { const g = GLYPH[k]; if (!g.geo) { g.geo = new THREE.ConeGeometry(0.11, 0.2, 5); if (k === 'cold') g.geo.rotateX(Math.PI); g.mat = new THREE.MeshBasicMaterial({ color: g.hex }); } return g; };
+  sb.demandGlyphOf = (id) => { const m = sb.eco?.demandOf?.(id) ?? 1; return m >= 1.3 ? 'hot' : m <= 0.7 ? 'cold' : null; };
+  sb.signGlyph = (id, sign) => {
+    sign = sign || sb.build?.owned?.(id)?.group?.userData?.slots?.sign; if (!sign) return null;
+    const want = sb.demandGlyphOf(id); let g = sign.getObjectByName?.('demandGlyph') || null;
+    if (!want) { if (g) g.visible = false; sign.userData.demandGlyph = null; return null; }
+    if (g && g.userData.glyphKind !== want) { sign.remove(g); g = null; }
+    if (!g) { const P = glyphParts(want); g = new THREE.Mesh(P.geo, P.mat); g.name = 'demandGlyph'; g.userData.glyphKind = want; g.position.set(0, 0.42, 0.08); sign.add(g); }
+    g.visible = true; sign.userData.demandGlyph = want; return want;
+  };
+  // 44C: season:demand {season, hot, cold} + Owl barks.demand once per season (S≥2, only when the row has a HOT or COLD)
+  const demandBark = (season) => {
+    const hc = sb.seasons?.hotCold?.(season) || {}; if (!hc.hot && !hc.cold) return;
+    bus.emit('season:demand', { season, hot: hc.hot || null, cold: hc.cold || null });
+    const list = sb.storyData?.barks?.demand, pick = list?.length ? list[(season | 0) % list.length] : null;
+    const text = (pick?.text || pick || 'This season {hot} is in demand, {cold} is not. Price like the island does.').replace(/\{hot\}/g, hc.hot || 'nothing').replace(/\{cold\}/g, hc.cold || 'nothing');
+    bus.emit('story:bark', { speaker: 'owl', kind: 'demand', text, hot: hc.hot, cold: hc.cold, anchor: 'owl', ttl: 3.4 });
+  };
+  off.push(bus.on('eco:season', (r) => { if (!eco.state.ended) demandBark(eco.state.season); }));
   off.push(bus.on('ui:price', (p) => {   // B24 (moved here in 44A): ±1 Spark per tap, floor 1, ceiling 3× fair → cust:price (detail bar + sign tint refresh)
     const id = p?.id; if (!id || !sb.cust?.setPrice) return;
     const fair = sb.cust.fair(id), cur = sb.cust.price(id), next = Math.max(1, Math.min(Math.round(fair * 3), Math.round(cur + (+p.delta || 0))));
