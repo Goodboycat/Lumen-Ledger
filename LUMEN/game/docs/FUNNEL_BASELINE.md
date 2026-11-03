@@ -61,3 +61,18 @@ Quit histogram: `S3 d0.0 title` 20/20 (the script quits to title on reaching S3)
 | modalSeconds (0–90 s) | 0.0 | 0.0 | 0 |
 
 Reading: phase 43 changed *what happens inside* a season (storm warning, night market, Baron visit, picky critics, double raid, rotation) without touching the first-90-seconds funnel or the Spark-through-hands lever. **Reach S2 = 100 % ≥ 40 % → 44Z UNGATED.** Real-human reach-S2 still needs the itch build telemetry (`?telemetry=<url>`).
+
+## 44D re-measure (2026-11-03, after phase 44 readable market: price bubbles, sign tint, wants, season demand)
+`node tools/funnel.mjs --synthetic 20 --season 150 --quiet --out tools/shots/funnel_synthetic_44D.json` then `--compare tools/shots/funnel_synthetic_43D.json tools/shots/funnel_synthetic_44D.json`.
+
+| metric | 42B | 43D | 44D | Δ 44D−43D |
+|---|---|---|---|---|
+| firstStall / firstSale / firstCoinInHand / s2 / s3 reached | 100 % each | 100 % each | 100 % each | 0 |
+| firstStall median | 30.03 s | 30.03 s | 30.03 s | 0 (scripted) |
+| firstSale median | 7.19 s | 7.19 s | 7.10 s | −0.09 |
+| firstCoinInHand median | 150.20 s | 150.20 s | 150.20 s | 0 (script collects at season end) |
+| s2 / s3 median | 150.20 / 300.33 s | 150.20 / 300.33 s | 150.20 / 300.33 s | 0 |
+| **Spark through Pip's hands** | **87.6 %** | **87.1 %** | **86.3 %** | −0.8 (44B `noStall` leaves + 44C COLD kinds sell less → a bit more Spark arrives as trickle/event instead of sales) |
+| modalSeconds (0–90 s) | 0.0 | 0.0 | 0.0 | 0 |
+
+Reading: phase 44 made prices, wants and seasonal demand *readable* without touching the first-90-seconds funnel. Hands 86.3 % ≥ 80 % and reach S2 100 % ≥ 40 % → **45Z UNGATED**. Reach S3 is 100 % on the synthetic player, but the islands decision (HANDOFF_44D) stays **NO** — the credit condition (≥ 10 chats before Nov 12) is not met and the real-human reach-S2 still needs itch telemetry (`?telemetry=<url>`).
