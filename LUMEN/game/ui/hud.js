@@ -152,8 +152,14 @@ export function mountHUD(root, opts = {}) {
     // 42A: "on counters" chip = Σ tills; pulses (CSS .hot) while any till is ≥ 60 % of its cap. Hidden at 0 so the header stays calm before the first sale.
     bus.on('till:change', (p) => { if (!p) return; st.tills = st.tills || {}; st.tills[p.stallId] = { amount: p.amount || 0, cap: p.cap || 40 }; let sum = 0, hot = false; for (const t of Object.values(st.tills)) { sum += t.amount; if (t.amount >= 0.6 * t.cap) hot = true; }
       tillChip.textContent = 'on counters ' + Math.round(sum); spark.classList.toggle('has-till', sum > 0); tillChip.classList.toggle('hot', hot); }),
-    bus.on('game:start', () => { st.tills = {}; spark.classList.remove('has-till'); tillChip.classList.remove('hot'); }),
-    bus.on('eco:season', (r) => { if (!r) return; api.setSeason((r.season || 0) + 1, 0); if (r.seasonSeconds) api.setSeasonSeconds(r.seasonSeconds); if (r.fog01 != null) api.setFog(r.fog01); if (r.debt != null) api.setDebt(r.debt); if (r.spark != null) api.setSpark(r.spark, { silent: true }); if (r.reputation != null) api.setReputation(r.reputation); }),
+    bus.on('game:start', () => { st.tills = {}; spark.classList.remove('has-till'); tillChip.classList.remove('hot'); spark.classList.remove('at-risk'); }),
+    // 42B: the pouch is the AT-RISK pool (jars never are). While Collectors roam (enemy:wave → enemy:gone/enemy:home/season end) the pouch chip
+    // tints red-ish and its sub reads "at risk — carry it to a jar"; jars:spill flashes it. Till money is not at risk until 42C.
+    bus.on('enemy:wave', () => { st.enemies = true; spark.classList.add('at-risk'); }),
+    bus.on('enemy:gone', () => { st.enemies = false; spark.classList.remove('at-risk'); }),
+    bus.on('enemy:home', () => { st.enemies = false; spark.classList.remove('at-risk'); }),
+    bus.on('jars:spill', () => { spark.classList.remove('spilled'); void spark.offsetWidth; spark.classList.add('spilled'); }),
+    bus.on('eco:season', (r) => { if (!r) return; spark.classList.remove('at-risk'); api.setSeason((r.season || 0) + 1, 0); if (r.seasonSeconds) api.setSeasonSeconds(r.seasonSeconds); if (r.fog01 != null) api.setFog(r.fog01); if (r.debt != null) api.setDebt(r.debt); if (r.spark != null) api.setSpark(r.spark, { silent: true }); if (r.reputation != null) api.setReputation(r.reputation); }),
     bus.on('eco:fog', (p) => { if (p && p.fog01 != null) api.setFog(p.fog01); }),
     bus.on('eco:loan', (p) => { if (p && p.debt != null) api.setDebt(p.debt); }),
     bus.on('eco:denied', () => { retrigger(spark, 'shake'); }),

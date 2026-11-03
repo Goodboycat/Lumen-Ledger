@@ -89,3 +89,9 @@
 @keyframes ll-reveal-in { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); } }
 .ll-season .ll-season-len { font-size: 10px; padding: 0 6px; border: 2px solid var(--ink); border-radius: 999px; background: var(--blue); color: #fff; line-height: 14px; }   /* 41C: S1-only "70 s" chip */
 .ll-season .ll-season-len[hidden] { display: none; }
+/* 42B: pouch at risk while Collectors roam — the jars are the safe places */
+.ll-spark.at-risk { background: linear-gradient(180deg, #ffb74d, #ff8a65); animation: ll-at-risk 1.6s ease-in-out infinite; }
+.ll-spark.at-risk .ll-spark-sub::after { content: ' · at risk — jar it'; color: #7f1d1d; }
+@keyframes ll-at-risk { 0%, 100% { box-shadow: var(--shadow); } 50% { box-shadow: 0 0 0 4px rgba(229, 57, 53, .35), var(--shadow); } }
+.ll-spark.spilled { animation: ll-spill .45s ease-out 1; }
+@keyframes ll-spill { 0% { transform: rotate(-1.5deg) translateX(0); } 25% { transform: rotate(-3deg) translateX(-6px); } 50% { transform: rotate(0deg) translateX(6px); } 100% { transform: rotate(-1.5deg); } }
