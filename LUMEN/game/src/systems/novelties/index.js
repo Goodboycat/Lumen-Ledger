@@ -4,8 +4,9 @@
 // bus: novelty:start {id, season} · novelty:end {id}.  sb.novelty = active instance or null.
 import { createStormWarning } from './stormWarning.js';
 import { createNightMarket } from './nightMarket.js';
+import { createBaronVisit } from './baronVisit.js';   // 43C
 
-export const NOVELTIES = { stormWarning: createStormWarning, nightMarket: createNightMarket };
+export const NOVELTIES = { stormWarning: createStormWarning, nightMarket: createNightMarket, baronVisit: createBaronVisit };
 
 export function createNoveltyRegistry(sb) {
   const bus = sb.game.bus; const R = { active: null };

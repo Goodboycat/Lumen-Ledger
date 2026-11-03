@@ -89,7 +89,7 @@ export function createSandbox(game, opts = {}) {
   // S16: sword targets = Glimmers + live enemies (knockback / defeat). S32: every target is KNOCKED BACK (CreatureAnimator.hit slides the
   //   root; enemies keep ENEMY_RULES.knockback) and hired helpers are targets too (they slide, grumble and walk back to their stall).
   sb.hero = new HeroController(game, { vfx: sb.vfx, targets: () => sb.cust.active.filter((c) => c.state !== 'pooled' && c.state !== 'despawn').map((c) => ({ root: c.root, hit: (d, p) => c.anim?.hit?.(d, p) }))
-    .concat(sb.enemies ? sb.enemies.targets() : [], helperTargets(sb), sb.scamNpc ? sb.scamNpc.targets() : []), isLand: (x, z) => sb.island.isLand(x, z),   // 42D: the pitching Collector is a target too (hit → refuse + flee)
+    .concat(sb.enemies ? sb.enemies.targets() : [], helperTargets(sb), sb.scamNpc ? sb.scamNpc.targets() : [], sb.novelty?.targets?.() || []), isLand: (x, z) => sb.island.isLand(x, z),   // 42D: the pitching Collector is a target too (hit → refuse + flee)
     isSolid: (x, z) => { const o = sb.build?.occupied?.(x, z); return !!o && !o.ghost && !o.lifted; } });   // S41/15E: every occupied cell (stall / decor / nature / plaza scenery) blocks Pip — customers already route around them
   sb.hero.root.position.set(0, 0, 1);
   // S16: Debt Collectors (+ Baron Gilt boss from S6). Transient — spawned by the scheduler at day 0.7, cleared at season end / win / lose.
@@ -349,6 +349,7 @@ function installJarsWorld(sb) {
   sb.interact = () => {
     if (J.near()) return J.press() || 'jar';
     if (sb.pier?.near?.()) return sb.pier.interact() || 'pier';                     // 42D: the Baron waits at the pier → pay interest / repay
+    if (sb.novelty?.near?.()) return sb.novelty.interact() || 'scam';                 // 43C: baronVisit → eco.offerScam('tooGoodLoan')
     if (sb.scamNpc?.near?.()) return sb.scamNpc.interact() || 'scam';                 // 42D: the pitching Collector → eco.offerScam → 8B dialogue
     if (sb.enemies?.talk?.(3)) return 'talk';                                         // 42C P2: a seeking Collector ≤ 3 u → enemy:talk (42D attaches the pitch)
     return null;
@@ -463,7 +464,7 @@ function wireAbilities(sb) {
     growthStomp: () => ({ onPulse: (i, r, pct) => { sb.growth = { mul: 1 + pct / 100, until: game.time + GROWTH_S }; if (i === 2) done('growthStomp', `all stalls demand ×${(1 + pct / 100).toFixed(2)} for ${GROWTH_S} s`); } }),
     bubbleShield: () => ({ event: sb.nextEvent ? (eco.events[sb.nextEvent]?.title || sb.nextEvent) : 'next event', onAbsorb: () => { sb.shield.until = game.time + SHIELD_S; done('bubbleShield', `shield armed ${SHIELD_S} s — next event absorbed`); } }),
     fogSweep: () => ({ fog: { push: (o, d, s) => { const before = eco.state.fog01; eco.pushFog(s); done('fogSweep', `fog ${(before * 100) | 0}% → ${(eco.state.fog01 * 100) | 0}%`); } } }),
-    ledgerFlash: () => { const o = eco.pendingOffer; const npcTell = sb.scamNpc?.flash?.();   // 42D: near the pitching Collector the owl names the tell (scam:tell) even before any offer is open
+    ledgerFlash: () => { const o = eco.pendingOffer; const npcTell = sb.scamNpc?.flash?.() || sb.novelty?.flash?.();   // 42D: near the pitching Collector the owl names the tell (scam:tell) even before any offer is open
       if (!o) return { cost: 0, trueCost: 0, text: npcTell ? `TELL: ${npcTell}` : 'no deal on the table', onReveal: () => done('ledgerFlash', npcTell ? `tell named: ${npcTell}` : 'nothing to reveal') };
       const cost = o.cost || o.amount || 0, trueCost = o.amount ? Math.round(o.amount * Math.pow(1 + (o.trueRate || 0), 3)) : cost;
       return { cost, trueCost, text: o.payout === 0 ? `TRUE COST: ${cost} → you get 0` : undefined, onReveal: () => { eco.refuseOffer(o); done('ledgerFlash', `${o.title} revealed (true cost ${trueCost}) → refused`); } }; },
