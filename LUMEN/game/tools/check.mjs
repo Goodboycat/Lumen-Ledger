@@ -44,6 +44,7 @@ const doKnockback = args.includes('--knockback');  // S32 tools/gates/knockback.
 const doJarsWorld = args.includes('--jarsworld');  // 42B tools/gates/jarsworld.mjs: jars are places — near(), E deposit 10/5 + empty, hold-E withdraw (Invest locked), spillPouch cap 8, +0 meshes, panel summary default + legacy APPLY
 const doNovelties = args.includes('--novelties');  // 43B tools/gates/novelties.mjs: S2 stormWarning (warn ×1, bark, darken, restore) · S3 nightMarket (light ≤0.4, spill ×2, spend ×1.3, chip) · 1 active · 0 leaks
 const doSeasons = args.includes('--seasons');      // 43A tools/gates/seasons.mjs: data/seasons.json validates, S1 = legacy marks, real sandbox S1→S3 fires every mark once, season:novelty S2/S3, fallback, 0 leaks
+const doPricing = args.includes('--pricing');      // 44A tools/gates/pricing.mjs: cust:react glyph + ♥/✓/✗ price bubble (S≥2, every 2nd non-critic), sign tint green/white/amber/red, E at sign ±1, 3-angry Owl bark once per stall per season, 0 leaks
 const doPier = args.includes('--pier');            // 42D tools/gates/pier.mjs: Baron collects interest at the pier (pierPays) — pier:due = interestDue, pay/short/repay/timeout/skip, state 'pier' → review, value-equal to the auto path
 const doRaid = args.includes('--raid');            // 42C tools/gates/raid.mjs: Collectors raid tills — seek→raid(telegraph)→carry→escape, hit drops loot, hit mid-raid cancels, shield immune, contact spills pouch
 const doTill = args.includes('--till');            // 42A tools/gates/till.mjs: sales → counters (toTill, pouch untouched), walk/magnet collect, cap+spill, sweep tax, handled ratio ≥ 0.8, +0 meshes, destroy clean
@@ -2605,6 +2606,10 @@ if (doJarsWorld) {
 if (doRaid) {
   try { const { run } = await import(pathToFileURL(resolve('tools/gates/raid.mjs')).href); bad += await run({ resolve, pathToFileURL }); }
   catch (err) { bad++; console.log('  raid gate FAIL →', err.message.split('\n')[0]); }
+}
+if (doPricing) {
+  try { const { run } = await import(pathToFileURL(resolve('tools/gates/pricing.mjs')).href); bad += await run({ resolve, pathToFileURL }); }
+  catch (err) { bad++; console.log('  pricing gate FAIL →', err.message.split('\n')[0]); }
 }
 if (doPier) {
   try { const { run } = await import(pathToFileURL(resolve('tools/gates/pier.mjs')).href); bad += await run({ resolve, pathToFileURL }); }

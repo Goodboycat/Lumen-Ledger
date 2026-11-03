@@ -266,6 +266,11 @@ function wireEconomy(sb) {
     sign.traverse((m) => { if (!m.isMesh || !m.material) return; if (!m.material.userData?.signTint) { m.material = m.material.clone(); m.material.userData.signTint = true; m.userData.disposable = true; } m.material.color?.setHex?.(SIGN_TINT[tint]); });   // headless stub materials have no .color
     sign.userData.priceTint = tint; return { id, ratio, tint };
   };
+  off.push(bus.on('ui:price', (p) => {   // B24 (moved here in 44A): ±1 Spark per tap, floor 1, ceiling 3× fair → cust:price (detail bar + sign tint refresh)
+    const id = p?.id; if (!id || !sb.cust?.setPrice) return;
+    const fair = sb.cust.fair(id), cur = sb.cust.price(id), next = Math.max(1, Math.min(Math.round(fair * 3), Math.round(cur + (+p.delta || 0))));
+    if (next === cur) return; sb.cust.setPrice(id, next); bus.emit('cust:price', { id, price: next, fair });
+  }));
   off.push(bus.on('cust:price', (p) => { if (p?.id) sb.signTint(p.id); }));
   sb._angryAt = new Map();   // 44A: stallId → angry count this season; barks.pricing[0] once per stall per season after 3
   off.push(bus.on('cust:angry', (p) => { const id = p?.stallId; if (!id) return; const n = (sb._angryAt.get(id) || 0) + 1; sb._angryAt.set(id, n);
@@ -921,11 +926,7 @@ function installRunWires(lg) {
     if (u.kind === 'zone') { const z = sb.island.zones[u.effect.zone]; if (!z || z.unlocked) { bus.emit('eco:denied', { why: 'owned', id }); return null; } return eco.buyUpgrade(id); }   // eco:upgrade → wireEconomy raises the zone
     return eco.buyUpgrade(id);
   };
-  on('ui:price', (p) => {
-    const id = p?.id; if (!id || !sb.cust?.setPrice) return;
-    const fair = sb.cust.fair(id), cur = sb.cust.price(id), next = Math.max(1, Math.min(Math.round(fair * 3), Math.round(cur + (+p.delta || 0))));
-    if (next === cur) return; sb.cust.setPrice(id, next); bus.emit('cust:price', { id, price: next, fair });
-  });
+  // ui:price handler moved to wireEconomy (44A) — the sandbox owns it so the stall sign (E) and the build panel share ONE handler
   if (ui?.build) { ui.build.offers = lg.offers; ui.build.priceOf = (id) => ({ price: sb.cust?.price?.(id) ?? 0, fair: sb.cust?.fair?.(id) ?? 0 }); }
   offs.push(() => { if (ui?.build) { ui.build.offers = null; ui.build.priceOf = null; } });
   // BUGFIX B13: closing the tray never leaves a live ghost. BUGFIX P13: demolish mode SURVIVES closing the tray (the player closes it to see the
