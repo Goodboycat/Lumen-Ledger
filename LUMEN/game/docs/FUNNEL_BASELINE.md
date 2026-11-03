@@ -45,3 +45,19 @@ Quit histogram: `S3 d0.0 title` 20/20 (the script quits to title on reaching S3)
 - `tools/funnel.mjs` — report (`<json|->`, `--md`), `--synthetic N [--season S] [--out f] [--quiet]`, `--compare a b [--md]`.
 - `tests/fixtures/funnel.json` — 3 synthetic sessions (20 s seasons) used by `check.mjs --telemetry` as a smoke.
 - `tools/shots/funnel_synthetic_2026-11-02.json` — the 20 sessions behind this table (compare target for 41A–41D, 45).
+
+## 43D re-measure (2026-11-03, after phase 43 season scripts + 5 novelties)
+`node tools/funnel.mjs --synthetic 20 --season 150 --quiet --out tools/shots/funnel_synthetic_43D.json` then `--compare tools/shots/funnel_synthetic_42B.json tools/shots/funnel_synthetic_43D.json`.
+(The 43D prompt said `--season 5`; that flag is *seasonSeconds*, and a 5 s season makes the scripted 30 s stall placement impossible — not comparable. 150 s = the 42B run.)
+
+| metric | 42B | 43D | Δ |
+|---|---|---|---|
+| firstStall / firstSale / firstCoinInHand / s2 / s3 reached | 100 % each | 100 % each | 0 |
+| firstStall median | 30.03 s | 30.03 s | 0 (scripted) |
+| firstSale median | 7.19 s | 7.19 s | 0 |
+| firstCoinInHand median | 150.20 s | 150.20 s | 0 (script collects at season end) |
+| s2 / s3 median | 150.20 / 300.33 s | 150.20 / 300.33 s | 0 |
+| **Spark through Pip's hands** | **87.6 %** | **87.1 %** | −0.4 (noise: S2 storm novelty darkens + absorbs one event; S3 night market doubles spill) |
+| modalSeconds (0–90 s) | 0.0 | 0.0 | 0 |
+
+Reading: phase 43 changed *what happens inside* a season (storm warning, night market, Baron visit, picky critics, double raid, rotation) without touching the first-90-seconds funnel or the Spark-through-hands lever. **Reach S2 = 100 % ≥ 40 % → 44Z UNGATED.** Real-human reach-S2 still needs the itch build telemetry (`?telemetry=<url>`).
