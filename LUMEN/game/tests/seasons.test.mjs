@@ -1,0 +1,38 @@
+// LUMEN 43A — season scripts (data/seasons.json). Run from game/:  node --test tests/seasons.test.mjs   (no Three, no browser)
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createSeasonScript, LEGACY_MARKS, MARK_MIN_GAP } from '../src/systems/seasonScript.js';
+
+const data = JSON.parse(readFileSync(new URL('../data/seasons.json', import.meta.url), 'utf8'));
+
+test('shipped seasons.json validates', () => {
+  const SS = createSeasonScript(data);
+  assert.deepEqual(SS.validate(), []);
+  assert.equal(SS.legacy, false); assert.equal(SS.maxSeason, 10);
+});
+
+test('S1 row equals the legacy SCHEDULER_MARKS (tutorial season unchanged)', () => {
+  const r = createSeasonScript(data).for(1), L = createSeasonScript(null).for(1);
+  assert.deepEqual(r.trickle, LEGACY_MARKS.trickle); assert.equal(r.wave, LEGACY_MARKS.wave(1)); assert.equal(r.len, 70);
+  assert.equal(L.wave, 0.55); assert.equal(L.scam, 0.7); assert.equal(createSeasonScript(null).for(2).scam, null);
+});
+
+test('no mark kind repeats the previous season (PLAN §6) and the validator catches a repeat', () => {
+  const SS = createSeasonScript(data);
+  for (let s = 2; s <= 10; s++) {
+    const a = SS.for(s), b = SS.for(s - 1);
+    for (const k of ['warn', 'event', 'scam', 'wave']) if (a[k] != null && b[k] != null) assert.ok(Math.abs(a[k] - b[k]) >= MARK_MIN_GAP, `S${s} ${k}`);
+  }
+  const bad = JSON.parse(JSON.stringify(data)); bad.seasons['3'].wave = bad.seasons['2'].wave;
+  assert.ok(createSeasonScript(bad).validate().some((e) => /S3: wave/.test(e)));
+});
+
+test('endless rotation S11+ cycles rows 6..10 with len 150; marks() sorted', () => {
+  const SS = createSeasonScript(data);
+  assert.equal(SS.for(11).key, '6'); assert.equal(SS.for(12).novelty.id, SS.for(7).novelty.id); assert.equal(SS.for(15).key, '10'); assert.equal(SS.for(16).key, '6');
+  for (let s = 11; s <= 16; s++) assert.equal(SS.len(s), 150);
+  const m = SS.marks(3); for (let i = 1; i < m.length; i++) assert.ok(m[i].at >= m[i - 1].at);
+  assert.ok(m.some((x) => x.kind === 'novelty' && x.payload.id === 'nightMarket'));
+  assert.equal(SS.marks(2).find((x) => x.kind === 'event').payload.forceEvent, 'storm');
+});

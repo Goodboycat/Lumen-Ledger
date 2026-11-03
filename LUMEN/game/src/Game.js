@@ -689,7 +689,7 @@ function installStart(lg) {
     if (reuse) lg.showcaseSb = null;                                                   // keep it out of teardown's way
     lg.teardown?.();
     const balance = lg.mode === 'endless' ? { ...(opts.balance || {}), winRequiresSeasons: false, endless: true } : opts.balance;
-    const sb = lg.sb = reuse || createSandbox(game, { headless: !!opts.headless, storyData: opts.storyData, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, starterStalls: lg._resuming ? false : undefined, labelsRoot: lg.ui?.root || null, pierPays: lg.pierPays });
+    const sb = lg.sb = reuse || createSandbox(game, { headless: !!opts.headless, storyData: opts.storyData, seasons: opts.seasons, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, starterStalls: lg._resuming ? false : undefined, labelsRoot: lg.ui?.root || null, pierPays: lg.pierPays });
     if (reuse) { lg.stats.showcaseReused = (lg.stats.showcaseReused || 0) + 1; game.followTarget = sb.hero.root.position; }
     sb.modalOpen = () => !!(ui?.dialogue?.isOpen || ui?.ledger?.isOpen);                 // P62: the Collector wave waits for the dialogue box to close
     if (lg.mode === 'endless') sb.updateScheduler = wrapNoScam(sb);                      // endless: events yes, Baron's deals no
@@ -755,7 +755,7 @@ export function installCinematics(lg) {
   const wantShowcase = () => (opts.showcase ?? !opts.headless) && lg.state === 'title' && !lg.sb && !lg.showcaseSb && game.scene;
   lg.showcase = () => {
     if (!wantShowcase()) return null;
-    try { lg.showcaseSb = createSandbox(game, { headless: !!opts.headless, storyData: opts.storyData, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance: opts.balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, pierPays: lg.pierPays }); }
+    try { lg.showcaseSb = createSandbox(game, { headless: !!opts.headless, storyData: opts.storyData, seasons: opts.seasons, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance: opts.balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, pierPays: lg.pierPays }); }
     catch (err) { console.warn('[cine] showcase build failed:', err?.message || err); lg.showcaseSb = null; return null; }
     const sb = lg.showcaseSb; sb.showcase = true;
     sb.reduceMotion = !!lg.reduceMotion; if (sb.vfx) sb.vfx.reduceMotion = !!lg.reduceMotion;

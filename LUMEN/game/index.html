@@ -78,6 +78,7 @@ try {
   const params = new URLSearchParams(location.search);
   const seasonSeconds = +params.get('season') || undefined;                               // ?season=30 → fast seasons (testing); default = BALANCE 150 s
   const storyData = await fetch('./data/story.json').then((r) => { if (!r.ok) throw new Error('data/story.json ' + r.status); return r.json(); });
+  const seasons = await fetch('./data/seasons.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);   // 43A: season scripts (null → legacy marks)
   // Icons: every former emoji is a procedural drawing (ui/icons.js) baked to ui/icons/*.png by tools/icons_png.mjs. ?svgicons keeps inline SVG.
   if (!params.has('svgicons')) await usePngIcons('./ui/icons/');
 
@@ -92,7 +93,7 @@ try {
     version: `jam build · ${GAME_VERSION}`,
     autoTutorial: params.has('oldtutorial') && !params.has('autoplay') && !params.has('notutorial'),   // 41B: old 11-step overlay only with ?oldtutorial                   // guided tutorial on the first PLAY (?notutorial / ?autoplay skip it)
   });
-  const lg = createLumenGame(game, { ui, storyData, seasonSeconds, seed: +params.get('seed') || undefined, debugKeys: params.has('debug'), cinematics: !params.has('nocine'), verbs: !(params.has('autoplay') || params.has('notutorial') || params.has('oldtutorial')),
+  const lg = createLumenGame(game, { ui, storyData, seasons, seasonSeconds, seed: +params.get('seed') || undefined, debugKeys: params.has('debug'), cinematics: !params.has('nocine'), verbs: !(params.has('autoplay') || params.has('notutorial') || params.has('oldtutorial')),
     telemetryEndpoint: params.get('telemetry') || null });   // S18: ?nocine = no title orbit / arrival / victory shots · 40A: ?telemetry=<url> opts in to a POST per session (default OFF)
   ui.wave?.bind({ camera: game.camera.three, enemies: () => lg.sb?.enemies, hero: () => lg.sb?.hero });   // S41/15D: edge arrows project enemies through the live camera
   ui.barks?.bind({ camera: game.camera.three, hero: () => lg.sb?.hero, owl: () => lg.sb?.owl || lg.sb?.helpers?.owl || lg.sb?.hero, baron: () => lg.sb?.enemies?.baron || lg.sb?.enemies?.active?.find?.((e) => e.kind === 'baron') || lg.sb?.hero });   // 41A: speech bubbles project through the live camera (missing anchor → hero)
