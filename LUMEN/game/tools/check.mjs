@@ -42,6 +42,7 @@ const doSave = args.includes('--save');            // 10D save/load + tutorial: 
 const doPerf = args.includes('--perf');            // 11A src/systems/perf.js: BlobShadows (N discs → 1 InstancedMesh), CreatureLOD tiers + hysteresis, PixelRatioGovernor steps, countGeometries
 const doKnockback = args.includes('--knockback');  // S32 tools/gates/knockback.mjs: CreatureAnimator.hit slide/decay/stun/canStand clamp · customers knocked → walkable, re-path, sales continue, browsers walk back · helpers are sword targets (slide, helper:hit, walk back to seat)
 const doJarsWorld = args.includes('--jarsworld');  // 42B tools/gates/jarsworld.mjs: jars are places — near(), E deposit 10/5 + empty, hold-E withdraw (Invest locked), spillPouch cap 8, +0 meshes, panel summary default + legacy APPLY
+const doPier = args.includes('--pier');            // 42D tools/gates/pier.mjs: Baron collects interest at the pier (pierPays) — pier:due = interestDue, pay/short/repay/timeout/skip, state 'pier' → review, value-equal to the auto path
 const doRaid = args.includes('--raid');            // 42C tools/gates/raid.mjs: Collectors raid tills — seek→raid(telegraph)→carry→escape, hit drops loot, hit mid-raid cancels, shield immune, contact spills pouch
 const doTill = args.includes('--till');            // 42A tools/gates/till.mjs: sales → counters (toTill, pouch untouched), walk/magnet collect, cap+spill, sweep tax, handled ratio ≥ 0.8, +0 meshes, destroy clean
 const doFirstPlayer = args.includes('--firstplayer'); // S37 tools/gates/firstplayer.mjs: passive beginner (3 starter stalls, fair prices, no repay) at the real 150 s season → S1 income > expenses, ≥ 15 units/season, debt still climbs, no angry queues
@@ -2602,6 +2603,10 @@ if (doJarsWorld) {
 if (doRaid) {
   try { const { run } = await import(pathToFileURL(resolve('tools/gates/raid.mjs')).href); bad += await run({ resolve, pathToFileURL }); }
   catch (err) { bad++; console.log('  raid gate FAIL →', err.message.split('\n')[0]); }
+}
+if (doPier) {
+  try { const { run } = await import(pathToFileURL(resolve('tools/gates/pier.mjs')).href); bad += await run({ resolve, pathToFileURL }); }
+  catch (err) { bad++; console.log('  pier gate FAIL →', err.message.split('\n')[0]); }
 }
 if (doIcons) {
   // ICONS: every emoji the game prints must map to a procedural drawing; each drawing must be valid strict XML (so the PNG bake works);
