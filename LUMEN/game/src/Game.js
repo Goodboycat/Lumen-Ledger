@@ -18,6 +18,7 @@ import { attachMoves } from './anim/heroAnims.js';
 import { attachAbilities, ABILITY_NAMES, FINLIT } from './anim/heroAbilities.js';
 import { installVerbChain } from './systems/verbChain.js';
 import { installUnlocks } from './systems/unlocks.js';                          // 41D: 2 starters + 4 earned by ledger stars
+import { createJarsWorld } from './systems/jarsWorld.js';                       // 42B: jars are places — walk to a jar, E deposits 10 ✦, hold E withdraws
 import { PROP_CATALOG, makeProp, STALL_TYPES, JAR_IDS, swayAll, swayDecor, updateLandmarks, makeFlowerField, makeGrassTufts } from './assets/props.js';
 import { bakeStatic, bakeShells, disposeBatch } from './assets/props/bake.js';
 import { BlobShadows, CreatureLOD } from './systems/perf.js';   // 11A (S40: PixelRatioGovernor no longer wired — quality is locked to the Settings preset)
@@ -51,7 +52,7 @@ export function createSandbox(game, opts = {}) {
   registerVariants?.();
   const headless = !!opts.headless;
   const rnd = makeRnd(opts.seed ?? 2026);
-  const sb = { game, headless, opts, version: SANDBOX_VERSION, log: [], stats: { seasons: 0, reports: [] } };
+  const sb = { game, headless, opts, version: SANDBOX_VERSION, log: [], stats: { seasons: 0, reports: [] }, labelsRoot: (!headless && opts.labelsRoot) || null };   // 42B: DOM root for the projected jar tags
 
   // ---- world ------------------------------------------------------------------------------------------------------
   sb.island = new Island({ radius: 11, seed: 7, zonesUnlocked: opts.zonesUnlocked ?? 1, starterProps: false });
@@ -103,6 +104,7 @@ export function createSandbox(game, opts = {}) {
   wireEconomy(sb);
   wireAbilities(sb);
   installTills(sb);                                              // 42A: customers pay the stall's counter, Pip collects (walk / dash / helper / season sweep)
+  installJarsWorld(sb);                                          // 42B: jars are places (after wireEconomy — eco:jar → setFill stays the fill truth)
   // BUGFIX P65: the starter footprints' SCENERY reservation must go even when starterStalls:false (CONTINUE) — otherwise build.load(snap.build)
   //   rejects the 3 saved starter stalls ("scenery" cell) and a resumed run silently loses them (check.mjs --save: stalls 9/12).
   for (const s of STARTER_STALLS) freeStarterCells(sb, s);
@@ -125,6 +127,7 @@ export function createSandbox(game, opts = {}) {
     for (const h of sb.helpers) { h.anim.update(dt); updateHelperKnock(sb, h, dt); }
     updateCoins(sb, dt);
     sb.till?.tickHelpers?.(dt, sb.helpers);                         // 42A P2: seated helpers empty their till every 12 s
+    sb.jarsWorld?.update(dt);                                       // 42B: near-jar prompt, hold-E withdraw, DOM jar tags
     updatePerf(sb, dtReal);
   };
   installPerf(sb);
@@ -296,6 +299,26 @@ function updateCoins(sb, dt) {
 //   (indices after sb.coins; 0 new draw calls). Walk-over collect (updateCoins), coinMagnetDash collects every till ≤ 2.2 u of the dash path
 //   (wireAbilities CTX), season end sweeps what is left into the pouch minus SWEEP_TAX (ledger row, P2), seated helpers auto-collect (P2).
 export const TILL_WALK = 1.1, TILL_MAGNET = 2.2;
+
+// 42B: jars are places. sb.jarsWorld = J (see systems/jarsWorld.js). sb.interact() is THE one interact dispatcher: jar > till > Baron (42D) >
+//   scam NPC (42D) > null — the key handler / ✋ button call it and only fall through to their old behaviour when it returns null.
+//   sb.interactRelease() ends a hold (the E keyup). Collector contact → sb.jarsWorld.spillPouch() drops ground tips (42C hooks it).
+function installJarsWorld(sb) {
+  const { eco, vfx, hero } = sb, bus = sb.game.bus;
+  const J = createJarsWorld({ bus, eco, jars: sb.world.jars, hero, vfx, sequences: sb.game.sequences, labels: sb.labelsRoot || null, camera: () => sb.game.camera?.three || sb.game.camera,
+    onSpill: (a) => { const h = hero.root.position; let left = a; for (let i = 0; left > 0 && i < 4; i++) { const v = i === 3 ? left : Math.max(1, Math.round(a / 4)); left -= v; const ang = Math.random() * Math.PI * 2; sb.dropTip?.(h.x + Math.cos(ang) * 0.9, h.z + Math.sin(ang) * 0.9, v); } sb.stats.spilled = (sb.stats.spilled || 0) + a; } });
+  sb.jarsWorld = J;
+  sb.interact = () => {
+    if (J.near()) return J.press() || 'jar';
+    return null;                                                                      // 42D adds till / Baron / scam NPC here
+  };
+  sb.interactRelease = () => J.release();
+  // bark on an absorbed event at the Protect jar (P2): the spatial choice pays back visibly
+  sb._offs.push(bus.on('eco:absorbed', (p) => { const m = sb.world.jars[3]; if (m) bus.emit('story:bark', { speaker: 'owl', text: `The Protect jar ate the ${eco.events?.[p?.id]?.title || 'shock'}. That is what it is for.`, anchor: { x: m.position.x, y: 1.2, z: m.position.z }, ttl: 3.4 }); }));
+  sb._offs.push(bus.on('jars:locked', (p) => bus.emit('story:bark', { speaker: 'owl', text: 'Locked till the ledger.', anchor: 'hero', ttl: 2.2 })));
+  sb._offs.push(() => { J.destroy(); sb.jarsWorld = null; });
+}
+
 function installTills(sb) {
   const { eco, vfx, hero } = sb, bus = sb.game.bus;
   sb.tillCoins = [];                                   // [{ position: Vector3, t, scale }] composed into sb.coinMesh after the ground coins
@@ -609,7 +632,7 @@ function installStart(lg) {
     if (reuse) lg.showcaseSb = null;                                                   // keep it out of teardown's way
     lg.teardown?.();
     const balance = lg.mode === 'endless' ? { ...(opts.balance || {}), winRequiresSeasons: false, endless: true } : opts.balance;
-    const sb = lg.sb = reuse || createSandbox(game, { headless: !!opts.headless, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, starterStalls: lg._resuming ? false : undefined });
+    const sb = lg.sb = reuse || createSandbox(game, { headless: !!opts.headless, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, starterStalls: lg._resuming ? false : undefined, labelsRoot: lg.ui?.root || null });
     if (reuse) { lg.stats.showcaseReused = (lg.stats.showcaseReused || 0) + 1; game.followTarget = sb.hero.root.position; }
     sb.modalOpen = () => !!(ui?.dialogue?.isOpen || ui?.ledger?.isOpen);                 // P62: the Collector wave waits for the dialogue box to close
     if (lg.mode === 'endless') sb.updateScheduler = wrapNoScam(sb);                      // endless: events yes, Baron's deals no
@@ -864,6 +887,7 @@ function installRunWires(lg) {
   lg.interact = () => {
     if (!lg.sb || lg.game.paused || ui?.isModal?.()) return 'blocked';
     if (build.mode === 'place') { build.rotate(); return 'rotate'; }
+    if (build.mode !== 'drag') { const r = lg.sb.interact?.(); if (r) return r; }   // 42B: standing at a jar → deposit (one dispatcher, jar first)
     if (build.mode === 'drag') { build.dragRotate(); return 'rotate'; }   // S36: ✋ rotates the prop being dragged
     // BUGFIX P37/P38: prefer the nearest stall that can still be upgraded; a decor pot or a maxed L3 stall between Pip and it no longer blocks U / ✋
     const e = build.nearestUpgradable(hero.root.position.x, hero.root.position.z, 2.5);
@@ -872,7 +896,7 @@ function installRunWires(lg) {
     if (near && !near.scenery && near.category === 'stall' && near.level >= 3) { bus.emit('ui:toast', { text: `${near.id.replace('stall_', '')} stall is already max level`, kind: 'info', icon: '⬆', id: 'interact', duration: 1800 }); return 'max'; }
     ui?.build?.open?.(); return 'tray';
   };
-  on('ui:touch', (p) => { if (p?.action === 'interact') lg.interact(); });
+  on('ui:touch', (p) => { if (p?.action === 'interact') lg.interact(); if (p?.action === 'interact:release') lg.sb?.interactRelease?.(); });   // 42B: ✋ hold → withdraw (touch.js emits the release when it supports it)
   // S08: touch ability strip → same gate as the Q W E R F G keys (playing / endless, not paused, no modal, tray closed, not placing)
   on('ui:touch', (p) => {
     if (p?.action !== 'ability' || !p.name) return;
@@ -946,12 +970,14 @@ function installRunWires(lg) {
       // BUGFIX P33: U = upgrade the stall next to Pip (the tutorial / README said so, but U was debug-only) — same handler as touch ✋
       if (e.code === 'KeyU' && !hotkeysBlocked() && lg.sb && lg.sb.build.mode !== 'place') { lg.interact(); return; }
       const name = ABILITY_KEYS[e.code]; if (!name || hotkeysBlocked()) return;
+      if (e.code === 'KeyE' && lg.sb?.build?.mode !== 'place' && lg.sb?.build?.mode !== 'drag') { const r = lg.sb?.interact?.(); if (r) { eDown = true; return; } }   // 42B: E at a jar = deposit (hold = withdraw); elsewhere E stays growthStomp
       if (e.code === 'KeyW') { const k = lg.game.input?.keys; wDown = (k && MOVE_KEYS.some((c) => k.has(c))) ? 0 : (performance.now?.() || Date.now()); return; }
       if (e.code === 'KeyR' && lg.sb?.build?.mode === 'place') return;
       if (e.code === 'KeyR' && lg.sb?.build?.mode === 'drag') { lg.sb.build.dragRotate(); return; }   // S36
       lg.ability(name);
     };
-    const onKeyUp = (e) => { if (e.code !== 'KeyW' || !wDown) return; const dt = (performance.now?.() || Date.now()) - wDown; wDown = 0; if (dt <= 220 && !hotkeysBlocked()) lg.ability('bubbleShield'); };
+    let eDown = false;
+    const onKeyUp = (e) => { if (e.code === 'KeyE' && eDown) { eDown = false; lg.sb?.interactRelease?.(); return; } if (e.code !== 'KeyW' || !wDown) return; const dt = (performance.now?.() || Date.now()) - wDown; wDown = 0; if (dt <= 220 && !hotkeysBlocked()) lg.ability('bubbleShield'); };
     window.addEventListener('keydown', onKey); window.addEventListener('keyup', onKeyUp);
     offs.push(() => { window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKeyUp); });
   }
