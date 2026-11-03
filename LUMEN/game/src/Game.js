@@ -66,6 +66,7 @@ export function createSandbox(game, opts = {}) {
 
   // ---- systems ------------------------------------------------------------------------------------------------------
   const bus = game.bus;
+  sb.storyData = opts.storyData || null;                          // 42D: parsed data/story.json (pier lines; createLumenGame passes its own)
   sb.scamNpcs = opts.scamNpcs ?? !opts.headless;                 // 42D: the scheduler's scam mark spawns a pitching Collector (talk to open the deal); headless keeps eco.offerScam() direct unless opted in
   sb.eco = makeEconomy({ bus, seed: opts.seed ?? 1, autoSeason: true, pierPays: opts.pierPays === true }, opts.balance);   // 42D: pierPays → interest is collected at the pier (default off: headless harnesses keep the auto path)
   if (opts.seasonSeconds) { sb.eco.config.seasonSeconds = opts.seasonSeconds; sb.eco.config.seasonSecondsOverride = opts.seasonSeconds; }   // 41C: tests/accelerated runs override the season curve
@@ -350,7 +351,7 @@ function installScamNpc(sb) {
 }
 function installPier(sb) {
   const { eco, vfx, hero } = sb, bus = sb.game.bus;
-  const B = createBaronPier({ bus, eco, world: sb.world, hero, vfx, game: sb.game, scene: sb.headless ? null : sb.game.scene, story: null,
+  const B = createBaronPier({ bus, eco, world: sb.world, hero, vfx, game: sb.game, scene: sb.headless ? null : sb.game.scene, story: sb.storyData ? { data: sb.storyData } : null,   // 42D step 3: data/story.json "pier" lines (FALLBACK otherwise)
     creatures: sb.headless ? {} : { makeBaronGilt, VillainAnimator } });
   sb.pier = B;
   sb._offs.push(bus.on('pier:due', () => sb.holdClock('pier', true)), bus.on('pier:done', () => sb.holdClock('pier', false)));   // the new season's clock does not run while he waits
@@ -672,7 +673,7 @@ function installStart(lg) {
     if (reuse) lg.showcaseSb = null;                                                   // keep it out of teardown's way
     lg.teardown?.();
     const balance = lg.mode === 'endless' ? { ...(opts.balance || {}), winRequiresSeasons: false, endless: true } : opts.balance;
-    const sb = lg.sb = reuse || createSandbox(game, { headless: !!opts.headless, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, starterStalls: lg._resuming ? false : undefined, labelsRoot: lg.ui?.root || null, pierPays: lg.pierPays });
+    const sb = lg.sb = reuse || createSandbox(game, { headless: !!opts.headless, storyData: opts.storyData, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, starterStalls: lg._resuming ? false : undefined, labelsRoot: lg.ui?.root || null, pierPays: lg.pierPays });
     if (reuse) { lg.stats.showcaseReused = (lg.stats.showcaseReused || 0) + 1; game.followTarget = sb.hero.root.position; }
     sb.modalOpen = () => !!(ui?.dialogue?.isOpen || ui?.ledger?.isOpen);                 // P62: the Collector wave waits for the dialogue box to close
     if (lg.mode === 'endless') sb.updateScheduler = wrapNoScam(sb);                      // endless: events yes, Baron's deals no
@@ -738,7 +739,7 @@ export function installCinematics(lg) {
   const wantShowcase = () => (opts.showcase ?? !opts.headless) && lg.state === 'title' && !lg.sb && !lg.showcaseSb && game.scene;
   lg.showcase = () => {
     if (!wantShowcase()) return null;
-    try { lg.showcaseSb = createSandbox(game, { headless: !!opts.headless, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance: opts.balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, pierPays: lg.pierPays }); }
+    try { lg.showcaseSb = createSandbox(game, { headless: !!opts.headless, storyData: opts.storyData, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance: opts.balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, pierPays: lg.pierPays }); }
     catch (err) { console.warn('[cine] showcase build failed:', err?.message || err); lg.showcaseSb = null; return null; }
     const sb = lg.showcaseSb; sb.showcase = true;
     sb.reduceMotion = !!lg.reduceMotion; if (sb.vfx) sb.vfx.reduceMotion = !!lg.reduceMotion;

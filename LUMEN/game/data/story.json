@@ -1488,5 +1488,50 @@
         }
       ]
     }
+  },
+  "pier": {
+    "_shape": "42D: Baron barks at the pier when the season's interest is collected. paid/short × tier (t1 = S1-3, t2 = S4-6, t3 = S7-10). src/systems/baronPier.js pick(kind, season).",
+    "paid": {
+      "t1": [
+        "Interest, on time. How… dull of you.",
+        "Every coin counted. The fog will have to wait a season."
+      ],
+      "t2": [
+        "Paid in full? Honest ledgers make for thin fog.",
+        "You read the small print now. A pity — I liked you better confused."
+      ],
+      "t3": [
+        "Still paying. Still standing. I am almost impressed.",
+        "The lighthouse keeper pays like a clerk. Tsk. The fog is hungry."
+      ]
+    },
+    "short": {
+      "t1": [
+        "Short? No matter — it goes on the debt. With interest.",
+        "An empty pouch is my favourite kind. The rest joins the ledger."
+      ],
+      "t2": [
+        "Cannot pay? Then you owe me more. That is exactly how I like it.",
+        "Shortfall noted. The fog sends its thanks."
+      ],
+      "t3": [
+        "Pockets empty this late? Delicious. On the pile it goes.",
+        "You cannot pay a Baron with hope, Pip. Debt it is."
+      ]
+    },
+    "repaid": {
+      "t1": [
+        "Extra? Keep it — oh, you insist. Noted.",
+        "Principal, is it? Someone has been listening to the owl."
+      ],
+      "t2": [
+        "Paying down the pile. The fog shrinks a little. Annoying.",
+        "Every repaid coin is one I cannot compound. You know that, don't you."
+      ],
+      "t3": [
+        "At this rate you will own the lighthouse outright. Unbearable.",
+        "Debt almost gone. I shall miss our little chats."
+      ]
+    }
   }
 }

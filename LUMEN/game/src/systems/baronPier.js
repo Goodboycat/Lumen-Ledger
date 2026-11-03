@@ -30,6 +30,7 @@ const FALLBACK = {
   short: { t1: ['Short again? No matter — I add it to the debt. With interest.', 'An empty pouch is my favourite kind. The rest goes on the ledger.'],
            t2: ['Cannot pay? Then you owe me more. That is how I like it.', 'Shortfall noted. The fog thanks you.'],
            t3: ['Pockets empty at season ten? Delicious. On the pile it goes.', 'You cannot pay a Baron with hope. Debt it is.'] },
+  repaid: { t1: ['Principal, is it? Someone has been listening to the owl.'], t2: ['Every repaid coin is one I cannot compound.'], t3: ['Debt almost gone. I shall miss our little chats.'] },
 };
 const tierOf = (s) => (s <= 3 ? 't1' : s <= 6 ? 't2' : 't3');
 
@@ -101,7 +102,7 @@ export function createBaronPier(deps = {}) {
     // repay taps (hold E): DEPOSIT_STEP per tap, capped by debt and pouch
     if (B.phase === 'repay' && eco.state.debt > 0 && eco.state.spark > 0) {
       const amt = eco.repay(Math.min(DEPOSIT_STEP, eco.state.debt, eco.state.spark));
-      if (amt > 0) { B.repaid += amt; B.stats.repaid += amt; bus.emit('pier:repaid', { amount: amt, debt: eco.state.debt, total: B.repaid }); vfx?.pop?.show?.(new THREE.Vector3(B.g.position.x, 2.0, B.g.position.z), `debt −${amt}`, { color: '#FFD54F', dur: 0.9 }); if (eco.state.debt <= 0) { say('Paid off?! …This is not over.'); done('debtfree'); return 'done'; } return 'repaid'; }
+      if (amt > 0) { B.repaid += amt; B.stats.repaid += amt; bus.emit('pier:repaid', { amount: amt, debt: eco.state.debt, total: B.repaid }); if (B.repaid === amt) say(pick('repaid', B.season), 2.6); vfx?.pop?.show?.(new THREE.Vector3(B.g.position.x, 2.0, B.g.position.z), `debt −${amt}`, { color: '#FFD54F', dur: 0.9 }); if (eco.state.debt <= 0) { say('Paid off?! …This is not over.'); done('debtfree'); return 'done'; } return 'repaid'; }
     }
     done('release'); return 'done';
   };
