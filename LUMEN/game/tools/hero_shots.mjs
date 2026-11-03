@@ -84,8 +84,8 @@ if (SHIP) {
     await p.evaluate(() => { const sb = window.sb(); sb.eco.state.season = 2; sb.enemies.enabled = true; sb.enemies.waveSeason = null; sb.enemies.spawnWave(2, { raiders: 2, distinct: true, stagger: 1 }); });
     let r = null;
     for (let i = 0; i < 30; i++) {
-      await sleep(1000);
-      r = await p.evaluate(() => { const sb = window.sb(); const chip = document.querySelector('.ll-raid-chip'), arrow = document.querySelector('.ll-raid-arrow'); return { states: sb.enemies.list.map((e) => e.state), carry: !!sb.enemies.list.find((e) => e.state === 'carry'), chip: chip && !chip.hidden ? chip.textContent : null, arrow: !!(arrow && !arrow.hidden) }; });
+      await sleep(1000); await dismiss();
+      r = await p.evaluate(() => { const sb = window.sb(); const chip = document.querySelector('.ll-raid-chip'), arrow = document.querySelector('.ll-raid-arrow'); return { paused: window.game.paused, states: sb.enemies.list.map((e) => e.state), carry: !!sb.enemies.list.find((e) => e.state === 'carry'), chip: chip && !chip.hidden ? chip.textContent : null, arrow: !!(arrow && !arrow.hidden) }; });
       if (r.carry) break;
     }
     console.log('STATE raid', JSON.stringify(r));
@@ -131,9 +131,9 @@ if (SHIP) {
     await start(); await dismiss();
     await p.evaluate(() => { const sb = window.sb(); sb.eco.state.interestOwed = Math.max(sb.eco.state.interestOwed || 0, 6); sb.eco.state.debt = Math.max(sb.eco.state.debt || 0, 40); window.lg.enterPier?.() || sb.pier.begin({ force: true }); });
     let pz = null;
-    for (let i = 0; i < 12; i++) {
-      await sleep(700);
-      pz = await p.evaluate(() => { const sb = window.sb(); return { state: window.lg.state, phase: sb.pier.phase, t: +(sb.pier.t || 0).toFixed(1), left: sb.pier.phase === 'wait' ? +(20 - sb.pier.t).toFixed(1) : null }; });
+    for (let i = 0; i < 16; i++) {
+      await sleep(700); await dismiss();
+      pz = await p.evaluate(() => { const sb = window.sb(); return { paused: window.game.paused, pauseBy: [...(window.lg.pauseBy || [])], state: window.lg.state, phase: sb.pier.phase, t: +(sb.pier.t || 0).toFixed(1), left: sb.pier.phase === 'wait' ? +(20 - sb.pier.t).toFixed(1) : null }; });
       if (pz.phase === 'wait' && pz.t > 0.8) break;
     }
     await dismiss();                                     // Baron's arrival line, if any
