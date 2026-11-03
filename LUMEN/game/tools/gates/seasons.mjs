@@ -124,7 +124,26 @@ export async function run({ resolve, pathToFileURL }) {
     if (sb.cust?.setPrice) sb.cust.setPrice('stall_tea', base);
     if (sb.cust?.fair && sb.cust.fair('stall_tea') !== fair3) throw new Error('cust.fair does not see the demand fair');
     const r = eco.sell('tea', 'saver', base); if (!(r.fair === fair3 && base / r.fair <= 0.9)) throw new Error(`sell ratio ${base}/${r.fair}`);
+    // P2: PREFS × demand through ONE helper — saver tea 1.5 → ×1.5 = 2.25 · kid tool 0.1 × 0.6 → floor 0.3 · unlisted regular fruit 1
+    const C = sb.cust; if (!C?.prefOf) throw new Error('cust.prefOf missing');
+    const pOf = (type, k) => C.prefOf({ type }, k);
+    if (Math.abs(pOf('saver', 'tea') - 2.25) > 1e-9) throw new Error(`prefOf saver tea ${pOf('saver', 'tea')}`);
+    if (pOf('kid', 'tool') !== 0.3) throw new Error(`prefOf floor ${pOf('kid', 'tool')}`);
+    if (pOf('regular', 'fruit') !== 1) throw new Error('prefOf unlisted ≠ 1');
+    if (C.wantOf({ type: 'saver' }) !== 'tea') throw new Error(`S3 saver want ${C.wantOf({ type: 'saver' })} (tea 1.5×1.5 should beat fruit/bread 2)`);
     destroySandbox(sb);
+    // P2: eco:season → season:demand {season, hot, cold} + Owl barks.demand (kind 'demand') once; S1 (no demand) → neither
+    const E = mkSb({ seasons: data, seasonSeconds: 20 }); const sd = [], owl = [];
+    E.bus.on('season:demand', (p) => sd.push(p)); E.bus.on('story:bark', (p) => { if (p?.kind === 'demand') owl.push(p); });
+    E.runUntilSeason(3, 120);
+    if (E.sb.eco.state.season < 3) throw new Error('did not reach S3');
+    if (sd.length !== 2 || sd[0].season !== 2 || sd[1].season !== 3) throw new Error(`season:demand ${JSON.stringify(sd.map((x) => x.season))}`);
+    const hc2 = SS.hotCold(2); if (sd[0].hot !== hc2.hot || sd[0].cold !== hc2.cold) throw new Error('season:demand hot/cold ≠ SS.hotCold');
+    if (owl.length !== 2 || !owl[0].text.includes(hc2.hot) || owl[0].text.includes('{')) throw new Error(`owl demand barks ${owl.length} "${owl[0]?.text}"`);
+    // P2: sign glyph — sb.demandGlyphOf follows demandOf (HOT ≥ 1.3 → 'hot', COLD ≤ 0.7 → 'cold', else null)
+    const hc3 = SS.hotCold(3); if (E.sb.demandGlyphOf(hc3.hot) !== 'hot' || E.sb.demandGlyphOf(hc3.cold) !== 'cold' || E.sb.demandGlyphOf('fruit') !== null) throw new Error('demandGlyphOf');
+    destroySandbox(E.sb);
+    console.log(`OK demand P2: prefOf saver·tea 2.25 · kid·tool floor 0.3 · S3 saver wants tea · season:demand S2,S3 (${hc2.hot}/${hc2.cold}) · Owl demand bark ×2 no {} · glyph hot/cold/null`);
     console.log(`OK demand: S1 {} · S2–S11 exactly 1 HOT + 1 COLD, no consecutive repeat (S10→S11 ${SS.hotCold(10).hot}→${SS.hotCold(11).hot}) · S3 tea fair ${base}→${fair3} (×1.5), tool ×0.6 · price ${base} → ratio ${(base / fair3).toFixed(2)} (love band) · legacy {}`);
   } catch (e) { bad++; console.log('FAIL demand: ' + e.message); }
   return bad;
