@@ -582,7 +582,8 @@ function reseatHelpers(sb) {
 //   eco:win / eco:lose     → ending (8B finale lines) → story:finale → endless | title
 //   ui:pause {on, by}      pause reasons are OR-ed (menu ∨ dialogue ∨ ledger ∨ title) into game.paused — the only place that touches it.
 // Nothing here edits a system; it only constructs, routes and owns `lg.state`.
-export const GAME_VERSION = 'S44';   // S44 (2026-11-01): BUGFIX speed ×2/×3 + Spark Storm "stretched characters" — JellySpring fixed sub-step 1/120 s + clamp, setSquash clamped [0.3, 2.5]; tests/spring.test.mjs. Game_Bible S44.md in LUMEN_extras/
+export const GAME_VERSION = 'S45';   // S45 (2026-11-03): 42D closed — pier gate scam section, story.json pier lines, HUD pier chip/countdown.
+// S44 (prev):   // S44 (2026-11-01): BUGFIX speed ×2/×3 + Spark Storm "stretched characters" — JellySpring fixed sub-step 1/120 s + clamp, setSquash clamped [0.3, 2.5]; tests/spring.test.mjs. Game_Bible S44.md in LUMEN_extras/
 // S43 history:   // S43 (2026-11-01): 16B P1 — src/combat/Combat.js 3-hit sword combo (slash1 forehand / slash2 backhand / slash3 spin, power 1/1/2) with input buffering + soft lock-on (≤5 u, ±70°), installCombat(sb) · check.mjs --combat. Game_Bible S43.md in LUMEN_extras/
 // S42:   // S42 (2026-11-01): 16A point-blank sword fix · 16B readability — Debt-Fog HUD bar hidden (island fog is the meter), lesson tag/ⓘ gone, 'Touch here!' ⏩ nudge when nothing happens. Game_Bible S42.md in LUMEN_extras/
 // S41:   // S41 (2026-10-31): playtest-readability pass 15-0…15F — no fps/calls HUD pill, progressive HUD reveal, one text channel, unaffordable build cards, Collector wave banner + edge arrows, solid props, debt-clarity toasts. Game_Bible S41.md in LUMEN_extras/

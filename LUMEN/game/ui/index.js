@@ -23,7 +23,7 @@ import { mountTouch } from './touch.js';
 import { mountSeasonInfo } from './seasons.js';
 import { mountTutorial } from './tutorial.js';
 
-export const UI_VERSION = 'S44';
+export const UI_VERSION = 'S45';
 export const UI_CSS = ['ui/base.css', 'ui/hud.css', 'ui/jars.css', 'ui/build.css', 'ui/ledger.css', 'ui/dialogue.css', 'ui/toast.css', 'ui/wave.css', 'ui/bark.css', 'ui/title.css', 'ui/pause.css', 'ui/touch.css', 'ui/seasons.css', 'ui/tutorial.css'];
 
 /**
