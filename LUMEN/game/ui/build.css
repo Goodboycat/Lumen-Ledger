@@ -100,3 +100,7 @@ body.is-touch .ll-build.has-detail .ll-build-grid { max-height: 92px; }
 .ll-card.offer.poor .ll-card-cost { background: #ffcdd2; color: var(--ink); }
 .ll-build-empty { grid-column: 1 / -1; text-align: center; font-size: 11px; font-weight: 700; color: #555; padding: 12px 0; }
 .ll-build.crew .ll-build-foot .ll-btn { display: none; }
+/* 44D: stall detail "HOT this season ×1.5" / "COLD this season ×0.6" (reads api.demandOf → eco.demandOf) */
+.ll-det-info small .bm-demand { font-weight: 800; letter-spacing: .02em; }
+.ll-det-info small .bm-demand.hot { color: #c9571f; }
+.ll-det-info small .bm-demand.cold { color: #2f7fc4; }

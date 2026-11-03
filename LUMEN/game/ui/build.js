@@ -170,13 +170,15 @@ export function mountBuildMenu(root, opts = {}) {
     return { can: true, lvl, to: lvl + 1, cost, poor: cost != null && cost > st.spark };
   }
   const wantedBy = (id) => { const k = String(id).replace(/^stall_/, ''); return Object.keys(PREFS).filter((t) => (PREFS[t][k] ?? 0) >= 1.5); };   // 44B
+  // 44D (44C Missing): "HOT this season ×1.5" / "COLD this season ×0.6" — one line, reads the integrator's api.demandOf(id) (eco.demandOf); nothing when ×1 / unset
+  const demandLine = (id) => { const m = typeof api.demandOf === 'function' ? +api.demandOf(id) : 1; if (!Number.isFinite(m) || Math.abs(m - 1) < 0.05) return ''; const hot = m > 1; return `<br><span class="bm-demand ${hot ? 'hot' : 'cold'}">${hot ? 'HOT' : 'COLD'} this season ×${(+m.toFixed(2)).toString()}</span>`; };
   function refreshDetail() {
     const id = st.selected, e = id && catalog[id];
     wrap.classList.toggle('has-detail', !!e); if (!e) return;
     const cost = costOf(id), n = countOf(id), lvl = ownedLevel(id);
     detIcon.innerHTML = iconize(iconFn(id, e));
     const isStall = e.category === 'stall';
-    detInfo.innerHTML = iconize(`<b>${e.name || id}</b><small>${lvl ? `✓ yours · ${LEVEL_NAMES[lvl] || 'L' + lvl}` : (cost ? cost + ' ✦' : 'free')} · ${(e.footprint || [1, 1]).join('×')}${n && !isStall ? ` · ${n} placed` : ''}${isStall && wantedBy(id).length ? `<br>wanted by: ${wantedBy(id).join(', ')}` : ''}</small>`);
+    detInfo.innerHTML = iconize(`<b>${e.name || id}</b><small>${lvl ? `✓ yours · ${LEVEL_NAMES[lvl] || 'L' + lvl}` : (cost ? cost + ' ✦' : 'free')} · ${(e.footprint || [1, 1]).join('×')}${n && !isStall ? ` · ${n} placed` : ''}${isStall && wantedBy(id).length ? `<br>wanted by: ${wantedBy(id).join(', ')}` : ''}${isStall ? demandLine(id) : ''}</small>`);
     const poor = !affordable(cost);
     // S29: an owned stall type cannot be deployed twice — the button says so and hands over to ⬆ Upgrade
     deployBtn.disabled = lvl > 0 || poor; deployBtn.classList.toggle('poor', poor && !lvl); deployBtn.classList.toggle('owned', lvl > 0);
@@ -252,6 +254,7 @@ export function mountBuildMenu(root, opts = {}) {
     nudgePrice(delta, id = st.selected) { if (!id) return api; bus.emit('ui:price', { id, delta }); return api; },
     placedInfo: opts.placedInfo || null,     // (id) => [{ level }] · set by the integrator so silently-loaded starter stalls count too
     costOf: opts.costOf || null,             // (id) => Spark · set by the integrator (BuildSystem.cost) — BUGFIX B09
+    demandOf: opts.demandOf || null,         // 44D: (id) => season demand multiplier (eco.demandOf) · stall detail "HOT this season ×1.5" line
     /** BUGFIX B02: forget everything about the previous run (badges, tracked entries, selection, placing). */
     reset() { st.counts = {}; st.placedById.clear(); st.selected = null; st.demolish = false; demolishBtn.classList.remove('on'); api.setPlacing(null); refreshCards(); syncDemolishPill(); return api; },
     refresh() { refreshCards(); return api; },
