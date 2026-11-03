@@ -5,7 +5,7 @@
 //   const cust = new CustomerSystem(game, { island, build, economy, creatures?, vfx?, flow?, maxActive? })
 //   cust.spawnWave(season = 1, n?)   cust.update(dt)   cust.count   cust.active (array)   cust.setPrice(stallId, price)
 //   cust.setSpawnPoint(x,z)          cust.clear()      cust.serialize()  (counters only)
-//   emits on game.bus: 'cust:spawn' 'cust:paid' 'cust:left' 'cust:angry' 'cust:state' (debug) 'cust:wave' 'cust:react' (44A: {id, stallId, ratio, mood, glyph})
+//   emits on game.bus: 'cust:spawn' 'cust:paid' 'cust:left' 'cust:angry' 'cust:state' (debug) 'cust:wave' 'cust:react' (44A: {id, stallId, ratio, mood, glyph}) 'cust:want' (44B: {id, type, want, found})
 //
 // FSM (per customer):  spawn → pickStall → walk → queue (wait anim, shuffles forward) → browse 1.5 s → pay
 //                      → happy | sad → leave (walk to pier) → pool.
@@ -83,6 +83,7 @@ export class CustomerSystem {
     this.economy = deps.economy || null;
     this.creatures = deps.creatures || null;        // { makeGlimmer, CreatureAnimator } — injected to keep this file testable without Three creatures
     this.vfx = deps.vfx || null;
+    this.story = deps.story || null;                 // 44B: parsed data/story.json (barks.wants / barks.wantsWho) for the once-per-want Owl bark
     this.maxActive = Math.min(MAX_ACTIVE_HARD, deps.maxActive ?? MAX_ACTIVE_DEFAULT);
     this.rng = mulberry(deps.seed ?? 11);
     this.prices = new Map();                        // stallId (prop id) → price (default: fair)
@@ -137,7 +138,8 @@ export class CustomerSystem {
   /** Spawn a wave for `season` (P3 table) or exactly `n` customers; spaced 0.45 s apart. Returns the number queued. */
   spawnWave(season = 1, n) {
     const w = WAVES[Math.min(WAVES.length - 1, Math.max(0, (season | 0) - 1))];
-    this.season = Math.max(1, season | 0);   // 44A: price bubbles start at S2
+    const prevSeason = this.season; this.season = Math.max(1, season | 0);   // 44A: price bubbles start at S2
+    if (this.season !== prevSeason) this._wantBarked = new Set();           // 44B: Owl "nobody sells X" once per want per season
     const total = n ?? w.n;
     let queued = 0;
     for (let i = 0; i < total; i++) {
@@ -161,7 +163,7 @@ export class CustomerSystem {
     const jx = (this.rng() - 0.5) * 0.6, jz = (this.rng() - 0.5) * 0.6;
     c.root.position.set(sp.x + jx, 0, sp.z + jz);
     c.root.visible = true; c.root.scale.setScalar(0.001);
-    c.state = 'spawn'; c.t = 0; c.waited = 0; c.stall = null; c.slot = -1; c.field = null; c.result = null; c.stuck = 0; c.stuckCount = 0;
+    c.state = 'spawn'; c.t = 0; c.waited = 0; c.stall = null; c.slot = -1; c.field = null; c.result = null; c.stuck = 0; c.stuckCount = 0; c.wanted = false;
     c.speed = BASE_SPEED * (0.85 + 0.3 * this.rng()) * c.speedMul;
     if (c.anim) { c.anim.moodTint(0.6); c.anim.play('idle'); }
     this.active.push(c); this.count = this.active.length; this.totals.spawned++;
@@ -235,6 +237,31 @@ export class CustomerSystem {
     }
     return best;
   }
+  /** 44B: the stall kind this customer wants most (top PREFS weight; ties → rng). null when the type has no preferences (regular). */
+  wantOf(c) {
+    const prefs = PREFS[c.type] || {}; let best = null, bw = 0;
+    for (const k of Object.keys(prefs)) { const w = prefs[k]; if (w > bw || (w === bw && this.rng() < 0.5)) { bw = w; best = k; } }
+    return best;
+  }
+  /** 44B: emit cust:want (+ want bubble S≥2, 1 in 3 customers, always when not found). Returns true when the customer leaves (noStall). */
+  _want(c) {
+    const want = this.wantOf(c); if (!want) return false;
+    const prefs = PREFS[c.type], stalls = this._stallList();
+    const found = stalls.length === 0 || stalls.some((s) => (prefs[String(s.id).replace(/^stall_/, '')] ?? 0) >= 1);   // no stalls at all → the old 3 s "no stall" path
+    this.bus.emit('cust:want', { id: c.id, type: c.type, want, found });
+    this._wantN = (this._wantN | 0) + 1;
+    if ((this.season | 0) >= 2 && (!found || this._wantN % 3 === 0)) { const pos = c.root.position; this.bus.emit('story:bark', { kind: 'want', icon: 'stall_' + want, ok: found, speaker: c.type, text: want, anchor: { x: pos.x, y: 1.9, z: pos.z }, ttl: 1.2 }); }
+    if (found) return false;
+    c.result = { noStall: true, want, type: c.type }; this.totals.noStall = (this.totals.noStall || 0) + 1;
+    this._owlWant(want, c.type);
+    this._react(c, 'sad', 'noStall'); return true;
+  }
+  _owlWant(want, type) {   // 44B P2: Owl says it once per want per season — barks.wants template, {who} = barks.wantsWho[type], {what} = stall kind
+    if (!this._wantBarked) this._wantBarked = new Set(); if (this._wantBarked.has(want)) return; this._wantBarked.add(want);
+    const B = this.story?.barks, list = B?.wants; const tpl = (list?.length ? list[Math.floor(this.rng() * list.length)] : null)?.text || '{who} want {what}. Nobody sells {what}.';
+    const who = B?.wantsWho?.[type] || (type.charAt(0).toUpperCase() + type.slice(1) + 's');
+    this.bus.emit('story:bark', { speaker: 'owl', kind: 'wants', want, text: tpl.replace('{who}', who).replace(/\{what\}/g, want), anchor: 'owl', ttl: 3 });
+  }
   _join(c, s) {
     const q = this._queue(s.entry); q.push(c);
     c.stall = s; c.slot = q.length - 1;
@@ -269,6 +296,7 @@ export class CustomerSystem {
       switch (c.state) {
         case 'spawn': if (c.t >= 0.4) this._set(c, 'pickStall'); break;
         case 'pickStall': {
+          if (!c.wanted) { c.wanted = true; if (this._want(c)) break; }   // 44B: want glyph once per visit; nothing sells it → leaves sad (noStall)
           const s = this.pickStall(c);
           if (s) { this._join(c, s); this._set(c, 'walk'); }
           else {
@@ -323,7 +351,7 @@ export class CustomerSystem {
           if (arrived) { this._playLeave(c); }
           break;
         }
-        case 'despawn': if (c.t >= 0.25) { this.totals.left++; this.bus.emit('cust:left', { id: c.id, type: c.type, result: c.result }); this._release(c); } break;
+        case 'despawn': if (c.t >= 0.25) { this.totals.left++; this.bus.emit('cust:left', { id: c.id, type: c.type, result: c.result, want: c.result?.want, noStall: !!c.result?.noStall }); this._release(c); } break;
       }
       if (c.anim) c.anim.update(dt);
       if (c.root.userData.update) c.root.userData.update(dt);

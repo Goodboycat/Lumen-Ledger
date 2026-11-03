@@ -82,7 +82,7 @@ export function createSandbox(game, opts = {}) {
   sb.SCENERY = SCENERY;
   for (const k of sb.world.occupied) if (!sb.island.pathCells.has(k)) sb.build.cells.set(k, SCENERY);
   placeClutter(sb);                                             // S07: salvageable plaza clutter (real BuildSystem entries, cost 0 → SALVAGE refund)
-  sb.cust = new CustomerSystem(game, { island: sb.island, build: sb.build, economy: sb.eco, vfx: sb.vfx, seed: opts.seed ?? 5, maxActive: opts.maxActive ?? 20,
+  sb.cust = new CustomerSystem(game, { island: sb.island, build: sb.build, economy: sb.eco, vfx: sb.vfx, story: sb.storyData, seed: opts.seed ?? 5, maxActive: opts.maxActive ?? 20,
     creatures: { makeGlimmer: (t) => makeGlimmerAny(t, { seed: (rnd() * 1e6) | 0 }), CreatureAnimator } });
   if (sb.world.pierSpawn) sb.cust.setSpawnPoint(sb.world.pierSpawn.x, sb.world.pierSpawn.z);
 
