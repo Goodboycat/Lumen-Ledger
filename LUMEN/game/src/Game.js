@@ -111,6 +111,8 @@ export function createSandbox(game, opts = {}) {
   wireAbilities(sb);
   installTills(sb);                                              // 42A: customers pay the stall's counter, Pip collects (walk / dash / helper / season sweep)
   installJarsWorld(sb);                                          // 42B: jars are places (after wireEconomy — eco:jar → setFill stays the fill truth)
+  sb.clockHold = new Set();                                      // 42D: reasons the eco clock is held ('pier'); sb.holdClock(by, on) → eco:clock {held, by}
+  sb.holdClock = (by, on_) => { if (on_) sb.clockHold.add(by); else sb.clockHold.delete(by); const held = sb.clockHold.size > 0; game.bus.emit('eco:clock', { held, by: [...sb.clockHold], reason: by }); return held; };
   installPier(sb);                                               // 42D: Baron at the pier (sb.pier) + sb.interact routes to him when he waits
   // BUGFIX P65: the starter footprints' SCENERY reservation must go even when starterStalls:false (CONTINUE) — otherwise build.load(snap.build)
   //   rejects the 3 saved starter stalls ("scenery" cell) and a resumed run silently loses them (check.mjs --save: stalls 9/12).
@@ -130,8 +132,8 @@ export function createSandbox(game, opts = {}) {
     sb.storm.update(dtReal ?? dt);
     sb.build.update(dt);
     sb.cust.update(dt);
-    sb.eco.tick(dt);
-    sb.updateScheduler?.();
+    if (!sb.clockHold.size) { sb.eco.tick(dt); sb.updateScheduler?.(); }   // 42D: the season clock (and its marks) wait while the Baron collects at the pier
+
     for (const h of sb.helpers) { h.anim.update(dt); updateHelperKnock(sb, h, dt); }
     updateCoins(sb, dt);
     sb.till?.tickHelpers?.(dt, sb.helpers);                         // 42A P2: seated helpers empty their till every 12 s
@@ -337,6 +339,7 @@ function installPier(sb) {
   const B = createBaronPier({ bus, eco, world: sb.world, hero, vfx, game: sb.game, scene: sb.headless ? null : sb.game.scene, story: null,
     creatures: sb.headless ? {} : { makeBaronGilt, VillainAnimator } });
   sb.pier = B;
+  sb._offs.push(bus.on('pier:due', () => sb.holdClock('pier', true)), bus.on('pier:done', () => sb.holdClock('pier', false)));   // the new season's clock does not run while he waits
   sb._offs.push(() => { B.destroy(); sb.pier = null; });
 }
 
@@ -568,7 +571,7 @@ export const GAME_VERSION = 'S44';   // S44 (2026-11-01): BUGFIX speed ×2/×3 +
 // S42:   // S42 (2026-11-01): 16A point-blank sword fix · 16B readability — Debt-Fog HUD bar hidden (island fog is the meter), lesson tag/ⓘ gone, 'Touch here!' ⏩ nudge when nothing happens. Game_Bible S42.md in LUMEN_extras/
 // S41:   // S41 (2026-10-31): playtest-readability pass 15-0…15F — no fps/calls HUD pill, progressive HUD reveal, one text channel, unaffordable build cards, Collector wave banner + edge arrows, solid props, debt-clarity toasts. Game_Bible S41.md in LUMEN_extras/
 // S40:   // S40 (2026-10-28): low-fps protection removed (no DPR/quality auto-demotion), quality locked to Settings, AudioContext resume watchdog. Game_Bible S40.md in LUMEN_extras/
-export const GAME_STATES = ['title', 'playing', 'review', 'ending', 'endless'];
+export const GAME_STATES = ['title', 'playing', 'pier', 'review', 'ending', 'endless'];   // 42D: 'pier' = the Baron collects interest between a season and its ledger review
 export const ABILITY_KEYS = { KeyQ: 'coinMagnetDash', KeyW: 'bubbleShield', KeyE: 'growthStomp', KeyR: 'ledgerFlash', KeyF: 'haggleShout', KeyG: 'fogSweep' };   // = FINLIT[name].key (3B)
 
 /**
@@ -581,6 +584,7 @@ export function createLumenGame(game, opts = {}) {
   const lg = { game, ui, bus, opts, version: GAME_VERSION, state: 'title', mode: 'story', sb: null, story: null, pauseBy: new Set(), log: [], stats: { starts: 0, seasons: 0, reviews: 0, finales: 0 } };
   const offs = []; lg._offs = offs; const on = (n, f) => offs.push(bus.on(n, f));
 
+  lg.pierPays = opts.pierPays ?? !opts.headless;                                     // 42D: the real game pays interest at the pier; headless harnesses keep the old auto path unless they opt in
   lg.setState = (s) => { if (!GAME_STATES.includes(s)) throw new Error('bad state ' + s); const prev = lg.state; lg.state = s; lg.log.push(`${prev} → ${s}`); bus.emit('game:state', { state: s, prev }); return s; };
   // ---- pause: OR of every reason. game.paused is written ONLY here. --------------------------------------------------
   lg.pause = (by, on_) => { if (on_) lg.pauseBy.add(by); else lg.pauseBy.delete(by); const p = lg.pauseBy.size > 0; if (game.paused !== p) { game.paused = p; bus.emit('game:paused', { paused: p, by: [...lg.pauseBy] }); } return p; };
@@ -653,7 +657,7 @@ function installStart(lg) {
     if (reuse) lg.showcaseSb = null;                                                   // keep it out of teardown's way
     lg.teardown?.();
     const balance = lg.mode === 'endless' ? { ...(opts.balance || {}), winRequiresSeasons: false, endless: true } : opts.balance;
-    const sb = lg.sb = reuse || createSandbox(game, { headless: !!opts.headless, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, starterStalls: lg._resuming ? false : undefined, labelsRoot: lg.ui?.root || null });
+    const sb = lg.sb = reuse || createSandbox(game, { headless: !!opts.headless, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, starterStalls: lg._resuming ? false : undefined, labelsRoot: lg.ui?.root || null, pierPays: lg.pierPays });
     if (reuse) { lg.stats.showcaseReused = (lg.stats.showcaseReused || 0) + 1; game.followTarget = sb.hero.root.position; }
     sb.modalOpen = () => !!(ui?.dialogue?.isOpen || ui?.ledger?.isOpen);                 // P62: the Collector wave waits for the dialogue box to close
     if (lg.mode === 'endless') sb.updateScheduler = wrapNoScam(sb);                      // endless: events yes, Baron's deals no
@@ -719,7 +723,7 @@ export function installCinematics(lg) {
   const wantShowcase = () => (opts.showcase ?? !opts.headless) && lg.state === 'title' && !lg.sb && !lg.showcaseSb && game.scene;
   lg.showcase = () => {
     if (!wantShowcase()) return null;
-    try { lg.showcaseSb = createSandbox(game, { headless: !!opts.headless, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance: opts.balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys }); }
+    try { lg.showcaseSb = createSandbox(game, { headless: !!opts.headless, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance: opts.balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, pierPays: lg.pierPays }); }
     catch (err) { console.warn('[cine] showcase build failed:', err?.message || err); lg.showcaseSb = null; return null; }
     const sb = lg.showcaseSb; sb.showcase = true;
     sb.reduceMotion = !!lg.reduceMotion; if (sb.vfx) sb.vfx.reduceMotion = !!lg.reduceMotion;
@@ -1013,12 +1017,17 @@ function installSeasonLoop(lg) {
   const { bus, ui } = lg, on = (n, f) => lg._offs.push(bus.on(n, f));
   const showLedger = (report, o = {}) => { if (!report) return; lg.stats.reviews++; if (ui?.ledger?.show) ui.ledger.show(report, o); else bus.emit('ui:ledger:open', { season: report.season }); };
   lg.lastReport = null; lg.pendingOutcome = null;
+  // 42D: with pierPays the Baron collects first → state 'pier' (clock held by installPier, 8B's ledger lines held) → pier:done → 'review' as before.
+  //   B.begin() returns false when nothing is owed and the player is debt-free (pier:skip) → straight to review. Listener order: this runs
+  //   BEFORE the StorySystem's eco:season (registered per run), so hold(true) is in place when onSeasonEnd() queues its lines.
+  const toReview = (r) => { lg.setState('review'); lg.story?.hold?.(false); if (!lg.story) showLedger(r, { outcome: 'season' }); };   // 8B emits story:review after its ledger lines
+  lg.enterPier = () => { const sb = lg.sb; if (!sb?.eco?.pierPays || !sb.pier?.begin?.()) return false; lg.setState('pier'); lg.story?.hold?.(true); lg.stats.piers = (lg.stats.piers || 0) + 1; return true; };
   on('eco:season', (r) => {
     if (!lg.sb) return; lg.lastReport = r; lg.stats.seasons++;
     if (lg.sb.eco.state.ended) return;                                                   // win/lose follow → ending path below
-    lg.setState('review');
-    if (!lg.story) showLedger(r, { outcome: 'season' });                                // 8B emits story:review after its ledger lines
+    if (!lg.enterPier()) toReview(r);
   });
+  on('pier:done', () => { if (lg.sb && lg.state === 'pier') toReview(lg.lastReport); });
   on('story:review', (p) => { if (lg.state === 'review') showLedger(p?.report || lg.lastReport, { outcome: 'season' }); });
   // S18: the victory cinematic (fly to the lighthouse, lamp lights, return) plays first; the story's ending lines are held until cine:end.
   //   No story (endless-like run forced to win in tests) → the ledger waits for the shot too. Listener order: this runs BEFORE the
@@ -1139,6 +1148,8 @@ function applySnapshot(lg, sb, snap) {
   if (snap.cust && sb.cust?.load) sb.cust.load(snap.cust);                               // BUGFIX B16: per-stall prices (+ sale totals) survive CONTINUE
   sb.unlocks?.restore?.(snap);                                                           // 41D: v2 abilities/starsTotal (v1 → starters)
   lg.ui?.hud?.sync?.(eco.state); lg.ui?.jars?.setBalances?.(eco.state.jars); lg.ui?.jars?.setDebt?.(eco.state.debt, eco.state.spark); lg.ui?.build?.setSpark?.(eco.state.spark);
+  // 42D: a save taken while the Baron waited at the pier resumes AT the pier (interestOwed survives in eco.state); the ledger it leads to is the last report
+  if (snap.state === 'pier' && lg.enterPier?.()) { lg.lastReport = eco.history?.at?.(-1) || null; return; }
   if (lg.story && lg.state === 'playing') lg.story.onSeasonStart?.(eco.state.season);   // 8B: no-op if this season's opening already played (saved mid-season); plays it if the save was taken at the review
 }
 

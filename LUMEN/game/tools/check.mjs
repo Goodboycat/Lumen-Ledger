@@ -1659,7 +1659,7 @@ if (doGame) {
     const drain = () => { let n = 0; while (ui.dialogue.isOpen && n < 40) { if (ui.dialogue.line?.choices) ui.dialogue.choose(1); else { ui.dialogue.skip(); ui.dialogue.advance(); } step(); n++; } return n; };
     // 1. title → PLAY
     if (lg.state !== 'title' || !ui.title.isOpen || !game.paused) throw new Error('title: state ' + lg.state + ' open ' + ui.title.isOpen + ' paused ' + game.paused);
-    if (GAME_STATES.length !== 5) throw new Error('GAME_STATES');
+    if (GAME_STATES.length !== 6 || !GAME_STATES.includes('pier')) throw new Error('GAME_STATES');
     run(1); if (lg.sb) throw new Error('sandbox before PLAY');
     ui.title.buttons.story.click();
     if (lg.state !== 'playing' || !lg.sb || !lg.story || ui.title.isOpen) throw new Error('PLAY → ' + lg.state);
