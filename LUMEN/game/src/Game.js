@@ -86,7 +86,12 @@ export function createSandbox(game, opts = {}) {
   // S16: Debt Collectors (+ Baron Gilt boss from S6). Transient — spawned by the scheduler at day 0.7, cleared at season end / win / lose.
   sb.enemies = new EnemySystem(game, { hero: sb.hero, eco: sb.eco, island: sb.island, vfx: sb.vfx, headless, occupied: (x, z) => sb.build?.occupied?.(x, z) || null,   // S34 / P73: enemies + shoves respect stall footprints
     creatures: headless ? {} : { makeFogCollector, makeBaronGilt, VillainAnimator, FogPuffPool },
-    spawnPoint: sb.world.pierSpawn || { x: 0, z: -10 }, exitPoint: sb.world.pierSpawn || { x: 0, z: -10 }, onCoin: (x, z, v) => sb.dropTip?.(x, z, v), isShielded: () => game.time < (sb.shield?.until ?? -1) });
+    spawnPoint: sb.world.pierSpawn || { x: 0, z: -10 }, exitPoint: sb.world.pierSpawn || { x: 0, z: -10 }, onCoin: (x, z, v) => sb.dropTip?.(x, z, v), isShielded: () => game.time < (sb.shield?.until ?? -1),
+    // 42C: Collectors raid TILLS. sb.till is built after the enemies (installTills) → getter. Contact spills the pouch (42B jarsWorld), never subtracts.
+    tills: () => sb.till || null, spillPouch: (frac) => sb.jarsWorld?.spillPouch?.(frac) ?? 0,
+    stallName: (id) => sb.build?.entry?.(id)?.name || null, stallSign: (id) => sb.build?.owned?.(id)?.group?.userData?.slots?.sign || null,
+    project: (p) => { const cam = game.camera?.three || game.camera; if (!cam?.projectionMatrix || !game.renderer?.domElement) return null; const v = new THREE.Vector3(p.x, p.y, p.z).project(cam); const el = game.renderer.domElement; return { x: (v.x + 1) / 2 * el.clientWidth, y: (1 - v.y) / 2 * el.clientHeight, behind: v.z > 1 }; },
+    carryCoin: headless ? null : { attach: () => { const m = new THREE.Mesh(G.cyl(0.22, 0.22, 0.06, 12), flatMat(P.sparkGold)); m.rotation.x = Math.PI / 2; m.userData.noOutline = true; game.scene.add(m); return m; }, detach: (m) => { m.removeFromParent?.(); } } });
   sb.villains = sb.enemies.list;                                 // perf LOD / blob shadows / destroySandbox already walk sb.villains
   // S17: storm weather look (sky/fog slate, dim lights, wind ×3, streaks, DOM rain). Scheduler: warn at day 0.30 when the pre-rolled event is a storm, hit at 0.45, clear 3 s later.
   sb.storm = new StormWeather(game, { lights: game.lights, container: game.container, headless, reduceMotion: () => !!sb.reduceMotion });

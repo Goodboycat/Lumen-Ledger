@@ -78,7 +78,7 @@ export function createJarsWorld(opts = {}) {
 
   J.spillPouch = (frac = SPILL_FRAC) => {
     const pouch = Math.max(0, eco.state.spark);
-    const a = Math.min(Math.floor(pouch * frac), SPILL_CAP);
+    const a = Math.min(Math.max(pouch >= 1 ? 1 : 0, Math.floor(pouch * frac)), SPILL_CAP);   // 42C: at least 1 ✦ spills while the pouch has any — a small pouch is not immune
     if (a <= 0) return 0;
     eco._addSpark(-a, 'spill');
     onSpill?.(a); bus.emit('jars:spill', { amount: a, spark: eco.state.spark }); return a;
