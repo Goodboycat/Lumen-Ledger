@@ -117,10 +117,14 @@ if (SHIP) {
     await boot('&season=600');
     await start(); await dismiss();
     await sleep(8000);                                   // a few sales so the ledger has rows
-    await p.evaluate(() => { const sb = window.sb(); sb.eco.endSeason(); });
-    await sleep(600); await dismiss();                   // story lines before the review → click through to the modal
+    // pierPays mode: eco:season sends the Baron to the pier first and the review comes after; for the shot we open the
+    // same Ledger Review modal directly with the real season report (ui.ledger.show = what toReview() calls)
+    await p.evaluate(() => { const sb = window.sb(); window.__rep = null; window.game.bus.on('eco:season', (r) => { window.__rep = r; }); sb.eco.endSeason(); });
+    await sleep(800); await dismiss();
+    await p.evaluate(() => { const r = window.__rep || window.lg.lastReport; window.lg.story?.hold?.(false); window.ui.ledger.show(r, { outcome: 'season' }); });
     let l = null;
-    for (let i = 0; i < 10; i++) { await sleep(800); l = await p.evaluate(() => ({ state: window.lg.state, modal: !!document.querySelector('.ll-ledger:not([hidden]), .ll-ledger.open, .ledger-modal'), text: (document.querySelector('.ll-ledger')?.textContent || '').slice(0, 80) })); if (l.modal || l.state === 'review') break; }
+    for (let i = 0; i < 10; i++) { await sleep(800); l = await p.evaluate(() => ({ state: window.lg.state, open: !!window.ui.ledger.isOpen, modal: !!document.querySelector('.ll-ledger.open'), text: (document.querySelector('.ll-ledger-rows')?.textContent || '').slice(0, 90) })); if (l.modal) break; }
+    await sleep(1800);                                   // let the row count-up animation finish
     console.log('STATE ledger', JSON.stringify(l));
     await shot('5_ledger');
   }
