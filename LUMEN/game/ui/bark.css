@@ -19,3 +19,8 @@
 @keyframes ll-bark-out { from { opacity: 1; } to { opacity: 0; transform: translate(-50%, -112%) scale(.92); } }
 @media (max-width: 480px) { .ll-bark { font-size: 13px; max-width: min(220px, 78vw); } }
 @media (prefers-reduced-motion: reduce) { .ll-bark, .ll-bark.out { animation-duration: .01s; } }
+
+/* 43C: critic price-check bubble — red when refused, green when fair */
+.ll-bark.price { font-variant-numeric: tabular-nums; font-weight: 700; }
+.ll-bark.price.no { background: #ffcdd2; color: #7a1c1c; }
+.ll-bark.price.ok { background: #c8e6c9; color: #1b5e20; }

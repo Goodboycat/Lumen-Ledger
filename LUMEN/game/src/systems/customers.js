@@ -148,6 +148,9 @@ export class CustomerSystem {
     return queued;
   }
 
+  /** 43C: spawn one of a given type now (or queue it when at maxActive). Returns the customer or null (queued). */
+  spawnType(type) { const c = this.spawnOne(type); if (!c) this.pendingSpawns.push({ type, at: this.time + 0.5 }); return c; }
+
   /** Spawn one customer now (type optional). Returns the customer or null when at maxActive. */
   spawnOne(type) {
     if (this.active.length >= this.maxActive) return null;
@@ -372,6 +375,27 @@ export class CustomerSystem {
     const s = c.stall; if (!s || !this._stallAlive(c)) { this._react(c, 'sad', 'stall gone'); return; }
     const price = this.price(s.id) * (this.spendMult || 1), fair = this.fair(s.id) * (this.spendMult || 1);   // 43B: nightMarket spendMult ×1.3 (fair scales too — mood unchanged)
     let r;
+    // 43C pickyGlimmer: type 'critic' checks the price out loud BEFORE buying — bubble `fair 12 · yours 15 ✗` (bark kind:'price') + bus customer:priceCheck.
+    // > fair×1.1 → refuses visibly (no sale, sad) · ≤ fair → buys ×2 qty (a second sell() of the same price) · in between → normal single buy.
+    if (c.type === 'critic') {
+      const ok = price <= fair * 1.1, dbl = price <= fair + 1e-9, pos = c.root.position;
+      this.bus.emit('customer:priceCheck', { id: c.id, stallId: s.id, price: +price.toFixed(1), fair: +fair.toFixed(1), ok, double: dbl });
+      this.bus.emit('story:bark', { kind: 'price', ok, speaker: 'critic', text: `fair ${Math.round(fair)} · yours ${Math.round(price)} ${ok ? '✓' : '✗'}`, anchor: { x: pos.x, y: 1.9, z: pos.z }, ttl: 2.5 });
+      if (!ok) { r = { paid: 0, sold: 0, fair, happy: false, mood: 0.3 }; }
+      else {
+        const lv = { level: (s.entry && s.entry.level) || s.level || 1, toTill: !!this.till };
+        r = this.economy && this.economy.sell ? this.economy.sell(s.id, c.type, price, lv) : { paid: price, sold: 1, fair, happy: true, mood: 1 };
+        if (dbl && r.sold > 0) { const r2 = this.economy && this.economy.sell ? this.economy.sell(s.id, c.type, price, lv) : { paid: price, sold: 1 }; if (r2 && r2.sold > 0) { r = { ...r, paid: r.paid + r2.paid, sold: r.sold + r2.sold, amount: (r.amount ?? r.paid) + (r2.amount ?? r2.paid) }; } }
+      }
+      if (this.till && r.paid > 0) this.till.pay(s.id, r.amount ?? r.paid, { type: c.type });
+      const ratio2 = fair > 0 ? price / fair : 1, mood2 = !ok ? 0.3 : dbl ? 1 : 0.75, react2 = !ok ? 'sad' : 'happy';
+      c.result = { paid: r.paid, sold: r.sold, price, fair, ratio: +ratio2.toFixed(2), mood: mood2, reaction: react2, stallId: s.id, type: c.type, priceCheck: ok };
+      if (c.anim) c.anim.moodTint(mood2);
+      if (r.paid > 0) { this.totals.paid++; this.totals.sparkEarned += r.paid; if (this.vfx && this.vfx.pop) { const p = c.root.position.clone(); p.y = 1.4; this.vfx.pop.show(p, `+${r.paid}`, { color: '#FFD54F', dur: 0.9, size: dbl ? 1.2 : 1 }); }
+        this.bus.emit('cust:paid', { id: c.id, type: c.type, stallId: s.id, paid: r.paid, sold: r.sold, price, fair, mood: mood2, reaction: react2, at: { x: pos.x, z: pos.z } }); }
+      else this.totals.unpaid = (this.totals.unpaid || 0) + 1;
+      this._react(c, react2, ok ? 'fair' : 'overpriced'); return;
+    }
     // BUGFIX B10: the stall's CURRENT level (live BuildSystem entry) is passed so paid L2/L3 upgrades apply their sales multiplier
     // 42A: when a till system is attached the sale goes to the STALL's counter (economy.sell toTill → pouch untouched), Pip collects it later
     const toTill = !!this.till;
