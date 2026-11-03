@@ -42,6 +42,7 @@ export function mountHUD(root, opts = {}) {
   spark.append(sparkCol, debtChip, tillChip, payBtn);
   // 42C: raid readability — a red chip under the pouch ("RAID — Fruit stand" / "CARRYING 7 ✦") + a screen-edge arrow toward the raider when it is off-screen.
   const raidChip = el('div', 'll-raid-chip'); raidChip.hidden = true; raidChip.setAttribute('role', 'status');
+  const pierChip = el('div', 'll-pier-chip'); pierChip.hidden = true; pierChip.setAttribute('role', 'status');   // 42D P2: Baron at the pier — interest due + countdown, then the repay hint
   const raidArrow = el('div', 'll-raid-arrow'); raidArrow.hidden = true; raidArrow.textContent = '➤';
   payBtn.addEventListener('click', (e) => { e.stopPropagation && e.stopPropagation(); api.pay(); });
 
@@ -71,7 +72,7 @@ export function mountHUD(root, opts = {}) {
   if (!statsFn) stats.style.display = 'none';
 
   hud.append(spark, mid, right);
-  root.appendChild(hud); root.appendChild(raidChip); root.appendChild(raidArrow);   // 42C: chip + arrow live outside the header so the arrow can sit at any screen edge
+  root.appendChild(hud); root.appendChild(raidChip); root.appendChild(raidArrow); root.appendChild(pierChip);   // 42C: chip + arrow live outside the header so the arrow can sit at any screen edge
 
   // ---------------------------------------------------------------- state
   const st = { spark: 0, shown: 0, season: 1, day01: 0, fog01: 0.35, debt: 0, rep: 0.5, fpsT: 0 };
@@ -169,6 +170,14 @@ export function mountHUD(root, opts = {}) {
       const cx = W / 2, cy = H / 2, dx = (sc.behind ? -1 : 1) * (sc.x - cx), dy = (sc.behind ? -1 : 1) * (sc.y - cy), L = Math.hypot(dx, dy) || 1;
       const k = Math.min((cx - 28) / Math.abs(dx || 1e-6), (cy - 28) / Math.abs(dy || 1e-6));
       raidArrow.style.left = (cx + dx * k) + 'px'; raidArrow.style.top = (cy + dy * k) + 'px'; raidArrow.style.transform = `translate(-50%,-50%) rotate(${Math.atan2(dy, dx)}rad)`; void L; }),
+    bus.on('pier:due', (p) => { st.pier = { interest: p?.interest || 0, left: p?.waitCap ?? 20, repay: false }; pierChip.innerHTML = iconize(`⚓ BARON AT THE PIER — ${st.pier.interest} ✦ due · ${Math.ceil(st.pier.left)} s`); pierChip.hidden = false; pierChip.classList.remove('repay'); }),
+    bus.on('pier:tick', (p) => { if (!st.pier || st.pier.repay || !p) return; st.pier.left = p.left; pierChip.innerHTML = iconize(st.pier.interest > 0 ? `⚓ BARON AT THE PIER — ${st.pier.interest} ✦ due · ${Math.ceil(p.left)} s` : `⚓ BARON AT THE PIER — repay? · ${Math.ceil(p.left)} s`); }),
+    bus.on('pier:paid', () => { if (!st.pier) return; st.pier.repay = true; pierChip.classList.add('repay'); pierChip.innerHTML = iconize('✓ PAID — tap E on him again to repay debt (−20 ✦ each), walk away to leave'); }),
+    bus.on('pier:short', (p) => { if (!st.pier) return; st.pier.repay = true; pierChip.classList.add('repay'); pierChip.innerHTML = iconize(`✗ SHORT — ${p?.shortfall || 0} ✦ added to the debt`); }),
+    bus.on('pier:repaid', (p) => { if (!st.pier) return; pierChip.innerHTML = iconize(`✓ REPAID ${p?.total || p?.amount || 0} ✦ — debt ${p?.debt ?? '?'} ✦ · tap E again or walk away`); }),
+    bus.on('pier:done', () => { st.pier = null; pierChip.hidden = true; }),
+    bus.on('pier:skip', () => { st.pier = null; pierChip.hidden = true; }),
+    bus.on('game:start', () => { st.pier = null; pierChip.hidden = true; }),
     bus.on('raid:end', (p) => { if (st.raids && p) delete st.raids[p.enemyId]; if (!st.raids || !Object.keys(st.raids).length) { raidChip.hidden = true; raidArrow.hidden = true; } }),
     bus.on('enemy:gone', () => { st.raids = {}; raidChip.hidden = true; raidArrow.hidden = true; }),
     bus.on('game:start', () => { st.raids = {}; raidChip.hidden = true; raidArrow.hidden = true; }),

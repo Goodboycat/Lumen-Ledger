@@ -65,9 +65,9 @@ export function createBaronPier(deps = {}) {
     B.from = { x: p.x + dx * 2.6, z: p.z + dz * 2.6 }; B.to = { x: p.x - dx * PIER.standIn, z: p.z - dz * PIER.standIn };
     g.position.set(B.from.x, 0, B.from.z); (scene || game?.scene)?.add?.(g);
     anim.faceTo?.(new THREE.Vector3(B.to.x, 0, B.to.z)); anim.play?.('strut');
-    B.active = true; B.phase = 'arrive'; B.t = 0; B.idle = 0; B.tauntT = 1.2; B.settled = false; B.season = s.season;
+    B.active = true; B.phase = 'arrive'; B.t = 0; B.lastTick = -1; B.idle = 0; B.tauntT = 1.2; B.settled = false; B.season = s.season;
     B.interest = owed; B.paid = 0; B.shortfall = 0; B.repaid = 0; B.stats.visits++;
-    bus.emit('pier:due', { interest: owed, debt: s.debt, pos: { ...B.to }, season: s.season });
+    bus.emit('pier:due', { interest: owed, debt: s.debt, pos: { ...B.to }, season: s.season, waitCap: PIER.waitCap });
     return true;
   };
 
@@ -121,6 +121,7 @@ export function createBaronPier(deps = {}) {
     } else if (B.phase === 'wait' || B.phase === 'repay') {
       const h = heroPos(); if (Math.hypot(h.x - g.position.x, h.z - g.position.z) < 6) B.anim?.faceTo?.(new THREE.Vector3(h.x, 0, h.z));
       B.tauntT -= dt; if (B.tauntT <= 0 && B.phase === 'wait') { B.tauntT = PIER.tauntEvery; B.anim?.play?.('taunt'); }
+      if (B.phase === 'wait') { const left = Math.max(0, PIER.waitCap - B.t), sec = Math.ceil(left); if (sec !== B.lastTick) { B.lastTick = sec; bus.emit('pier:tick', { left, cap: PIER.waitCap }); } }   // 42D P2: HUD countdown (≤ 1 Hz)
       if (B.phase === 'wait' && B.t >= PIER.waitCap) { B.settle('timeout'); return; }
       if (B.phase === 'repay') { B.idle += dt; if (B.idle >= PIER.repayIdle) done('idle'); }
     } else if (B.phase === 'leave') {
