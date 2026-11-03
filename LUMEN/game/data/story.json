@@ -1522,6 +1522,40 @@
           "text": "Dawn soon. Last sweep of the counters.",
           "ttl": 3
         }
+      ],
+      "baronVisit": [
+        {
+          "speaker": "owl",
+          "text": "Baron Gilt, in person. Keep your pouch shut, Pip.",
+          "ttl": 3.2
+        },
+        {
+          "speaker": "owl",
+          "text": "Look closer: that asterisk is the whole deal.",
+          "ttl": 3.6
+        },
+        {
+          "speaker": "baron",
+          "text": "Refused? The owl taught you well. Pity.",
+          "ttl": 2.6
+        }
+      ],
+      "pickyGlimmer": [
+        {
+          "speaker": "owl",
+          "text": "A critic is coming. She reads prices like I read ledgers.",
+          "ttl": 3
+        },
+        {
+          "speaker": "owl",
+          "text": "She walked. Overpriced is a sale you never see.",
+          "ttl": 3
+        },
+        {
+          "speaker": "owl",
+          "text": "Fair price, said out loud. That keeps a Glimmer.",
+          "ttl": 3
+        }
       ]
     }
   },
@@ -1569,5 +1603,19 @@
         "Debt almost gone. I shall miss our little chats."
       ]
     }
+  },
+  "baron": {
+    "visit": [
+      {
+        "speaker": "baron",
+        "text": "A zero-interest* loan, keeper. 150 Spark. Today only.",
+        "tell": "the asterisk"
+      },
+      {
+        "speaker": "baron",
+        "text": "Sign here. The small print is… decorative.",
+        "tell": "the asterisk"
+      }
+    ]
   }
 }
