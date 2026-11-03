@@ -18,10 +18,16 @@ LUMEN/
 > Everything from update 17 onward in the old plan (regions/biomes/World v3, 13B, 14) is **stopped**. Next IDs: `40A 40B 41A–41D 42A–42D 43Z 44Z 45Z`
 > (see `LUMEN_extras/README_pipeline.md` "## Next"; `game/tools/next.sh` prints the one to do).
 
+## Season scripts (43, S46, 2026-11-03) — version shown in the title menu: `S46`
+Every season now follows a script (`game/data/seasons.json`, S1–S10 + endless rotation) and brings **one novelty**:
+S2 storm warning · S3 night market (×1.3 spend, ×2 spill) · S4 the Baron pitches a "zero-interest" loan in person · S5 picky critics price-check your stalls ·
+S6 **double raid** (two Collectors, two tills, staggered telegraphs) · S7–S10 rotate them · S11+ repeat S6–S10. A 4 s "NEW: …" chip names each novelty
+the first time it appears; saves are v3 (active novelty resumes after load). Report: `LUMEN_extras/Game_Bible S46.md` · handoffs `HANDOFF_43Z–43D.md`.
+
 ## Release pass (S38, 2026-10-27) — version shown in the title menu: `S38`
 Gathers the S35–S37 work: blade-tracking slash ribbon, cottage remodel, dialogue rewrite (150 Spark / 260 debt), drawn icons and faces,
 **drag-to-move bought props** (S36), and **3 customer waves per season** for first-time players (S37). `GAME_VERSION` and `UI_VERSION` are now `S38`.
-Web build: `lumen-ledger-web.zip` (`bash game/tools/itch_zip.sh`). Report: `LUMEN_extras/Game_Bible S44.md` (latest; S44 = stretched-characters-at-speed-×3 bugfix).
+Web build: `lumen-ledger-web.zip` (`bash game/tools/itch_zip.sh`). Report: `LUMEN_extras/Game_Bible S44.md` (S44 = stretched-characters-at-speed-×3 bugfix; latest is S46 above).
 
 ## Knockback (S32, 2026-10-27) — version shown in the title menu: `S32`
 Every sword target now **really moves**. `CreatureAnimator.hit(dir, power)` (`src/assets/creatures/animator.js`) applies a world-space slide to the
