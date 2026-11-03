@@ -46,6 +46,11 @@ export const ENEMY_RULES = {
                stompRadius: 3.5, stompSpark: 2, stompKnock: 3.2, stompAir: 0.7, stompRange: 9, dazed: 2.5, fanSpread: 1.8,
                minigunSeconds: 2, minigunEvery: 0.25, minigunRadius: 0.8, minigunSpark: 1, minigunMercy: 0.5, aimLag: 4,
                umbrellaSpeed: 7, umbrellaRange: 8, umbrellaRadius: 1.1, umbrellaSpark: 2, umbrellaKnock: 2.5, umbrellaStun: 4 },
+  // 42C: Collectors raid TILLS, not Pip. seek (richest till ≤ range u, re-picked every retarget s) → raid (stand at the counter telegraph s:
+  //   fog puff + sign shake + "RAID!" pop) → take min(till, takeBase + season) → carry (coin on the head, speed × carryMul, walks to the pier)
+  //   → off-island = gone (raid:escaped, ledger.raided). Sword hit while carry → drops it all as ground tips + stun dropStun s. Hit while raid → cancelled.
+  //   bubbleShield armed with Pip ≤ shieldRadius u of a till → that till is immune (raiders re-target). No reachable till → old chase.
+  raid: { range: 14, retarget: 2, telegraph: 1.2, takeBase: 6, carryMul: 0.8, dropStun: 0.6, shieldRadius: 2, counterRadius: 0.9, dropCoins: 4, pouchSpill: 0.1 },
   waveCap: 5, bossFrom: 6, minionCap: 5, knockback: 1.6, fleeSeconds: 2.2, approachMin: 0.55,
   homeSpeedMul: 1.25, homeRadius: 0.6, homeTimeout: 14,   // S16b walk-home: a bit brisk, arrive within 0.6 u of the exit, hard cap so nobody is stuck forever
   // S19 / P58: Collectors keep apart (O(n²) separation, n ≤ 10) and land at DIFFERENT shore points (≥ spawnSpread u apart, ≥ spawnHeroMin u from Pip)
@@ -104,6 +109,8 @@ export class BaronDecalPool {
 }
 
 const _v = new THREE.Vector3(), _d = new THREE.Vector3(), _UP = new THREE.Vector3(0, 1, 0);
+/** 42C: states in which an enemy is on the island and hittable (targets(), separation, sendHome). */
+export const ACTIVE_STATES = new Set(['chase', 'seek', 'raid', 'carry']);
 
 export class EnemySystem {
   constructor(game, deps = {}) {
@@ -123,6 +130,58 @@ export class EnemySystem {
     this._exit = deps.exitPoint ? { x: deps.exitPoint.x, z: deps.exitPoint.z } : this._spawn;   // S16b: where they walk back to
     this._baseHeroSpeed = this.hero?.speed ?? 5.2;
     this._shore = null;                // S19: lazily computed shore landing points (pier first, then around the island)
+    this._nextId = 0;                  // 42C: enemy ids for raid:* events
+    this._threatT = 0;                 // 42C: raid:threat emit throttle (HUD arrow)
+    Object.assign(this.stats, { raids: 0, raided: 0, raidDrops: 0, recovered: 0, escaped: 0, raidsCancelled: 0 });
+  }
+  /** 42C: live till system — deps.tills may be the T object or a getter (Game.js builds sb.till after the enemies). */
+  get tills() { const t = this.deps.tills; return typeof t === 'function' ? t() : t || null; }
+  /** 42C: a till is immune while the Bubble Shield is armed AND Pip stands within shieldRadius of its counter. */
+  _tillImmune(t) { if (!this.deps.isShielded?.()) return false; const hp = this.hero?.root?.position; return !!hp && Math.hypot(t.pos.x - hp.x, t.pos.z - hp.z) <= ENEMY_RULES.raid.shieldRadius; }
+  /** 42C: the richest reachable till within range of `e` (amount > 0, not immune). */
+  _pickTill(e) {
+    const T = this.tills; if (!T?.all) return null; const p = e.g.position; let best = null;
+    for (const t of T.all()) { if (t.amount <= 0 || this._tillImmune(t) || Math.hypot(t.pos.x - p.x, t.pos.z - p.z) > ENEMY_RULES.raid.range) continue; if (!best || t.amount > best.amount) best = t; }
+    return best;
+  }
+  /** 42C: counter-front cell for a till (the stall slot; falls back to the till pos). */
+  _counterPoint(t) { return { x: t.pos.x, z: t.pos.z }; }
+  _stallName(id) { return this.deps.stallName?.(id) || String(id).replace(/^stall_/, '').replace(/_/g, ' '); }
+  _stallSign(id) { return this.deps.stallSign?.(id) || null; }
+  _setCarry(e, amount) {
+    e.carry = amount;
+    if (amount > 0) { if (!e.carryCoin) e.carryCoin = this.deps.carryCoin?.attach?.(e) || null; }
+    else if (e.carryCoin) { this.deps.carryCoin?.detach?.(e.carryCoin); e.carryCoin = null; }
+  }
+  _emitThreat(e) {
+    const p = e.g.position, sc = this.deps.project?.({ x: p.x, y: 1.6, z: p.z }) || null;
+    this.bus?.emit('raid:threat', { enemyId: e.id, stallId: e.target?.stallId ?? null, name: e.target ? this._stallName(e.target.stallId) : '', state: e.state, amount: e.carry || 0, screen: sc });
+  }
+  _endThreat(e, why) { this.bus?.emit('raid:end', { enemyId: e.id, why }); }
+  /** 42C: the raider drops everything it carries as ground tips around itself (Pip can pick them up). */
+  _dropCarry(e, why = 'hit') {
+    const amount = e.carry || 0; if (amount <= 0) return 0;
+    const R = ENEMY_RULES.raid, p = this._landNear(e.g.position), coins = Math.max(1, Math.min(R.dropCoins, Math.round(amount / 2)));
+    let left = amount; for (let i = 0; i < coins; i++) { const v = i === coins - 1 ? left : Math.max(1, Math.round(amount / coins)); if (v <= 0) break; left = Math.round((left - v) * 100) / 100; const a = (i / coins) * Math.PI * 2 + 0.4; const q = this._landNear({ x: p.x + Math.cos(a) * 0.6, z: p.z + Math.sin(a) * 0.6 }); this.deps.onCoin?.(q.x, q.z, v); }
+    this._setCarry(e, 0); this.stats.raidDrops++; this.stats.recovered += amount;
+    if (this.eco?.ledger) this.eco.ledger.recovered = Math.round(((this.eco.ledger.recovered || 0) + amount) * 100) / 100;
+    this.vfx?.pop?.show?.(_v.set(p.x, 1.9, p.z).clone(), `DROPPED ${amount} ✦`, { color: '#FFD54F', dur: 1.1, size: 1.1 });
+    this.bus?.emit('raid:drop', { enemyId: e.id, stallId: e.raidedStall ?? null, amount, x: p.x, z: p.z, why });
+    return amount;
+  }
+  _escape(e) {
+    const amount = e.carry || 0; this._setCarry(e, 0); if (amount <= 0) return;
+    this.stats.escaped++; this.stats.raided += amount;
+    if (this.eco?.ledger) { this.eco.ledger.raided = Math.round(((this.eco.ledger.raided || 0) + amount) * 100) / 100; this.eco.ledger.expenses = Math.round(((this.eco.ledger.expenses || 0) + amount) * 100) / 100; }
+    const p = e.g.position; this.vfx?.pop?.show?.(_v.set(p.x, 1.9, p.z).clone(), `−${amount} ✦ gone`, { color: '#EF5350', dur: 1.4, size: 1.1 }); this.vfx?.debtPulse?.(0.25);
+    this.bus?.emit('raid:escaped', { enemyId: e.id, stallId: e.raidedStall ?? null, amount }); this._endThreat(e, 'escaped');
+  }
+  _cancelRaid(e, why = 'hit') {
+    if (e.state !== 'raid') return;
+    if (e.carry > 0 && e.target) { this.tills?.refund?.(e.target.stallId, e.carry); this._setCarry(e, 0); }
+    const sign = this._stallSign(e.target?.stallId); if (sign) sign.rotation.z = 0;
+    e.state = 'seek'; e.raidT = 0; e.retargetT = ENEMY_RULES.raid.retarget; this.stats.raidsCancelled++;
+    this.bus?.emit('raid:cancel', { enemyId: e.id, stallId: e.target?.stallId ?? null, why }); this._endThreat(e, 'cancel');
   }
 
   // ------------------------------------------------------------------ S19 landing points
@@ -155,7 +214,9 @@ export class EnemySystem {
   }
 
   get baron() { return this.list.find((e) => e.kind === 'baron' && e.state !== 'flee') || null; }
-  get active() { return this.list.filter((e) => e.state === 'chase'); }
+  get active() { return this.list.filter((e) => ACTIVE_STATES.has(e.state)); }
+  /** 42C: the Collector currently raiding / carrying (HUD arrow target) or null. */
+  get raider() { return this.list.find((e) => e.state === 'carry') || this.list.find((e) => e.state === 'raid') || null; }
   get leaving() { return this.list.filter((e) => e.state === 'home'); }
 
   // ------------------------------------------------------------------ spawning
@@ -192,7 +253,9 @@ export class EnemySystem {
     this.game.scene?.add(g);
     if (this.fogPool && (i > 0 || kind === 'baron')) this.fogPool.spawn?.(_v.set(g.position.x, 0.3, g.position.z), _d.set(0, 1, 0), kind === 'baron' ? 10 : 6);   // arrival puff so it does not look like popping in
     const e = { kind, g, root: g, anim, hp: R.hp, maxHp: R.hp, state: 'chase', hitAt: R.grace ? (this.game?.time || 0) + R.grace - R.hitCooldown : -99, /* 41C: S1 grace → first contact hit only after `grace` s */ knock: new THREE.Vector3(), fleeT: 0, powers: kind === 'baron' ? baronPowersFor(season) : [], timers: { attack: kind === 'baron' ? R.attackEvery * 0.5 : 0, summon: 0 }, season, i, home: e_home,
-      podium, attack: null, dazed: 0, phase: 'idle', nextAttack: kind === 'baron' ? R.attackMin : 0 };   // S20 boss fields: attack = the telegraphed attack in flight, dazed = recovery window, phase 'idle'|'warn'|'air'|'fire'|'dash'|'dazed'
+      podium, attack: null, dazed: 0, phase: 'idle', nextAttack: kind === 'baron' ? R.attackMin : 0,   // S20 boss fields: attack = the telegraphed attack in flight, dazed = recovery window, phase 'idle'|'warn'|'air'|'fire'|'dash'|'dazed'
+      id: ++this._nextId, target: null, retargetT: 0, raidT: 0, carry: 0, carryCoin: null, stun: 0, raidedStall: null };   // 42C raid fields
+    if (kind === 'collector') { const t0 = this._pickTill(e); if (t0) { e.state = 'seek'; e.target = t0; } }   // 42C: a Collector with a reachable till seeks it; otherwise the old chase
     anim.play?.(kind === 'baron' ? 'strut' : 'walk');
     this.list.push(e); this.stats.spawned++;
     this.bus?.emit('enemy:spawn', { kind, season, powers: e.powers });
@@ -231,32 +294,47 @@ export class EnemySystem {
   }
 
   /** Targets for the hero's sword (HeroController deps.targets shape). The Baron is untouchable only while in the air (stomp) or mid-dash. */
-  targets() { return this.list.filter((e) => e.state === 'chase' && e.phase !== 'air' && e.phase !== 'dash').map((e) => ({ root: e.g, enemy: e, hit: (dir, power) => this.hitEnemy(e, dir, power) })); }
+  targets() { return this.list.filter((e) => ACTIVE_STATES.has(e.state) && e.phase !== 'air' && e.phase !== 'dash').map((e) => ({ root: e.g, enemy: e, hit: (dir, power) => this.hitEnemy(e, dir, power) })); }
 
   /** Pip's hit landed on `e`: knockback + flinch; hp 0 → defeated (flee + reward coin). The Baron does not slide (stationary boss) but the hit still cancels his wind-up. */
   hitEnemy(e, dir, power = 1) {
-    if (e.state !== 'chase' || e.phase === 'air' || e.phase === 'dash') return false;
+    if (!ACTIVE_STATES.has(e.state) || e.phase === 'air' || e.phase === 'dash') return false;
     e.hp -= 1;
     if (e.kind === 'baron') { if ((e.phase === 'warn' || e.phase === 'fire') && e.attack) this._cancelAttack(e); }   // S34 / P77: an interrupted minigun is a cancel, not a DODGE
-    else e.knock.copy(dir).setY(0).normalize().multiplyScalar(ENEMY_RULES.knockback * power);
+    else {
+      e.knock.copy(dir).setY(0).normalize().multiplyScalar(ENEMY_RULES.knockback * power);
+      // 42C: a hit while carrying drops the loot + stuns; a hit mid-raid cancels the raid (the till keeps its money)
+      if (e.state === 'carry') { this._dropCarry(e, 'hit'); e.stun = ENEMY_RULES.raid.dropStun; e.state = 'seek'; e.retargetT = ENEMY_RULES.raid.retarget; this._endThreat(e, 'drop'); }
+      else if (e.state === 'raid') this._cancelRaid(e, 'hit');
+    }
     e.anim.hit?.(dir, power);
     if (e.hp <= 0) this._defeat(e); else if (e.kind !== 'baron' || e.phase === 'idle') { e.anim.play?.('flee'); e._fleeAnimT = 0.45; }
     this.bus?.emit('enemy:hit', { kind: e.kind, hp: e.hp });
     return true;
   }
   _defeat(e) {
-    const R = this.rulesFor(e); e.state = 'flee'; e.fleeT = ENEMY_RULES.fleeSeconds; e.anim.play?.('flee');
+    const R = this.rulesFor(e); if (e.state === 'raid') this._cancelRaid(e, 'defeat'); if (e.carry > 0) { this._dropCarry(e, 'defeat'); this._endThreat(e, 'defeat'); }   // 42C: a defeated raider leaves the loot behind
+    e.state = 'flee'; e.fleeT = ENEMY_RULES.fleeSeconds; e.anim.play?.('flee');
     this.stats.defeated++; this.stats.sparkWon += R.reward;
     const p = this._landNear(e.g.position); this.deps.onCoin?.(p.x, p.z, R.reward);   // S34 / P67: coin lands on walkable ground
     this.vfx?.pop?.show?.(_v.set(p.x, 1.4, p.z).clone(), e.kind === 'baron' ? 'HARRUMPH!' : 'EEK!', { color: '#CE93D8' });
     this.vfx?.sparks?.burst?.(_v.set(p.x, 0.9, p.z).clone(), 12, 4);
-    if (e.kind === 'baron') { this.stats.baronDefeats++; for (const m of this.list) if (m !== e && m.state === 'chase') { m.state = 'flee'; m.fleeT = ENEMY_RULES.fleeSeconds; m.anim.play?.('flee'); } }
+    if (e.kind === 'baron') { this.stats.baronDefeats++; for (const m of this.list) if (m !== e && ACTIVE_STATES.has(m.state)) { if (m.state === 'raid') this._cancelRaid(m, 'baron'); if (m.carry > 0) { this._dropCarry(m, 'baron'); this._endThreat(m, 'defeat'); } m.state = 'flee'; m.fleeT = ENEMY_RULES.fleeSeconds; m.anim.play?.('flee'); } }
     this.bus?.emit('enemy:defeated', { kind: e.kind, reward: R.reward, season: e.season });
   }
 
   /** Enemy touches Pip: take Spark from the pouch (never below 0, never from jars). */
   _hitHero(e, spark) {
     if (this.deps.isShielded?.()) { this.vfx?.pop?.show?.(_v.copy(this.hero.root.position).setY(1.6).clone(), 'BLOCKED', { color: '#80DEEA' }); this.bus?.emit('enemy:blocked', { kind: e.kind }); return 0; }
+    // 42C: a Collector bump no longer subtracts from the pouch — coins SPILL to the floor (jarsWorld.spillPouch) and can be picked up again
+    if (e.kind === 'collector' && this.deps.spillPouch) {
+      const a = this.deps.spillPouch(ENEMY_RULES.raid.pouchSpill) || 0;
+      this.stats.hitsTaken++; this.stats.spilled = (this.stats.spilled || 0) + a;
+      this.hero.anim?.hit?.(); this.game.camera?.shake?.(0.12);
+      this.vfx?.pop?.show?.(_v.copy(this.hero.root.position).setY(1.6).clone(), a ? `${a} ✦ spilled!` : 'empty!', { color: '#EF5350' });
+      this.bus?.emit('enemy:heroHit', { kind: e.kind, spark: 0, spilled: a, debt: 0 });
+      return a;
+    }
     const have = this.eco?.state?.spark || 0; const take = Math.min(spark, Math.max(0, have));
     if (take > 0) { this.eco._addSpark(-take, 'enemy:' + e.kind); this.eco.ledger.expenses += take; }
     // S16b: the Baron bills what the pouch cannot pay — it becomes debt (a Collector just finds an empty pouch)
@@ -288,7 +366,8 @@ export class EnemySystem {
       if (e.knock.lengthSq() > 1e-4) { const nx = p.x + e.knock.x * dt * 4, nz = p.z + e.knock.z * dt * 4; if (this._canStand(nx, nz)) p.set(nx, 0, nz); else if (this._canStand(nx, p.z)) { p.x = nx; e.knock.z = 0; } else if (this._canStand(p.x, nz)) { p.z = nz; e.knock.x = 0; } else e.knock.set(0, 0, 0); e.knock.multiplyScalar(Math.max(0, 1 - 6 * dt)); }   // S34 / P66: land + stall clamp, axis slide
       if (e._fleeAnimT > 0) { e._fleeAnimT -= dt; if (e._fleeAnimT <= 0) e.anim.play?.(e.kind === 'baron' ? 'strut' : 'walk'); }
       if (e.state === 'home') {                                   // S16b: walking back to the pier, then stepping off
-        const ex = e.home || this._exit;                                 // S19: each one walks back to the shore point it landed on
+        const ex = e.carry > 0 ? this._exit : (e.home || this._exit);   // S19: each one walks back to the shore point it landed on (42C: a carrier heads for the pier)
+        if (e.carry > 0 && Math.hypot(ex.x - p.x, ex.z - p.z) <= ENEMY_RULES.homeRadius + 0.2) this._escape(e);   // 42C: off the island with the loot → gone
         _d.set(ex.x - p.x, 0, ex.z - p.z); const dd = _d.length(); if (dd > 1e-4) _d.divideScalar(dd);
         e.homeT += dt;
         if (dd > ENEMY_RULES.homeRadius && e.homeT < ENEMY_RULES.homeTimeout) {
@@ -312,6 +391,9 @@ export class EnemySystem {
       // chase (Collectors) — the Baron (S20) plods after Pip very slowly and runs the attack cycle
       _d.set(hp.x - p.x, 0, hp.z - p.z); const dist = _d.length(); if (dist > 1e-4) _d.divideScalar(dist);
       if (e.kind === 'baron') { this._baronUpdate(e, dt, dist); e.anim.update?.(dt); continue; }
+      if (e.stun > 0) { e.stun -= dt; e.anim.update?.(dt); continue; }                                          // 42C: dropped the loot — dazed
+      if (e.state !== 'chase') { this._raidUpdate(e, dt, dist, R, t); e.anim.update?.(dt); continue; }          // 42C: seek / raid / carry
+      if (!e.target && (e._rechaseT = (e._rechaseT || 0) + dt) >= ENEMY_RULES.raid.retarget) { e._rechaseT = 0; const t0 = this._pickTill(e); if (t0) { e.state = 'seek'; e.target = t0; e.retargetT = 0; } }   // 42C: a till filled up → leave Pip alone, go raid
       if (dist > ENEMY_RULES.approachMin) {
         const nx = p.x + _d.x * R.speed * dt, nz = p.z + _d.z * R.speed * dt;
         if (!this._moveTo(p, nx, nz)) { this._moveTo(p, p.x + _d.x * R.speed * dt * 0.3, p.z + _d.z * R.speed * dt * 0.3); }   // S34 / P66: axis-slide along the shore / stall wall (both axes)
@@ -322,9 +404,59 @@ export class EnemySystem {
       e.anim.update?.(dt);
     }
     this._separate(dt);
+    // 42C: HUD threat arrow — the active raider's screen position, ≤ 10×/s
+    const raider = this.raider; if (raider) { this._threatT += dt; if (this._threatT >= 0.1) { this._threatT = 0; this._emitThreat(raider); } }
     // S20: fog puddles slow Pip while he stands inside one
     for (const q of this.puddles) if (Math.hypot(hp.x - q.x, hp.z - q.z) <= q.r) slow = Math.min(slow, ENEMY_RULES.baron.puddleMul);
     if (slow !== this.heroSpeedMul) this._setHeroSpeed(slow);
+  }
+
+  // ------------------------------------------------------------------ 42C Collector raid FSM: seek → raid → carry (→ home/escape)
+  _raidUpdate(e, dt, distHero, R, t) {
+    const RR = ENEMY_RULES.raid, p = e.g.position, hp = this.hero.root.position;
+    if (e.state === 'seek') {
+      e.retargetT += dt;
+      const live = e.target ? this.tills?.get?.(e.target.stallId) : null;
+      if (e.retargetT >= RR.retarget || !live || live.amount <= 0 || this._tillImmune(live)) { e.retargetT = 0; const nt = this._pickTill(e); if (nt) e.target = nt; else { e.target = null; e.state = 'chase'; return; } }
+      else e.target = live;
+      const c = this._counterPoint(e.target); _d.set(c.x - p.x, 0, c.z - p.z); const dd = _d.length(); if (dd > 1e-4) _d.divideScalar(dd);
+      if (dd > RR.counterRadius) {
+        const nx = p.x + _d.x * R.speed * dt, nz = p.z + _d.z * R.speed * dt;
+        if (!this._moveTo(p, nx, nz)) this._moveTo(p, p.x + _d.x * R.speed * dt * 0.3, p.z + _d.z * R.speed * dt * 0.3);
+        e.anim.faceTo?.(_v.set(c.x, 0, c.z));
+      } else {   // at the counter: telegraph starts
+        e.state = 'raid'; e.raidT = 0; this.stats.raids++; e.anim.play?.('fogPuff');
+        this.fogPool?.spawn?.(_v.set(p.x, 0.4, p.z), _d.set(0, 1, 0), 5);
+        this.vfx?.pop?.show?.(_v.set(c.x, 1.7, c.z).clone(), 'RAID!', { color: '#EF5350', dur: RR.telegraph, size: 1.2 });
+        this.bus?.emit('raid:start', { enemyId: e.id, stallId: e.target.stallId, name: this._stallName(e.target.stallId), telegraph: RR.telegraph }); this._emitThreat(e);
+      }
+      // contact with Pip on the way: coins spill from the pouch (never a direct subtraction)
+      if (distHero <= R.radius && t - e.hitAt >= R.hitCooldown) { e.hitAt = t; this._hitHero(e, R.hitSpark); e.anim.play?.('fogPuff'); }
+      return;
+    }
+    if (e.state === 'raid') {
+      e.raidT += dt; const sign = this._stallSign(e.target?.stallId); if (sign) sign.rotation.z = Math.sin(e.raidT * 32) * 0.12;   // sign shake = readable telegraph
+      e.anim.faceTo?.(_v.set(e.target.pos.x, 0, e.target.pos.z));
+      const live = this.tills?.get?.(e.target.stallId);
+      if (!live || live.amount <= 0 || this._tillImmune(live)) { this._cancelRaid(e, live ? 'shield' : 'gone'); return; }   // the shield came up / Pip emptied it → give up
+      if (e.raidT < RR.telegraph) return;
+      if (sign) sign.rotation.z = 0;
+      const want = RR.takeBase + (e.season || 1), taken = this.tills?.steal?.(e.target.stallId, Math.min(live.amount, want), { enemyId: e.id }) || 0;
+      if (taken <= 0) { this._cancelRaid(e, 'empty'); return; }
+      e.raidedStall = e.target.stallId; this._setCarry(e, taken); e.state = 'carry'; e.anim.play?.('walk');
+      this.vfx?.pop?.show?.(_v.set(e.target.pos.x, 1.7, e.target.pos.z).clone(), `−${taken} ✦`, { color: '#EF5350', dur: 1.2, size: 1.15 });
+      this._emitThreat(e);
+      return;
+    }
+    if (e.state === 'carry') {
+      const ex = this._exit; _d.set(ex.x - p.x, 0, ex.z - p.z); const dd = _d.length(); if (dd > 1e-4) _d.divideScalar(dd);
+      const sp = R.speed * RR.carryMul, nx = p.x + _d.x * sp * dt, nz = p.z + _d.z * sp * dt;
+      if (!this._moveTo(p, nx, nz)) { p.x += _d.x * sp * dt * 0.5; p.z += _d.z * sp * dt * 0.5; }   // the pier is off the land grid: keep going
+      e.anim.faceTo?.(_v.set(p.x + _d.x, 0, p.z + _d.z));
+      if (e.carryCoin?.position) e.carryCoin.position.set(p.x, 2.05 + Math.sin(t * 5) * 0.05, p.z);
+      e.carryT = (e.carryT || 0) + dt;
+      if (dd <= ENEMY_RULES.homeRadius || e.carryT > ENEMY_RULES.homeTimeout) { this._escape(e); e.state = 'home'; e.homeT = ENEMY_RULES.homeTimeout; e.offT = 0; }
+    }
   }
 
   // ------------------------------------------------------------------ S20 Baron boss cycle (revised: slow chaser + 4 telegraphed attacks)
@@ -497,9 +629,9 @@ export class EnemySystem {
   _separate(dt) {
     const L = this.list, minD = ENEMY_RULES.separation, push = ENEMY_RULES.separationPush * dt;
     for (let i = 0; i < L.length; i++) {
-      const a = L[i]; if (a.state !== 'chase') continue;
+      const a = L[i]; if (!ACTIVE_STATES.has(a.state)) continue;
       for (let j = i + 1; j < L.length; j++) {
-        const b = L[j]; if (b.state !== 'chase') continue;
+        const b = L[j]; if (!ACTIVE_STATES.has(b.state)) continue;
         const pa = a.g.position, pb = b.g.position; let dx = pb.x - pa.x, dz = pb.z - pa.z; let d = Math.hypot(dx, dz);
         if (d >= minD) continue;
         if (d < 1e-4) { dx = Math.cos(i * 2.4 + j); dz = Math.sin(i * 2.4 + j); d = 1; }   // exactly stacked → pick a deterministic direction
@@ -513,11 +645,11 @@ export class EnemySystem {
   }
   _setHeroSpeed(mul) { this.heroSpeedMul = mul; if (this.hero) this.hero.speed = this._baseHeroSpeed * mul; }
 
-  _remove(i, why = 'flee') { const e = this.list[i]; this.list.splice(i, 1); e.anim.dispose?.(); e.g.removeFromParent?.(); this.bus?.emit('enemy:gone', { kind: e.kind, why }); }
+  _remove(i, why = 'flee') { const e = this.list[i]; this.list.splice(i, 1); if (e.carryCoin) this._setCarry(e, 0); const sign = this._stallSign(e.target?.stallId); if (sign && e.state === 'raid') sign.rotation.z = 0; e.anim.dispose?.(); e.g.removeFromParent?.(); this.bus?.emit('enemy:gone', { kind: e.kind, why, id: e.id }); }
   /** S16b: season is over — everyone still chasing turns around and WALKS back to the pier, then steps off (not a defeat). Returns how many were sent. */
   sendHome() {
     let n = 0;
-    for (const e of this.list) if (e.state === 'chase') { e.state = 'home'; e.homeT = 0; e.offT = 0; e.knock.set(0, 0, 0); if (e.kind === 'baron') { /* S34 / P77: leaving mid-minigun is a cancel, not a DODGE */ this._cancelAttack(e); e.phase = 'idle'; e.g.position.y = 0; e.g.scale.set(1, 1, 1); if (e.anim) e.anim.timeScale = 1; } e.anim.play?.(e.kind === 'baron' ? 'strut' : 'walk'); n++; }
+    for (const e of this.list) if (ACTIVE_STATES.has(e.state)) { if (e.state === 'raid') this._cancelRaid(e, 'season'); e.state = 'home'; e.homeT = 0; e.offT = 0; e.knock.set(0, 0, 0); if (e.kind === 'baron') { /* S34 / P77: leaving mid-minigun is a cancel, not a DODGE */ this._cancelAttack(e); e.phase = 'idle'; e.g.position.y = 0; e.g.scale.set(1, 1, 1); if (e.anim) e.anim.timeScale = 1; } e.anim.play?.(e.kind === 'baron' ? 'strut' : 'walk'); n++; }
     this._setHeroSpeed(1);
     if (n) { const h = this.hero?.root?.position; if (h) this.vfx?.pop?.show?.(_v.set(h.x, 2.1, h.z).clone(), 'season over — they leave', { color: '#B0BEC5', dur: 1.4 }); this.bus?.emit('enemy:home', { count: n }); }
     return n;
