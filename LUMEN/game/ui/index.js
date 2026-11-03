@@ -38,7 +38,7 @@ export function mountUI(root, opts = {}) {
 
   if (opts.title !== false) add('title', mountTitle(root, { bus, hasSave: opts.hasSave || false, hasWon: opts.hasWon || false, chrome: !!opts.titleChrome, version: opts.version || 'jam build', autoShow: opts.autoShowTitle !== false, showOnLose: false }));   // 10C shows the title itself after the lose ledger (TRY AGAIN)
   add('hud', mountHUD(root, { bus, stats: opts.stats || null, seasonsToWin, selfDrive: false }));
-  add('jars', mountJars(root, { bus, pct: opts.jarPct }));
+  add('jars', mountJars(root, { bus, pct: opts.jarPct, summary: opts.jarsSummary !== false }));   // 42B: summary by default; jarsSummary:false = 7A sliders + APPLY
   // 7A's own B hotkey is not modal-aware (it would open the tray under the title / dialogue / pause) → it is off and re-owned below, gated by ui.isModal().
   add('build', mountBuildMenu(root, { bus, catalog: opts.catalog || {}, spark: opts.spark || 0, categories: opts.categories || ['stall', 'decor', 'nature'], noHotkey: true, noEsc: true }));
   add('ledger', mountLedger(root, { bus, seasonsToWin, autoOpen: false, selfDrive: false }));

@@ -69,3 +69,13 @@ body.is-touch .ll-jars-debt .ll-btn { min-height: 44px; }
 .ll-jars-foot .ll-btn.auto { flex: 0 0 auto; background: #fff; font-size: 10px; padding: 4px 5px; }
 .ll-jars-foot .ll-btn.auto.on { background: var(--grass, #7bd36b); box-shadow: 0 3px 0 var(--ink), 0 0 0 3px rgba(123, 211, 107, .35); }
 .ll-jars.auto .ll-jars-foot .ll-btn:not(.auto):not(.alt) { opacity: .55; }
+
+/* 42B — SUMMARY mode (default): read-only bars, no APPLY/AUTO; the preset button is a hint chip. Jars are places: Pip carries the Spark. */
+.ll-jars.summary .ll-jar input[type=range] { pointer-events: none; opacity: .92; }
+.ll-jars.summary .ll-jar input[type=range]::-webkit-slider-thumb { width: 0; height: 0; border: 0; box-shadow: none; margin-top: 0; }
+.ll-jars.summary .ll-jar input[type=range]::-moz-range-thumb { width: 0; height: 0; border: 0; box-shadow: none; }
+.ll-jars-chip { display: inline-block; font-size: 11px; padding: 3px 8px; border: 2px solid var(--ink); border-radius: 999px; background: #fff7dd; color: var(--ink); }
+/* 42B — world jar tags: DOM labels projected over each jar (≤ 4), visible only when Pip is ≤ 4 u; .near = the one E acts on */
+.ll-jar-tag { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); padding: 3px 8px; border: 2px solid var(--ink); border-radius: 10px; background: var(--paper, #fff8e7); color: var(--ink); font-size: 11px; font-weight: 700; white-space: nowrap; pointer-events: none; z-index: 18; box-shadow: 0 2px 0 var(--ink); opacity: .85; transition: opacity .15s, transform .15s; }
+.ll-jar-tag.near { opacity: 1; transform: translate(-50%, -100%) scale(1.12); background: #fff1b8; }
+.ll-jar-tag.spend { border-color: #c9803a; } .ll-jar-tag.save { border-color: #3a8bc9; } .ll-jar-tag.invest { border-color: #6a3ac9; } .ll-jar-tag.protect { border-color: #3ac976; }

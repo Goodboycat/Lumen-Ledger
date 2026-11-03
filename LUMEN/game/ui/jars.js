@@ -65,10 +65,14 @@ export const sumPct = (p) => JAR_ORDER.reduce((a, k) => a + (p[k] || 0), 0);
 
 export function mountJars(root, opts = {}) {
   const bus = opts.bus || defaultBus;
+  // 42B: SUMMARY mode (default) — budgeting is a walk, not a slider. The panel is a read-only view of eco.state.jars (4 bars + split %);
+  //   sliders / APPLY / AUTO are hidden and the preset button becomes a hint chip ("Owl suggests 50/30/10/10"). opts.summary:false (index.html
+  //   ?sliders=1, tests, accessibility fallback) keeps the 7A slider + APPLY path alive. api.summary reports the mode.
+  const summary = opts.summary !== false;
   const st = { pct: { ...(opts.pct || JAR_PRESETS.balanced) }, balances: { spend: 0, save: 0, invest: 0, protect: 0 }, locked: {}, dirty: false, debt: +opts.debt || 0, spark: +opts.spark || 0, auto: !!opts.auto };
   if (sumPct(st.pct) !== 100) st.pct = rebalance(st.pct, 'spend', st.pct.spend);
 
-  const panel = el('aside', 'll-jars'); panel.id = 'll-jars';
+  const panel = el('aside', 'll-jars' + (summary ? ' summary' : '')); panel.id = 'll-jars';
   const head = el('div', 'll-jars-head');
   const title = el('span', null, '🫙 FinLit Jars');
   const total = el('span', 'll-jars-total', '100 %'); const caret = el('span', 'll-caret', '▾');
@@ -83,6 +87,7 @@ export function mountJars(root, opts = {}) {
     const name = el('div', 'll-jar-name', `<span>${JAR_INFO[k].name}</span><small class="ll-jar-bal">0 ✦</small>`);
     const input = el('input'); input.type = 'range'; input.min = 0; input.max = 100; input.step = 1; input.value = st.pct[k]; input.setAttribute('aria-label', JAR_INFO[k].name + ' percent');
     const pctEl = el('div', 'll-jar-pct', `<span>${st.pct[k]}%</span>`);
+    if (summary) { input.disabled = true; input.tabIndex = -1; input.setAttribute('aria-readonly', 'true'); }   // 42B: a bar, not a control
     row.append(icon, name, input, pctEl);
     if (k !== 'spend') { // B11: withdraw half of a jar back into the pouch (Spend IS the pouch, nothing to withdraw)
       const wd = el('button', 'll-jar-wd'); wd.innerHTML = iconize('↩'); wd.type = 'button'; wd.title = 'Take half of this jar back into your pouch'; wd.setAttribute('aria-label', 'Withdraw half of ' + JAR_INFO[k].name);
@@ -101,8 +106,9 @@ export function mountJars(root, opts = {}) {
   const applyBtn = el('button', 'll-btn', 'APPLY'); applyBtn.disabled = true;
   // S03: AUTO = "pay yourself first" — every sale is split by the sliders the moment it lands (Game.js listens to eco:spark reason 'sale')
   const autoBtn = el('button', 'll-btn auto', '⚡ AUTO'); autoBtn.type = 'button'; autoBtn.setAttribute('aria-pressed', 'false'); autoBtn.title = 'Pay yourself first: split every sale into the jars automatically';
-  foot.append(presetBtn, applyBtn, autoBtn);
-  const hint = el('div', 'll-jars-hint', 'drag a jar — the others rebalance');
+  if (summary) { const chip = el('span', 'll-jars-chip', 'Owl suggests 40/30/20/10'); chip.title = 'spend / save / invest / protect — carry Spark to the jars by the cottage and press E'; foot.append(chip); }
+  else foot.append(presetBtn, applyBtn, autoBtn);
+  const hint = el('div', 'll-jars-hint', summary ? 'walk to a jar by the cottage · E puts 10 ✦ in · hold E takes 10 out' : 'drag a jar — the others rebalance');
   // B01: the debt row — the ONLY player-facing way to pay down Baron Gilt's principal (interest compounds every season)
   const debtRow = el('div', 'll-jars-debt');
   const debtLab = el('span', 'll-jars-debt-lab', '🎩 Debt'); const debtVal = el('b', 'll-jars-debt-val', '0 ✦'); debtLab.append(debtVal);
@@ -118,8 +124,9 @@ export function mountJars(root, opts = {}) {
 
   const retrigger = (node, cls) => { node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls); };
   const render = (changed) => {
+    const actual = {}; if (summary) { const b = st.balances, tot = Math.max(1, (b.spend || 0) + st.spark + (b.save || 0) + (b.invest || 0) + (b.protect || 0)); for (const k of JAR_ORDER) actual[k] = Math.round(100 * (k === 'spend' ? (b.spend || 0) + st.spark : (b[k] || 0)) / tot); }
     for (const k of JAR_ORDER) {
-      const r = rows[k], v = st.pct[k];
+      const r = rows[k], v = summary ? actual[k] : st.pct[k];
       if (+r.input.value !== v) r.input.value = v;
       r.input.style.setProperty('--pct', v + '%');
       r.pctEl.textContent = v + '%';
@@ -129,7 +136,8 @@ export function mountJars(root, opts = {}) {
       r.row.classList.toggle('locked', !!st.locked[k]);
       if (changed === k || changed === '*') retrigger(r.icon, 'pop');
     }
-    const s = sumPct(st.pct); total.textContent = s + ' %'; total.classList.toggle('bad', s !== 100);
+    const s = summary ? Math.round((st.balances.spend || 0) + st.spark + (st.balances.save || 0) + (st.balances.invest || 0) + (st.balances.protect || 0)) : sumPct(st.pct);
+    total.innerHTML = summary ? iconize(s + ' ✦') : s + ' %'; total.classList.toggle('bad', !summary && s !== 100);
     // BUGFIX P01: APPLY was disabled until a slider moved, so keeping the shown split could never fill the jars. Now: enabled whenever
     // the pouch has Spark and the split sends something to Save/Invest/Protect (or the sliders changed).
     // BUGFIX P09: with an EMPTY pouch APPLY would move 0 Spark (chime, no effect) → disabled, hint says why; a dirty split still arms it once Spark arrives.
@@ -163,6 +171,7 @@ export function mountJars(root, opts = {}) {
     repay(amount) { if (!(st.debt > 0)) { hint.textContent = 'no debt — the Baron has nothing on you'; return api; } const a = Math.min(Math.round(amount != null ? amount : st.debt), Math.floor(st.spark)); if (!(a > 0)) { hint.textContent = 'your pouch is empty — sell Glimmers or ↩ withdraw from a jar'; return api; } bus.emit('ui:repay', { amount: a }); retrigger(debtRow, 'pop'); return api; },
     /** B01: show debt + pouch so the PAY button knows what it can pay. */
     setDebt(debt, spark) { if (debt != null) st.debt = Math.max(0, +debt || 0); if (spark != null) st.spark = Math.max(0, +spark || 0); render(null); return api; },
+    get summary() { return summary; },
     apply() { st.dirty = false; render(null); bus.emit('ui:jar:apply', { pct: { ...st.pct } }); retrigger(panel, 'll-apply'); return api; },
     /** S03: toggle automatic splitting of every sale ("pay yourself first"). Emits ui:jar:auto {on, pct, source}. */
     get auto() { return st.auto; },
