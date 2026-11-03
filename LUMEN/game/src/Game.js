@@ -315,7 +315,8 @@ function installJarsWorld(sb) {
   sb.jarsWorld = J;
   sb.interact = () => {
     if (J.near()) return J.press() || 'jar';
-    return null;                                                                      // 42D adds till / Baron / scam NPC here
+    if (sb.enemies?.talk?.(3)) return 'talk';                                         // 42C P2: a seeking Collector ≤ 3 u → enemy:talk (42D attaches the pitch)
+    return null;                                                                      // 42D adds till / Baron here
   };
   sb.interactRelease = () => J.release();
   // bark on an absorbed event at the Protect jar (P2): the spatial choice pays back visibly

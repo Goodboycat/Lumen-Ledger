@@ -135,6 +135,14 @@ export async function run({ resolve, pathToFileURL }) {
     if (E.list.includes(c) || ev['raid:escaped'].length !== 1 || ev['raid:escaped'][0].amount !== carried6) throw new Error('6: season-end carrier should still escape with the loot ' + JSON.stringify(ev['raid:escaped']));
     console.log(`  empty tills → chase · till filled → seek · sendHome mid-carry → walks off with ${carried6} ✦ (raid:escaped)  OK`);
 
+    // ---------------------------------------------------------------- 6b. P2: a seeking Collector ≤ 3 u of Pip is talkable → enemy:talk (42D attaches the pitch)
+    ev['enemy:talk'] = []; bus.on('enemy:talk', (p) => ev['enemy:talk'].push(p));
+    T.pay(till.stallId, 12, {}); c = spawnOne(); if (c.state !== 'seek') throw new Error('6b: expected seek, state ' + c.state);
+    sb.hero.root.position.set(c.g.position.x + 1.5, 0, c.g.position.z); if (E.talkable(3) !== c || !E.talk(3) || ev['enemy:talk'].length !== 1 || ev['enemy:talk'][0].enemyId !== c.id) throw new Error('6b: talk ' + JSON.stringify(ev['enemy:talk']));
+    sb.hero.root.position.set(c.g.position.x + 6, 0, c.g.position.z); if (E.talkable(3) || E.talk(3) || ev['enemy:talk'].length !== 1) throw new Error('6b: talk out of range should be null');
+    if (typeof sb.interact === 'function') { sb.hero.root.position.set(c.g.position.x + 1.5, 0, c.g.position.z); if (sb.interact() !== 'talk' || ev['enemy:talk'].length !== 2) throw new Error('6b: sb.interact() should route to talk'); sb.interactRelease?.(); }
+    console.log('  P2 enemy:talk — seeking Collector ≤ 3 u → sb.interact() = "talk", 6 u → null  OK');
+
     // ---------------------------------------------------------------- 7. clean destroy
     E.clear(); destroySandbox(sb); let left = 0; scene.traverse((o) => { if (o.isMesh) left++; });
     if (left) throw new Error('destroy left ' + left + ' meshes');

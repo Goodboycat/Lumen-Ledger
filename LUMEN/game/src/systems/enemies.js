@@ -294,6 +294,9 @@ export class EnemySystem {
   }
 
   /** Targets for the hero's sword (HeroController deps.targets shape). The Baron is untouchable only while in the air (stomp) or mid-dash. */
+  /** 42C P2 (prep for 42D scams): the nearest Collector in `seek` within `r` u of Pip, or null. `talk()` emits enemy:talk {id, enemyId, stallId} and returns true. */
+  talkable(r = 3) { const hp = this.hero?.root?.position; if (!hp) return null; let best = null, bd = r; for (const e of this.list) { if (e.kind !== 'collector' || e.state !== 'seek') continue; const d = Math.hypot(e.g.position.x - hp.x, e.g.position.z - hp.z); if (d < bd) { bd = d; best = e; } } return best; }
+  talk(r = 3) { const e = this.talkable(r); if (!e) return false; this.bus?.emit('enemy:talk', { id: e.id, enemyId: e.id, stallId: e.target?.stallId ?? null }); return true; }
   targets() { return this.list.filter((e) => ACTIVE_STATES.has(e.state) && e.phase !== 'air' && e.phase !== 'dash').map((e) => ({ root: e.g, enemy: e, hit: (dir, power) => this.hitEnemy(e, dir, power) })); }
 
   /** Pip's hit landed on `e`: knockback + flinch; hp 0 → defeated (flee + reward coin). The Baron does not slide (stationary boss) but the hit still cancels his wind-up. */
