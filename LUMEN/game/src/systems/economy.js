@@ -151,11 +151,13 @@ export class Economy {
     this.events = opts.events || EVENTS;
     this.scams = opts.scams || SCAMS;
     this.upgrades = opts.upgrades || UPGRADES;
+    this.pierPays = opts.pierPays === true;   // 42D: interest is collected by the Baron at the pier (held in state.interestOwed until settleInterest()); default false = old auto path
     const c = this.config;
     this.state = {
       spark: c.startSpark,
       jars: { spend: 0, save: 0, invest: 0, protect: 0 },
       debt: c.startDebt,
+      interestOwed: 0,                   // 42D: interest waiting to be settled at the pier (pierPays mode only)
       fog01: c.startFog,
       season: 1,
       day01: 0,
@@ -338,6 +340,26 @@ export class Economy {
   netWorth() { const j = this.state.jars; return this.state.spark + j.spend + j.save + j.invest + j.protect - this.state.debt; }
 
   // ------------------------------------------------ loans (BAD interest)
+  /** 42D: pure — the loan interest the Baron is owed at the end of `season` (same rule the auto path used: loanRate or the hidden scam rate,
+   *  S01 gentler S1, optional 41C season scaling). 0 when debt-free. */
+  interestDue(season = this.state.season) {
+    const c = this.config, s = this.state;
+    const rate = (s.scamRate ? Math.max(c.loanRate, s.scamRate) : c.loanRate) * (season === 1 ? (c.season1RateMul ?? 1) : 1) * (c.seasonScaleInterest ? this.seasonCostScale(season) : 1);
+    return round(Math.max(0, s.debt) * rate);
+  }
+  /** 42D (pierPays mode): pay `state.interestOwed` from the pouch; what the pouch cannot cover is added to the debt (the Baron says so aloud).
+   *  Emits eco:interest {owed, paid, shortfall, debt}. Returns { paid, shortfall }. No-op when nothing is owed. */
+  settleInterest() {
+    const s = this.state, owed = round(s.interestOwed || 0);
+    if (owed <= 0) { s.interestOwed = 0; return { paid: 0, shortfall: 0 }; }
+    const paid = round(Math.min(owed, Math.max(0, s.spark))), shortfall = owed - paid;
+    if (paid > 0) this._addSpark(-paid, 'interest');
+    if (shortfall > 0) s.debt += shortfall;
+    s.interestOwed = 0;
+    this.bus.emit('eco:interest', { owed, paid, shortfall, debt: s.debt });
+    if (shortfall > 0) this.bus.emit('eco:loan', { debt: s.debt, delta: shortfall, kind: 'interest' });
+    return { paid, shortfall };
+  }
   takeLoan(amount) {
     const c = this.config; amount = round(+amount || 0);
     if (this.state.ended || amount < c.minLoan || this.state.debt + amount > c.maxLoan) { this.bus.emit('eco:denied', { reason: 'loan refused', amount, debt: this.state.debt }); return false; }
@@ -493,9 +515,9 @@ export class Economy {
     s.jars.invest += investReturn;
     // BAD interest, compounding (scam loans use the hidden higher rate)
     const kS = this.seasonCostScale(season);   // 41C: shorter season → proportionally less interest + upkeep due (balance.md "Season curve")
-    const rate = (s.scamRate ? Math.max(c.loanRate, s.scamRate) : c.loanRate) * (s.season === 1 ? (c.season1RateMul ?? 1) : 1) * (c.seasonScaleInterest ? kS : 1);   // S01: gentler S1 · 41C: interest NOT scaled by default (debt is the clock; scaling it broke the hoarder band)
-    const interestPaid = round(s.debt * rate);
-    s.debt += interestPaid;
+    const interestPaid = this.interestDue(season);
+    if (this.pierPays) s.interestOwed = interestPaid;   // 42D: the Baron collects it at the pier (settleInterest) — pouch first, shortfall → debt
+    else s.debt += interestPaid;                        // old auto path (headless tests, no-pier mode): compounds silently
     // upkeep (routine cost: pouch → Spend jar → forced debt; the Protect jar is for shocks, NOT rent)
     // BUGFIX C01: upgraded stalls cost their promised extra upkeep, Pack Mole cuts STALL upkeep −20 %, helpers are paid wages
     const stallUpkeep = round((c.upkeepPerStall * s.stalls + (s.stallUpkeepExtra || 0)) * this.mod('upkeepMul', 1));
@@ -521,7 +543,7 @@ export class Economy {
       upkeepDebt: upkeepRes.debt, saved: L.saved, invested: L.invested, protected: L.protected, absorbed: L.absorbed,
       loansTaken: L.loansTaken, repaid: L.repaid, sales: L.sales, units: L.units, events: L.events.slice(),
       scamsAccepted: L.scamsAccepted, scamsRefused: L.scamsRefused, raided: L.raided || 0, recovered: L.recovered || 0,   // 42C
-      debt: s.debt, debtBefore, fog01: s.fog01, fogDelta: +(s.fog01 - fogBefore).toFixed(4), spark: s.spark, jars: { ...s.jars },
+      debt: s.debt, debtBefore, interestOwed: s.interestOwed || 0, fog01: s.fog01, fogDelta: +(s.fog01 - fogBefore).toFixed(4), spark: s.spark, jars: { ...s.jars },
       netWorth: this.netWorth(), reputation: +s.reputation.toFixed(3),
       lessonId: c.lessons[(season - 1) % c.lessons.length], stars,
     };
