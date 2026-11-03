@@ -73,7 +73,7 @@ export function createSandbox(game, opts = {}) {
   sb.scamNpcs = opts.scamNpcs ?? !opts.headless;                 // 42D: the scheduler's scam mark spawns a pitching Collector (talk to open the deal); headless keeps eco.offerScam() direct unless opted in
   sb.seasons = createSeasonScript(opts.seasons || null);        // 43A: parsed data/seasons.json (null → legacy SCHEDULER_MARKS rows); createLumenGame passes its own
   if (!sb.seasons.legacy) { const errs = sb.seasons.validate(); if (errs.length) { sb.log.push('seasons.json invalid: ' + errs[0]); sb.seasons = createSeasonScript(null); } }
-  sb.eco = makeEconomy({ bus, seed: opts.seed ?? 1, autoSeason: true, pierPays: opts.pierPays === true }, opts.balance);   // 42D: pierPays → interest is collected at the pier (default off: headless harnesses keep the auto path)
+  sb.eco = makeEconomy({ bus, seed: opts.seed ?? 1, autoSeason: true, pierPays: opts.pierPays === true, demandFn: (kind, season) => sb.seasons.demandFor(season)[kind] ?? 1 }, opts.balance);   // 44C: season demand × fair price (seasons.json row.demand; {} on S1/legacy → ×1)   // 42D: pierPays → interest is collected at the pier (default off: headless harnesses keep the auto path)
   if (!sb.seasons.legacy && !(opts.seasonSeconds > 0) && !opts.balance?.seasonCurve) { const cv = []; for (let i = 1; i <= Math.max(5, sb.seasons.maxSeason); i++) cv.push(sb.seasons.len(i)); sb.eco.config.seasonCurve = cv; }   // 43A: row.len wins over BALANCE.seasonCurve (tests' seasonSeconds override still wins)
   if (opts.seasonSeconds) { sb.eco.config.seasonSeconds = opts.seasonSeconds; sb.eco.config.seasonSecondsOverride = opts.seasonSeconds; }   // 41C: tests/accelerated runs override the season curve
   sb.build = new BuildSystem(game, { island: sb.island, economy: sb.eco, catalog: PROP_CATALOG, vfx: sb.vfx });
@@ -276,6 +276,7 @@ function wireEconomy(sb) {
   off.push(bus.on('cust:angry', (p) => { const id = p?.stallId; if (!id) return; const n = (sb._angryAt.get(id) || 0) + 1; sb._angryAt.set(id, n);
     if (n === 3) { const b = sb.storyData?.barks?.pricing?.[0]; bus.emit('story:bark', { speaker: 'owl', text: b?.text || b || 'Three frowns at one sign. The price, not the goods.', anchor: 'owl', ttl: 3, kind: 'pricing' }); } }));
   off.push(bus.on('eco:season', () => sb._angryAt.clear()));
+  off.push(bus.on('eco:season', () => { for (const p of sb.build?.placed?.values?.() || []) if (p.category === 'stall' && !p.scenery) sb.signTint(p.id); }));   // 44C: demand changed fair → re-tint every sign at season start (44A Suspected)
   off.push(bus.on('build:placed', (p) => { if (p?.id && p.entry?.category === 'stall') sb.signTint(p.id); }));
   off.push(bus.on('build:upgraded', (p) => { if (p?.id) sb.signTint(p.id); }));   // level rebuild = new sign mesh
   off.push(bus.on('eco:fog', (p) => { const f = p?.fog01 ?? eco.state.fog01; vfx.fog?.setCoverage?.(f); world.towers.forEach((t) => t.userData.setActive?.(f > 0.3)); if (f > 0.6) vfx.debtPulse?.(0.4); }));

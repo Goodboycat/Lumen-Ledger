@@ -148,6 +148,7 @@ export class Economy {
     this.bus = opts.bus || defaultBus;
     this.rng = makeRng(opts.seed);
     this.autoSeason = opts.autoSeason !== false;
+    this.demandFn = typeof opts.demandFn === 'function' ? opts.demandFn : null;   // 44C: (kind, season) → mult; stallInfo().fair × mult (Game.js wires sb.seasons.demandFor)
     this.events = opts.events || EVENTS;
     this.scams = opts.scams || SCAMS;
     this.upgrades = opts.upgrades || UPGRADES;
@@ -203,8 +204,12 @@ export class Economy {
   /** Stall config by id: accepts 'fruit' or 'stall_fruit'. */
   stallInfo(stallId) {
     const key = String(stallId).replace(/^stall_/, '');
-    return this.config.stalls[key] || null;
+    const base = this.config.stalls[key] || null; if (!base) return null;
+    const m = this.demandFn ? +this.demandFn(key, this.state.season) : 1;   // 44C: ONE place where season demand multiplies the fair price (mood thresholds + 43C critic rule follow)
+    return m > 0 && m !== 1 ? { ...base, fair: Math.max(1, Math.round(base.fair * m)), baseFair: base.fair, demand: m } : base;
   }
+  /** 44C: season demand multiplier for a stall kind ('fruit' or 'stall_fruit'); 1 when no demandFn / S1 / legacy. */
+  demandOf(stallId) { const m = this.demandFn ? +this.demandFn(String(stallId).replace(/^stall_/, ''), this.state.season) : 1; return m > 0 ? m : 1; }
   /**
    * One customer visit. Returns { paid, mood, sold, fair, happy }.
    * paid is added to state.spark and ledger.income. Emits 'eco:sale' and 'eco:spark'.

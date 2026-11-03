@@ -52,3 +52,21 @@ test('43D rotation: S6 raidDouble arms before the wave, S7–10 novelty table, w
   for (const k of Object.keys(ma)) if (ma[k] != null && mb[k] != null) assert.ok(Math.abs(ma[k] - mb[k]) >= MARK_MIN_GAP, `wrap S10→S11 ${k} ${ma[k]} vs ${mb[k]}`);
   const m = SS.marks(11); for (let i = 1; i < m.length; i++) assert.ok(m[i].at >= m[i - 1].at);
 });
+
+test('44C demand: S1 none, S2–S11 one HOT + one COLD with no consecutive repeat, validator catches a repeat and an out-of-band mult', () => {
+  const SS = createSeasonScript(data);
+  assert.deepEqual(SS.demandFor(1), {});
+  for (let s = 2; s <= 11; s++) {
+    const d = SS.demandFor(s), hc = SS.hotCold(s);
+    assert.ok(hc.hot && hc.cold, `S${s} needs hot + cold`);
+    for (const k of Object.keys(d)) assert.ok(d[k] >= 0.3 && d[k] <= 2, `S${s} ${k} ${d[k]} in band`);
+    if (s > 2) { const p = SS.hotCold(s - 1); assert.notEqual(hc.hot, p.hot, `S${s} hot repeats`); assert.notEqual(hc.cold, p.cold, `S${s} cold repeats`); }
+  }
+  assert.deepEqual(createSeasonScript(null).demandFor(5), {}, 'legacy → no demand');
+  const bad = JSON.parse(JSON.stringify(data)); bad.seasons['3'].demand = { lantern: 1.5, tool: 0.6 };   // lantern was S2's HOT
+  assert.ok(createSeasonScript(bad).validate().some((e) => /S3: hot lantern repeats S2/.test(e)));
+  const bad2 = JSON.parse(JSON.stringify(data)); bad2.seasons['4'].demand = { cloth: 2.5, fruit: 0.7 };
+  assert.ok(createSeasonScript(bad2).validate().some((e) => /S4: demand.cloth 2.5 not in/.test(e)));
+  const bad3 = JSON.parse(JSON.stringify(data)); bad3.seasons['1'].demand = { tea: 1.5, tool: 0.6 };
+  assert.ok(createSeasonScript(bad3).validate().some((e) => /S1: demand must be empty/.test(e)));
+});

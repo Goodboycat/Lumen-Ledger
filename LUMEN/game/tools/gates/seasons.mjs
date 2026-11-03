@@ -103,5 +103,29 @@ export async function run({ resolve, pathToFileURL }) {
     destroySandbox(sb);
     console.log(`OK fallback (no seasons.json): legacy marks ${JSON.stringify(c1)}, S2 no scam, no novelties`);
   } catch (e) { bad++; console.log('FAIL fallback: ' + e.message); }
+  // ── 44C SEASON DEMAND (additive) ──
+  console.log('\n44C SEASON DEMAND:');
+  try {
+    const SS = createSeasonScript(data);
+    if (Object.keys(SS.demandFor(1)).length) throw new Error('S1 demand not empty');
+    for (let s = 2; s <= 11; s++) { const d = SS.demandFor(s), hc = SS.hotCold(s), hcp = SS.hotCold(s - 1);
+      const hots = Object.keys(d).filter((k) => d[k] >= 1.3), colds = Object.keys(d).filter((k) => d[k] <= 0.7);
+      if (hots.length !== 1 || colds.length !== 1) throw new Error(`S${s} hot/cold ${hots}/${colds}`);
+      if (s > 2 && (hc.hot === hcp.hot || hc.cold === hcp.cold)) throw new Error(`S${s} repeats S${s - 1} (${hc.hot}/${hc.cold})`); }
+    if (createSeasonScript(null).demandFor(3) && Object.keys(createSeasonScript(null).demandFor(3)).length) throw new Error('legacy demand not empty');
+    const D = mkSb({ seasons: data, seasonSeconds: 20 }); const { sb, bus } = D; const eco = sb.eco;
+    const fair1 = eco.stallInfo('tea').fair, base = eco.config.stalls.tea.fair; if (fair1 !== base) throw new Error(`S1 tea fair ${fair1} ≠ base ${base}`);
+    eco.state.season = 3;   // S3: tea 1.5 (HOT), tool 0.6 (COLD)
+    const fair3 = eco.stallInfo('stall_tea').fair; if (fair3 !== Math.round(base * 1.5)) throw new Error(`S3 tea fair ${fair3} ≠ ${Math.round(base * 1.5)}`);
+    if (eco.stallInfo('tool').fair !== Math.round(eco.config.stalls.tool.fair * 0.6)) throw new Error('S3 tool fair not ×0.6');
+    if (eco.demandOf('tea') !== 1.5 || eco.demandOf('fruit') !== 1) throw new Error('demandOf');
+    // price unchanged (base fair) → ratio 1/1.5 = 0.67 ≤ 0.9 → a saver at tea reacts 'love'
+    const reacts = []; bus.on('cust:react', (p) => reacts.push(p));
+    if (sb.cust?.setPrice) sb.cust.setPrice('stall_tea', base);
+    if (sb.cust?.fair && sb.cust.fair('stall_tea') !== fair3) throw new Error('cust.fair does not see the demand fair');
+    const r = eco.sell('tea', 'saver', base); if (!(r.fair === fair3 && base / r.fair <= 0.9)) throw new Error(`sell ratio ${base}/${r.fair}`);
+    destroySandbox(sb);
+    console.log(`OK demand: S1 {} · S2–S11 exactly 1 HOT + 1 COLD, no consecutive repeat (S10→S11 ${SS.hotCold(10).hot}→${SS.hotCold(11).hot}) · S3 tea fair ${base}→${fair3} (×1.5), tool ×0.6 · price ${base} → ratio ${(base / fair3).toFixed(2)} (love band) · legacy {}`);
+  } catch (e) { bad++; console.log('FAIL demand: ' + e.message); }
   return bad;
 }
