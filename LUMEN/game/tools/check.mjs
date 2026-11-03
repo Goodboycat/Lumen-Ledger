@@ -1057,7 +1057,7 @@ if (doUI) {
     const r1 = rebalance({ spend: 40, save: 30, invest: 20, protect: 10 }, 'save', 60); if (r1.save !== 60 || sumPct(r1) !== 100 || r1.spend < r1.invest) throw new Error('proportional ' + JSON.stringify(r1));
     const r2 = rebalance({ spend: 40, save: 30, invest: 20, protect: 10 }, 'spend', 100); if (r2.spend !== 100 || r2.save !== 0) throw new Error('max ' + JSON.stringify(r2));
     const r3 = rebalance({ spend: 40, save: 30, invest: 20, protect: 10 }, 'save', 90, { protect: true }); if (r3.protect !== 10 || r3.save !== 90 || r3.spend !== 0 || sumPct(r3) !== 100) throw new Error('locked ' + JSON.stringify(r3));
-    const jars = mountJars(root, { bus, pct: { spend: 40, save: 30, invest: 20, protect: 10 }, spark: 120 });   // P09: APPLY needs a non-empty pouch
+    const jars = mountJars(root, { bus, pct: { spend: 40, save: 30, invest: 20, protect: 10 }, spark: 120, summary: false });   // P09: APPLY needs a non-empty pouch · 42B: this block tests the LEGACY slider path (?sliders=1); summary default is covered by --jarsworld
     const inputs = jars.el.querySelectorAll('input');
     if (inputs.length !== 4 || jars.el.querySelector('.ll-jars-total').textContent !== '100 %') throw new Error('mount');
     dragRange(inputs[1], 70); // save → 70
