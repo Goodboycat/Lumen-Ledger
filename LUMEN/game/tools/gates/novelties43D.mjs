@@ -109,9 +109,10 @@ export async function run({ resolve, pathToFileURL }) {
     if (!st2.state.noveltiesSeen.includes('nightMarket') || !st2.state.noveltiesSeen.includes('raidDouble')) throw new Error('noveltiesSeen lost on deserialize: ' + JSON.stringify(st2.state.noveltiesSeen));
     st.destroy?.(); st2.destroy?.();
     if (SAVE_VERSION !== 3) throw new Error('SAVE_VERSION ' + SAVE_VERSION);
-    const v2 = parseSnapshot(JSON.stringify({ v: 2, t: 1, season: 3, midSeason: true, eco: {}, build: [], story: { v: 1, state: {} }, jars: {}, helpers: [], hero: {}, abilities: ['dash', 'shield'], starsTotal: 2 }));
+    const ECO = { state: { season: 3, spark: 10, jars: {} } };
+    const v2 = parseSnapshot(JSON.stringify({ v: 2, t: 1, season: 3, midSeason: true, eco: ECO, build: [], story: { v: 1, state: {} }, jars: {}, helpers: [], abilities: ['dash', 'shield'], starsTotal: 2 }));
     if (!v2 || v2.novelty !== null || !Array.isArray(v2.noveltiesSeen) || v2.noveltiesSeen.length) throw new Error('v2 migrate → ' + JSON.stringify(v2 && { novelty: v2.novelty, seen: v2.noveltiesSeen }));
-    const v3 = parseSnapshot(JSON.stringify({ v: 3, t: 1, season: 3, midSeason: true, eco: {}, build: [], story: { v: 1, state: {} }, jars: {}, helpers: [], hero: {}, abilities: ['dash'], starsTotal: 0, novelty: 'nightMarket', noveltiesSeen: ['nightMarket'] }));
+    const v3 = parseSnapshot(JSON.stringify({ v: 3, t: 1, season: 3, midSeason: true, eco: ECO, build: [], story: { v: 1, state: {} }, jars: {}, helpers: [], abilities: ['dash'], starsTotal: 0, novelty: 'nightMarket', noveltiesSeen: ['nightMarket'] }));
     if (!v3 || v3.novelty !== 'nightMarket' || v3.noveltiesSeen[0] !== 'nightMarket') throw new Error('v3 parse lost novelty');
     console.log('OK NEW chip: nightMarket S3+S7 → 1 chip, raidDouble → 1 · noveltiesSeen survives serialize · save v2 → {novelty:null, seen:[]} · v3 keeps novelty');
   } catch (e) { bad++; console.log('FAIL 43D new chip/save: ' + e.message); }
