@@ -36,3 +36,19 @@ test('endless rotation S11+ cycles rows 6..10 with len 150; marks() sorted', () 
   assert.ok(m.some((x) => x.kind === 'novelty' && x.payload.id === 'nightMarket'));
   assert.equal(SS.marks(2).find((x) => x.kind === 'event').payload.forceEvent, 'storm');
 });
+
+// 43D: rotation S7–S10 reuses the four 43B/43C novelties, S6 is raidDouble (novelty mark BEFORE the wave mark), endless rows all len 150,
+// and the consecutive-mark rule also holds across the wrap S10 → S11 (= row 6) so the endless loop never repeats a beat.
+test('43D rotation: S6 raidDouble arms before the wave, S7–10 novelty table, wrap 10→11 obeys the gap rule', () => {
+  const SS = createSeasonScript(data);
+  assert.equal(SS.for(6).novelty.id, 'raidDouble'); assert.ok(SS.for(6).novelty.at < SS.for(6).wave, 'S6 novelty must precede the wave');
+  assert.deepEqual([7, 8, 9, 10].map((s) => SS.for(s).novelty.id), ['nightMarket', 'stormWarning', 'pickyGlimmer', 'baronVisit']);
+  assert.equal(SS.for(7).novelty.id, SS.for(12).novelty.id); assert.equal(SS.for(8).forceEvent, 'storm');
+  for (let s = 11; s <= 15; s++) { assert.equal(SS.for(s).len, 150); assert.equal(SS.for(s).rotated, true); }
+  for (const s of [4, 8, 10]) assert.equal(SS.for(s).scamKind, 'baron'); assert.equal(SS.for(11).scamKind, null);
+  const a = SS.for(10), b = SS.for(11);
+  const ma = { warn: a.warn, event: a.event, scam: a.scam, wave: a.wave, novelty: a.novelty?.at }, mb = { warn: b.warn, event: b.event, scam: b.scam, wave: b.wave, novelty: b.novelty?.at };
+  a.trickle.forEach((v, i) => { ma['trickle' + i] = v; }); b.trickle.forEach((v, i) => { mb['trickle' + i] = v; });
+  for (const k of Object.keys(ma)) if (ma[k] != null && mb[k] != null) assert.ok(Math.abs(ma[k] - mb[k]) >= MARK_MIN_GAP, `wrap S10→S11 ${k} ${ma[k]} vs ${mb[k]}`);
+  const m = SS.marks(11); for (let i = 1; i < m.length; i++) assert.ok(m[i].at >= m[i - 1].at);
+});
