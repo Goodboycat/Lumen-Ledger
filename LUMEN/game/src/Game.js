@@ -262,7 +262,7 @@ function wireEconomy(sb) {
   sb.signTint = (id) => {
     const sign = sb.build?.owned?.(id)?.group?.userData?.slots?.sign; if (!sign || !sb.cust) return null;
     const fair = sb.cust.fair(id), ratio = fair > 0 ? sb.cust.price(id) / fair : 1, tint = sb.signTintOf(ratio);
-    sign.traverse((m) => { if (!m.isMesh || !m.material) return; if (!m.material.userData?.signTint) { m.material = m.material.clone(); m.material.userData.signTint = true; m.userData.disposable = true; } m.material.color.setHex(SIGN_TINT[tint]); });
+    sign.traverse((m) => { if (!m.isMesh || !m.material) return; if (!m.material.userData?.signTint) { m.material = m.material.clone(); m.material.userData.signTint = true; m.userData.disposable = true; } m.material.color?.setHex?.(SIGN_TINT[tint]); });   // headless stub materials have no .color
     sign.userData.priceTint = tint; return { id, ratio, tint };
   };
   off.push(bus.on('cust:price', (p) => { if (p?.id) sb.signTint(p.id); }));
