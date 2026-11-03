@@ -65,13 +65,13 @@ export async function run({ resolve, pathToFileURL }) {
     if (sb.till.spillMult !== NIGHT.spill) throw new Error(`spillMult ${sb.till.spillMult}`);
     if (Math.abs((sb.cust.spendMult || 1) - 1.3) > eps) throw new Error(`spendMult ${sb.cust.spendMult}`);
     if (!chips.some((c) => c.id === 'night' && c.on)) throw new Error('no hud:chip night');
-    // scripted sale: paid should be price × 1.3
-    const stallId = [...sb.build.placed.keys()].find((k) => k.startsWith('stall_')); const price = sb.cust.price(stallId);
-    let paid = null; const off = bus.on('eco:sale', (p) => { if (paid == null) paid = p.paid ?? p.amount ?? null; });
-    sb.cust._settle({ stall: { id: stallId, entry: sb.build.placed.get(stallId), level: 1 }, type: 'regular', state: 'buy' });
-    off();
-    if (paid == null) throw new Error('scripted sale emitted no eco:sale');
-    if (Math.abs(paid - Math.round(price * 1.3)) > 1 && Math.abs(paid - price * 1.3) > 0.5) throw new Error(`paid ${paid} vs price ${price} ×1.3 = ${price * 1.3}`);
+    // natural sales during the night: spy eco.sell — every price passed in must equal cust.price(stall) × 1.3
+    const sales = []; const sell0 = sb.eco.sell.bind(sb.eco); sb.eco.sell = (id, type, price, o) => { if (sb.novelty?.id === 'nightMarket') sales.push({ id, price, base: sb.cust.price(id) }); return sell0(id, type, price, o); };
+    until(() => sales.length >= 1 || sb.eco.state.season === 4);
+    sb.eco.sell = sell0;
+    if (!sales.length) throw new Error('no natural sale happened during the night market');
+    const bad13 = sales.find((x) => Math.abs(x.price - x.base * 1.3) > 1e-6); if (bad13) throw new Error(`sale ${bad13.id} price ${bad13.price} ≠ ${bad13.base}×1.3`);
+    const paid = sales[0].price, price = sales[0].base;
     until(() => sb.eco.state.season === 4);
     if (ends.length !== 2 || ends[1].id !== 'nightMarket' || sb.novelty) throw new Error('S3 novelty:end missing or novelty still active');
     if (Math.abs(game.lights.key.intensity - pre3.key) > eps || Math.abs(game.lights.hemi.intensity - pre3.hemi) > eps) throw new Error('S3 lights not restored');
