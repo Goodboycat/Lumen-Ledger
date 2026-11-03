@@ -295,3 +295,10 @@ coinBurst, coinFly(from,to,onArrive), confetti, sparkTrail, fogShader(fog01), sa
 - Owl: once per `want` per season (`_wantBarked` Set, reset on season change) → `story:bark {speaker:'owl', kind:'wants', want, text}` from `story.json barks.wants[3]` (`{who}` = `barks.wantsWho[type]`, `{what}` = stall kind). customers dep `story` = parsed story.json (Game.js passes it).
 - `ui/bark.js`: `kind:'want'` = icon-only bubble `.ll-bark.want.ok|.no` (drawn stall icon, no emoji); cap stays 2, want bubbles are evicted first. `ui/build.js` stall detail: `wanted by: <types with PREFS weight ≥ 1.5>`.
 - Gate: `check.mjs --wants` "44B VISIBLE WANTS" (`tools/gates/wants.mjs`): S3 fruit-only → elder noStall / saver found / regular silent / Owl once per want per season / 0 leaks.
+
+## Season demand (44C)
+- `data/seasons.json` row `demand: {kind: mult}` (S2–S10; exactly one HOT ≥ 1.3 + one COLD ≤ 0.7, no consecutive repeat incl. S10→S11). `seasonScript.js`: `SS.demandFor(season)` → `{kind: mult}` (`{}` S1/legacy), `SS.hotCold(season)` → `{hot, cold}`; `validate()` enforces the bands.
+- `economy.js`: `makeEconomy({demandFn(kind, season)})`; `stallInfo(id)` returns `fair` already × demand (`baseFair`, `demand` added when ≠ 1) — the ONE place. `eco.demandOf(stallId)` → mult (1 when none). Mood thresholds / critic rule follow automatically.
+- `customers.js`: `cust.prefOf(c, kind)` = `PREFS[c.type][kind] (1 unlisted) × eco.demandOf(kind)`, floor 0.3. `pickStall`, `wantOf`, `_want` read through it only.
+- Game.js: `sb.demandGlyphOf(id)` → `'hot'|'cold'|null`; `sb.signGlyph(id)` adds/hides a cone child named `demandGlyph` on the sign pivot (called from `sb.signTint`). Bus `season:demand {season, hot, cold}` once per `eco:season` with a demand row, followed by Owl `story:bark {speaker:'owl', kind:'demand', hot, cold, text}` from `story.json barks.demand` (`{hot}` / `{cold}`).
+- Gate: `check.mjs --seasons` "44C SEASON DEMAND".
