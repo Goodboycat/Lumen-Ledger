@@ -95,3 +95,11 @@
 @keyframes ll-at-risk { 0%, 100% { box-shadow: var(--shadow); } 50% { box-shadow: 0 0 0 4px rgba(229, 57, 53, .35), var(--shadow); } }
 .ll-spark.spilled { animation: ll-spill .45s ease-out 1; }
 @keyframes ll-spill { 0% { transform: rotate(-1.5deg) translateX(0); } 25% { transform: rotate(-3deg) translateX(-6px); } 50% { transform: rotate(0deg) translateX(6px); } 100% { transform: rotate(-1.5deg); } }
+
+/* 42C: raid readability — chip under the pouch + screen-edge arrow toward an off-screen raider */
+.ll-raid-chip { position: fixed; left: 14px; top: 92px; z-index: 31; pointer-events: none; background: #e53935; color: #fff; border: 3px solid var(--ink, #2b1d14); border-radius: var(--radius, 14px); padding: 5px 12px; font: 800 14px/1.2 inherit; box-shadow: var(--shadow, 0 4px 0 rgba(0,0,0,.35)); transform: rotate(-1.5deg); animation: ll-raid-pulse .9s ease-in-out infinite; }
+.ll-raid-chip.carry { background: #ff8a65; color: #3e1a0a; }
+.ll-raid-chip[hidden], .ll-raid-arrow[hidden] { display: none; }
+@keyframes ll-raid-pulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.25); } }
+.ll-raid-arrow { position: fixed; z-index: 31; pointer-events: none; font-size: 34px; line-height: 1; color: #e53935; text-shadow: 0 0 0 3px #fff, 0 3px 0 rgba(0,0,0,.4), 0 0 10px rgba(229,57,53,.8); animation: ll-raid-pulse .6s ease-in-out infinite; }
+@media (max-width: 640px) { .ll-raid-chip { top: 78px; font-size: 12px; padding: 4px 9px; } .ll-raid-arrow { font-size: 26px; } }

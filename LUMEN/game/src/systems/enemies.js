@@ -414,6 +414,7 @@ export class EnemySystem {
   // ------------------------------------------------------------------ 42C Collector raid FSM: seek → raid → carry (→ home/escape)
   _raidUpdate(e, dt, distHero, R, t) {
     const RR = ENEMY_RULES.raid, p = e.g.position, hp = this.hero.root.position;
+    if (e.state !== 'seek' && (e.threatT = (e.threatT || 0) + dt) >= 0.2) { e.threatT = 0; this._emitThreat(e); }   // HUD arrow tracks the raider (5 Hz while raid / carry)
     if (e.state === 'seek') {
       e.retargetT += dt;
       const live = e.target ? this.tills?.get?.(e.target.stallId) : null;

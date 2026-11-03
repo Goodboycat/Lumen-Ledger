@@ -40,6 +40,9 @@ export function mountHUD(root, opts = {}) {
   const tillChip = el('span', 'll-spark-till', 'on counters 0'); tillChip.title = 'Spark your customers paid that is still sitting on the counters — walk over a stall (or dash) to pocket it';   // 42A
   const payBtn = el('button', 'll-spark-pay', 'PAY'); payBtn.type = 'button'; payBtn.title = 'Pay the Baron from your pouch (stops the interest, lifts the Fog)'; payBtn.disabled = true;
   spark.append(sparkCol, debtChip, tillChip, payBtn);
+  // 42C: raid readability — a red chip under the pouch ("RAID — Fruit stand" / "CARRYING 7 ✦") + a screen-edge arrow toward the raider when it is off-screen.
+  const raidChip = el('div', 'll-raid-chip'); raidChip.hidden = true; raidChip.setAttribute('role', 'status');
+  const raidArrow = el('div', 'll-raid-arrow'); raidArrow.hidden = true; raidArrow.textContent = '➤';
   payBtn.addEventListener('click', (e) => { e.stopPropagation && e.stopPropagation(); api.pay(); });
 
   const mid = el('div', 'll-mid');
@@ -68,7 +71,7 @@ export function mountHUD(root, opts = {}) {
   if (!statsFn) stats.style.display = 'none';
 
   hud.append(spark, mid, right);
-  root.appendChild(hud);
+  root.appendChild(hud); root.appendChild(raidChip); root.appendChild(raidArrow);   // 42C: chip + arrow live outside the header so the arrow can sit at any screen edge
 
   // ---------------------------------------------------------------- state
   const st = { spark: 0, shown: 0, season: 1, day01: 0, fog01: 0.35, debt: 0, rep: 0.5, fpsT: 0 };
@@ -158,6 +161,17 @@ export function mountHUD(root, opts = {}) {
     bus.on('enemy:wave', () => { st.enemies = true; spark.classList.add('at-risk'); }),
     bus.on('enemy:gone', () => { st.enemies = false; spark.classList.remove('at-risk'); }),
     bus.on('enemy:home', () => { st.enemies = false; spark.classList.remove('at-risk'); }),
+    bus.on('raid:threat', (p) => { if (!p) return; st.raids = st.raids || {}; st.raids[p.enemyId] = p; const first = Object.values(st.raids)[0];
+      raidChip.innerHTML = iconize(first.state === 'carry' ? `⚠ CARRYING ${Math.round(first.amount)} ✦ — bonk it!` : `⚠ RAID — ${first.name || 'stall'}`); raidChip.hidden = false; raidChip.classList.toggle('carry', first.state === 'carry');
+      const sc = first.screen, W = window.innerWidth, H = window.innerHeight;
+      if (!sc || !W) { raidArrow.hidden = true; return; }
+      const off = sc.behind || sc.x < 0 || sc.y < 0 || sc.x > W || sc.y > H; raidArrow.hidden = !off; if (!off) return;
+      const cx = W / 2, cy = H / 2, dx = (sc.behind ? -1 : 1) * (sc.x - cx), dy = (sc.behind ? -1 : 1) * (sc.y - cy), L = Math.hypot(dx, dy) || 1;
+      const k = Math.min((cx - 28) / Math.abs(dx || 1e-6), (cy - 28) / Math.abs(dy || 1e-6));
+      raidArrow.style.left = (cx + dx * k) + 'px'; raidArrow.style.top = (cy + dy * k) + 'px'; raidArrow.style.transform = `translate(-50%,-50%) rotate(${Math.atan2(dy, dx)}rad)`; void L; }),
+    bus.on('raid:end', (p) => { if (st.raids && p) delete st.raids[p.enemyId]; if (!st.raids || !Object.keys(st.raids).length) { raidChip.hidden = true; raidArrow.hidden = true; } }),
+    bus.on('enemy:gone', () => { st.raids = {}; raidChip.hidden = true; raidArrow.hidden = true; }),
+    bus.on('game:start', () => { st.raids = {}; raidChip.hidden = true; raidArrow.hidden = true; }),
     bus.on('jars:spill', () => { spark.classList.remove('spilled'); void spark.offsetWidth; spark.classList.add('spilled'); }),
     bus.on('eco:season', (r) => { if (!r) return; spark.classList.remove('at-risk'); api.setSeason((r.season || 0) + 1, 0); if (r.seasonSeconds) api.setSeasonSeconds(r.seasonSeconds); if (r.fog01 != null) api.setFog(r.fog01); if (r.debt != null) api.setDebt(r.debt); if (r.spark != null) api.setSpark(r.spark, { silent: true }); if (r.reputation != null) api.setReputation(r.reputation); }),
     bus.on('eco:fog', (p) => { if (p && p.fog01 != null) api.setFog(p.fog01); }),
