@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "_doc": "43A season scripts. day01 marks. trickle = extra customer waves (first wave is always at day 0). scamKind: npc | baron | null. forceEvent overrides pickEvent. novelty.at is also a mark (season:novelty). Rule: no mark kind equals the previous season's same mark (|d| >= 0.02). endless rotates rows 6..10. See LUMEN_extras/game/docs/HANDOFF_43Z.md.",
+  "seasons": {
+    "1":  { "len": 70,  "trickle": [0.34, 0.67],       "warn": null, "event": null, "forceEvent": null,    "scam": null, "scamKind": null,    "wave": 0.55, "novelty": null },
+    "2":  { "len": 90,  "trickle": [0.30, 0.62],       "warn": 0.22, "event": 0.48, "forceEvent": "storm", "scam": null, "scamKind": null,    "wave": 0.72, "novelty": { "id": "stormWarning", "at": 0.22 } },
+    "3":  { "len": 110, "trickle": [0.25, 0.55, 0.80], "warn": 0.35, "event": 0.40, "forceEvent": null,    "scam": 0.66, "scamKind": "npc",   "wave": 0.75, "novelty": { "id": "nightMarket",  "at": 0.60 } },
+    "4":  { "len": 130, "trickle": [0.33, 0.58],       "warn": 0.28, "event": 0.52, "forceEvent": null,    "scam": 0.64, "scamKind": "baron", "wave": 0.70, "novelty": { "id": "baronVisit",   "at": 0.64 } },
+    "5":  { "len": 150, "trickle": [0.28, 0.52, 0.76], "warn": 0.31, "event": 0.44, "forceEvent": null,    "scam": 0.68, "scamKind": "npc",   "wave": 0.73, "novelty": { "id": "pickyGlimmer", "at": 0.20 } },
+    "6":  { "len": 150, "trickle": [0.30, 0.60],       "warn": 0.26, "event": 0.50, "forceEvent": null,    "scam": null, "scamKind": null,    "wave": 0.66, "novelty": { "id": "raidDouble",   "at": 0.66 } },
+    "7":  { "len": 150, "trickle": [0.27, 0.54, 0.81], "warn": 0.33, "event": 0.46, "forceEvent": null,    "scam": 0.70, "scamKind": "npc",   "wave": 0.74, "novelty": { "id": "nightMarket",  "at": 0.58 } },
+    "8":  { "len": 150, "trickle": [0.32, 0.57],       "warn": 0.24, "event": 0.42, "forceEvent": "storm", "scam": 0.62, "scamKind": "baron", "wave": 0.71, "novelty": { "id": "stormWarning", "at": 0.24 } },
+    "9":  { "len": 150, "trickle": [0.29, 0.53, 0.78], "warn": 0.30, "event": 0.49, "forceEvent": null,    "scam": 0.67, "scamKind": "npc",   "wave": 0.76, "novelty": { "id": "pickyGlimmer", "at": 0.18 } },
+    "10": { "len": 150, "trickle": [0.31, 0.61],       "warn": 0.27, "event": 0.45, "forceEvent": null,    "scam": 0.65, "scamKind": "baron", "wave": 0.69, "novelty": { "id": "baronVisit",   "at": 0.65 } },
+    "endless": { "rotate": ["6", "7", "8", "9", "10"] }
+  }
+}
