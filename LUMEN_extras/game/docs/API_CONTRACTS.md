@@ -224,3 +224,9 @@ coinBurst, coinFly(from,to,onArrive), confetti, sparkTrail, fogShader(fog01), sa
 - Game.js emits `ui:abilities {abilities,starsTotal}` on `game:state` / `ability:unlock` (HUD chips + touch strip sync). Save v2: `{abilities:[], starsTotal}`; v1 → starters + 0.
 - Story: `barks.abilityUnlock[id]` fired on the `ui:continue` after an unlock. Ledger shows one "NEW ABILITY" card per unlock.
 
+
+## Tills (42A)
+- `src/systems/till.js`: `createTills({ bus, eco, build, vfx, coinLayer, stats }) → T` · `T.get(stallId) → { stallId, amount, pos:{x,z}, counterY, cap }` · `T.pay(stallId, amount, meta)` (customers call this; `economy.sell(..., {toTill:true})` still computes price/demand/mood and counts `ledger.sales/units` but does NOT touch the pouch; `eco:sale` carries `toTill:true`).
+- `T.collect(stallId, how:'walk'|'magnet'|'helper'|'sweep') → amount` → `eco.earn(amount, 'till:'+how)` (40A counts it as "through Pip's hands") · `T.spill(stallId, n)` → n ground tips via `sb.dropTip` · `T.sweep(tax=SWEEP_TAX)` at season end (ledger row "Left on counters") · `T.tickHelpers(dt, helpers)` every `HELPER_EVERY` 12 s · `T.remove(stallId)`.
+- `TILL_CAP = 40` ✦ at level 1 (`tillCap(level)` = +20/level); above cap new sales spill `SPILL_PCT` 50 % of the overflow to the ground · bus `till:change {stallId, amount, cap}` · `till:collect {stallId, amount, how}` · `till:full {stallId}`.
+- Visual: ≤ `COINS_PER_STACK` 8 instances per till in the shared `sb.coins` InstancedMesh (ground coins first, stacks after); 9th+ coin grows the stack scale. HUD chip "on counters N" (hidden at 0, `.hot` ≥ 60 % cap). `sb.stats.tillCollected`.
