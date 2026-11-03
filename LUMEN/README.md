@@ -18,7 +18,14 @@ LUMEN/
 > Everything from update 17 onward in the old plan (regions/biomes/World v3, 13B, 14) is **stopped**. Next IDs: `40A 40B 41A–41D 42A–42D 43Z 44Z 45Z`
 > (see `LUMEN_extras/README_pipeline.md` "## Next"; `game/tools/next.sh` prints the one to do).
 
-## Season scripts (43, S46, 2026-11-03) — version shown in the title menu: `S46`
+## Readable market (44, S47, 2026-11-03) — version shown in the title menu: `S47`
+Prices, wants and seasonal demand are now *readable in the world*: every customer reacts with a ♥ / ✓ / ✗ glyph and the price (≤ 2 bubbles, never modal),
+each stall's hanging sign tints green → white → amber → red with how fair your price is, and you change a price **at the sign** (E = +1, hold E = −1; the build panel
+is the second way). Glimmers show a small stall icon for what they came for and leave sad (`noStall`) when nobody sells it — the Owl says so once per want per season.
+From S2 each season has one **HOT ▲** (≥ ×1.3) and one **COLD ▼** (≤ ×0.7) good (`game/data/seasons.json` `demand`), shown as a cone glyph beside the sign and announced once.
+Funnel unchanged (reach S2 100 %, Spark-through-hands 86.3 %) → **45Z ungated**; islands stay **NO** through the jam. Report: `LUMEN_extras/Game_Bible S47.md` · handoffs `HANDOFF_44Z–44D.md`.
+
+## Season scripts (43, S46, 2026-11-03) — version shown in the title menu: `S46` (now `S47`)
 Every season now follows a script (`game/data/seasons.json`, S1–S10 + endless rotation) and brings **one novelty**:
 S2 storm warning · S3 night market (×1.3 spend, ×2 spill) · S4 the Baron pitches a "zero-interest" loan in person · S5 picky critics price-check your stalls ·
 S6 **double raid** (two Collectors, two tills, staggered telegraphs) · S7–S10 rotate them · S11+ repeat S6–S10. A 4 s "NEW: …" chip names each novelty
