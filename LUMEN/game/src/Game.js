@@ -298,7 +298,7 @@ function installScheduler(sb) {
       switch (m.kind) {
         case 'trickle': if (modal) { ok = false; break; } S.trickle++; sb.cust.spawnWave(s.season); break;
         // S17: clouds gather at `warn` when a storm is coming (the player has ~15 s to fill Protect)
-        case 'warn': S.warn = true; if (sb.nextEvent === 'storm' && !S.event) { sb.storm?.warn(); sb.log.push(`S${s.season} storm clouds gather`); } break;
+        case 'warn': S.warn = true; if (sb.nextEvent === 'storm' && !S.event && sb.storm?.phase !== 'warn') { sb.storm?.warn(); sb.log.push(`S${s.season} storm clouds gather`); } break;   // 43B: novelty may have warned already
         case 'event': {
           if (!sb.nextEvent) { S.event = true; break; }
           S.event = true; const id = sb.nextEvent;

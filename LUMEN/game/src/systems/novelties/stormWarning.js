@@ -2,13 +2,13 @@
 // S2's event is forced `storm` by data/seasons.json (43A forceEvent). Follow-up bark on eco:event: absorbed → "Insurance paid off", else the repair cost.
 // No modal, no new meshes. Survivable without Protect (the debt grows, and the Owl says so). Lights restored in end().
 export const STORM_WARNING = { darken: 0.25, ramp: 2.0 };
-const pick = (sb, key, i) => { const a = sb.storyData?.barks?.seasonNovelty?.[key]; return a && a.length ? a[i % a.length] : null; };
+const pick = (sb, key, i) => { const a = sb.storyData?.barks?.seasonNovelty?.[key]; return a && a.length ? (a[i % a.length]?.text ?? a[i % a.length]) : null; };
 export function createStormWarning() {
   const N = { id: 'stormWarning', base: null, k: 0, offs: [], warned: false };
   const bark = (sb, text, ttl = 3) => text && sb.game.bus.emit('story:bark', { speaker: 'owl', text, anchor: 'owl', ttl });
   N.start = (sb, season) => {
     const L = sb.game.lights; N.base = { key: L?.key?.intensity ?? 1.6, hemi: L?.hemi?.intensity ?? 0.75 }; N.k = 0;
-    if (sb.storm && !N.warned) { sb.storm.warn(); N.warned = true; sb.stats && (sb.stats.stormWarn = (sb.stats.stormWarn || 0) + 1); }
+    if (sb.storm && !N.warned && sb.storm.phase !== 'warn' && sb.storm.phase !== 'storm') { sb.storm.warn(); N.warned = true; sb.stats && (sb.stats.stormWarn = (sb.stats.stormWarn || 0) + 1); }
     bark(sb, pick(sb, 'stormWarning', 0) || 'Clouds on the water. Fill the Protect jar.', 3.2);
     sb.jarsWorld?.highlight?.('protect', true);
     const bus = sb.game.bus;

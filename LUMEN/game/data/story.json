@@ -1487,6 +1487,42 @@
           "text": "Sweep the fog back. Every payment clears a little."
         }
       ]
+    },
+    "seasonNovelty": {
+      "stormWarning": [
+        {
+          "speaker": "owl",
+          "text": "Clouds on the water. Fill the Protect jar.",
+          "ttl": 3.2
+        },
+        {
+          "speaker": "owl",
+          "text": "Insurance paid off. The jar ate the storm.",
+          "ttl": 3
+        },
+        {
+          "speaker": "owl",
+          "text": "No cover. Repairs: {cost} on the debt.",
+          "ttl": 3.4
+        }
+      ],
+      "nightMarket": [
+        {
+          "speaker": "owl",
+          "text": "Lanterns up. Tills fill fast tonight.",
+          "ttl": 3
+        },
+        {
+          "speaker": "owl",
+          "text": "Night crowd pays more. Collect before it spills.",
+          "ttl": 3
+        },
+        {
+          "speaker": "owl",
+          "text": "Dawn soon. Last sweep of the counters.",
+          "ttl": 3
+        }
+      ]
     }
   },
   "pier": {
