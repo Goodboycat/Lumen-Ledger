@@ -45,6 +45,8 @@ export const LEDGER_ROWS = [
   ['expenses',       'Expenses & upkeep',   -1],
   ['interestPaid',   'Loan interest  20 %', -1],
   ['tillTax',        'Left on counters  −10 % (Collector tax)', -1],   // 42A: unswept till money at season end
+  ['raided',         'Raided  (Collectors ran off with it)',    -1],   // 42C: carried off the island — shown leaving, never silently deducted
+  ['recovered',      'Recovered  (dropped by bonked raiders)',  +1],   // 42C: knocked out of a carrier's hands, picked up again
 ];
 
 export function mountLedger(root, opts = {}) {
@@ -133,6 +135,7 @@ export function mountLedger(root, opts = {}) {
         const r = rows[key]; const v = +report[key] || 0; r.target = v * (r.sign < 0 ? -1 : 1); r.shown = 0; r.t = -1; r.val.textContent = '0';
         r.row.classList.remove('in', 'hidden-zero'); r.row.style.setProperty('--i', i); netSum += r.target;
         if (key === 'tillTax' && v <= 0) r.row.classList.add('hidden-zero');   // 42A: the Collector-tax row only appears when money was left on the counters
+        if ((key === 'raided' || key === 'recovered') && v <= 0) r.row.classList.add('hidden-zero');   // 42C: raid rows only when a raid happened
         if (key === 'interestPaid') { const pct = report.debtBefore > 0 && v > 0 ? Math.round(v / report.debtBefore * 100) : null; r.row.firstChild.textContent = pct != null ? `Loan interest  ${pct} %` : (season === 1 ? 'Loan interest  15 %' : 'Loan interest  20 %'); }   // S01: S1 shows the real (half) rate
         later(ROW_STAGGER * i, () => { r.row.classList.add('in'); r.t = 0; });
       });

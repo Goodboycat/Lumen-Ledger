@@ -172,7 +172,7 @@ export class Economy {
     this.pendingOffer = null;
   }
 
-  _freshLedger() { return { income: 0, expenses: 0, interestEarned: 0, interestPaid: 0, saved: 0, invested: 0, protected: 0, absorbed: 0, exposed: 0, loansTaken: 0, repaid: 0, sales: 0, units: 0, events: [], scamsAccepted: 0, scamsRefused: 0 }; }
+  _freshLedger() { return { income: 0, expenses: 0, interestEarned: 0, interestPaid: 0, saved: 0, invested: 0, protected: 0, absorbed: 0, exposed: 0, loansTaken: 0, repaid: 0, sales: 0, units: 0, events: [], scamsAccepted: 0, scamsRefused: 0, raided: 0, recovered: 0 }; }   // 42C raided/recovered
 
   // ------------------------------------------------ time
   /** 41C: length in seconds of `season`. config.seasonSecondsOverride (set by createSandbox opts.seasonSeconds / tests) wins, else the
@@ -520,7 +520,7 @@ export class Economy {
       season, income, expenses, interestEarned, interestPaid, investReturn, investRate: +investRate.toFixed(3), upkeep, wages, tillTax: L.tillTax || 0, tillSwept: L.tillSwept || 0,   // 42A
       upkeepDebt: upkeepRes.debt, saved: L.saved, invested: L.invested, protected: L.protected, absorbed: L.absorbed,
       loansTaken: L.loansTaken, repaid: L.repaid, sales: L.sales, units: L.units, events: L.events.slice(),
-      scamsAccepted: L.scamsAccepted, scamsRefused: L.scamsRefused,
+      scamsAccepted: L.scamsAccepted, scamsRefused: L.scamsRefused, raided: L.raided || 0, recovered: L.recovered || 0,   // 42C
       debt: s.debt, debtBefore, fog01: s.fog01, fogDelta: +(s.fog01 - fogBefore).toFixed(4), spark: s.spark, jars: { ...s.jars },
       netWorth: this.netWorth(), reputation: +s.reputation.toFixed(3),
       lessonId: c.lessons[(season - 1) % c.lessons.length], stars,
