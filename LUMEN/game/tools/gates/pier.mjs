@@ -131,5 +131,45 @@ export async function run({ resolve, pathToFileURL }) {
     lg.destroy(); ui.destroy?.();
     console.log(`  5. full game pierPays: S1 clock end → state 'pier' (clock held, no ledger, no story:review) · ${snapOK ? 'snapshot.state=pier' : 'snapshot n/a'} · walk + E → ${r} → pier:done → 'review' ledger interest ${row.interestPaid} = due · CONTINUE → S2 playing  OK`);
   } catch (e) { bad++; console.log('FAIL pier 5: ' + (e.stack || e)); }
+
+  // ---------------------------------------------------------------------------------------------------------------
+  // 6. 42D scam NPC: the scheduler mark spawns a pitching Collector (scam:npc), NO eco:scam until Pip talks; flash → scam:tell; hit → refuse once + flee; 25 s → refuse once
+  try {
+    const { SCAM } = await imp('src/systems/scamNpc.js');
+    const mk = () => { const A = mkSb({ pierPays: false, scamNpcs: true }); const more = ['scam:npc', 'scam:tell', 'scam:refused', 'scam:leave', 'eco:scam', 'eco:scamResult']; for (const n of more) { A.ev[n] = []; A.sb.game.bus.on(n, (p) => A.ev[n].push(p)); } A.sb.enemies && (A.sb.enemies.enabled = false); return A; };
+    const toMark = (sb) => { sb.eco.state.day01 = 0.71; sb.updateScheduler(); };
+    // a) spawn at the mark, nothing offered, walks to the plaza spot, talk opens the deal (eco:scam), refusal via the dialogue → he leaves
+    let A = mk(); let { sb, ev, run } = A; const N = sb.scamNpc; if (!N || !sb.scamNpcs) throw new Error('sb.scamNpc missing');
+    sb.hero.root.position.set(0, 0, 12); toMark(sb);
+    if (ev['scam:npc'].length !== 1 || ev['eco:scam'].length !== 0 || sb.eco.pendingOffer) throw new Error(`mark → scam:npc ${ev['scam:npc'].length} eco:scam ${ev['eco:scam'].length}`);
+    if (N.state !== 'arrive' || sb.interact() !== null) throw new Error('interact far away should be null, state ' + N.state);
+    run(SCAM.walkSec + 0.2); if (N.state !== 'pitch') throw new Error('not pitching after walk: ' + N.state);
+    const spot = N.g.position; sb.hero.root.position.set(spot.x + 1, 0, spot.z);
+    const r = sb.interact(); if (r !== 'scam' || ev['eco:scam'].length !== 1 || !sb.eco.pendingOffer || sb.eco.pendingOffer.id !== N.id) throw new Error(`talk → ${r} eco:scam ${ev['eco:scam'].length}`);
+    const n0 = ev['eco:scamResult'].length; sb.eco.refuseOffer(); run(0.1); if (ev['eco:scamResult'].length !== n0 + 1 || N.state !== 'leave') throw new Error('refuse via dialogue → ' + N.state);
+    run(SCAM.leaveSec + 0.2); if (N.active) throw new Error('did not leave'); destroySandbox(sb);
+    // b) ledgerFlash within 3 u → scam:tell (tell text from story.json); far → nothing. Sword hit → refuseOffer once + flee + mesh gone
+    A = mk(); ({ sb, ev, run } = A); const N2 = sb.scamNpc; sb.hero.root.position.set(0, 0, 12); toMark(sb); run(SCAM.walkSec + 0.2);
+    if (N2.flash() !== null) throw new Error('flash far away should be null');
+    sb.hero.root.position.set(N2.g.position.x + 1.5, 0, N2.g.position.z); const tell = N2.flash();
+    if (!tell || ev['scam:tell'].length !== 1 || ev['scam:tell'][0].tell !== sb.eco.scams[N2.id].tell) throw new Error('flash → tell ' + tell);
+    if (N2.state !== 'leave') throw new Error('after the tell (no offer open) he should leave: ' + N2.state);
+    destroySandbox(sb);
+    A = mk(); ({ sb, ev, run } = A); const N3 = sb.scamNpc; sb.hero.root.position.set(0, 0, 12); toMark(sb); run(SCAM.walkSec + 0.2);
+    sb.hero.root.position.set(N3.g.position.x + 1, 0, N3.g.position.z); sb.interact(); const refused0 = sb.eco.ledger.scamsRefused;
+    const tg = (sb.hero.deps?.targets ? sb.hero.deps.targets() : []) || []; const mine = tg.find((t) => t.enemy?.scam); if (!mine) throw new Error('scam NPC not in hero targets');
+    mine.hit(new THREE.Vector3(1, 0, 0), 1); mine.hit(new THREE.Vector3(1, 0, 0), 1);
+    if (N3.state !== 'flee' || sb.eco.pendingOffer || sb.eco.ledger.scamsRefused !== refused0 + 1 || ev['scam:refused'].length !== 1 || ev['scam:refused'][0].why !== 'hit') throw new Error(`hit → ${N3.state} refused ${sb.eco.ledger.scamsRefused - refused0} ev ${ev['scam:refused'].length}`);
+    run(SCAM.fleeSec + 0.2); let meshes = 0; A.scene.traverse((o) => { if (o.userData?.scam) meshes++; }); if (N3.active || meshes) throw new Error('flee did not remove the mesh');
+    destroySandbox(sb);
+    // c) 25 s unanswered → refuse once (why timeout), leaves; season end with an NPC still out → removed + refused once
+    A = mk(); ({ sb, ev, run } = A); const N4 = sb.scamNpc; sb.hero.root.position.set(0, 0, 12); toMark(sb); sb.holdClock('gate', true); run(SCAM.walkSec + SCAM.timeout + 0.3);   // the 20 s test season would end first → hold the eco clock (as the pier does)
+    if (ev['scam:refused'].length !== 1 || ev['scam:refused'][0].why !== 'timeout' || N4.state !== 'leave') throw new Error(`timeout → ${N4.state} refused ${ev['scam:refused'].length}`);
+    run(SCAM.leaveSec + 0.2); if (N4.active) throw new Error('timeout: did not leave'); sb.holdClock('gate', false);
+    const sp0 = N4.stats.spawned; sb.eco.state.season = 3; sb.sched.season = 0; sb.eco.state.day01 = 0.71; sb.updateScheduler(); if (N4.stats.spawned !== sp0 + 1) throw new Error('S3 mark did not spawn');
+    sb.eco.state.day01 = 1; sb.eco.tick(0.05); if (N4.active || ev['scam:refused'].length !== 2) throw new Error('season end did not clear the NPC');
+    destroySandbox(sb); let leak = 0; A.scene.traverse((o) => { if (o.userData?.scam) leak++; }); if (leak) throw new Error('leaked scam meshes ' + leak);
+    console.log(`  6. scam NPC: mark → scam:npc (no eco:scam) · walk ${SCAM.walkSec} s → pitch · talk ≤ ${SCAM.near} u → eco:scam · dialogue refuse → leaves · flash ≤ ${SCAM.flashNear} u → scam:tell "${tell.slice(0, 40)}…" · sword hit → refused once + flee · ${SCAM.timeout} s → timeout refuse · season end clears  OK`);
+  } catch (e) { bad++; console.log('FAIL pier 6 (scam NPC): ' + (e.stack || e)); }
   return bad;
 }
