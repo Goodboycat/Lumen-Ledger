@@ -4,6 +4,8 @@
 //   SS.marks(season) → [{kind, at, payload?}] sorted by `at`   kinds: trickle | warn | event | scam | wave | novelty
 //   SS.validate() → [errors]            every mark in (0,1) · trickle ascending · no mark kind equal (|d| < 0.02) to the previous season's same mark
 //   SS.len(season) → seconds            (economy.seasonSecondsFor consults this when a script is loaded)
+//   SS.demandFor(season) → {kind: mult} 44C: row.demand ({} for S1 / legacy); SS.hotCold(season) → {hot, cold} (kind with mult ≥ 1.3 / ≤ 0.7, or null)
+//     validate: 0.3 ≤ mult ≤ 2, exactly one HOT + one COLD per S ≥ 2 row, hot/cold differ from the previous season (incl. the S10→S11 rotate wrap).
 //   MASTER_PLAN_V6 §6: "nothing in a season is at the same day01 mark two seasons in a row".
 export const SEASONS_VERSION = 1;
 export const MARK_MIN_GAP = 0.02;
@@ -11,6 +13,7 @@ export const MARK_KINDS = ['trickle', 'warn', 'event', 'scam', 'wave', 'novelty'
 /** Mirrors Game.js SCHEDULER_MARKS (S37/41C) so a game without data/seasons.json behaves exactly as before 43A. */
 export const LEGACY_MARKS = { trickle: [0.34, 0.67], warn: 0.30, event: 0.45, scam: 0.70, wave: (season) => (season === 1 ? 0.55 : 0.70) };
 export const LEGACY_CURVE = [70, 90, 110, 130, 150];
+export const DEMAND_HOT = 1.3, DEMAND_COLD = 0.7, DEMAND_MIN = 0.3, DEMAND_MAX = 2;   // 44C: season demand multiplier bands (Bible rule 4: no weight ever reaches 0)
 
 export function legacyRow(season) {
   const s = Math.max(1, season | 0);
@@ -40,6 +43,8 @@ export function createSeasonScript(data = null) {
         key: k, rotated: k !== String(s) };
     },
     len(season) { return SS.for(season).len; },
+    demandFor(season) { const k = rowKey(season); const d = k && seasons[k].demand; return d && typeof d === 'object' ? { ...d } : {}; },   // 44C
+    hotCold(season) { const d = SS.demandFor(season); let hot = null, cold = null; for (const k of Object.keys(d)) { if (d[k] >= DEMAND_HOT) hot = k; else if (d[k] <= DEMAND_COLD) cold = k; } return { hot, cold }; },
     marks(season) {
       const r = SS.for(season), out = [];
       r.trickle.forEach((at, i) => out.push({ kind: 'trickle', at, payload: { index: i } }));
@@ -69,6 +74,16 @@ export function createSeasonScript(data = null) {
         prevOf.season = s; prevOf.m = cur;
       }
       for (const k of rotate) if (!seasons[k]) errs.push(`endless.rotate references missing season ${k}`);
+      // 44C demand: S1 none · S ≥ 2 exactly one HOT (≥ 1.3) + one COLD (≤ 0.7), all mults in [0.3, 2] · hot/cold ≠ previous season's (S2..maxS, plus the wrap maxS → maxS+1)
+      const last = numbered.length ? numbered[numbered.length - 1] : 0;
+      for (let s = 1; s <= last + 1; s++) {
+        const d = SS.demandFor(s), tag = `S${s}`, keys = Object.keys(d);
+        if (s === 1) { if (keys.length) errs.push(`${tag}: demand must be empty on the tutorial season`); continue; }
+        for (const k of keys) if (!(d[k] >= DEMAND_MIN && d[k] <= DEMAND_MAX)) errs.push(`${tag}: demand.${k} ${d[k]} not in [${DEMAND_MIN}, ${DEMAND_MAX}]`);
+        const hots = keys.filter((k) => d[k] >= DEMAND_HOT), colds = keys.filter((k) => d[k] <= DEMAND_COLD);
+        if (hots.length !== 1 || colds.length !== 1) { errs.push(`${tag}: demand needs exactly one HOT (≥ ${DEMAND_HOT}) and one COLD (≤ ${DEMAND_COLD}), got ${hots.length}/${colds.length}`); continue; }
+        if (s > 2) { const p = SS.hotCold(s - 1); if (p.hot === hots[0]) errs.push(`${tag}: hot ${hots[0]} repeats S${s - 1}`); if (p.cold === colds[0]) errs.push(`${tag}: cold ${colds[0]} repeats S${s - 1}`); }
+      }
       return errs;
     },
   };
