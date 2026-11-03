@@ -1223,10 +1223,47 @@
   ],
   "barks": {
     "pricing": [
-      { "speaker": "owl", "text": "Three frowns at one sign. The price, not the goods." },
-      { "speaker": "owl", "text": "Red sign, empty till. Nudge it down a Spark." },
-      { "speaker": "owl", "text": "A green sign is a promise; a red one is a dare." }
+      {
+        "speaker": "owl",
+        "text": "Three frowns at one sign. The price, not the goods."
+      },
+      {
+        "speaker": "owl",
+        "text": "Red sign, empty till. Nudge it down a Spark."
+      },
+      {
+        "speaker": "owl",
+        "text": "A green sign is a promise; a red one is a dare."
+      }
     ],
+    "wants": [
+      {
+        "speaker": "owl",
+        "text": "{who} want {what}. Nobody sells {what}."
+      },
+      {
+        "speaker": "owl",
+        "text": "Another one asking for {what}. Not one stall sells it."
+      },
+      {
+        "speaker": "owl",
+        "text": "{who} came for {what} and found none. Empty hands, empty till."
+      }
+    ],
+    "wantsWho": {
+      "saver": "Savers",
+      "spender": "Spenders",
+      "impulse": "Impulse buyers",
+      "haggler": "Hagglers",
+      "vip": "VIPs",
+      "kid": "Kids",
+      "elder": "Elders",
+      "tourist": "Tourists",
+      "critic": "Critics",
+      "collector": "Collectors",
+      "newbie": "Newcomers",
+      "regular": "Regulars"
+    },
     "walkIn": [
       {
         "speaker": "pip",
@@ -1493,12 +1530,30 @@
         }
       ]
     },
-    "seasonNew": [ { "speaker": "owl", "text": "NEW: {label}", "ttl": 4 } ],
+    "seasonNew": [
+      {
+        "speaker": "owl",
+        "text": "NEW: {label}",
+        "ttl": 4
+      }
+    ],
     "seasonNovelty": {
       "raidDouble": [
-        { "speaker": "owl", "text": "Two of them — shield one, chase the other.", "ttl": 3.4 },
-        { "speaker": "owl", "text": "Both tills: {a} and {b}. Shield the richer one.", "ttl": 3.2 },
-        { "speaker": "owl", "text": "One down. The other is still carrying — bonk it.", "ttl": 2.6 }
+        {
+          "speaker": "owl",
+          "text": "Two of them — shield one, chase the other.",
+          "ttl": 3.4
+        },
+        {
+          "speaker": "owl",
+          "text": "Both tills: {a} and {b}. Shield the richer one.",
+          "ttl": 3.2
+        },
+        {
+          "speaker": "owl",
+          "text": "One down. The other is still carrying — bonk it.",
+          "ttl": 2.6
+        }
       ],
       "stormWarning": [
         {

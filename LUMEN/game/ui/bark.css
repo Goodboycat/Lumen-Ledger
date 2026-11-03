@@ -26,3 +26,10 @@
 .ll-bark.price.ok { background: #c8e6c9; color: #1b5e20; }
 /* 44A: ♥ love bubble (price ≤ 0.9× fair) — gold; glyph-first, never a prompt */
 .ll-bark.price.love { background: #FFE082; color: #6D4C00; border-color: #B8860B; }
+
+/* 44B: want bubble — icon only (the stall kind the Glimmer came for). green = someone sells it, red + ✗ = nobody does */
+.ll-bark.want { padding: 5px 8px 4px; border-radius: 16px; font-size: 20px; line-height: 1; display: flex; align-items: center; gap: 2px; }
+.ll-bark.want .ll-ico { width: 1.3em; height: 1.3em; }
+.ll-bark.want.ok { background: #E8F5E9; border-color: #2E7D32; }
+.ll-bark.want.no { background: #FFEBEE; border-color: #C62828; }
+.ll-bark.want.no .ll-ico.x { width: .8em; height: .8em; margin-left: -4px; margin-top: -10px; }

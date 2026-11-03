@@ -6,6 +6,9 @@
 // Listens: `story:bark {speaker, text, anchor:'hero'|'owl'|'baron'|{x,y,z}, ttl}` (41A story.js, 41B hints).
 // Rules: max 2 bubbles on screen (oldest is dropped), never pauses the game, pointer-events none, aria-live polite, clamps inside the viewport.
 // Anchor fallback: an unbound/missing anchor ('owl' before the owl exists) → the hero; no hero either → fixed bottom-centre bubble.
+import { icon } from './icons.js';
+// 44B: want bubble {kind:'want', icon:'stall_<kind>', ok} → stall kind → drawn icon (same names as ui/build.js ICONS via icons.js EMOJI map)
+const WANT_ICON = { fruit: 'apple', bread: 'bread', lantern: 'lantern', fish: 'fish', flower: 'tulip', tool: 'hammer', cloth: 'thread', pottery: 'vase', toy: 'teddy', tea: 'tea', book: 'books', sparkExchange: 'spark' };
 export const BARK_DEFAULTS = { max: 2, ttl: 3.2, lift: 2.1, fadeS: 0.22, pad: 8 };
 const NAMES = { pip: 'Pip', owl: 'Owl', baron: 'Baron Gilt', collector: 'Collector' };
 
@@ -22,13 +25,20 @@ export function mountBarks(root, opts = {}) {
     return p;
   }
   function spawn(p) {
-    if (!p || !p.text) return null;
-    while (items.length >= cfg.max) remove(items[0], true);
+    if (!p || (!p.text && p.kind !== 'want')) return null;
+    while (items.length >= cfg.max) remove(items.find((it) => it.kind === 'want') || items[0], true);   // 44B: want bubbles yield first (cap stays 2)
+    if (p.kind === 'want') {   // 44B: icon-only bubble — the stall kind the customer came for; .ok green / .no red (nobody sells it)
+      const el = document.createElement('div'); el.className = 'll-bark want ' + (p.ok ? 'ok' : 'no'); el.setAttribute('role', 'status'); el.setAttribute('aria-label', (p.ok ? 'wants ' : 'nobody sells ') + (p.text || ''));
+      const kind = String(p.icon || p.text || '').replace(/^stall_/, ''); el.innerHTML = icon(WANT_ICON[kind] || 'think') + (p.ok ? '' : icon('cross', { cls: 'x' }));
+      layer.appendChild(el);
+      const it = { el, anchor: p.anchor || 'hero', ttl: p.ttl || 1.2, t: 0, out: false, speaker: p.speaker, text: p.text, kind: 'want' };
+      items.push(it); place(it); api.count++; return it;
+    }
     const el = document.createElement('div'); el.className = 'll-bark ' + (p.speaker || 'owl') + (p.kind === 'price' ? (' price ' + (p.glyph === 'love' ? 'love' : p.glyph === 'bad' ? 'no' : p.ok ? 'ok' : 'no')) : ''); el.setAttribute('role', 'status');   // 43C: kind:'price' = critic price-check (no name) · 44A: glyph 'love'|'ok'|'bad' → .love (gold) / .ok / .no
     if (p.kind !== 'price') { const who = document.createElement('span'); who.className = 'who'; who.textContent = NAMES[p.speaker] || p.speaker || ''; el.appendChild(who); }
     el.appendChild(document.createTextNode(p.text));
     layer.appendChild(el);
-    const it = { el, anchor: p.anchor || 'hero', ttl: p.ttl || cfg.ttl, t: 0, out: false, speaker: p.speaker, text: p.text };
+    const it = { el, anchor: p.anchor || 'hero', ttl: p.ttl || cfg.ttl, t: 0, out: false, speaker: p.speaker, text: p.text, kind: p.kind };
     items.push(it); place(it); api.count++; return it;
   }
   function remove(it, now = false) {
