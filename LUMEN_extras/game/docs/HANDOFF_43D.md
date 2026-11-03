@@ -11,12 +11,12 @@
 - Close docs: API_CONTRACTS "Novelties (43D)", this file, `Game_Bible S46.md`, `LUMEN/README.md` "Season scripts (43, S46)", README_pipeline rows 43Z–43D + Next.
 
 ## Missing
-- P3 `tools/itch_zip.sh` run — see "Notes" (done by the closing chat if the row below says so; otherwise 44Z/45Z runs it first).
 - `demo_novelties.html` never built (43B/43C/43D all skipped it; a browser session of S2–S6 is the only visual check and none was taken this phase — 0 screenshots in 43A–43D).
 - Browser verification of the NEW chip, raidDouble's two staggered telegraphs and the Baron bark portrait is still outstanding (headless gates only).
 - `economy.js` orphan `tooGoodLoan` fallback scam (43C note) still present.
 
 ## Measured
+- P3 itch: `bash tools/itch_zip.sh` → `/tmp/LumenLedger_itch.zip` 9.7 MB, 336 files; unzipped under `/sub/` and served → `index.html`, `data/seasons.json`, `data/story.json`, `src/Game.js` all 200 (every fetch is `./data/...`, no absolute paths).
 - Funnel 43D vs 42B (synthetic 20, 150 s seasons): reach firstStall/firstSale/firstCoin/S2/S3 = **100 % each (Δ 0)**; Spark-through-Pip's-hands **87.1 % vs 87.6 %** (−0.4, noise: S2 storm absorbs one event, S3 night market doubles spill); modalSeconds 0–90 s = 0.0. **reach S2 100 % ≥ 40 % → 44Z UNGATED.**
 - Gate: S6 wave → 2 Collectors in `raid`, distinct `targetStallId`, second one dazed 2 s; bonk one → `recovered`; `novelty:end` at season end. NEW chip ×1 across S3 + S7 (nightMarket). Save mid-S3 → load → `start` called again, `noveltiesSeen` preserved.
 
