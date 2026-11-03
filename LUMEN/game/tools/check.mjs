@@ -2613,6 +2613,8 @@ if (doPier) {
 if (doNovelties) {
   try { const { run } = await import(pathToFileURL(resolve('tools/gates/novelties.mjs')).href); bad += await run({ resolve, pathToFileURL }); }
   catch (e) { bad++; console.log('FAIL 43B novelties gate crashed: ' + (e.stack || e.message)); }
+  try { const { run } = await import(pathToFileURL(resolve('tools/gates/novelties43D.mjs')).href); bad += await run({ resolve, pathToFileURL }); }
+  catch (e) { bad++; console.log('FAIL 43D novelties gate crashed: ' + (e.stack || e.message)); }
 }
 if (doSeasons) {
   try { const { run } = await import(pathToFileURL(resolve('tools/gates/seasons.mjs')).href); bad += await run({ resolve, pathToFileURL }); }
