@@ -255,6 +255,19 @@ function wireEconomy(sb) {
   off.push(bus.on('build:removed', () => { sb.syncStalls(); reseatHelpers(sb); }));   // BUGFIX P31: orphaned helpers move to another stall
   off.push(bus.on('build:placed', (p) => { if (!p?.silent) reseatHelpers(sb); }));
   off.push(bus.on('build:upgraded', () => sb.syncStalls()));
+  // 44A readable pricing: the hanging sign's material colour says the price at a glance — ratio ≤ 0.9 green · ≤ 1.1 white · ≤ 1.4 amber · else red.
+  // The sign is the ONE live (unmerged) mesh of a stall, so a per-sign material clone adds 0 draw calls. sb.signTint(id) → {ratio, tint}.
+  const SIGN_TINT = { green: 0x9CE29C, white: 0xFFFFFF, amber: 0xFFC65C, red: 0xFF7A7A };
+  sb.signTintOf = (ratio) => ratio <= 0.9 ? 'green' : ratio <= 1.1 ? 'white' : ratio <= 1.4 ? 'amber' : 'red';
+  sb.signTint = (id) => {
+    const sign = sb.build?.owned?.(id)?.group?.userData?.slots?.sign; if (!sign || !sb.cust) return null;
+    const fair = sb.cust.fair(id), ratio = fair > 0 ? sb.cust.price(id) / fair : 1, tint = sb.signTintOf(ratio);
+    sign.traverse((m) => { if (!m.isMesh || !m.material) return; if (!m.material.userData?.signTint) { m.material = m.material.clone(); m.material.userData.signTint = true; m.userData.disposable = true; } m.material.color.setHex(SIGN_TINT[tint]); });
+    sign.userData.priceTint = tint; return { id, ratio, tint };
+  };
+  off.push(bus.on('cust:price', (p) => { if (p?.id) sb.signTint(p.id); }));
+  off.push(bus.on('build:placed', (p) => { if (p?.id && p.entry?.category === 'stall') sb.signTint(p.id); }));
+  off.push(bus.on('build:upgraded', (p) => { if (p?.id) sb.signTint(p.id); }));   // level rebuild = new sign mesh
   off.push(bus.on('eco:fog', (p) => { const f = p?.fog01 ?? eco.state.fog01; vfx.fog?.setCoverage?.(f); world.towers.forEach((t) => t.userData.setActive?.(f > 0.3)); if (f > 0.6) vfx.debtPulse?.(0.4); }));
   off.push(bus.on('eco:jar', () => { const j = eco.state.jars, tot = Math.max(1, j.spend + j.save + j.invest + j.protect); ['spend', 'save', 'invest', 'protect'].forEach((k, i) => world.jars[i]?.userData.setFill?.(Math.min(1, j[k] / tot))); }));
   off.push(bus.on('eco:season', (r) => {
