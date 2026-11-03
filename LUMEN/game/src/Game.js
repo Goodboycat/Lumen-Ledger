@@ -309,7 +309,7 @@ function installScheduler(sb) {
         case 'scam': S.scam = true; if (!eco.pendingOffer && m.payload?.scamKind !== 'baron') { if (!(sb.scamNpcs && sb.scamNpc?.spawn())) eco.offerScam(); } break;
         // P62: the wave waits while the Baron's deal (or any dialogue) is on screen. 41C: S1 wave at 0.55 (one Collector hp 1), S ≥ 2 after the offer.
         case 'wave': if (sb.enemies?.enabled === false) break; if (eco.pendingOffer || modal) { ok = false; break; } S.wave = true; { const w = sb.enemies.spawnWave(s.season); if (w.length) sb.log.push(`S${s.season} wave ${w.length} (${w.map((e) => e.kind).join(',')})`); } break;
-        case 'novelty': bus.emit('season:novelty', { season: s.season, id: m.payload.id, at: m.at }); sb.log.push(`S${s.season} novelty ${m.payload.id}`); break;
+        case 'novelty': if (sb.novelty?.id === m.payload?.id) break; /* 43D: resumed mid-season save already re-started it (applySnapshot) */ bus.emit('season:novelty', { season: s.season, id: m.payload.id, at: m.at }); sb.log.push(`S${s.season} novelty ${m.payload.id}`); break;
         default: break;
       }
       if (ok) { S.fired.add(i); if (sb.opts?.debugKeys || sb.headless) sb.log.push(`S${s.season} mark ${m.kind}@${m.at}`); bus.emit('season:mark', { season: s.season, kind: m.kind, at: m.at, payload: m.payload || null }); }   // 43A P2: debug trace of every fired mark
@@ -1178,6 +1178,7 @@ function applySnapshot(lg, sb, snap) {
     const day01 = snap.midSeason && Number.isFinite(e2.state.day01) && e2.state.day01 < 1 ? e2.state.day01 : 0;
     eco.state = { ...eco.state, ...e2.state, day01, ended: null }; eco.ledger = e2.ledger; eco.history = e2.history; eco.pendingOffer = null;
     if (snap.midSeason && sb.sched && snap.sched) { sb.sched.season = eco.state.season; sb.sched.event = !!snap.sched.event; sb.sched.scam = !!snap.sched.scam; }
+    if (snap.midSeason && snap.novelty && sb.novelties) sb.novelties.start(snap.novelty, eco.state.season);   // 43D (save v3): re-enter the active novelty (start is re-entrant, 43C note); its mark is skipped below
     if (lg.mode === 'endless') { eco.config.winRequiresSeasons = false; eco.config.endless = true; }
   }
   // BUGFIX B14: unlocked zones come back from the owned zone_* upgrades BEFORE the buildings are re-placed (locked zones are water → placements rejected)

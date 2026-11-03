@@ -12,8 +12,9 @@
 // snapshot. Anything missing in an old save falls back to the fresh-sandbox value (forward-compatible by omission).
 
 export const SAVE_KEY = 'lumen.save';
-export const SAVE_VERSION = 2;                // 41D: v2 adds abilities[] + starsTotal; v1 snapshots still parse (migrate → ABILITY_START, 0 ★)
-export const SAVE_VERSIONS_OK = [1, 2];
+export const SAVE_VERSION = 3;                // 41D: v2 adds abilities[] + starsTotal; v1 snapshots still parse (migrate → ABILITY_START, 0 ★)
+                                              // 43D: v3 adds novelty (active id|null, mid-season resume re-starts it) + noveltiesSeen[] (story state; NEW chip once per id)
+export const SAVE_VERSIONS_OK = [1, 2, 3];
 //               // bump the MAJOR when a snapshot can no longer be applied; minor changes stay v1 (fields optional)
 export const EXPORT_PREFIX = 'LUMEN1:';
 
@@ -54,6 +55,8 @@ export function snapshot(lg) {
     //   so CONTINUE does not replay the season. Saves taken at the review start the next season fresh (midSeason false).
     midSeason: lg.state === 'playing' && !eco.state?.ended && (eco.state?.day01 || 0) > 0 && (eco.state?.day01 || 0) < 1,
     sched: sb.sched ? { event: !!sb.sched.event, scam: !!sb.sched.scam } : null,
+    novelty: sb.novelty?.id || null,                                                   // 43D (v3): active novelty → applySnapshot calls novelties.start(id, season) again when midSeason
+    noveltiesSeen: lg.story?.state?.noveltiesSeen ? [...lg.story.state.noveltiesSeen] : [],   // 43D (v3): mirror of story.state (also inside `story`), kept top-level for describe()/tools
   };
 }
 
@@ -89,6 +92,9 @@ export function parseSnapshot(raw) {
   if (d.cust != null && (typeof d.cust !== 'object' || (d.cust.prices != null && !Array.isArray(d.cust.prices)))) return null;
   if (d.abilities != null && (!Array.isArray(d.abilities) || d.abilities.some((a) => typeof a !== 'string'))) return null;
   if (Math.floor(+d.v) < 2) { d.abilities = ['coinMagnetDash', 'bubbleShield']; d.starsTotal = 0; }   // 41D migrate v1 → start set
+  if (d.novelty != null && typeof d.novelty !== 'string') return null;
+  if (d.noveltiesSeen != null && (!Array.isArray(d.noveltiesSeen) || d.noveltiesSeen.some((a) => typeof a !== 'string'))) return null;
+  if (Math.floor(+d.v) < 3) { d.novelty = null; d.noveltiesSeen = []; }   // 43D migrate v1/v2 → no active novelty, nothing seen (story.state falls back to [])
   return d;
 }
 
