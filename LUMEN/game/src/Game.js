@@ -37,6 +37,7 @@ import * as Save from './systems/save.js';
 import { createTelemetry } from './systems/telemetry.js';
 import { createTills, tillCap } from './systems/till.js';
 import { createBaronPier } from './systems/baronPier.js';   // 42D: the Baron collects the season's interest at the pier
+import { createScamNpc } from './systems/scamNpc.js';       // 42D: the Too-Good Deal is a Collector NPC you must TALK to
 
 export const SANDBOX_VERSION = '10B';
 export const STALL_PICKS = STALL_TYPES.slice(0, 9);          // keys 1–9 → stall types
@@ -65,6 +66,7 @@ export function createSandbox(game, opts = {}) {
 
   // ---- systems ------------------------------------------------------------------------------------------------------
   const bus = game.bus;
+  sb.scamNpcs = opts.scamNpcs ?? !opts.headless;                 // 42D: the scheduler's scam mark spawns a pitching Collector (talk to open the deal); headless keeps eco.offerScam() direct unless opted in
   sb.eco = makeEconomy({ bus, seed: opts.seed ?? 1, autoSeason: true, pierPays: opts.pierPays === true }, opts.balance);   // 42D: pierPays → interest is collected at the pier (default off: headless harnesses keep the auto path)
   if (opts.seasonSeconds) { sb.eco.config.seasonSeconds = opts.seasonSeconds; sb.eco.config.seasonSecondsOverride = opts.seasonSeconds; }   // 41C: tests/accelerated runs override the season curve
   sb.build = new BuildSystem(game, { island: sb.island, economy: sb.eco, catalog: PROP_CATALOG, vfx: sb.vfx });
@@ -81,7 +83,7 @@ export function createSandbox(game, opts = {}) {
   // S16: sword targets = Glimmers + live enemies (knockback / defeat). S32: every target is KNOCKED BACK (CreatureAnimator.hit slides the
   //   root; enemies keep ENEMY_RULES.knockback) and hired helpers are targets too (they slide, grumble and walk back to their stall).
   sb.hero = new HeroController(game, { vfx: sb.vfx, targets: () => sb.cust.active.filter((c) => c.state !== 'pooled' && c.state !== 'despawn').map((c) => ({ root: c.root, hit: (d, p) => c.anim?.hit?.(d, p) }))
-    .concat(sb.enemies ? sb.enemies.targets() : [], helperTargets(sb)), isLand: (x, z) => sb.island.isLand(x, z),
+    .concat(sb.enemies ? sb.enemies.targets() : [], helperTargets(sb), sb.scamNpc ? sb.scamNpc.targets() : []), isLand: (x, z) => sb.island.isLand(x, z),   // 42D: the pitching Collector is a target too (hit → refuse + flee)
     isSolid: (x, z) => { const o = sb.build?.occupied?.(x, z); return !!o && !o.ghost && !o.lifted; } });   // S41/15E: every occupied cell (stall / decor / nature / plaza scenery) blocks Pip — customers already route around them
   sb.hero.root.position.set(0, 0, 1);
   // S16: Debt Collectors (+ Baron Gilt boss from S6). Transient — spawned by the scheduler at day 0.7, cleared at season end / win / lose.
@@ -114,6 +116,7 @@ export function createSandbox(game, opts = {}) {
   sb.clockHold = new Set();                                      // 42D: reasons the eco clock is held ('pier'); sb.holdClock(by, on) → eco:clock {held, by}
   sb.holdClock = (by, on_) => { if (on_) sb.clockHold.add(by); else sb.clockHold.delete(by); const held = sb.clockHold.size > 0; game.bus.emit('eco:clock', { held, by: [...sb.clockHold], reason: by }); return held; };
   installPier(sb);                                               // 42D: Baron at the pier (sb.pier) + sb.interact routes to him when he waits
+  installScamNpc(sb);                                            // 42D: scheduler scam mark → pitching Collector (sb.scamNpc); interact/hit/flash answer it
   // BUGFIX P65: the starter footprints' SCENERY reservation must go even when starterStalls:false (CONTINUE) — otherwise build.load(snap.build)
   //   rejects the 3 saved starter stalls ("scenery" cell) and a resumed run silently loses them (check.mjs --save: stalls 9/12).
   for (const s of STARTER_STALLS) freeStarterCells(sb, s);
@@ -129,6 +132,7 @@ export function createSandbox(game, opts = {}) {
     sb.hero.update(dt);
     sb.enemies.update(dt);
     sb.pier?.update(dt);                                            // 42D
+    sb.scamNpc?.update(dt);                                         // 42D
     sb.storm.update(dtReal ?? dt);
     sb.build.update(dt);
     sb.cust.update(dt);
@@ -287,7 +291,7 @@ function installScheduler(sb) {
       if (sb.game.time < sb.shield.until) { sb.shield.until = -1; sb.stats.absorbed = (sb.stats.absorbed || 0) + 1; bus.emit('eco:absorbed', { id, event: eco.events[id] }); sb.log.push(`S${s.season} ${id} ABSORBED by Bubble Shield`); if (id === 'storm') sb.storm?.clear(2); }
       else { if (id === 'storm') { sb.storm?.hit(); sb._stormClearAt = STORM.holdSeconds > 0 ? sb.game.time + STORM.holdSeconds : null; /* S21: holdSeconds 0 → rains until the season ends */ } eco.applyEvent(id); sb.log.push(`S${s.season} event ${id}`); }
     }
-    if (!S.scam && s.day01 >= 0.7 && s.season % 2 === 1) { S.scam = true; if (!eco.pendingOffer) eco.offerScam(); }
+    if (!S.scam && s.day01 >= 0.7 && s.season % 2 === 1) { S.scam = true; if (!eco.pendingOffer) { if (!(sb.scamNpcs && sb.scamNpc?.spawn())) eco.offerScam(); } }   // 42D: NPC first (opts.scamNpcs), else the old direct offer
     // S16: the Baron's Debt Collectors land right after the Too-Good Deal moment (day 0.7, EVERY season — even seasons too, else no fight on S2/S4)
     if (sb._stormClearAt != null && sb.game.time >= sb._stormClearAt) { sb._stormClearAt = null; sb.storm?.clear(3); }   // S17/S21: only when STORM.holdSeconds > 0 (default 0 = whole season; eco:season clears it)
     // P62: the wave waits while the Baron's deal (or any dialogue) is on screen — Collectors land the moment the box closes, not frozen behind it
@@ -321,6 +325,7 @@ function installJarsWorld(sb) {
   sb.interact = () => {
     if (J.near()) return J.press() || 'jar';
     if (sb.pier?.near?.()) return sb.pier.interact() || 'pier';                     // 42D: the Baron waits at the pier → pay interest / repay
+    if (sb.scamNpc?.near?.()) return sb.scamNpc.interact() || 'scam';                 // 42D: the pitching Collector → eco.offerScam → 8B dialogue
     if (sb.enemies?.talk?.(3)) return 'talk';                                         // 42C P2: a seeking Collector ≤ 3 u → enemy:talk (42D attaches the pitch)
     return null;
   };
@@ -334,6 +339,15 @@ function installJarsWorld(sb) {
 }
 
 // 42D: Baron Gilt at the pier. Only acts when sb.eco.pierPays (createSandbox opts.pierPays); otherwise B stays idle (pier:skip never fires either).
+// 42D: the scam NPC. opts.scamNpcs (default: !headless) → the scheduler's scam mark spawns a pitching Collector instead of eco.offerScam();
+//   headless gates keep the direct offer so --game/--firstplayer stay green. Sword targets include him (hit → refuse + flee), ledgerFlash near him → scam:tell.
+function installScamNpc(sb) {
+  const { eco, hero } = sb, bus = sb.game.bus;
+  const S = createScamNpc({ bus, eco, hero, world: sb.world, game: sb.game, scene: sb.headless ? null : sb.game.scene, rng: sb.rng || Math.random,
+    creatures: sb.headless ? {} : { makeFogCollector, VillainAnimator }, canStand: (x, z) => sb.island.isLand(x, z) && !sb.build?.occupied?.(x, z) });
+  sb.scamNpc = S;
+  sb._offs.push(() => { S.destroy(); sb.scamNpc = null; });
+}
 function installPier(sb) {
   const { eco, vfx, hero } = sb, bus = sb.game.bus;
   const B = createBaronPier({ bus, eco, world: sb.world, hero, vfx, game: sb.game, scene: sb.headless ? null : sb.game.scene, story: null,
@@ -425,7 +439,8 @@ function wireAbilities(sb) {
     growthStomp: () => ({ onPulse: (i, r, pct) => { sb.growth = { mul: 1 + pct / 100, until: game.time + GROWTH_S }; if (i === 2) done('growthStomp', `all stalls demand ×${(1 + pct / 100).toFixed(2)} for ${GROWTH_S} s`); } }),
     bubbleShield: () => ({ event: sb.nextEvent ? (eco.events[sb.nextEvent]?.title || sb.nextEvent) : 'next event', onAbsorb: () => { sb.shield.until = game.time + SHIELD_S; done('bubbleShield', `shield armed ${SHIELD_S} s — next event absorbed`); } }),
     fogSweep: () => ({ fog: { push: (o, d, s) => { const before = eco.state.fog01; eco.pushFog(s); done('fogSweep', `fog ${(before * 100) | 0}% → ${(eco.state.fog01 * 100) | 0}%`); } } }),
-    ledgerFlash: () => { const o = eco.pendingOffer; if (!o) return { cost: 0, trueCost: 0, text: 'no deal on the table', onReveal: () => done('ledgerFlash', 'nothing to reveal') };
+    ledgerFlash: () => { const o = eco.pendingOffer; const npcTell = sb.scamNpc?.flash?.();   // 42D: near the pitching Collector the owl names the tell (scam:tell) even before any offer is open
+      if (!o) return { cost: 0, trueCost: 0, text: npcTell ? `TELL: ${npcTell}` : 'no deal on the table', onReveal: () => done('ledgerFlash', npcTell ? `tell named: ${npcTell}` : 'nothing to reveal') };
       const cost = o.cost || o.amount || 0, trueCost = o.amount ? Math.round(o.amount * Math.pow(1 + (o.trueRate || 0), 3)) : cost;
       return { cost, trueCost, text: o.payout === 0 ? `TRUE COST: ${cost} → you get 0` : undefined, onReveal: () => { eco.refuseOffer(o); done('ledgerFlash', `${o.title} revealed (true cost ${trueCost}) → refused`); } }; },
   };
