@@ -275,7 +275,7 @@ function wireEconomy(sb) {
     const want = sb.demandGlyphOf(id); let g = sign.getObjectByName?.('demandGlyph') || null;
     if (!want) { if (g) g.visible = false; sign.userData.demandGlyph = null; return null; }
     if (g && g.userData.glyphKind !== want) { sign.remove(g); g = null; }
-    if (!g) { const P = glyphParts(want); g = new THREE.Mesh(P.geo, P.mat); g.name = 'demandGlyph'; g.userData.glyphKind = want; g.position.set(0, 0.42, 0.08); sign.add(g); }
+    if (!g) { const P = glyphParts(want); g = new THREE.Mesh(P.geo, P.mat); g.name = 'demandGlyph'; g.userData.glyphKind = want; g.position.set(0.56, -0.32, 0.1); sign.add(g); }   // 44D: beside the board's right edge at mid-height (pivot = hanging point, board spans y −0.64…0, half-width 0.43). 0.42 floated above the awning (screenshots/44_hot_sign_before.png); below the board it overlapped the goods.
     g.visible = true; sign.userData.demandGlyph = want; return want;
   };
   // 44C: season:demand {season, hot, cold} + Owl barks.demand once per season (S≥2, only when the row has a HOT or COLD)
