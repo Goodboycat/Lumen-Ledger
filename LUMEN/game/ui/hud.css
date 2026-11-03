@@ -107,3 +107,6 @@
 @keyframes ll-raid-pulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.25); } }
 .ll-raid-arrow { position: fixed; z-index: 31; pointer-events: none; font-size: 34px; line-height: 1; color: #e53935; text-shadow: 0 0 0 3px #fff, 0 3px 0 rgba(0,0,0,.4), 0 0 10px rgba(229,57,53,.8); animation: ll-raid-pulse .6s ease-in-out infinite; }
 @media (max-width: 640px) { .ll-raid-chip { top: 78px; font-size: 12px; padding: 4px 9px; } .ll-raid-arrow { font-size: 26px; } }
+.ll-chips { position: fixed; left: 14px; top: 132px; z-index: 31; pointer-events: none; display: flex; flex-direction: column; gap: 6px; }
+.ll-chip { background: #3b2a6b; color: #ffe9a8; border: 3px solid var(--ink, #2b1d14); border-radius: 10px; padding: 5px 11px; font-weight: 800; font-size: 13px; letter-spacing: .03em; box-shadow: 0 3px 0 rgba(0,0,0,.25); }
+@media (max-width: 640px) { .ll-chips { top: 112px; } .ll-chip { font-size: 12px; padding: 4px 9px; } }
