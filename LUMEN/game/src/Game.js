@@ -310,7 +310,7 @@ function installScheduler(sb) {
         case 'novelty': bus.emit('season:novelty', { season: s.season, id: m.payload.id, at: m.at }); sb.log.push(`S${s.season} novelty ${m.payload.id}`); break;
         default: break;
       }
-      if (ok) { S.fired.add(i); bus.emit('season:mark', { season: s.season, kind: m.kind, at: m.at, payload: m.payload || null }); }
+      if (ok) { S.fired.add(i); if (sb.opts?.debugKeys || sb.headless) sb.log.push(`S${s.season} mark ${m.kind}@${m.at}`); bus.emit('season:mark', { season: s.season, kind: m.kind, at: m.at, payload: m.payload || null }); }   // 43A P2: debug trace of every fired mark
     }
     if (sb._stormClearAt != null && sb.game.time >= sb._stormClearAt) { sb._stormClearAt = null; sb.storm?.clear(3); }   // S17/S21: only when STORM.holdSeconds > 0 (default 0 = whole season; eco:season clears it)
   };
