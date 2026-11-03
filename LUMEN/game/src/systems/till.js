@@ -65,7 +65,7 @@ export function createTills({ bus, eco, build, vfx = null, coinLayer = null, sta
       if (t.amount + amount > cap) {
         const over = round(t.amount + amount - cap);
         kept = round(Math.max(0, cap - t.amount));
-        spilled = round(over * SPILL_PCT);                       // half the overflow hits the ground (collectable tips); the rest is lost
+        spilled = round(Math.min(over, over * SPILL_PCT * (T.spillMult || 1)));   // 43B: nightMarket ×2 (capped at the overflow)                       // half the overflow hits the ground (collectable tips); the rest is lost
         if (stats) stats.tillLost = round((stats.tillLost || 0) + (over - spilled));
         t.fullAt = (eco?.state?.time ?? 0);
         emit('till:full', { stallId: t.stallId, amount: cap, overflow: over, spilled });
@@ -146,6 +146,7 @@ export function createTills({ bus, eco, build, vfx = null, coinLayer = null, sta
     offs.push(bus.on('build:removed', () => T.refresh()));
     offs.push(bus.on('build:moved', () => T.refresh()));
   }
+  T.spillMult = 1; T.setSpillMult = (m) => { T.spillMult = Math.max(0, +m || 1); return T; };   // 43B
   return T;
 }
 export default { TILL_CAP, TILL_CAP_PER_LEVEL, SWEEP_TAX, HELPER_EVERY, tillCap, createTills };

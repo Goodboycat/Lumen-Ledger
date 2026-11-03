@@ -38,6 +38,7 @@ import { createTelemetry } from './systems/telemetry.js';
 import { createTills, tillCap } from './systems/till.js';
 import { createBaronPier } from './systems/baronPier.js';   // 42D: the Baron collects the season's interest at the pier
 import { createScamNpc } from './systems/scamNpc.js';
+import { createNoveltyRegistry } from './systems/novelties/index.js';   // 43B
 import { createSeasonScript } from './systems/seasonScript.js';   // 43A: data/seasons.json drives the scheduler marks + season lengths       // 42D: the Too-Good Deal is a Collector NPC you must TALK to
 
 export const SANDBOX_VERSION = '10B';
@@ -141,7 +142,7 @@ export function createSandbox(game, opts = {}) {
     sb.storm.update(dtReal ?? dt);
     sb.build.update(dt);
     sb.cust.update(dt);
-    if (!sb.clockHold.size) { sb.eco.tick(dt); sb.updateScheduler?.(); }   // 42D: the season clock (and its marks) wait while the Baron collects at the pier
+    if (!sb.clockHold.size) { sb.eco.tick(dt); sb.updateScheduler?.(); sb.novelties?.update(dt); }   // 43B: novelties run on the game clock (pause with holdClock)   // 42D: the season clock (and its marks) wait while the Baron collects at the pier
 
     for (const h of sb.helpers) { h.anim.update(dt); updateHelperKnock(sb, h, dt); }
     updateCoins(sb, dt);
@@ -271,6 +272,7 @@ function wireEconomy(sb) {
   off.push(bus.on('eco:upgrade', (p) => { const u = p?.upgrade; if (u?.kind === 'zone') { const z = island.zones[u.effect.zone]; if (z && !z.unlocked) island.unlockZone(z.index, { game: sb.game, vfx }); } }));
   sb.cust.spawnWave(eco.state.season);                                                             // first wave at start (6A note)
   installScheduler(sb);
+  installNovelties(sb);                                          // 43B: season:novelty → NOVELTIES[id].start · eco:season → end · destroy → dispose
 }
 // Sandbox season scheduler (no story/UI here — 10C's StorySystem will own the real pacing on the same bus events):
 //   day01 ≥ 0.45 → one random event (4B pickEvent) — absorbed if bubbleShield is armed (eco:absorbed, Protect jar untouched)
@@ -333,6 +335,12 @@ export const TILL_WALK = 1.1, TILL_MAGNET = 2.2;
 // 42B: jars are places. sb.jarsWorld = J (see systems/jarsWorld.js). sb.interact() is THE one interact dispatcher: jar > till > Baron (42D) >
 //   scam NPC (42D) > null — the key handler / ✋ button call it and only fall through to their old behaviour when it returns null.
 //   sb.interactRelease() ends a hold (the E keyup). Collector contact → sb.jarsWorld.spillPouch() drops ground tips (42C hooks it).
+// 43B: novelties (S2 stormWarning, S3 nightMarket, …) — one active at a time, registry in systems/novelties/index.js
+function installNovelties(sb) {
+  const bus = sb.game.bus; const R = sb.novelties = createNoveltyRegistry(sb); sb.novelty = null;
+  sb._offs.push(bus.on('season:novelty', (p) => { if (p?.id) R.start(p.id, p.season); }));
+  sb._offs.push(bus.on('eco:season', () => R.end()));
+}
 function installJarsWorld(sb) {
   const { eco, vfx, hero } = sb, bus = sb.game.bus;
   const J = createJarsWorld({ bus, eco, jars: sb.world.jars, hero, vfx, sequences: sb.game.sequences, labels: sb.labelsRoot || null, camera: () => sb.game.camera?.three || sb.game.camera,
@@ -810,6 +818,7 @@ export function destroySandbox(sb) {
   for (const h of sb.helpers || []) { h.anim?.dispose?.(); freeMerged(h.g); game.scene.remove(h.g); }
   for (const v of (sb.villains || []).slice()) { const g = v.g || v.root || v; freeMerged(g); g.removeFromParent?.(); }
   sb.enemies?.dispose?.();                                                            // S16: fog puff pool + list
+  sb.novelties?.dispose?.(); sb.novelties = null;                                     // 43B: active novelty end + listeners
   sb.unlocks?.destroy?.();                                                            // 43A: 41D unlocks kept 2 bus listeners (eco:season/eco:win) alive after destroy — found by --seasons
   sb.storm?.dispose?.();                                                              // S17: streak mesh + DOM overlay, sky/lights restored
   // customers: active roots are released into the pool first (keeps their state machine consistent), then every pooled root is freed

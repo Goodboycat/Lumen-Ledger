@@ -370,7 +370,7 @@ export class CustomerSystem {
   // ------------------------------------------------------------------ transaction
   _settle(c) {
     const s = c.stall; if (!s || !this._stallAlive(c)) { this._react(c, 'sad', 'stall gone'); return; }
-    const price = this.price(s.id), fair = this.fair(s.id);
+    const price = this.price(s.id) * (this.spendMult || 1), fair = this.fair(s.id) * (this.spendMult || 1);   // 43B: nightMarket spendMult ×1.3 (fair scales too — mood unchanged)
     let r;
     // BUGFIX B10: the stall's CURRENT level (live BuildSystem entry) is passed so paid L2/L3 upgrades apply their sales multiplier
     // 42A: when a till system is attached the sale goes to the STALL's counter (economy.sell toTill → pouch untouched), Pip collects it later
