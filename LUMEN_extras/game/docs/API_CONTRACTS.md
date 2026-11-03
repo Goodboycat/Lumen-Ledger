@@ -288,3 +288,10 @@ coinBurst, coinFly(from,to,onArrive), confetti, sparkTrail, fogShader(fog01), sa
 - `sb.interact()` within 1.6 u of a stall sign (`sb.signNear() → stallId|null`) returns `'sign'` and emits `ui:price {id, delta:+1}` on release; `sb.signHoldTick()` (update loop) emits `delta:-1` once at hold ≥ 0.5 s. `ui:price` handler is sandbox-owned (shared by sign E and the build panel).
 - Owl: `sb._angryAt` (stallId → angry count, reset on `eco:season`) → `barks.pricing[0]` once per stall per season after 3 `mood:'angry'` reactions. `story.json barks.pricing[3]`.
 - Gate: `check.mjs --pricing` "44A READABLE PRICING" (`tools/gates/pricing.mjs`): S2 fair×0.8 → love/♥ + green, fair×1.5 → bad/✗ + red, 3 angry → exactly 1 Owl bark, S1 → 0 price barks, `ui:price +1`×3 → price +3, 0 leaks.
+
+## Wants (44B)
+- `customers.js`: `cust.wantOf(c)` → top `PREFS[c.type]` stall kind (ties → rng, `null` for empty PREFS e.g. regular). On the first pickStall of a visit → `cust:want {id, type, want, found}`; from S ≥ 2 a want bubble `story:bark {kind:'want', icon:'stall_<kind>', ok, anchor: c.root, ttl:1.2}` for 1 in 3 customers (always when `!found`).
+- No placed stall matches any PREFS key with weight ≥ 1 → `c.result = {noStall:true, want, type}`, sad react, leaves → `cust:left {id, type, result, want, noStall:true}`; `totals.noStall` counts them.
+- Owl: once per `want` per season (`_wantBarked` Set, reset on season change) → `story:bark {speaker:'owl', kind:'wants', want, text}` from `story.json barks.wants[3]` (`{who}` = `barks.wantsWho[type]`, `{what}` = stall kind). customers dep `story` = parsed story.json (Game.js passes it).
+- `ui/bark.js`: `kind:'want'` = icon-only bubble `.ll-bark.want.ok|.no` (drawn stall icon, no emoji); cap stays 2, want bubbles are evicted first. `ui/build.js` stall detail: `wanted by: <types with PREFS weight ≥ 1.5>`.
+- Gate: `check.mjs --wants` "44B VISIBLE WANTS" (`tools/gates/wants.mjs`): S3 fruit-only → elder noStall / saver found / regular silent / Owl once per want per season / 0 leaks.
