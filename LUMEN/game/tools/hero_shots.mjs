@@ -37,6 +37,15 @@ if (SHIP) {
     await p.evaluate(async () => { window.game.bus.emit('ui:start', { mode: 'story' }); await new Promise((r) => setTimeout(r, 1200)); });
     return p.evaluate(() => !!window.sb());
   };
+  // the intro dialogue (Tally-Owl) pauses the sim → click it through until no dialogue is open (max ~12 lines)
+  const dismiss = async () => {
+    for (let i = 0; i < 14; i++) {
+      const open = await p.evaluate(() => { const d = window.ui?.dialogue; if (d?.isOpen) { d.advance?.(); return true; } const b = document.querySelector('.ll-dlg-body'); if (b && b.offsetParent) { b.click(); return true; } return false; });
+      if (!open) break;
+      await sleep(350);
+    }
+    await sleep(300);
+  };
   const state = async (tag, fn) => { const s = await p.evaluate(fn); console.log('STATE', tag, JSON.stringify(s)); return s; };
   const hideTouch = () => p.evaluate(() => { for (const el of document.querySelectorAll('.ll-touch, .ll-pad, .touchpad')) el.style.display = 'none'; });
 
@@ -51,7 +60,7 @@ if (SHIP) {
   // ── 2 market (S3: tea HOT, prices readable; ≥ 2 customers settled, ≥ 1 price bark) ─────────────────────────────
   if (want(2) || want(7)) {
     await boot('&season=600');
-    await start();
+    await start(); await dismiss();
     await p.evaluate(() => { const sb = window.sb(); sb.eco.state.season = 3; window.game.bus.emit('eco:season', { season: 3 }); for (const pl of sb.build.placed.values()) if (pl.category === 'stall' && !pl.scenery) sb.signTint?.(pl.id); });
     let m = null;
     for (let i = 0; i < 20; i++) {
@@ -70,7 +79,8 @@ if (SHIP) {
   // ── 3 raid (2 distinct Collectors; wait for `carry` + red RAID chip + edge arrow) ───────────────────────────────
   if (want(3)) {
     await boot('&season=600');
-    await start();
+    await start(); await dismiss();
+    await sleep(9000);                                   // let a few sales land in the tills so the Collectors have something to seek
     await p.evaluate(() => { const sb = window.sb(); sb.eco.state.season = 2; sb.enemies.enabled = true; sb.enemies.waveSeason = null; sb.enemies.spawnWave(2, { raiders: 2, distinct: true, stagger: 1 }); });
     let r = null;
     for (let i = 0; i < 30; i++) {
@@ -86,7 +96,7 @@ if (SHIP) {
   // ── 4 jar (Pip ≤ 1.3 u from the Protect jar → .ll-jar-tag visible) ─────────────────────────────────────────────
   if (want(4)) {
     await boot('&season=600');
-    await start();
+    await start(); await dismiss();
     const j = await p.evaluate(async () => {
       const sb = window.sb(); const jar = sb.world?.jars?.find?.((m) => (m.userData?.jar || m.userData?.id || '').includes('protect')) || sb.world?.jars?.[3];
       if (!jar) return { jar: null };
@@ -105,9 +115,10 @@ if (SHIP) {
   // ── 5 ledger (eco.endSeason() → review modal) ──────────────────────────────────────────────────────────────────
   if (want(5)) {
     await boot('&season=600');
-    await start();
-    await sleep(6000);                                   // a few sales so the ledger has rows
+    await start(); await dismiss();
+    await sleep(8000);                                   // a few sales so the ledger has rows
     await p.evaluate(() => { const sb = window.sb(); sb.eco.endSeason(); });
+    await sleep(600); await dismiss();                   // story lines before the review → click through to the modal
     let l = null;
     for (let i = 0; i < 10; i++) { await sleep(800); l = await p.evaluate(() => ({ state: window.lg.state, modal: !!document.querySelector('.ll-ledger:not([hidden]), .ll-ledger.open, .ledger-modal'), text: (document.querySelector('.ll-ledger')?.textContent || '').slice(0, 80) })); if (l.modal || l.state === 'review') break; }
     console.log('STATE ledger', JSON.stringify(l));
@@ -117,7 +128,7 @@ if (SHIP) {
   // ── 6 pier (Baron waits at the pier; ≥ 10 s left on the countdown) ─────────────────────────────────────────────
   if (want(6)) {
     await boot('&season=600');
-    await start();
+    await start(); await dismiss();
     await p.evaluate(() => { const sb = window.sb(); sb.eco.state.interestOwed = Math.max(sb.eco.state.interestOwed || 0, 6); sb.eco.state.debt = Math.max(sb.eco.state.debt || 0, 40); window.lg.enterPier?.() || sb.pier.begin({ force: true }); });
     let pz = null;
     for (let i = 0; i < 12; i++) {
@@ -125,6 +136,7 @@ if (SHIP) {
       pz = await p.evaluate(() => { const sb = window.sb(); return { state: window.lg.state, phase: sb.pier.phase, t: +(sb.pier.t || 0).toFixed(1), left: sb.pier.phase === 'wait' ? +(20 - sb.pier.t).toFixed(1) : null }; });
       if (pz.phase === 'wait' && pz.t > 0.8) break;
     }
+    await dismiss();                                     // Baron's arrival line, if any
     await p.evaluate(() => { const sb = window.sb(); const g = window.game; const b = sb.pier; const to = b.to || b.pos; if (to) { g.camera.zoom = 0.7; } });
     console.log('STATE pier', JSON.stringify(pz));
     await hideTouch(); await sleep(400);
