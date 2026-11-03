@@ -1,12 +1,12 @@
 // src/systems/novelties/baronVisit.js — 43C S4 novelty. At `at` (S4 0.64) Baron Gilt HIMSELF (non-hostile) struts from the pier to the plaza
 // centre and replaces the scam mark (seasons.json scamKind:'baron' → the scheduler spawns no Collector and opens no direct offer).
-//   sb.interact() near him → eco.offerScam('tooGoodLoan') + pitch barks (speaker 'baron' → 7B portrait) → ui:choice as today
+//   sb.interact() near him → eco.offerScam('zeroInterestLoan') + pitch barks (speaker 'baron' → 7B portrait) → ui:choice as today
 //   ledgerFlash ≤ BARON.flashNear → scam:tell {id, tell}       sword hit → slipOnCoin + refuse once + flee        BARON.timeout s → refuse + leave
 // Game.js generic hooks: sb.novelty?.near?.() / .interact() / .flash() / .targets()  (43C, 3 lines). end() sends him off and removes the mesh.
 // Headless-safe: no creatures → invisible THREE.Group (gate asserts the group leaves the scene).
 import * as THREE from '../../../vendor/three.module.js';
 
-export const BARON = { walkSec: 2.5, timeout: 25, tauntEvery: 4.2, near: 3, flashNear: 3, fleeSec: 2.0, leaveSec: 2.2, scam: 'tooGoodLoan', spot: { x: 0, z: -3.2 } };
+export const BARON = { walkSec: 2.5, timeout: 25, tauntEvery: 4.2, near: 3, flashNear: 3, fleeSec: 2.0, leaveSec: 2.2, scam: 'zeroInterestLoan', spot: { x: 0, z: -3.2 } };
 const PITCH = ['A zero-interest* loan, keeper. One hundred and fifty Spark. Today only.', 'Sign here. The small print is… decorative.'];
 
 export function createBaronVisit() {
@@ -17,9 +17,8 @@ export function createBaronVisit() {
   const line = (sb, i) => { const a = sb.storyData?.barks?.seasonNovelty?.baronVisit; const b = a?.[i]; return b ? (b.text || b) : null; };
   const pitch = (sb, i) => { const a = sb.storyData?.baron?.visit; const b = a?.[i]; return b ? (b.text || b) : PITCH[i % PITCH.length]; };
 
-  async function make(sb) {
-    if (sb.headless || !sb.game?.scene) return { g: new THREE.Group(), anim: { play() {}, update() {}, faceTo() {}, dispose() {} } };
-    const C = sb.creatures || await import('../../assets/creatures/index.js').catch(() => ({}));
+  function make(sb) {                                                            // synchronous: the gate steps the clock synchronously
+    const C = (!sb.headless && sb.creatures) || {};
     const g = C.makeBaronGilt ? C.makeBaronGilt({ seed: 43 }) : new THREE.Group();
     if (!g.userData.parts) g.userData.parts = {};
     g.userData.type = 'baron'; g.userData.visit = true;
@@ -52,7 +51,7 @@ export function createBaronVisit() {
       sb.game.bus.emit('baron:visit', { season, pos: { ...V.to } });
       say(sb, line(sb, 0) || 'Baron Gilt, in person. Keep your pouch shut, Pip.', 'owl', 3.2);
     };
-    const r = make(sb); if (r && typeof r.then === 'function') r.then(place); else place(r);
+    place(make(sb));
     V.offs.push(sb.game.bus.on('eco:scamResult', (res) => { if (res?.id !== BARON.scam || V.state === 'off') return; V.answered = true;
       say(sb, res.accepted ? 'Pleasure doing business. The asterisk sends its regards.' : (line(sb, 2) || 'Refused? The owl has taught you well. Pity.'), 'baron', 2.6); leave(sb, res.accepted ? 'accepted' : 'refused'); }));
   };

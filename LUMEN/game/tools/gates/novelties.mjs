@@ -83,5 +83,79 @@ export async function run({ resolve, pathToFileURL }) {
     if (leaked > 0) throw new Error(`${leaked} leaked bus listeners after destroy`);
     console.log('OK lifecycle: one active novelty at a time · destroy → 0 leaks');
   } catch (e) { bad++; console.log('FAIL novelties: ' + e.message); }
+  // ---- 43C BARON VISIT + PICKY (fresh sandbox; S4 baronVisit replaces the scam mark, S5 two critics price-check)
+  console.log('\n43C BARON VISIT + PICKY:');
+  try {
+    const { BARON } = await imp('src/systems/novelties/baronVisit.js');
+    const bus = new EventBus(), scene = new THREE.Scene(), game = mkGame(bus, scene);
+    game.lights = { key: { intensity: 1.6 }, hemi: { intensity: 0.75 } };
+    const base = countListeners(bus);
+    const ev = { starts: [], ends: [], npc: [], scam: [], tell: [], refused: [], checks: [], barks: [], critics: [] };
+    bus.on('novelty:start', (p) => ev.starts.push({ ...p, day: sb.eco.state.day01 })); bus.on('novelty:end', (p) => ev.ends.push(p));
+    bus.on('scam:npc', (p) => ev.npc.push(p)); bus.on('eco:scam', (p) => ev.scam.push(p)); bus.on('scam:tell', (p) => ev.tell.push(p)); bus.on('scam:refused', (p) => ev.refused.push(p));
+    bus.on('customer:priceCheck', (p) => ev.checks.push(p)); bus.on('story:bark', (p) => ev.barks.push(p)); bus.on('novelty:critic', (p) => ev.critics.push(p));
+    const sb = createSandbox(game, { headless: true, seed: 7, pierPays: false, seasons: data, storyData: story, seasonSeconds: 20 });
+    sb.enemies && (sb.enemies.enabled = true);
+    const dt = 1 / 30;
+    const step = () => { game.time += dt; game.sequences.update(dt); game.tweens.update(dt); for (const s of game.systems) s.update?.(dt); if (sb.eco.pendingOffer && sb.novelty?.id !== 'baronVisit') sb.eco.refuseOffer(); };
+    const until = (f, maxSec = 600) => { for (let i = 0; i < maxSec * 30 && !f() && !sb.eco.state.ended; i++) step(); return f(); };
+    if (!NOVELTIES.baronVisit || !NOVELTIES.pickyGlimmer) throw new Error('registry missing baronVisit/pickyGlimmer');
+    until(() => sb.eco.state.season === 4); const npc0 = ev.npc.length, scam0 = ev.scam.length;
+    if (!until(() => ev.starts.some((x) => x.id === 'baronVisit'))) throw new Error('S4 baronVisit never started');
+    const s4 = ev.starts.find((x) => x.id === 'baronVisit'); if (s4.day < 0.64 - 1e-9) throw new Error(`S4 start @ ${s4.day.toFixed(3)} < 0.64`);
+    const V = sb.novelty; if (V?.id !== 'baronVisit') throw new Error('sb.novelty not baronVisit');
+    until(() => V.state === 'pitch', 10); if (V.state !== 'pitch') throw new Error(`Baron state ${V.state} (want pitch)`);
+    if (!V.g || V.g.parent !== scene) throw new Error('Baron group not in scene');
+    const d4 = sb.eco.state.day01; until(() => sb.eco.state.day01 >= 0.66 || sb.eco.state.season !== 4, 5);
+    if (ev.npc.length !== npc0) throw new Error('scam:npc fired in S4 (scamKind baron should skip the Collector)');
+    if (ev.scam.length !== scam0) throw new Error('eco:scam opened before Pip talked to the Baron');
+    // scripted: Pip walks up, talks → offer; ledgerFlash → tell; sword hit → refuse + flee
+    sb.hero.root.position.set(V.g.position.x + 1, 0, V.g.position.z + 1);
+    const r = sb.interact(); if (r !== 'scam') throw new Error(`interact → ${r} (want scam)`);
+    if (sb.eco.pendingOffer?.id !== BARON.scam) throw new Error(`pendingOffer ${sb.eco.pendingOffer?.id} ≠ ${BARON.scam}`);
+    if (!ev.barks.some((b) => b.speaker === 'baron' && b.group === 'baronVisit')) throw new Error('no baron pitch bark');
+    const tell = V.flash(); if (!tell || !ev.tell.length || ev.tell[0].id !== BARON.scam) throw new Error('ledgerFlash near the Baron did not name the tell');
+    const tg = V.targets(); if (tg.length !== 1 || tg[0].enemy.kind !== 'baron') throw new Error('Baron not a sword target while pitching');
+    tg[0].hit({ x: 0, z: 1 }, 1);
+    if (V.state !== 'flee') throw new Error(`after hit state ${V.state} (want flee)`);
+    if (sb.eco.pendingOffer) throw new Error('offer still open after hit');
+    if (ev.refused.filter((x) => x.id === BARON.scam).length !== 1) throw new Error(`refused ×${ev.refused.filter((x) => x.id === BARON.scam).length} (want 1)`);
+    for (let i = 0; i < 30 * 3; i++) step();
+    if (V.g || V.state !== 'off') throw new Error('Baron mesh not removed after flee');
+    until(() => sb.eco.state.season === 5);
+    if (!ev.ends.some((x) => x.id === 'baronVisit') || sb.novelty) throw new Error('S4 novelty:end missing');
+    if (scene.children.some((o) => o.userData?.visit)) throw new Error('Baron still in scene after season end');
+    console.log(`OK S4: baronVisit start @ day ${s4.day.toFixed(2)} · no scam:npc · interact → ${BARON.scam} offer + pitch bark · flash → tell "${tell}" · hit → refused ×1 + flee · removed · novelty:end`);
+    // ---- S5 picky critics: stall at fair×1.3 → ok:false + no sale; stall at fair → ok:true + 2 qty
+    const stalls = [...(sb.build?.placed?.values?.() || [])].filter((e) => e.kind === 'stall' || e.type === 'stall' || /stall/i.test(e.id || '') || e.entry?.stall || e.slots).map((e) => e.id || e.propId).filter(Boolean);
+    const stallId = stalls[0] ?? (sb.cust.active[0]?.stall?.id); 
+    if (!until(() => ev.starts.some((x) => x.id === 'pickyGlimmer'))) throw new Error('S5 pickyGlimmer never started');
+    const s5 = ev.starts.find((x) => x.id === 'pickyGlimmer'); if (s5.day < 0.20 - 1e-9) throw new Error(`S5 start @ ${s5.day.toFixed(3)}`);
+    // first critic: overprice every stall
+    const ids = new Set(sb.cust.active.filter((c) => c.type === 'critic').map((c) => c.id)); if (!ids.size) throw new Error('no critic spawned at start');
+    const fairOf = (id) => sb.cust.fair(id); const priced = [];
+    const over = () => { for (const [id] of sb.cust.prices) {} for (const c of sb.cust.active) if (c.stall && !priced.includes(c.stall.id)) { priced.push(c.stall.id); sb.cust.prices.set(c.stall.id, fairOf(c.stall.id) * 1.3); } };
+    const k0 = ev.checks.length;
+    if (!until(() => { over(); return ev.checks.length > k0; }, 60)) throw new Error('first critic never price-checked (sb.cust stalls? ' + sb.cust.active.length + ')');
+    const c1 = ev.checks[k0]; if (c1.ok !== false || Math.abs(c1.price - c1.fair * 1.3) > 0.2) throw new Error(`critic 1 check ${JSON.stringify(c1)} (want ok:false @ fair×1.3)`);
+    const paid1 = sb.cust.active.concat(sb.cust.pool || []).find((c) => c.id === c1.id)?.result; if (paid1 && paid1.paid > 0) throw new Error('overpriced critic still paid');
+    if (!ev.barks.some((b) => b.kind === 'price' && b.ok === false)) throw new Error('no red price bubble');
+    if (!ev.barks.some((b) => b.speaker === 'owl' && /walked|Overpriced/i.test(b.text))) throw new Error('no owl bark on first refusal');
+    // second critic: fair price → double qty
+    for (const id of priced) sb.cust.prices.delete(id);
+    const sold = []; const sell0 = sb.eco.sell.bind(sb.eco); sb.eco.sell = (id, type, price, o) => { const r = sell0(id, type, price, o); if (type === 'critic') sold.push({ id, price, r }); return r; };
+    const k1 = ev.checks.length;
+    if (!until(() => ev.critics.length >= 2, 60)) throw new Error('second critic never spawned');
+    if (!until(() => ev.checks.length > k1, 60)) throw new Error('second critic never price-checked');
+    sb.eco.sell = sell0;
+    const c2 = ev.checks[k1]; if (c2.ok !== true || !c2.double) throw new Error(`critic 2 check ${JSON.stringify(c2)} (want ok:true double)`);
+    const okSales = sold.filter((x) => x.r && x.r.sold > 0); if (okSales.length < 2) throw new Error(`fair critic sold ×${okSales.length} (want 2 = qty 2)`);
+    if (!ev.barks.some((b) => b.kind === 'price' && b.ok === true)) throw new Error('no green price bubble');
+    console.log(`OK S5: pickyGlimmer start @ day ${s5.day.toFixed(2)} · 2 critics · fair×1.3 → ok:false, no sale, red bubble, owl bark · fair → ok:true, qty 2 (${okSales.length} sells), green bubble`);
+    destroySandbox(sb);
+    const leaked = countListeners(bus) - base - 9;
+    if (leaked > 0) throw new Error(`${leaked} leaked bus listeners after destroy`);
+    console.log('OK lifecycle 43C: Baron mesh gone · critic listeners released · 0 leaks');
+  } catch (e) { bad++; console.log('FAIL novelties 43C: ' + e.message); }
   return bad;
 }

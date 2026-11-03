@@ -338,6 +338,7 @@ export const TILL_WALK = 1.1, TILL_MAGNET = 2.2;
 // 43B: novelties (S2 stormWarning, S3 nightMarket, …) — one active at a time, registry in systems/novelties/index.js
 function installNovelties(sb) {
   const bus = sb.game.bus; const R = sb.novelties = createNoveltyRegistry(sb); sb.novelty = null;
+  sb.creatures = sb.headless ? {} : { makeBaronGilt, VillainAnimator };          // 43C: baronVisit reuses the 42D Baron model/animator (no duplicate model code)
   sb._offs.push(bus.on('season:novelty', (p) => { if (p?.id) R.start(p.id, p.season); }));
   sb._offs.push(bus.on('eco:season', () => R.end()));
 }
@@ -349,7 +350,7 @@ function installJarsWorld(sb) {
   sb.interact = () => {
     if (J.near()) return J.press() || 'jar';
     if (sb.pier?.near?.()) return sb.pier.interact() || 'pier';                     // 42D: the Baron waits at the pier → pay interest / repay
-    if (sb.novelty?.near?.()) return sb.novelty.interact() || 'scam';                 // 43C: baronVisit → eco.offerScam('tooGoodLoan')
+    if (sb.novelty?.near?.()) return sb.novelty.interact() || 'scam';                 // 43C: baronVisit → eco.offerScam('zeroInterestLoan')
     if (sb.scamNpc?.near?.()) return sb.scamNpc.interact() || 'scam';                 // 42D: the pitching Collector → eco.offerScam → 8B dialogue
     if (sb.enemies?.talk?.(3)) return 'talk';                                         // 42C P2: a seeking Collector ≤ 3 u → enemy:talk (42D attaches the pitch)
     return null;
