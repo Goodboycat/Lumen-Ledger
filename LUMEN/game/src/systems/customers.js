@@ -216,6 +216,12 @@ export class CustomerSystem {
   // ------------------------------------------------------------------ stall choice + queues
   _stallList() { return this.build && this.build.stalls ? this.build.stalls() : []; }
   _queue(entry) { let q = this.queues.get(entry); if (!q) { q = []; this.queues.set(entry, q); } return q; }
+  /** 44C: THE one place PREFS meets season demand — PREFS[type][kind] (1 unlisted) × economy.demandOf(kind), floor 0.3. */
+  prefOf(c, kind) {
+    const base = (PREFS[c.type] || {})[kind] ?? 1;
+    const m = this.economy && this.economy.demandOf ? +this.economy.demandOf(kind) : 1;
+    return Math.max(0.3, base * (m > 0 ? m : 1));
+  }
   _leaveQueue(c) {
     if (!c.stall) return;
     const q = this.queues.get(c.stall.entry); if (q) { const i = q.indexOf(c); if (i >= 0) q.splice(i, 1); }
@@ -224,13 +230,12 @@ export class CustomerSystem {
   /** Weighted stall pick: preference × 1/(1+queue) × 1/(1+dist/12). Returns a stalls() record or null. */
   pickStall(c) {
     const stalls = this._stallList(); if (!stalls.length) return null;
-    const prefs = PREFS[c.type] || {};
     let best = null, bw = -1;
     for (const s of stalls) {
       const q = this._queue(s.entry);
       if (q.length >= this._usableSlots(s).length) continue;             // full (only WALKABLE slots count, P47) → not an option
       const kind = String(s.id).replace(/^stall_/, '');
-      const pref = prefs[kind] ?? 1;
+      const pref = this.prefOf(c, kind);                                   // 44C: PREFS × season demand
       const d = Math.hypot(s.slots.counter.x - c.root.position.x, s.slots.counter.z - c.root.position.z);
       const w = pref / (1 + q.length) / (1 + d / 12) * (0.85 + 0.3 * this.rng());
       if (w > bw) { bw = w; best = s; }
@@ -240,14 +245,14 @@ export class CustomerSystem {
   /** 44B: the stall kind this customer wants most (top PREFS weight; ties → rng). null when the type has no preferences (regular). */
   wantOf(c) {
     const prefs = PREFS[c.type] || {}; let best = null, bw = 0;
-    for (const k of Object.keys(prefs)) { const w = prefs[k]; if (w > bw || (w === bw && this.rng() < 0.5)) { bw = w; best = k; } }
+    for (const k of Object.keys(prefs)) { const w = this.prefOf(c, k); if (w > bw || (w === bw && this.rng() < 0.5)) { bw = w; best = k; } }
     return best;
   }
   /** 44B: emit cust:want (+ want bubble S≥2, 1 in 3 customers, always when not found). Returns true when the customer leaves (noStall). */
   _want(c) {
     const want = this.wantOf(c); if (!want) return false;
     const prefs = PREFS[c.type], stalls = this._stallList();
-    const found = stalls.length === 0 || stalls.some((s) => (prefs[String(s.id).replace(/^stall_/, '')] ?? 0) >= 1);   // no stalls at all → the old 3 s "no stall" path
+    const found = stalls.length === 0 || stalls.some((s) => { const k = String(s.id).replace(/^stall_/, ''); return prefs[k] != null && this.prefOf(c, k) >= 1; });   // 44C: COLD can drop a liked stall below 1 → not "found"   // no stalls at all → the old 3 s "no stall" path
     this.bus.emit('cust:want', { id: c.id, type: c.type, want, found });
     this._wantN = (this._wantN | 0) + 1;
     if ((this.season | 0) >= 2 && (!found || this._wantN % 3 === 0)) { const pos = c.root.position; this.bus.emit('story:bark', { kind: 'want', icon: 'stall_' + want, ok: found, speaker: c.type, text: want, anchor: { x: pos.x, y: 1.9, z: pos.z }, ttl: 1.2 }); }
