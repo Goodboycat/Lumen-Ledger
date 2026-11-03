@@ -1489,6 +1489,11 @@
       ]
     },
     "seasonNovelty": {
+      "raidDouble": [
+        { "speaker": "owl", "text": "Two of them — shield one, chase the other.", "ttl": 3.4 },
+        { "speaker": "owl", "text": "Both tills: {a} and {b}. Shield the richer one.", "ttl": 3.2 },
+        { "speaker": "owl", "text": "One down. The other is still carrying — bonk it.", "ttl": 2.6 }
+      ],
       "stormWarning": [
         {
           "speaker": "owl",

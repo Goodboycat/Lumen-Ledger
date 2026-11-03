@@ -141,7 +141,7 @@ export class EnemySystem {
   /** 42C: the richest reachable till within range of `e` (amount > 0, not immune). */
   _pickTill(e) {
     const T = this.tills; if (!T?.all) return null; const p = e.g.position; let best = null;
-    for (const t of T.all()) { if (t.amount <= 0 || this._tillImmune(t) || Math.hypot(t.pos.x - p.x, t.pos.z - p.z) > ENEMY_RULES.raid.range) continue; if (!best || t.amount > best.amount) best = t; }
+    for (const t of T.all()) { if (t.amount <= 0 || this._tillImmune(t) || this._claimed?.includes(t.stallId) || Math.hypot(t.pos.x - p.x, t.pos.z - p.z) > ENEMY_RULES.raid.range) continue; if (!best || t.amount > best.amount) best = t; }   // 43D: _claimed = tills already taken by a wave-mate (raidDouble)
     return best;
   }
   /** 42C: counter-front cell for a till (the stall slot; falls back to the till pos). */
@@ -221,10 +221,18 @@ export class EnemySystem {
 
   // ------------------------------------------------------------------ spawning
   /** Spawn the wave for `season`. Returns the enemies created (empty when the wave already ran this season). */
-  spawnWave(season = this.eco?.state?.season || 1) {
+  spawnWave(season = this.eco?.state?.season || 1, opts = this.nextWaveOpts || null) {
     if (!this.enabled || this.waveSeason === season || this.eco?.state?.ended) return [];
-    this.waveSeason = season; this._waveUsed = [];
+    this.waveSeason = season; this._waveUsed = []; this.nextWaveOpts = null;
     const out = [];
+    // 43D raidDouble: `{ raiders: 2, distinct: true, stagger: 2 }` → N Collectors (no Baron) that pick DIFFERENT tills; #k dazed k·stagger s so telegraphs never overlap
+    if (opts?.raiders > 0) {
+      this._claimed = opts.distinct ? [] : null;
+      for (let i = 0; i < opts.raiders; i++) { const c = this._spawnOne('collector', season, i); if (c.target) this._claimed?.push(c.target.stallId); c.stun = i * (opts.stagger ?? 2); out.push(c); }
+      this._claimed = null;
+      this.bus?.emit('enemy:wave', { season, count: out.length, boss: false, powers: [], raiders: opts.raiders });
+      return out;
+    }
     if (season >= ENEMY_RULES.bossFrom) {
       out.push(this._spawnOne('baron', season));
       const minions = Math.min(ENEMY_RULES.minionCap, season - ENEMY_RULES.bossFrom);

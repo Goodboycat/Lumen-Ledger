@@ -6,8 +6,9 @@ import { createStormWarning } from './stormWarning.js';
 import { createNightMarket } from './nightMarket.js';
 import { createBaronVisit } from './baronVisit.js';   // 43C
 import { createPickyGlimmer } from './pickyGlimmer.js';   // 43C
+import { createRaidDouble } from './raidDouble.js';   // 43D
 
-export const NOVELTIES = { stormWarning: createStormWarning, nightMarket: createNightMarket, baronVisit: createBaronVisit, pickyGlimmer: createPickyGlimmer };
+export const NOVELTIES = { stormWarning: createStormWarning, nightMarket: createNightMarket, baronVisit: createBaronVisit, pickyGlimmer: createPickyGlimmer, raidDouble: createRaidDouble };
 
 export function createNoveltyRegistry(sb) {
   const bus = sb.game.bus; const R = { active: null };
