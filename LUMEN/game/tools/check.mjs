@@ -1390,8 +1390,9 @@ if (doEnemies) {
     sb.shield.until = game.time + 5; c.hitAt = -99; sb.eco.state.spark = 5; run(0.2); if (!ev['enemy:blocked'] || sb.eco.state.spark !== 5) throw new Error('shield did not block'); sb.shield.until = -1;
     // 4. sword: 2 hits → defeat → flee → coin (1 ✦) → gone
     const coins0 = sb.coins.length; const hp0 = c.hp; const dir = new THREE.Vector3(1, 0, 0);
-    E.hitEnemy(c, dir, 1); if (c.hp !== hp0 - 1 || c.state === 'flee') throw new Error('first hit'); E.hitEnemy(c, dir, 1);
-    if (c.state !== 'flee' || !ev['enemy:defeated'] || sb.coins.length !== coins0 + 1 || sb.coins.at(-1).value !== ENEMY_RULES.collector.reward) throw new Error(`defeat: state ${c.state} coins ${sb.coins.length}/${coins0 + 1}`);
+    const cRules = E.rulesFor ? E.rulesFor(c) : ENEMY_RULES.collector;   // 41C: the S1 Collector has hp 1 / reward 2 (ENEMY_RULES.collectorS1)
+    for (let h = hp0; h > 1; h--) { E.hitEnemy(c, dir, 1); if (c.hp !== h - 1 || c.state === 'flee') throw new Error('first hit'); } E.hitEnemy(c, dir, 1);
+    if (c.state !== 'flee' || !ev['enemy:defeated'] || sb.coins.length !== coins0 + 1 || sb.coins.at(-1).value !== cRules.reward) throw new Error(`defeat: state ${c.state} coins ${sb.coins.length}/${coins0 + 1} value ${sb.coins.at(-1)?.value}/${cRules.reward}`);
     if (E.targets().length !== 0) throw new Error('fleeing enemy still a target');
     run(ENEMY_RULES.fleeSeconds + 0.5); if (E.list.length !== 0 || !ev['enemy:gone'] || game.scene.children.includes(c.g)) throw new Error('fleeing enemy not removed');
     // hero's own sword picks enemies: spawn one in front and attack
@@ -1439,7 +1440,7 @@ if (doEnemies) {
     E.waveSeason = 0; sb.eco.state.season = 4; sb.sched.wave = false; sb.sched.season = 4; sb.eco.state.day01 = 0.71; step(); if (E.list.length !== 4) throw new Error('S4 wave after walk-home ' + E.list.length); E.clear();
     // 6. Season 6 (S20 revised): Baron Gilt = VERY SLOW CHASER (1.1 u/s) landing at the pier, 0 minions, power 'cannon' only.
     //    S9: Baron + 3 minions with cannon/puddle/stomp/minigun; S12: +5 (cap) and umbrella.  (clock frozen: a 30 s season would end mid-probe)
-    sb.eco.config.seasonSeconds = 1e9;
+    sb.eco.config.seasonSeconds = 1e9; sb.eco.config.seasonSecondsOverride = 1e9;   // 41C: the curve ignores seasonSeconds; the override wins
     const RB = ENEMY_RULES.baron; const P = E._podium();   // a known land cell near the plaza used as the arena for the attack probes
     const dXZ = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
     E.waveSeason = 0; sb.eco.state.season = 6; sb.sched.wave = false; sb.sched.season = 6; sb.eco.state.day01 = 0.71; step();
