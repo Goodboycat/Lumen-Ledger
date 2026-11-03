@@ -24,7 +24,7 @@ export function mountBarks(root, opts = {}) {
   function spawn(p) {
     if (!p || !p.text) return null;
     while (items.length >= cfg.max) remove(items[0], true);
-    const el = document.createElement('div'); el.className = 'll-bark ' + (p.speaker || 'owl') + (p.kind === 'price' ? (' price ' + (p.ok ? 'ok' : 'no')) : ''); el.setAttribute('role', 'status');   // 43C: kind:'price' = critic price-check (no name)
+    const el = document.createElement('div'); el.className = 'll-bark ' + (p.speaker || 'owl') + (p.kind === 'price' ? (' price ' + (p.glyph === 'love' ? 'love' : p.glyph === 'bad' ? 'no' : p.ok ? 'ok' : 'no')) : ''); el.setAttribute('role', 'status');   // 43C: kind:'price' = critic price-check (no name) · 44A: glyph 'love'|'ok'|'bad' → .love (gold) / .ok / .no
     if (p.kind !== 'price') { const who = document.createElement('span'); who.className = 'who'; who.textContent = NAMES[p.speaker] || p.speaker || ''; el.appendChild(who); }
     el.appendChild(document.createTextNode(p.text));
     layer.appendChild(el);

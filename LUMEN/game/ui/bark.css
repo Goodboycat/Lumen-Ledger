@@ -24,3 +24,5 @@
 .ll-bark.price { font-variant-numeric: tabular-nums; font-weight: 700; }
 .ll-bark.price.no { background: #ffcdd2; color: #7a1c1c; }
 .ll-bark.price.ok { background: #c8e6c9; color: #1b5e20; }
+/* 44A: ♥ love bubble (price ≤ 0.9× fair) — gold; glyph-first, never a prompt */
+.ll-bark.price.love { background: #FFE082; color: #6D4C00; border-color: #B8860B; }

@@ -5,7 +5,7 @@
 //   const cust = new CustomerSystem(game, { island, build, economy, creatures?, vfx?, flow?, maxActive? })
 //   cust.spawnWave(season = 1, n?)   cust.update(dt)   cust.count   cust.active (array)   cust.setPrice(stallId, price)
 //   cust.setSpawnPoint(x,z)          cust.clear()      cust.serialize()  (counters only)
-//   emits on game.bus: 'cust:spawn' 'cust:paid' 'cust:left' 'cust:angry' 'cust:state' (debug) 'cust:wave'
+//   emits on game.bus: 'cust:spawn' 'cust:paid' 'cust:left' 'cust:angry' 'cust:state' (debug) 'cust:wave' 'cust:react' (44A: {id, stallId, ratio, mood, glyph})
 //
 // FSM (per customer):  spawn → pickStall → walk → queue (wait anim, shuffles forward) → browse 1.5 s → pay
 //                      → happy | sad → leave (walk to pier) → pool.
@@ -137,6 +137,7 @@ export class CustomerSystem {
   /** Spawn a wave for `season` (P3 table) or exactly `n` customers; spaced 0.45 s apart. Returns the number queued. */
   spawnWave(season = 1, n) {
     const w = WAVES[Math.min(WAVES.length - 1, Math.max(0, (season | 0) - 1))];
+    this.season = Math.max(1, season | 0);   // 44A: price bubbles start at S2
     const total = n ?? w.n;
     let queued = 0;
     for (let i = 0; i < total; i++) {
@@ -391,6 +392,7 @@ export class CustomerSystem {
       const ratio2 = fair > 0 ? price / fair : 1, mood2 = !ok ? 0.3 : dbl ? 1 : 0.75, react2 = !ok ? 'sad' : 'happy';
       c.result = { paid: r.paid, sold: r.sold, price, fair, ratio: +ratio2.toFixed(2), mood: mood2, reaction: react2, stallId: s.id, type: c.type, priceCheck: ok };
       if (c.anim) c.anim.moodTint(mood2);
+      this.bus.emit('cust:react', { id: c.id, stallId: s.id, ratio: +ratio2.toFixed(2), mood: mood2, glyph: !ok ? 'bad' : dbl ? 'love' : 'ok', type: c.type });   // 44A (critics keep the 43C full line)
       if (r.paid > 0) { this.totals.paid++; this.totals.sparkEarned += r.paid; if (this.vfx && this.vfx.pop) { const p = c.root.position.clone(); p.y = 1.4; this.vfx.pop.show(p, `+${r.paid}`, { color: '#FFD54F', dur: 0.9, size: dbl ? 1.2 : 1 }); }
         this.bus.emit('cust:paid', { id: c.id, type: c.type, stallId: s.id, paid: r.paid, sold: r.sold, price, fair, mood: mood2, reaction: react2, at: { x: pos.x, z: pos.z } }); }
       else this.totals.unpaid = (this.totals.unpaid || 0) + 1;
@@ -411,6 +413,11 @@ export class CustomerSystem {
     else { mood = 0.35; reaction = 'sad'; }
     c.result = { paid: r.paid, sold: r.sold, price, fair, ratio: +ratio.toFixed(2), mood, reaction, stallId: s.id, type: c.type };
     if (c.anim) c.anim.moodTint(mood);
+    // 44A readable pricing: every settle emits cust:react; every 2nd non-critic customer from S2 on also says it out loud as a glyph-first bubble (♥ 6 · ✓ 8 · ✗ 15)
+    const glyph = ratio <= 0.9 ? 'love' : ratio <= 1.1 ? 'ok' : 'bad';
+    this.bus.emit('cust:react', { id: c.id, stallId: s.id, ratio: +ratio.toFixed(2), mood, glyph, type: c.type });
+    this._reactN = (this._reactN | 0) + 1;
+    if ((this.season | 0) >= 2 && (this._reactN & 1) === 0) { const pos = c.root.position; this.bus.emit('story:bark', { kind: 'price', glyph, ok: glyph !== 'bad', speaker: c.type, text: `${glyph === 'love' ? '♥' : glyph === 'ok' ? '✓' : '✗'} ${Math.round(price)}`, anchor: { x: pos.x, y: 1.9, z: pos.z }, ttl: 1.8 }); }
     if (r.paid > 0) {
       this.totals.paid++; this.totals.sparkEarned += r.paid;
       if (this.vfx && this.vfx.pop) { const p = c.root.position.clone(); p.y = 1.4; this.vfx.pop.show(p, `+${r.paid}`, { color: '#FFD54F', dur: 0.9, size: reaction === 'happy' && ratio <= 0.9 ? 1.2 : 1 }); }
