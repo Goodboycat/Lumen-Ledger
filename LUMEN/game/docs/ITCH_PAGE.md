@@ -7,15 +7,15 @@
 |---|---|
 | Title | **Lumen Ledger** |
 | Short description / tagline (≤ 120 chars) | **Make FinLit Fun: a cozy 3D market tycoon where every coin needs a jar — or the Debt Fog rolls in.** |
-| Classification | Game |
+| Classification | Game · Educational |
 | Kind of project | HTML (play in browser) |
 | Release status | Prototype (jam build) |
 | Pricing | No payments |
 | Uploads | `lumen-ledger-web.zip` — zip of `LUMEN/game/` with `index.html` at the zip root (see §6). Tick **"This file will be played in the browser"**. |
-| Embed | Viewport **1280 × 720**, ☑ Mobile friendly, ☑ Fullscreen button, ☐ Automatically start on page load, Orientation: Landscape (portrait also works), ☑ Enable scrollbars **off** |
+| Embed | **Embed in page** · Viewport **1280 × 720** · ☑ Fullscreen button ON · ☑ Mobile friendly ON · ☐ Automatically start on page load · Orientation: Landscape (portrait also works) · Enable scrollbars **off** |
 | Frame options | SharedArrayBuffer **off** (not needed), Click to launch **on** (audio unlock needs a gesture) |
 | Genre | Simulation (also: Educational, Strategy) |
-| Tags (≤ 10) | `financial-literacy` `educational` `tycoon` `management` `cozy` `3d` `low-poly` `singleplayer` `family-friendly` `zoud-gamelab` |
+| Tags (≤ 10) | `finlit` `economy` `3d` `browser` `jam` `educational` `tycoon` `cozy` `low-poly` `singleplayer` |
 | Inputs | Keyboard · Mouse · Touchscreen |
 | Accessibility | Subtitles (all dialogue is text) · Configurable controls? no · Color‑blind friendly (icon + text on every jar/state) · Reduce‑motion setting · One‑button (touch) |
 | Average session | About half an hour (10 seasons ≈ 25 min) |
@@ -23,8 +23,8 @@
 | Multiplayer | No |
 | Links | Source: https://github.com/Goodboycat/Lumen-Ledger · GDD: `docs/GDD.md` · Budget: `docs/BUDGET.md` |
 | Community | Comments on |
-| Cover image | 630 × 500 — Pip mid‑celebrate on the pier, 3 Glimmers, Spark coins arcing, Debt Fog purple at the edge, logo top‑left (shot list §5, shot 1 crop) |
-| Screenshots | 6 PNG 1280 × 720 — see §5 |
+| Cover image | 630 × 500 — `LUMEN_extras/game/docs/screenshots/45_ship/cover.png` (centre crop of `2_market.png`: Pip at the S3 market, HOT tea sign, Glimmers browsing). No new art. |
+| Screenshots | 6 PNG 1280 × 720 — `LUMEN_extras/game/docs/screenshots/45_ship/` (see §5; shot by `tools/hero_shots.mjs --ship` from the real `index.html`) |
 | Trailer | YouTube/itch upload of the 13B 2‑minute gameplay video (jam requires **actual gameplay**, no cinematic cuts) |
 
 ## 2. Page body
@@ -81,11 +81,14 @@ Stars come from what you *did*, not from a quiz. The Ledger Review is the assess
 - **Sound** starts after your first tap/click (browser rule). Music and SFX sliders are in ⏸ Settings; `?mute` in the URL silences everything.
 - **Accessibility** — reduce‑motion, outline thickness and quality presets in Settings; every jar and state uses colour **and** icon **and** text; no flashing above 3 Hz; dialogue waits for you.
 - **Phone?** Yes — landscape or portrait, all buttons ≥ 44 px. Tested at 360 × 800. An Android APK (Flutter WebView) ships alongside the web build.
+- **Every season adds one new thing** (S45) — a fresh stall type, a new customer, a Baron trick or a weather turn. Ten seasons, ten novelties; nothing repeats.
+- **Prices are readable at a glance** (S46) — every stall sign carries ♥ (a bargain) / ✓ (fair) / ✗ (too dear) plus a **HOT** or **COLD** demand glyph for the season. Watch the sign, not a spreadsheet.
+- **Tills can be raided** (S47) — coins pile up on each stall's counter until you walk by and collect them. Fog Collectors seek the fullest till; bonk one while it is **CARRYING** to get the coins back.
 - **Content** — family‑friendly: no gambling, no loot boxes, no magic, no dark‑fantasy creatures. The villain is a fog with a top hat.
 
 ### Credits
 Made for the **Zoud GameLab** jam, theme *"Make FinLit Fun"* (Oct 15 – Nov 15 2026).
-Design · code · art · writing: **[team name]** — built with the LUMEN chat pipeline (Genspark). Engine: **Three.js r160** (MIT). All 3D is procedural (no external models or textures). Audio: procedural synth fallback in‑engine; optional Ludo.ai SFX/music (see `docs/audio_prompts.md`). Fonts: system stack.
+Design · code · art · writing: **Goodboycat** — built with the LUMEN chat pipeline (Genspark). Engine: **Three.js r160** (MIT, vendored in `vendor/three.module.js` — no CDN, works offline on itch). All 3D is procedural (no external models or textures). Audio: procedural synth fallback in‑engine; optional Ludo.ai SFX/music (see `docs/audio_prompts.md`). Fonts: system stack.
 Thanks to the National Financial Wellbeing initiative for the theme, and to every Glimmer who overpaid for a lantern.
 
 ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
