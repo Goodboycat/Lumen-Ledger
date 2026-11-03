@@ -423,6 +423,13 @@ export class EnemySystem {
       if (dd > RR.counterRadius) {
         const nx = p.x + _d.x * R.speed * dt, nz = p.z + _d.z * R.speed * dt;
         if (!this._moveTo(p, nx, nz)) this._moveTo(p, p.x + _d.x * R.speed * dt * 0.3, p.z + _d.z * R.speed * dt * 0.3);
+        // another stall sits on the straight line (the axis-slide only crawls along its wall): no real progress → sidestep perpendicular,
+        // keep the same side until the way is free, flip when that side is blocked too
+        const gain = dd - Math.hypot(c.x - p.x, c.z - p.z);
+        if (gain < R.speed * dt * 0.5) {
+          e.sideSign = e.sideSign || ((e.id & 1) ? 1 : -1);
+          if (!this._moveTo(p, p.x - _d.z * e.sideSign * R.speed * dt, p.z + _d.x * e.sideSign * R.speed * dt)) e.sideSign = -e.sideSign;
+        } else e.sideSign = 0;
         e.anim.faceTo?.(_v.set(c.x, 0, c.z));
       } else {   // at the counter: telegraph starts
         e.state = 'raid'; e.raidT = 0; this.stats.raids++; e.anim.play?.('fogPuff');
