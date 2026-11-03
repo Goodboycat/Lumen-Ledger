@@ -1488,6 +1488,7 @@
         }
       ]
     },
+    "seasonNew": [ { "speaker": "owl", "text": "NEW: {label}", "ttl": 4 } ],
     "seasonNovelty": {
       "raidDouble": [
         { "speaker": "owl", "text": "Two of them — shield one, chase the other.", "ttl": 3.4 },

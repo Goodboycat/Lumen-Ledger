@@ -8,6 +8,8 @@ import { createBaronVisit } from './baronVisit.js';   // 43C
 import { createPickyGlimmer } from './pickyGlimmer.js';   // 43C
 import { createRaidDouble } from './raidDouble.js';   // 43D
 
+// 43D: short labels for the HUD "NEW: …" chip (story.js emits hud:new the first time each id starts; story.state.noveltiesSeen)
+export const NOVELTY_LABELS = { stormWarning: 'Storm warning', nightMarket: 'Night market', baronVisit: 'Baron visit', pickyGlimmer: 'Picky Glimmers', raidDouble: 'Double raid' };
 export const NOVELTIES = { stormWarning: createStormWarning, nightMarket: createNightMarket, baronVisit: createBaronVisit, pickyGlimmer: createPickyGlimmer, raidDouble: createRaidDouble };
 
 export function createNoveltyRegistry(sb) {
@@ -17,7 +19,7 @@ export function createNoveltyRegistry(sb) {
     R.end();
     const n = make(); R.active = n; sb.novelty = n;
     try { n.start?.(sb, season); } catch (e) { sb.log?.push(`novelty ${id} start failed: ${e.message}`); }
-    bus.emit('novelty:start', { id, season }); sb.log?.push(`S${season} novelty:start ${id}`);
+    bus.emit('novelty:start', { id, season, label: NOVELTY_LABELS[id] || id }); sb.log?.push(`S${season} novelty:start ${id}`);
     return n;
   };
   R.end = () => { const n = R.active; if (!n) return; R.active = null; sb.novelty = null; n.end?.(sb); n.dispose?.(); bus.emit('novelty:end', { id: n.id }); };

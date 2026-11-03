@@ -88,6 +88,8 @@ export function mountHUD(root, opts = {}) {
 
   // ---------------------------------------------------------------- API
   const api = {
+    // 43D: non-modal "NEW: Night market" chip, DOM only, auto-removes after `ms` (default 4 s). Returns the element.
+    newChip(text, ms = 4000) { const c = el('div', 'll-chip ll-chip-new'); c.dataset.id = 'new'; c.innerHTML = iconize(String(text)); chips.appendChild(c); st.newChips = (st.newChips || 0) + 1; const t = setTimeout(() => { c.classList.add('out'); setTimeout(() => c.remove(), 320); }, ms); st._newTimers = (st._newTimers || []).concat(t); return c; },
     el: hud, state: st,
     setSpark(n, { silent } = {}) {
       n = Math.round(+n || 0);
@@ -148,7 +150,7 @@ export function mountHUD(root, opts = {}) {
       }
       if (statsFn) { st.fpsT += dt; if (st.fpsT > 0.25) { st.fpsT = 0; const s = statsFn() || {}; stats.textContent = `fps ${Math.round(s.fps || 0)} · calls ${s.drawCalls || 0}`; } }
     },
-    destroy() { offs.forEach((f) => f()); if (st.raf) cancelAnimationFrame(st.raf); hud.remove(); },
+    destroy() { offs.forEach((f) => f()); if (st.raf) cancelAnimationFrame(st.raf); (st._newTimers || []).forEach(clearTimeout); hud.remove(); },
   };
 
   // ---------------------------------------------------------------- bus wiring
@@ -171,6 +173,7 @@ export function mountHUD(root, opts = {}) {
       const cx = W / 2, cy = H / 2, dx = (sc.behind ? -1 : 1) * (sc.x - cx), dy = (sc.behind ? -1 : 1) * (sc.y - cy), L = Math.hypot(dx, dy) || 1;
       const k = Math.min((cx - 28) / Math.abs(dx || 1e-6), (cy - 28) / Math.abs(dy || 1e-6));
       raidArrow.style.left = (cx + dx * k) + 'px'; raidArrow.style.top = (cy + dy * k) + 'px'; raidArrow.style.transform = `translate(-50%,-50%) rotate(${Math.atan2(dy, dx)}rad)`; void L; }),
+    bus.on('hud:new', (p) => { if (p?.text) api.newChip(p.text); }),                      // 43D: story.js fires once per novelty id (noveltiesSeen)
     bus.on('hud:chip', (p) => { if (!p || !p.id) return; let c = chips.querySelector(`[data-id="${p.id}"]`); if (p.on === false) { c?.remove(); return; } if (!c) { c = el('div', 'll-chip'); c.dataset.id = p.id; chips.appendChild(c); } c.innerHTML = iconize(p.text || p.id); }),
     bus.on('pier:due', (p) => { st.pier = { interest: p?.interest || 0, left: p?.waitCap ?? 20, repay: false }; pierChip.innerHTML = iconize(`⚓ BARON AT THE PIER — ${st.pier.interest} ✦ due · ${Math.ceil(st.pier.left)} s`); pierChip.hidden = false; pierChip.classList.remove('repay'); }),
     bus.on('pier:tick', (p) => { if (!st.pier || st.pier.repay || !p) return; st.pier.left = p.left; pierChip.innerHTML = iconize(st.pier.interest > 0 ? `⚓ BARON AT THE PIER — ${st.pier.interest} ✦ due · ${Math.ceil(p.left)} s` : `⚓ BARON AT THE PIER — repay? · ${Math.ceil(p.left)} s`); }),

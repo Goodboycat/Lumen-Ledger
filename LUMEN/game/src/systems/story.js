@@ -69,7 +69,7 @@ export class StorySystem {
     this.data = opts.data || null;
     this.opts = { autoplay: true, autoAdvance: false, lineGap: 0.12, midAt: 0.5, ledgerLinesBeforeReview: true, tutorial: true, ...opts };
     this.held = false;                                                                  // S18: hold() defers new groups (cinematics)
-    this.state = { season: 0, midPlayed: 0, openingPlayed: 0, endedPlayed: 0, toastsFired: [], scamsSeen: [], eventsSeen: [], finale: null, choicesMade: 0, barksPlayed: [] };
+    this.state = { season: 0, midPlayed: 0, openingPlayed: 0, endedPlayed: 0, toastsFired: [], scamsSeen: [], eventsSeen: [], finale: null, choicesMade: 0, barksPlayed: [], noveltiesSeen: [] };   // 43D: noveltiesSeen → NEW chip once per novelty id (saved, v3)
     this._barkTimers = [];    // 41A: [{ at, line, group }] pending timed barks (walk-in); drained by update(dt)
     this._barkClock = 0;
     this.queue = [];          // [{ group, lines, i, onDone, meta }]
@@ -188,6 +188,14 @@ export class StorySystem {
     return t;
   }
   // ---------------------------------------------------------------- 41A barks (kind 'bark': a timed speech bubble, never a modal line)
+  /** 43D: `novelty:start {id,label}` → once per id per run: state.noveltiesSeen.push(id) + `hud:new {id,text}` (hud.newChip, 4 s, non-modal). */
+  onNovelty(p) {
+    const id = p?.id; if (!id) return false; const seen = this.state.noveltiesSeen || (this.state.noveltiesSeen = []);
+    if (seen.includes(id)) return false; seen.push(id);
+    const tpl = this.data?.barks?.seasonNew?.[0]?.text || this.data?.barks?.seasonNew?.[0] || 'NEW: {label}';
+    this.bus.emit('hud:new', { id, text: String(tpl).replace('{label}', p.label || id) }); return true;
+  }
+
   /** Emit `story:bark` for one line. Speaker → default anchor (pip→hero · owl→owl · baron→baron). */
   bark(line, group = 'bark') {
     if (!line || !line.text) return null;
@@ -221,11 +229,11 @@ export class StorySystem {
   clear() { this.queue.length = 0; this.current = null; this.line = null; this.pendingOffer = null; this.bus.emit('story:end', { group: 'clear' }); }
   destroy() { for (const off of this._offs) off(); this._offs.length = 0; this.clear(); }
 
-  serialize() { return { v: 1, state: { ...this.state, toastsFired: [...this.state.toastsFired], scamsSeen: [...this.state.scamsSeen], eventsSeen: [...this.state.eventsSeen], barksPlayed: [...this.state.barksPlayed] } }; }
+  serialize() { return { v: 1, state: { ...this.state, toastsFired: [...this.state.toastsFired], scamsSeen: [...this.state.scamsSeen], eventsSeen: [...this.state.eventsSeen], barksPlayed: [...this.state.barksPlayed], noveltiesSeen: [...(this.state.noveltiesSeen || [])] } }; }
   static deserialize(json, economy, opts = {}) {
     const s = new StorySystem(economy, opts);
     const j = typeof json === 'string' ? JSON.parse(json) : json;
-    if (j?.state) Object.assign(s.state, j.state, { toastsFired: [...(j.state.toastsFired || [])], scamsSeen: [...(j.state.scamsSeen || [])], eventsSeen: [...(j.state.eventsSeen || [])], barksPlayed: [...(j.state.barksPlayed || [])] });
+    if (j?.state) Object.assign(s.state, j.state, { toastsFired: [...(j.state.toastsFired || [])], scamsSeen: [...(j.state.scamsSeen || [])], eventsSeen: [...(j.state.eventsSeen || [])], barksPlayed: [...(j.state.barksPlayed || [])], noveltiesSeen: [...(j.state.noveltiesSeen || [])] });
     return s;
   }
 
@@ -236,6 +244,7 @@ export class StorySystem {
     on('ui:continue', (p) => { if (p?.outcome === 'season' && this.economy && !this.state.finale) this.onSeasonStart(this.economy.state.season); });
     on('eco:event', (p) => { this.onEvent(p?.id || p?.event?.id); });
     on('eco:scam', (offer) => { this.onScam(offer); });
+    on('novelty:start', (p) => this.onNovelty(p));                                        // 43D: first time per id → hud:new (NEW chip 4 s)
     on('eco:win', () => this.onWin());
     on('eco:lose', (p) => this.onLose(p?.reason));
     on('ui:advance', () => { this.next(); });
