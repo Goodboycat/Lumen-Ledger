@@ -5,6 +5,7 @@
 //   T.pay(stallId, amount, meta)       customers call this (economy.sell ran with { toTill:true } and did NOT touch the pouch)
 //   T.collect(stallId, how:'walk'|'magnet'|'helper'|'sweep') → amount → eco.earn(amount, 'till:'+how)  (40A counts 'till:*' as handled)
 //   T.spill(stallId, n) → n ground tips via coinLayer.spill(pos, value)  (overflow here; Collector raid in 42C)
+//   T.steal(stallId, n, {enemyId}) → taken (42C raid, emits raid:take)   T.refund(stallId, n) → kept (raid cancelled before carry)
 //   T.richest() → entry|null (42C)      T.sweep(tax) → { swept, tax } season-end: counters → pouch minus the Collector tax (P2)
 //   T.tickHelpers(dt, helpers) helpers seated at a stall auto-collect that stall's till every HELPER_EVERY s (P2)
 //   T.destroy()
@@ -94,6 +95,25 @@ export function createTills({ bus, eco, build, vfx = null, coinLayer = null, sta
       for (let i = 0; i < coins; i++) { const v = i === coins - 1 ? left : Math.max(1, Math.round(n / coins)); if (v <= 0) break; left = round(left - v); const a = (i / coins) * Math.PI * 2; coinLayer.spill({ x: t.pos.x + Math.cos(a) * 0.55, z: t.pos.z + Math.sin(a) * 0.55 }, v); made++; }
       if (stats) stats.tillSpilled = round((stats.tillSpilled || 0) + n);
       return made;
+    },
+    /** 42C raid: a Collector takes n ✦ (clamped to the till) from the counter. Returns the amount taken; emits raid:take. */
+    steal(id, n, meta = {}) {
+      const t = tills.get(key(id)); n = round(Math.max(0, +n || 0)); if (!t || t.amount <= 0 || n <= 0) return 0;
+      const taken = round(Math.min(t.amount, n)); t.amount = round(t.amount - taken); t.fullAt = -1;
+      if (stats) stats.tillStolen = round((stats.tillStolen || 0) + taken);
+      emit('till:change', { stallId: t.stallId, amount: t.amount, delta: -taken, cap: tillCap(t.level), how: 'raid' });
+      emit('raid:take', { stallId: t.stallId, amount: taken, enemyId: meta.enemyId ?? null, pos: { ...t.pos } });
+      sync(t);
+      return taken;
+    },
+    /** 42C raid cancelled before `carry`: put n ✦ back on the counter (never above the cap; the excess spills). Returns amount refunded. */
+    refund(id, n) {
+      const t = ensure(id); n = round(Math.max(0, +n || 0)); if (n <= 0) return 0;
+      const cap = tillCap(t.level), kept = round(Math.min(n, Math.max(0, cap - t.amount))), over = round(n - kept);
+      if (kept > 0) { t.amount = round(t.amount + kept); emit('till:change', { stallId: t.stallId, amount: t.amount, delta: kept, cap, how: 'refund' }); }
+      if (over > 0) T.spill(t.stallId, over);
+      sync(t);
+      return kept;
     },
     /** Season end (P2): every counter is emptied into the pouch minus the Collector tax. Returns { swept, tax, net }. */
     sweep(tax = SWEEP_TAX) {
