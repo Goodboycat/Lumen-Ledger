@@ -37,7 +37,8 @@ import * as Save from './systems/save.js';
 import { createTelemetry } from './systems/telemetry.js';
 import { createTills, tillCap } from './systems/till.js';
 import { createBaronPier } from './systems/baronPier.js';   // 42D: the Baron collects the season's interest at the pier
-import { createScamNpc } from './systems/scamNpc.js';       // 42D: the Too-Good Deal is a Collector NPC you must TALK to
+import { createScamNpc } from './systems/scamNpc.js';
+import { createSeasonScript } from './systems/seasonScript.js';   // 43A: data/seasons.json drives the scheduler marks + season lengths       // 42D: the Too-Good Deal is a Collector NPC you must TALK to
 
 export const SANDBOX_VERSION = '10B';
 export const STALL_PICKS = STALL_TYPES.slice(0, 9);          // keys 1–9 → stall types
@@ -68,7 +69,10 @@ export function createSandbox(game, opts = {}) {
   const bus = game.bus;
   sb.storyData = opts.storyData || null;                          // 42D: parsed data/story.json (pier lines; createLumenGame passes its own)
   sb.scamNpcs = opts.scamNpcs ?? !opts.headless;                 // 42D: the scheduler's scam mark spawns a pitching Collector (talk to open the deal); headless keeps eco.offerScam() direct unless opted in
+  sb.seasons = createSeasonScript(opts.seasons || null);        // 43A: parsed data/seasons.json (null → legacy SCHEDULER_MARKS rows); createLumenGame passes its own
+  if (!sb.seasons.legacy) { const errs = sb.seasons.validate(); if (errs.length) { sb.log.push('seasons.json invalid: ' + errs[0]); sb.seasons = createSeasonScript(null); } }
   sb.eco = makeEconomy({ bus, seed: opts.seed ?? 1, autoSeason: true, pierPays: opts.pierPays === true }, opts.balance);   // 42D: pierPays → interest is collected at the pier (default off: headless harnesses keep the auto path)
+  if (!sb.seasons.legacy && !(opts.seasonSeconds > 0) && !opts.balance?.seasonCurve) { const cv = []; for (let i = 1; i <= Math.max(5, sb.seasons.maxSeason); i++) cv.push(sb.seasons.len(i)); sb.eco.config.seasonCurve = cv; }   // 43A: row.len wins over BALANCE.seasonCurve (tests' seasonSeconds override still wins)
   if (opts.seasonSeconds) { sb.eco.config.seasonSeconds = opts.seasonSeconds; sb.eco.config.seasonSecondsOverride = opts.seasonSeconds; }   // 41C: tests/accelerated runs override the season curve
   sb.build = new BuildSystem(game, { island: sb.island, economy: sb.eco, catalog: PROP_CATALOG, vfx: sb.vfx });
   // scenery cells are "occupied" for Build (ghost turns red) and Customers (flow field routes around) without touching 5/6A code
@@ -283,21 +287,32 @@ function installScheduler(sb) {
   sb.nextEvent = pickEvent(eco, Math.max(1, eco.state.season));
   sb.updateScheduler = () => {
     const s = eco.state; if (s.ended) return;
-    if (S.season !== s.season) { S.season = s.season; S.event = false; S.scam = false; S.wave = false; S.warn = false; S.trickle = 0; sb.nextEvent = pickEvent(eco, s.season); }
-    if (S.trickle < CUSTOMER_TRICKLE.length && s.day01 >= CUSTOMER_TRICKLE[S.trickle] && !(sb.modalOpen?.())) { S.trickle++; sb.cust.spawnWave(s.season); }
-    // S17: clouds gather from day 0.30 when a storm is coming (the player has ~15 s to fill Protect)
-    if (!S.warn && s.day01 >= 0.3 && sb.nextEvent === 'storm' && !S.event) { S.warn = true; sb.storm?.warn(); sb.log.push(`S${s.season} storm clouds gather`); }
-    if (!S.event && s.day01 >= 0.45 && sb.nextEvent) {
-      S.event = true; const id = sb.nextEvent;
-      if (sb.game.time < sb.shield.until) { sb.shield.until = -1; sb.stats.absorbed = (sb.stats.absorbed || 0) + 1; bus.emit('eco:absorbed', { id, event: eco.events[id] }); sb.log.push(`S${s.season} ${id} ABSORBED by Bubble Shield`); if (id === 'storm') sb.storm?.clear(2); }
-      else { if (id === 'storm') { sb.storm?.hit(); sb._stormClearAt = STORM.holdSeconds > 0 ? sb.game.time + STORM.holdSeconds : null; /* S21: holdSeconds 0 → rains until the season ends */ } eco.applyEvent(id); sb.log.push(`S${s.season} event ${id}`); }
+    if (S.season !== s.season) { S.season = s.season; S.event = false; S.scam = false; S.wave = false; S.warn = false; S.trickle = 0; S.fired = new Set(); S.marks = sb.seasons.marks(s.season); const fe = sb.seasons.for(s.season).forceEvent; sb.nextEvent = fe && eco.events[fe] ? fe : pickEvent(eco, s.season); }
+    if (!S.marks) { S.fired = new Set(); S.marks = sb.seasons.marks(s.season); }
+    const modal = !!(sb.modalOpen?.());
+    for (let i = 0; i < S.marks.length; i++) {
+      const m = S.marks[i]; if (S.fired.has(i) || s.day01 < m.at) continue;
+      let ok = true;
+      switch (m.kind) {
+        case 'trickle': if (modal) { ok = false; break; } S.trickle++; sb.cust.spawnWave(s.season); break;
+        // S17: clouds gather at `warn` when a storm is coming (the player has ~15 s to fill Protect)
+        case 'warn': S.warn = true; if (sb.nextEvent === 'storm' && !S.event) { sb.storm?.warn(); sb.log.push(`S${s.season} storm clouds gather`); } break;
+        case 'event': {
+          if (!sb.nextEvent) { S.event = true; break; }
+          S.event = true; const id = sb.nextEvent;
+          if (sb.game.time < sb.shield.until) { sb.shield.until = -1; sb.stats.absorbed = (sb.stats.absorbed || 0) + 1; bus.emit('eco:absorbed', { id, event: eco.events[id] }); sb.log.push(`S${s.season} ${id} ABSORBED by Bubble Shield`); if (id === 'storm') sb.storm?.clear(2); }
+          else { if (id === 'storm') { sb.storm?.hit(); sb._stormClearAt = STORM.holdSeconds > 0 ? sb.game.time + STORM.holdSeconds : null; /* S21: holdSeconds 0 → rains until the season ends */ } eco.applyEvent(id); sb.log.push(`S${s.season} event ${id}`); }
+          break; }
+        // 42D: NPC first (opts.scamNpcs), else the old direct offer. 43C: scamKind 'baron' → the Baron himself (novelty baronVisit) — no NPC, no direct offer here.
+        case 'scam': S.scam = true; if (!eco.pendingOffer && m.payload?.scamKind !== 'baron') { if (!(sb.scamNpcs && sb.scamNpc?.spawn())) eco.offerScam(); } break;
+        // P62: the wave waits while the Baron's deal (or any dialogue) is on screen. 41C: S1 wave at 0.55 (one Collector hp 1), S ≥ 2 after the offer.
+        case 'wave': if (sb.enemies?.enabled === false) break; if (eco.pendingOffer || modal) { ok = false; break; } S.wave = true; { const w = sb.enemies.spawnWave(s.season); if (w.length) sb.log.push(`S${s.season} wave ${w.length} (${w.map((e) => e.kind).join(',')})`); } break;
+        case 'novelty': bus.emit('season:novelty', { season: s.season, id: m.payload.id, at: m.at }); sb.log.push(`S${s.season} novelty ${m.payload.id}`); break;
+        default: break;
+      }
+      if (ok) { S.fired.add(i); bus.emit('season:mark', { season: s.season, kind: m.kind, at: m.at, payload: m.payload || null }); }
     }
-    if (!S.scam && s.day01 >= 0.7 && s.season % 2 === 1) { S.scam = true; if (!eco.pendingOffer) { if (!(sb.scamNpcs && sb.scamNpc?.spawn())) eco.offerScam(); } }   // 42D: NPC first (opts.scamNpcs), else the old direct offer
-    // S16: the Baron's Debt Collectors land right after the Too-Good Deal moment (day 0.7, EVERY season — even seasons too, else no fight on S2/S4)
     if (sb._stormClearAt != null && sb.game.time >= sb._stormClearAt) { sb._stormClearAt = null; sb.storm?.clear(3); }   // S17/S21: only when STORM.holdSeconds > 0 (default 0 = whole season; eco:season clears it)
-    // P62: the wave waits while the Baron's deal (or any dialogue) is on screen — Collectors land the moment the box closes, not frozen behind it
-    // 41C: S1 wave lands earlier (0.55, one Collector hp 1) so the sword has a job before the first ledger; S ≥ 2 stay at 0.70 (after the Baron's offer).
-    if (!S.wave && s.day01 >= SCHEDULER_MARKS.wave(s.season) && sb.enemies?.enabled !== false && !eco.pendingOffer && !(sb.modalOpen?.())) { S.wave = true; const w = sb.enemies.spawnWave(s.season); if (w.length) sb.log.push(`S${s.season} wave ${w.length} (${w.map((e) => e.kind).join(',')})`); }
   };
   sb._offs.push(bus.on('eco:season', () => { if (eco.pendingOffer) { eco.refuseOffer(); sb.log.push('deal expired → refused'); } }));
 }

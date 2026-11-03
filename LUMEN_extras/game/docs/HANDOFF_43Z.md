@@ -16,7 +16,7 @@ No new modal (PLAN §6): novelties are world things + barks + at most one HUD ch
 | 3 | 110   | 0.25 0.55 0.80 | 0.35 | 0.40  | scamNpc 0.66       | 0.75     | `nightMarket` @0.60 (lights dim, lanterns, ×1.3 spend, till spill ×2) | collect tills before dark |
 | 4 | 130   | 0.33 0.58      | 0.28 | 0.52  | **Baron in person** 0.64 | 0.70 | `baronVisit` @0.64 (Baron pitches `tooGoodLoan` himself, portrait, taunt) | read the asterisk |
 | 5 | 150   | 0.28 0.52 0.76 | 0.31 | 0.44  | scamNpc 0.68       | 0.73     | `pickyGlimmer` @0.20 (critic customer, price-check bubble, refuses > fair×1.1) | fair pricing |
-| 6 | 150   | 0.30 0.60      | 0.26 | 0.50  | Baron hostile (16/S16) | 0.66 | `raidDouble` @0.66 (two Collectors raid two tills) | tills vs shield |
+| 6 | 150   | 0.36 0.60      | 0.26 | 0.50  | Baron hostile (16/S16) | 0.66 | `raidDouble` @0.66 (two Collectors raid two tills) | tills vs shield |
 | 7 | 150   | 0.27 0.54 0.81 | 0.33 | 0.46  | scamNpc 0.70       | 0.74     | `nightMarket`                     | —                      |
 | 8 | 150   | 0.32 0.57      | 0.24 | 0.42  | Baron 0.62         | 0.71     | `stormWarning`                    | —                      |
 | 9 | 150   | 0.29 0.53 0.78 | 0.30 | 0.49  | scamNpc 0.67       | 0.76     | `pickyGlimmer`                    | —                      |
