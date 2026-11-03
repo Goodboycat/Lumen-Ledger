@@ -1222,6 +1222,11 @@
     }
   ],
   "barks": {
+    "pricing": [
+      { "speaker": "owl", "text": "Three frowns at one sign. The price, not the goods." },
+      { "speaker": "owl", "text": "Red sign, empty till. Nudge it down a Spark." },
+      { "speaker": "owl", "text": "A green sign is a promise; a red one is a dare." }
+    ],
     "walkIn": [
       {
         "speaker": "pip",

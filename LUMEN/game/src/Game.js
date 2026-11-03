@@ -52,6 +52,7 @@ export function makeRnd(seed = 2026) { let s = seed >>> 0; return () => { s = (s
  * @param {object} game  Game (or a mock: { scene, bus, sequences, input, time, add(), followTarget, camera })
  * @param {{headless?:boolean, seed?:number, zonesUnlocked?:number, starterStalls?:boolean, maxActive?:number, seasonSeconds?:number}} opts
  */
+const _signV = new THREE.Vector3();   // 44A scratch
 export function createSandbox(game, opts = {}) {
   registerVariants?.();
   const headless = !!opts.headless;
@@ -266,6 +267,10 @@ function wireEconomy(sb) {
     sign.userData.priceTint = tint; return { id, ratio, tint };
   };
   off.push(bus.on('cust:price', (p) => { if (p?.id) sb.signTint(p.id); }));
+  sb._angryAt = new Map();   // 44A: stallId → angry count this season; barks.pricing[0] once per stall per season after 3
+  off.push(bus.on('cust:angry', (p) => { const id = p?.stallId; if (!id) return; const n = (sb._angryAt.get(id) || 0) + 1; sb._angryAt.set(id, n);
+    if (n === 3) { const b = sb.storyData?.barks?.pricing?.[0]; bus.emit('story:bark', { speaker: 'owl', text: b?.text || b || 'Three frowns at one sign. The price, not the goods.', anchor: 'owl', ttl: 3, kind: 'pricing' }); } }));
+  off.push(bus.on('eco:season', () => sb._angryAt.clear()));
   off.push(bus.on('build:placed', (p) => { if (p?.id && p.entry?.category === 'stall') sb.signTint(p.id); }));
   off.push(bus.on('build:upgraded', (p) => { if (p?.id) sb.signTint(p.id); }));   // level rebuild = new sign mesh
   off.push(bus.on('eco:fog', (p) => { const f = p?.fog01 ?? eco.state.fog01; vfx.fog?.setCoverage?.(f); world.towers.forEach((t) => t.userData.setActive?.(f > 0.3)); if (f > 0.6) vfx.debtPulse?.(0.4); }));
@@ -327,6 +332,7 @@ function installScheduler(sb) {
       }
       if (ok) { S.fired.add(i); if (sb.opts?.debugKeys || sb.headless) sb.log.push(`S${s.season} mark ${m.kind}@${m.at}`); bus.emit('season:mark', { season: s.season, kind: m.kind, at: m.at, payload: m.payload || null }); }   // 43A P2: debug trace of every fired mark
     }
+    sb.signHoldTick?.();
     if (sb._stormClearAt != null && sb.game.time >= sb._stormClearAt) { sb._stormClearAt = null; sb.storm?.clear(3); }   // S17/S21: only when STORM.holdSeconds > 0 (default 0 = whole season; eco:season clears it)
   };
   sb._offs.push(bus.on('eco:season', () => { if (eco.pendingOffer) { eco.refuseOffer(); sb.log.push('deal expired → refused'); } }));
@@ -366,9 +372,14 @@ function installJarsWorld(sb) {
     if (sb.novelty?.near?.()) return sb.novelty.interact() || 'scam';                 // 43C: baronVisit → eco.offerScam('zeroInterestLoan')
     if (sb.scamNpc?.near?.()) return sb.scamNpc.interact() || 'scam';                 // 42D: the pitching Collector → eco.offerScam → 8B dialogue
     if (sb.enemies?.talk?.(3)) return 'talk';                                         // 42C P2: a seeking Collector ≤ 3 u → enemy:talk (42D attaches the pitch)
+    if (sb.signNear?.()) { sb._signHold = { id: sb.signNear(), t0: sb.game.time, fired: false }; return 'sign'; }   // 44A: E at a stall sign → price +1 on release (< 0.5 s) / −1 on hold ≥ 0.5 s
     return null;
   };
-  sb.interactRelease = () => { J.release(); sb.pier?.release?.(); };
+  // 44A: the hanging sign is a place too — nearest stall whose sign hangs ≤ 1.6 u from the hero (world xz). Same ui:price handler as the build panel.
+  sb.signNear = () => { const h = hero?.root?.position; if (!h) return null; let best = null, bd = 1.6 * 1.6; for (const st of sb.build?.stalls?.() || []) { const sg = st.slots?.sign; if (!sg) continue; sg.getWorldPosition?.(_signV) || _signV.copy(st.group.position); const dx = _signV.x - h.x, dz = _signV.z - h.z; if (dx * dx + dz * dz < bd) { bd = dx * dx + dz * dz; best = st.id; } } return best; };
+  sb._signHold = null;
+  sb.signHoldTick = () => { const sh = sb._signHold; if (sh && !sh.fired && sb.game.time - sh.t0 >= 0.5) { sh.fired = true; bus.emit('ui:price', { id: sh.id, delta: -1 }); } };
+  sb.interactRelease = () => { J.release(); sb.pier?.release?.(); const sh = sb._signHold; if (sh) { sb._signHold = null; if (!sh.fired) bus.emit('ui:price', { id: sh.id, delta: +1 }); } };
   // bark on an absorbed event at the Protect jar (P2): the spatial choice pays back visibly
   const protectBark = (title, amount) => { const m = sb.world.jars[3]; if (m) bus.emit('story:bark', { speaker: 'owl', text: `The Protect jar ate the ${title || 'shock'}${amount ? ` (${amount} ✦)` : ''}. That is what it is for.`, anchor: { x: m.position.x, y: 1.2, z: m.position.z }, ttl: 3.4 }); };
   sb._offs.push(bus.on('eco:absorbed', (p) => protectBark(eco.events?.[p?.id]?.title)));                                  // Bubble Shield path
