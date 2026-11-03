@@ -36,6 +36,7 @@ import { Economy } from './systems/economy.js';
 import * as Save from './systems/save.js';
 import { createTelemetry } from './systems/telemetry.js';
 import { createTills, tillCap } from './systems/till.js';
+import { createBaronPier } from './systems/baronPier.js';   // 42D: the Baron collects the season's interest at the pier
 
 export const SANDBOX_VERSION = '10B';
 export const STALL_PICKS = STALL_TYPES.slice(0, 9);          // keys 1–9 → stall types
@@ -64,7 +65,7 @@ export function createSandbox(game, opts = {}) {
 
   // ---- systems ------------------------------------------------------------------------------------------------------
   const bus = game.bus;
-  sb.eco = makeEconomy({ bus, seed: opts.seed ?? 1, autoSeason: true }, opts.balance);
+  sb.eco = makeEconomy({ bus, seed: opts.seed ?? 1, autoSeason: true, pierPays: opts.pierPays === true }, opts.balance);   // 42D: pierPays → interest is collected at the pier (default off: headless harnesses keep the auto path)
   if (opts.seasonSeconds) { sb.eco.config.seasonSeconds = opts.seasonSeconds; sb.eco.config.seasonSecondsOverride = opts.seasonSeconds; }   // 41C: tests/accelerated runs override the season curve
   sb.build = new BuildSystem(game, { island: sb.island, economy: sb.eco, catalog: PROP_CATALOG, vfx: sb.vfx });
   // scenery cells are "occupied" for Build (ghost turns red) and Customers (flow field routes around) without touching 5/6A code
@@ -110,6 +111,7 @@ export function createSandbox(game, opts = {}) {
   wireAbilities(sb);
   installTills(sb);                                              // 42A: customers pay the stall's counter, Pip collects (walk / dash / helper / season sweep)
   installJarsWorld(sb);                                          // 42B: jars are places (after wireEconomy — eco:jar → setFill stays the fill truth)
+  installPier(sb);                                               // 42D: Baron at the pier (sb.pier) + sb.interact routes to him when he waits
   // BUGFIX P65: the starter footprints' SCENERY reservation must go even when starterStalls:false (CONTINUE) — otherwise build.load(snap.build)
   //   rejects the 3 saved starter stalls ("scenery" cell) and a resumed run silently loses them (check.mjs --save: stalls 9/12).
   for (const s of STARTER_STALLS) freeStarterCells(sb, s);
@@ -124,6 +126,7 @@ export function createSandbox(game, opts = {}) {
     if (!headless) { const tw = game.realTime ?? game.time; swayAll(tw); swayDecor(tw); updateLandmarks(dt); }   // S18: wind keeps blowing on the (paused) title backdrop
     sb.hero.update(dt);
     sb.enemies.update(dt);
+    sb.pier?.update(dt);                                            // 42D
     sb.storm.update(dtReal ?? dt);
     sb.build.update(dt);
     sb.cust.update(dt);
@@ -315,16 +318,26 @@ function installJarsWorld(sb) {
   sb.jarsWorld = J;
   sb.interact = () => {
     if (J.near()) return J.press() || 'jar';
+    if (sb.pier?.near?.()) return sb.pier.interact() || 'pier';                     // 42D: the Baron waits at the pier → pay interest / repay
     if (sb.enemies?.talk?.(3)) return 'talk';                                         // 42C P2: a seeking Collector ≤ 3 u → enemy:talk (42D attaches the pitch)
-    return null;                                                                      // 42D adds till / Baron here
+    return null;
   };
-  sb.interactRelease = () => J.release();
+  sb.interactRelease = () => { J.release(); sb.pier?.release?.(); };
   // bark on an absorbed event at the Protect jar (P2): the spatial choice pays back visibly
   const protectBark = (title, amount) => { const m = sb.world.jars[3]; if (m) bus.emit('story:bark', { speaker: 'owl', text: `The Protect jar ate the ${title || 'shock'}${amount ? ` (${amount} ✦)` : ''}. That is what it is for.`, anchor: { x: m.position.x, y: 1.2, z: m.position.z }, ttl: 3.4 }); };
   sb._offs.push(bus.on('eco:absorbed', (p) => protectBark(eco.events?.[p?.id]?.title)));                                  // Bubble Shield path
   sb._offs.push(bus.on('eco:event', (p) => { if (p?.effect?.absorbed > 0) protectBark(p.event?.title, p.effect.absorbed); }));   // the jar itself absorbed (4A rule)
   sb._offs.push(bus.on('jars:locked', (p) => bus.emit('story:bark', { speaker: 'owl', text: 'Locked till the ledger.', anchor: 'hero', ttl: 2.2 })));
   sb._offs.push(() => { J.destroy(); sb.jarsWorld = null; });
+}
+
+// 42D: Baron Gilt at the pier. Only acts when sb.eco.pierPays (createSandbox opts.pierPays); otherwise B stays idle (pier:skip never fires either).
+function installPier(sb) {
+  const { eco, vfx, hero } = sb, bus = sb.game.bus;
+  const B = createBaronPier({ bus, eco, world: sb.world, hero, vfx, game: sb.game, scene: sb.headless ? null : sb.game.scene, story: null,
+    creatures: sb.headless ? {} : { makeBaronGilt, VillainAnimator } });
+  sb.pier = B;
+  sb._offs.push(() => { B.destroy(); sb.pier = null; });
 }
 
 function installTills(sb) {
