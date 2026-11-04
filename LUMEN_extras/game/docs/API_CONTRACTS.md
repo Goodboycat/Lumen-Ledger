@@ -305,3 +305,9 @@ coinBurst, coinFly(from,to,onArrive), confetti, sparkTrail, fogShader(fog01), sa
 - `customers.js`: `cust.prefOf(c, kind)` = `PREFS[c.type][kind] (1 unlisted) × eco.demandOf(kind)`, floor 0.3. `pickStall`, `wantOf`, `_want` read through it only.
 - Game.js: `sb.demandGlyphOf(id)` → `'hot'|'cold'|null`; `sb.signGlyph(id)` adds/hides a cone child named `demandGlyph` on the sign pivot (called from `sb.signTint`). Bus `season:demand {season, hot, cold}` once per `eco:season` with a demand row, followed by Owl `story:bark {speaker:'owl', kind:'demand', hot, cold, text}` from `story.json barks.demand` (`{hot}` / `{cold}`).
 - Gate: `check.mjs --seasons` "44C SEASON DEMAND".
+
+## Curiosity tutor (48F)
+- `ui/tutor.js`: `mountTutor(root, { bus, data: tutorJson, seen: [] })` → `{ show(id), dismiss(), seen, bind({touched}), update(dt), destroy() }`. Bus in: any event named in `data/tutor.json cards[].on` (+ optional `match` filter: `*` glob / number equality); `tutor:hint {id,key,text,pulse}` from verbChain maps to cards `verb:<id>`. Bus out: `tutor:shown {id}` · `tutor:dismissed {id, ms}`.
+- Each card id shows **once per profile** (`seen[]`, persisted as save v4 `tutorSeen`); only **one** card on screen; a new trigger while a card is up is **dropped** (not queued). Dismiss: `pointerdown`/`keydown` capture without `preventDefault`, or `ttl` (8 s). `onCuriosityLull`: `lull` s (25) with `touched()` false → one card, never again.
+- `build.js` emits `ui:build:tab {cat}` on tab change (tabs carry `data-cat`). `reveal.js` emits `reveal:shown {key}`. `verbChain.js` has no DOM (`#verb-hint` gone). `nudge.js` keeps the hand only (tap = ⏩).
+- Gate: `check.mjs --tutor` "48F CURIOSITY TUTOR" (`tests/tutor.test.mjs`).
