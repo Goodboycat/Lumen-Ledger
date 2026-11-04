@@ -45,7 +45,7 @@ ADDED text (a bubble over Pip's head that keeps respawning, more chips, more hin
 - **D4 (48B):** customer glyph barks (♥ ✓ ✗ + price, 44A) are NOT text and stay. Owl word-barks become once-per-run.
 
 ## Missing (tick as IDs close)
-- [ ] 48A · [ ] 48B · [ ] 48C · [ ] 48D · [ ] 48E · [ ] 48F · [ ] 48G · [ ] 48H
+- [ ] 48A · [ ] 48B · [ ] 48C · [ ] 48D · [ ] 48E · [ ] 48F · [x] 48G · [ ] 48H
 
 ## Notes for the integrator
 - `tools/icons_png.mjs` needs `rsvg-convert` or ImageMagick (`sudo apt-get install -y librsvg2-bin` in the sandbox) — it is the icon pipeline, do not write a Playwright screenshot one.
