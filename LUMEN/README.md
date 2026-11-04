@@ -1,6 +1,6 @@
 # LUMEN — Lumen Ledger (Zoud GameLab jam, "Make FinLit Fun", due 2026-11-15)
 
-**Play:** https://goodboycat.itch.io/lumen-ledger (itch.io, browser + phone) · locally: `cd LUMEN/game && python3 -m http.server 3000` → http://localhost:3000/ · jam build = `bash tools/itch_zip.sh` → `/tmp/LumenLedger_itch.zip`.
+**Play:** https://goodboycat.itch.io/lumen-ledger (itch.io, browser + phone) · locally: `cd LUMEN/game && python3 -m http.server 3000` → http://localhost:3000/ · jam build = `bash tools/itch_zip.sh` → `/tmp/lumen-ledger-web.zip`.
 
 This folder holds **only the game and the jam documents**.
 Dev material (screenshots, demos, chat prompts, handoffs, plans) was moved to `../LUMEN_extras/`
@@ -21,6 +21,9 @@ LUMEN/
 > **PLAN NOTICE (2026-11-02):** development now follows **`../LUMEN_extras/game/docs/MASTER_PLAN_V6.md`** ("One game, not two").
 > Everything from update 17 onward in the old plan (regions/biomes/World v3, 13B, 14) is **stopped**. Next IDs: `40A 40B 41A–41D 42A–42D 43Z 44Z 45Z`
 > (see `LUMEN_extras/README_pipeline.md` "## Next"; `game/tools/next.sh` prints the one to do).
+
+## Hush (48, S51, 2026-11-04) — version shown in the title menu: `S51 · jam build`
+Comfort by **deletion**, no new system (ship rule 4). Gone: every top toast (`ui/toast.js` + 11 `ui:toast` + `story:toast` emitters, Audio map row), the hero's head bark + 7-line walk-in (1 word bubble, 6 s gap), the ✋ Interact / 🔨 Build touch buttons (walk up to things · tap the ground to build), the pre-placed floating jars (4 `jar_*` buildables in the first tray tab, rows hidden until built), the verb chip + Skip, nudge text (point / fast-forward icons only). Added — the one thing: **blue once-only tutor cards** (`data/tutor.json`, 16, one at a time, tap/key/8 s, per profile) and the 3 lesson scams as depth-3 **Too Good Deals** trees (look/walk → sign/ask/stall → accept/refuse, Owl names the tactic). Zip: `bash tools/itch_zip.sh` → **9.1 MB · 337 files · sha256 `c0d4c2b0454bf5799fd5a2f0300d16d89c00e8b7c74069902c20959bf32c2a85`**. Handoffs `LUMEN_extras/game/docs/HANDOFF_48Z.md` + `HANDOFF_48A–48H.md`.
 
 ## Measure-fix (47, S50, 2026-11-04) — version shown in the title menu: `S50 · jam build`
 Two PLAY_BUGS rows closed, no new system (ship rule 4): telemetry `modalSeconds` now **counts the time a dialogue box is open** (the opening Owl dialogue pauses the game, so the old per-tick sampler never saw it — PLAY_BUGS 45B-2; `tests/telemetry.test.mjs` 6 pass), and `PERF.md` records the real-browser **167 draw calls @ S47 game zoom** with the **≤ 180** jam budget (45B-3). Remaining rows 45B-4/5 are harness notes only. Zip: `bash tools/itch_zip.sh` → **9.7 MB · 334 files · sha256 `8c42303f50b5394466814d5a9393cb121c30f345a4cbf373bb50569b058c53c0`**. Handoff `LUMEN_extras/game/docs/HANDOFF_47.md`.
