@@ -7,7 +7,7 @@
 set -u
 MSG="${1:?usage: bash tools/wip.sh \"<what>\" [check.mjs flags]}"; shift || true
 cd "$(dirname "$0")/.."            # → game/
-ID=$(bash tools/next.sh 2>/dev/null | sed -n 's/^NEXT: \([0-9A-D]*\).*/\1/p' | head -1)
+ID=$(bash tools/next.sh 2>/dev/null | sed -n 's/^NEXT: \([0-9A-Z]*\).*/\1/p' | head -1)
 ( cd /home/user/webapp && git add -A && git commit -qm "WIP ${ID:-?}: $MSG" 2>/dev/null && echo "committed: WIP ${ID:-?}: $MSG" || echo "nothing new to commit" )
 # Rule 0: push every commit (pass or fail). A failed push is never a stop — it is retried on the next wip.sh call.
 ( cd /home/user/webapp && git remote get-url origin >/dev/null 2>&1 && { git push -q origin HEAD:main 2>/tmp/wip_push.txt && echo "pushed → github.com/Goodboycat/Lumen-Ledger" || echo "PUSH FAILED ($(tail -1 /tmp/wip_push.txt | cut -c1-80)) — committed locally; run bash tools/github.sh <token> and retry"; } || echo "no origin — run bash tools/github.sh <token> first (Rule 0)" )

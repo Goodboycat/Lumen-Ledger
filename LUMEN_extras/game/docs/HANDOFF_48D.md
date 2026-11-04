@@ -12,5 +12,10 @@
 - P3 long-press on a placed stall → tray on its upgrade card: not done (`onTap` has no press duration; would need `ui/touch.js` to pass one). Hand to 48E/48F if wanted.
 - `node tools/check.mjs --ui --jarsworld --build --game` → ALL OK ✅ (verified by the closing chat).
 
+## Full suite (every flag, 2026-11-04, closing chat) — 122 OK · 5 FAIL, **none caused by 48D** (identical on pre-48D commit 128dd07 / seeded sims):
+- `--customers` `wave FAIL → paid 8/20` and `edge-cases FAIL → did not pick a stall` (also FAIL on 128dd07 — pre-existing, likely since 48A toast removal or 47 pricing).
+- `--enemies` `P62: wave spawned behind the deal dialogue`, `--firstplayer` `seed 3: S3 sold only 12 units`, `--till` `78.9 % < 80 %` — flaky/seeded sims, FAIL on 128dd07 too. Owner: 48G (deal dialogue) / balance. Recorded in PLAY_BUGS 48D-1.
+- `tools/next.sh` + `wip.sh` ID regex was `[A-D]?` → 48E–48H were never listed ("NEXT: none"). Fixed to `[A-Z]?`.
+
 ## Next chat
 `bash tools/next.sh` → 48E (jars are buildables, DEEP). PLAY_BUGS 48B-2 (Settings → Title / Restart season) still open.

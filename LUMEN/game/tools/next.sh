@@ -8,7 +8,7 @@ README=../README.md; [ -f ../../LUMEN_extras/README_pipeline.md ] && README=../.
 # IDs in the "## Next" section, in order (10A 10B … 12 13A 13B 14)
 PD=docs/prompts; [ -d ../../LUMEN_extras/game/docs/prompts ] && PD=../../LUMEN_extras/game/docs/prompts   # v6: prompts + HANDOFFs live in LUMEN_extras since the 2026-10-21 split
 HD=docs; [ -d ../../LUMEN_extras/game/docs ] && HD=../../LUMEN_extras/game/docs
-IDS=$(awk '/^## Next/{f=1;next} /^## /{f=0} f' "$README" | grep -oE '\b[0-9]{1,2}[A-D]?\b' | awk '!seen[$0]++')
+IDS=$(awk '/^## Next/{f=1;next} /^## /{f=0} f' "$README" | grep -oE '\b[0-9]{1,2}[A-Z]?\b' | awk '!seen[$0]++')
 NEXT=""; HALF=""
 for id in $IDS; do
   if grep -qE "^\| *$id *\|" "$README"; then continue; fi          # has a Done row → done
