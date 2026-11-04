@@ -35,11 +35,11 @@ tapping the bubble cycles the speed (`ui/nudge.js`). Gate: `node tools/check.mjs
 
 ## Playtest readability pass (S41)
 From the Oct-31 phone playtest (new player, 25 min): **15‑0** the fps·calls pill is gone from the HUD (only `?debug` / F3) · **15A** progressive HUD —
-jars start collapsed on a new game and the widgets reveal in stages (jars → fog → rep → speed → powers) with a toast each, so tutorial skippers still
-meet them (`ui/reveal.js`) · **15B** one text channel — toasts are held while dialogue is open and released 350 ms apart, phones show one toast at a
+jars start collapsed on a new game and the widgets reveal in stages (jars → fog → rep → speed → powers) silently (48A: no toasts), so tutorial skippers still
+meet them (`ui/reveal.js`) · **15B** one text channel (48A: top toasts deleted entirely — the island, the ledger and the Owl's dialogue are the only text) · phones show one line at a
 time, dialogue is tap‑to‑complete then tap‑to‑continue · **15C** build cards that you cannot afford say so before the tap (🔒 + "need N more" on the
 cost pill, greyed card) · **15D** Collector waves get a red ribbon banner and edge arrows that point at off‑screen enemies (`ui/wave.js`) · **15E**
-stalls, decor and scenery are solid for Pip (wall‑slide, no walking through props) · **15F** debt clarity — the season interest shows as its own toast
+stalls, decor and scenery are solid for Pip (wall‑slide, no walking through props) · **15F** debt clarity — the season interest shows in the ledger (48A: its toast is gone)
 ("Debt grew +40 ✦ (20 % interest) → 240 ✦") with a tappable **Pay** action, and a new story game explains the inherited debt once.
 
 ## Knockback (S32)
@@ -70,7 +70,7 @@ game/
     vfx/                VFX.js base · pack1 (coins, confetti, rings, trails) · pack2 (Debt Fog ring, vignette, lighthouse beam, fogRecede) · storm.js · cinematics.js (S18: title orbit, arrival walk-in, victory lighthouse)
     world/Island.js     three-lobe island, zones, grid, isLand, pier edge
     Game.js             createSandbox (world + systems on one loop) · createLumenGame (state machine, UI + story wiring, save, verb-chain tutorial, perf)
-  ui/                   pure HTML/CSS/JS: hud, jars, build tray, ledger, dialogue, toast, title, pause/settings, touch pad, index.js (mountUI)
+  ui/                   pure HTML/CSS/JS: hud, jars, build tray, ledger, dialogue, title, pause/settings, touch pad, index.js (mountUI)
   data/story.json       207 lines of dialogue, 10 lesson cards, 6 scam scripts, 10 events, endings, tutorial toasts
   audio/manifest.json   33 SFX + 6 music ids with synth sketches (ships silent-proof; drop .ogg files in and set fetchFiles:true)
   vendor/three.module.js  Three.js r160 (MIT) — the only dependency
