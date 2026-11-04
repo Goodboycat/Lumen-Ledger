@@ -1,7 +1,7 @@
 // LUMEN LEDGER — Touch controls (Chat 7C). DOM only, no Three. Contract: §B UI → mountTouch(root, input).
 //
 //   import { mountTouch } from './ui/touch.js';
-//   const touch = mountTouch(root, game.input, { bus, force: false, side: 'left', buttons: ['attack','interact','build'], deadzone: 0.12 });
+//   const touch = mountTouch(root, game.input, { bus, force: false, side: 'left', buttons: ['attack','dash'], deadzone: 0.12 });
 //   touch.show() · touch.hide() · touch.visible · touch.setEnabled(name, bool) · touch.setBadge(name, text) · touch.destroy()
 //
 // What it does
@@ -10,7 +10,7 @@
 //     Input.update() already turns into `input.move` (x right, y forward). Also calls `input.onJoystick` if the integrator set it.
 //     The Foundation Input already has its own left-half joystick on the canvas; this overlay sits ABOVE the canvas (pointer-events on),
 //     so only one joystick is ever active. Deadzone 0.12, outer ring tint grows with magnitude.
-//   • 3 chunky buttons (right/bottom): ⚔ attack · ✋ interact · 🔨 build → `input.press(name)` on pointerdown (press-and-hold repeats
+//   • 2 chunky buttons (right/bottom): attack · dash (48D: interact/build deleted) → `input.press(name)` on pointerdown (press-and-hold repeats
 //     attack every 220 ms while held — `opts.repeat`); each also sets `input.actions[name]` true while held (released on up/cancel).
 //   • Portrait + landscape layouts, safe-area insets, buttons ≥ 64 px, nothing under the thumb zones of HUD / build tray.
 //   • Auto-shows when `input.isTouch` (or opts.force / `?touch=1` in the URL); hidden on desktop. `show()/hide()` override.
@@ -27,11 +27,12 @@ import { bus as defaultBus } from '../src/core/EventBus.js';
 
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = iconize(html); return e; };
 
+// 48D (HUSH D1): the Interact and Build buttons are DELETED. Walking up to a thing uses it (proximity interact in Game.js),
+// tapping empty ground opens the build tray (ui:tap:land). The strip is joystick · Attack · Dash · ability chips only.
+// Icons are the drawn defs 'swords' / 'dash' from ui/icons.js (no emoji glyph in the source).
 export const TOUCH_BUTTONS = {
-  attack:   { icon: '⚔', label: 'Attack',   cls: 'attack',   repeat: 220 },
-  interact: { icon: '✋', label: 'Interact', cls: 'interact', repeat: 0 },
-  build:    { icon: '🔨', label: 'Build',    cls: 'build',    repeat: 0 },
-  dash:     { icon: '💨', label: 'Dash',     cls: 'dash',     repeat: 0 },
+  attack:   { icon: icon('swords'), label: 'Attack', cls: 'attack', repeat: 220 },
+  dash:     { icon: icon('dash'),   label: 'Dash',   cls: 'dash',   repeat: 0 },
 };
 // S08: FinLit ability strip for touch — the 6 hero powers that desktop fires with Q W E R F G. Order = FINLIT (3B). Each tap emits
 //   `ui:touch { action: 'ability', name }` (Game.js → lg.ability(name)); `touch.setCooldown(name, seconds)` runs the radial cooldown
@@ -58,7 +59,7 @@ export function mountTouch(root, input, opts = {}) {
   const bus = opts.bus || defaultBus;
   const radius = opts.radius || (input && input.joystick && input.joystick.radius) || 56;
   const deadzone = opts.deadzone ?? 0.12;
-  const names = opts.buttons || ['attack', 'interact', 'build'];
+  const names = (opts.buttons || ['attack', 'dash']).filter((n) => n !== 'interact' && n !== 'build');   // 48D: those two never mount
   const zonePct = opts.zonePct ?? 0.55;
 
   // ---------------------------------------------------------------- DOM
