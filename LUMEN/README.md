@@ -1,5 +1,7 @@
 # LUMEN — Lumen Ledger (Zoud GameLab jam, "Make FinLit Fun", due 2026-11-15)
 
+**Play:** itch.io page → _(URL filled in by the user after upload; see `game/docs/SUBMISSION_CHECKLIST.md` §F)_ · locally: `cd LUMEN/game && python3 -m http.server 3000` → http://localhost:3000/ · jam build = `bash tools/itch_zip.sh` → `/tmp/LumenLedger_itch.zip`.
+
 This folder holds **only the game and the jam documents**.
 Dev material (screenshots, demos, chat prompts, handoffs, plans) was moved to `../LUMEN_extras/`
 (same relative paths, e.g. `LUMEN_extras/game/tools/check.mjs`, so it can be copied back if you need it).
@@ -17,6 +19,9 @@ LUMEN/
 > **PLAN NOTICE (2026-11-02):** development now follows **`../LUMEN_extras/game/docs/MASTER_PLAN_V6.md`** ("One game, not two").
 > Everything from update 17 onward in the old plan (regions/biomes/World v3, 13B, 14) is **stopped**. Next IDs: `40A 40B 41A–41D 42A–42D 43Z 44Z 45Z`
 > (see `LUMEN_extras/README_pipeline.md` "## Next"; `game/tools/next.sh` prints the one to do).
+
+## Ship v3 (45, S48, 2026-11-04) — version shown in the title menu: `S48 · jam build`
+Phase 45 added **no system** (ship rule 4). It produced the itch page text + 6 ship screenshots (`LUMEN_extras/game/docs/screenshots/45_ship/`, `game/docs/ITCH_PAGE.md`), the first **real-browser** funnel row (Playwright Chromium, `FUNNEL_BASELINE.md` "## 45B browser") with 13 quality gates ticked in `SUBMISSION_CHECKLIST.md` §D and 5 non-blocking findings in `PLAY_BUGS.md`, and the release zip: `bash tools/itch_zip.sh` → **9.7 MB · 336 files · sha256 `f07679fa14035e58b4377551230cf4c93f94ecc00c17adff85a096eb97f90080`**, `index.html` at zip root, every fetch relative (works offline, no CDN). Trailer (13B), APK (14) and the telemetry endpoint are **skipped** for the jam. Report: `LUMEN_extras/Game_Bible S48.md` · handoffs `HANDOFF_45Z/45A/45B/45C.md`.
 
 ## Readable market (44, S47, 2026-11-03) — version shown in the title menu: `S47`
 Prices, wants and seasonal demand are now *readable in the world*: every customer reacts with a ♥ / ✓ / ✗ glyph and the price (≤ 2 bubbles, never modal),
