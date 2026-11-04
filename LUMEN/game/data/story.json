@@ -1247,13 +1247,13 @@
       },
       {
         "speaker": "owl",
-        "text": "{who} came for {what} and found none. Empty hands, empty till."
+        "text": "{who} came for {what} and found none. Empty till."
       }
     ],
     "demand": [
-      { "speaker": "owl", "text": "New season, new appetites. {hot} sells itself; {cold} needs a kinder price." },
-      { "speaker": "owl", "text": "Everyone wants {hot} this season. Nobody is thinking about {cold}." },
-      { "speaker": "owl", "text": "Watch the signs: {hot} is hot, {cold} is cold. Fair moved, your price did not." }
+      { "speaker": "owl", "text": "New season. {hot} sells itself; {cold} needs a kinder price." },
+      { "speaker": "owl", "text": "Everyone wants {hot}. Nobody is thinking about {cold}." },
+      { "speaker": "owl", "text": "{hot} is hot, {cold} is cold. Fair moved; did your price?" }
     ],
     "wantsWho": {
       "saver": "Savers",
@@ -1270,8 +1270,8 @@
       "regular": "Regulars"
     },
     "walkIn": [
-        {"speaker": "pip", "text": "So this is Glowmarket. My very foggy island!", "at": 0.6},
-        {"speaker": "owl", "text": "Not if we sell first. Walk on.", "at": 2.4}
+        {"speaker": "owl", "text": "I kept your grandmother's books, Pip.", "at": 0.6},
+        {"speaker": "owl", "text": "Not if we sell first. Walk on.", "at": 7.0}
       ],
     "firstCoin": [
       {
