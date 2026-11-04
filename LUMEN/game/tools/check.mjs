@@ -817,7 +817,7 @@ if (doStory) {
     const { SCAMS, EVENTS } = await import(pathToFileURL(resolve('src/systems/economyData.js')).href);
     const speakers = new Set(Object.keys(story.speakers)); const moods = new Set(['happy', 'sad', 'angry', 'shout']);
     const banned = /\b(magic\w*|runes?|skeletons?|witch\w*|dragons?|demon\w*|zombies?|ghosts?|mumm(y|ies)|werewol(f|ves))\b/i;
-    let lines = 0;
+    let lines = 0, scamSets = 0;
     const walk = (arr, where) => { if (!Array.isArray(arr) || !arr.length) throw new Error(where + ' empty'); for (const l of arr) { lines++;
       if (!speakers.has(l.speaker)) throw new Error(where + ' bad speaker ' + l.speaker); if (typeof l.text !== 'string' || !l.text.trim()) throw new Error(where + ' no text');
       if (l.mood && !moods.has(l.mood)) throw new Error(where + ' bad mood ' + l.mood); const m = l.text.match(banned); if (m) throw new Error(where + ' banned word "' + m[0] + '"');
@@ -827,12 +827,28 @@ if (doStory) {
       const L = story.lessons[id]; if (!L || L.id !== id || !L.title || !L.lesson || !L.tip) throw new Error('lesson card ' + id); if (!S.title) throw new Error('season title ' + (i + 1));
       walk(S.opening, 'S' + S.season + ' opening'); walk(S.mid, 'S' + S.season + ' mid'); for (const v of ['default', 'low', 'high']) walk(S.ledger[v], 'S' + S.season + ' ledger.' + v); });
     for (const [id, sc] of Object.entries(SCAMS)) { const st = story.scams[id]; if (!st) throw new Error('scam ' + id + ' missing'); walk(st.pitch, id + '.pitch'); walk(st.accept, id + '.accept'); walk(st.refuse, id + '.refuse');
-      const ch = st.pitch[st.pitch.length - 1].choices; if (!ch || ch.length !== 2 || ch[0].id !== 'accept' || ch[1].id !== 'refuse') throw new Error(id + ' pitch must end with accept/refuse choices'); if (st.tell !== sc.tell) throw new Error(id + ' tell ≠ 4B'); if (st.lesson !== sc.lesson) throw new Error(id + ' lesson ≠ 4B'); }
+      if (st.tell !== sc.tell) throw new Error(id + ' tell ≠ 4B'); if (st.lesson !== sc.lesson) throw new Error(id + ' lesson ≠ 4B');
+      // 48G: the tree. pitch ends in choices; every choice id is accept/refuse/walk (= outcome) or names an array on the node that holds the next
+      // decision; every branch's last line either has choices again or is a leaf. Lesson-'scams' scripts need ≥ 3 choice sets (depth 3) + ≤ 110 chars.
+      const OUT = new Set(['accept', 'refuse', 'walk']); let sets = 0, leaves = 0; const seen = new Set();
+      const tree = (arr, where, depth) => { if (depth > 6) throw new Error(where + ' too deep'); const ch = arr[arr.length - 1].choices;
+        for (const l of arr) if (l.text.length > 110) throw new Error(where + ' line > 110 chars: ' + l.text.slice(0, 40) + '…');
+        if (!ch) { leaves++; return; } sets++; if (ch.length < 2 || ch.length > 3) throw new Error(where + ' needs 2–3 choices');
+        for (const c of ch) { if (OUT.has(c.id)) { if (c.id !== 'walk' && !Array.isArray(st[c.id])) throw new Error(id + ' no ' + c.id + ' leaf'); continue; }
+          if (!Array.isArray(st[c.id]) || !st[c.id].length) throw new Error(where + ' choice "' + c.id + '" has no branch array'); if (seen.has(c.id)) throw new Error(where + ' branch reused ' + c.id);
+          seen.add(c.id); walk(st[c.id], id + '.' + c.id); tree(st[c.id], id + '.' + c.id, depth + 1); } };
+      tree(st.pitch, id + '.pitch', 1); if (st.walk) walk(st.walk, id + '.walk');
+      const d3 = (ch) => ch.filter((c) => OUT.has(c.id)).length; const lastSets = Object.values(st).filter((a) => Array.isArray(a) && a.length && a[a.length - 1].choices).map((a) => a[a.length - 1].choices);
+      if (!lastSets.every((ch) => ch.some((c) => OUT.has(c.id)) || ch.some((c) => !OUT.has(c.id)))) throw new Error(id + ' dead choice set');
+      if (sc.lesson === 'scams') { if (sets < 3) throw new Error(id + ' (lesson scams) needs ≥ 3 choice sets, has ' + sets); if (!st.walk) throw new Error(id + ' needs a walk leaf (D1)');
+        if (!lastSets.filter((ch) => d3(ch) === 2 && ch.every((c) => c.id === 'accept' || c.id === 'refuse')).length) throw new Error(id + ' needs a D3 accept/refuse set'); }
+      else { const ch = st.pitch[st.pitch.length - 1].choices; if (ch.length !== 2 || ch[0].id !== 'accept' || ch[1].id !== 'refuse') throw new Error(id + ' pitch must end with accept/refuse choices'); }
+      scamSets += sets; }
     for (const id of Object.keys(EVENTS)) walk(story.events[id], 'event ' + id);
     walk(story.ending.win, 'ending.win'); walk(story.ending.lose, 'ending.lose'); walk(story.ending.endlessUnlock, 'ending.endlessUnlock');
     if (!Array.isArray(story.tutorial) || story.tutorial.length < 10) throw new Error('tutorial < 10'); const tid = new Set(); for (const t of story.tutorial) { if (!t.id || !t.text || !t.trigger || !/^[a-z]+:[a-z:]+$/i.test(t.trigger)) throw new Error('toast ' + JSON.stringify(t)); if (tid.has(t.id)) throw new Error('dup toast ' + t.id); tid.add(t.id); }
     const sizeKB = (readFileSync('data/story.json').length / 1024).toFixed(1);
-    console.log(`  story.json ${sizeKB} KB · ${story.seasons.length} seasons (opening/mid/ledger×3 each, lessons in BALANCE order) · ${Object.keys(story.lessons).length} lesson cards · ${Object.keys(story.scams).length} scams (pitch→accept/refuse, tells = 4B) · ${Object.keys(story.events).length} event lines = EVENTS · ending win/lose/endless · ${story.tutorial.length} tutorial toasts · ${lines} lines, speakers ⊂ SPEAKERS, moods ⊂ {happy,sad,angry,shout}, no banned words  OK`);
+    console.log(`  story.json ${sizeKB} KB · ${story.seasons.length} seasons (opening/mid/ledger×3 each, lessons in BALANCE order) · ${Object.keys(story.lessons).length} lesson cards · ${Object.keys(story.scams).length} scams (${scamSets} choice sets: 48G lesson-scams trees depth 3 look/walk → sign/ask/stall → accept/refuse, ≤ 110 chars; tells = 4B) · ${Object.keys(story.events).length} event lines = EVENTS · ending win/lose/endless · ${story.tutorial.length} tutorial toasts · ${lines} lines, speakers ⊂ SPEAKERS, moods ⊂ {happy,sad,angry,shout}, no banned words  OK`);
   } catch (err) { bad++; console.log('  story FAIL →', err.message); }
 
   // 8B: src/systems/story.js (pure JS). Runs the assert file as a child, then a bus-driven walk with a real 4B economy on a private bus:
