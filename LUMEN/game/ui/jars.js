@@ -95,6 +95,7 @@ export function mountJars(root, opts = {}) {
       row.append(wd); row.classList.add('has-wd');
     }
     row.title = JAR_INFO[k].hint;
+    if (opts.placed !== 'all') row.hidden = true;   // 48E: a row appears when its jar is BUILT (api.show / build:placed jar_*); opts.placed:'all' = legacy/tests
     panel.append(row);
     rows[k] = { row, icon, liquid, input, pctEl: pctEl.firstChild, bal: name.querySelector('.ll-jar-bal') };
     input.addEventListener('input', () => { api.setPct({ [k]: +input.value }, 'drag'); });
@@ -182,14 +183,23 @@ export function mountJars(root, opts = {}) {
       bus.emit('ui:jar:auto', { on, pct: { ...st.pct }, source }); return api;
     },
     setCollapsed(on) { panel.classList.toggle('collapsed', !!on); caret.innerHTML = iconize(on ? '▸' : '▾'); return api; },
+    /** 48E: jars are buildables — a row is visible only while its jar stands. No jars at all → the whole panel is hidden (no empty frame). */
+    show(k) { if (rows[k]) { rows[k].row.hidden = false; retrigger(rows[k].icon, 'pop'); } syncEmpty(); return api; },
+    hide(k) { if (rows[k]) rows[k].row.hidden = true; syncEmpty(); return api; },
+    shown() { return JAR_ORDER.filter((k) => rows[k] && !rows[k].row.hidden); },
     destroy() { offs.forEach((f) => f()); panel.remove(); },
   };
+  const syncEmpty = () => { const none = !JAR_ORDER.some((k) => rows[k] && !rows[k].row.hidden); panel.classList.toggle('empty', none); panel.hidden = none && opts.placed !== 'all'; };
+  const jarKey = (p) => { const id = String(p?.id || p?.entry?.id || ''); return id.startsWith('jar_') ? id.slice(4) : null; };
   const offs = [
+    bus.on('build:placed', (p) => { const k = jarKey(p); if (k) api.show(k); }),
+    bus.on('jars:registered', (p) => { if (p?.jar) api.show(p.jar); }),
+    bus.on('jars:removed', (p) => { if (p?.jar) api.hide(p.jar); }),
     bus.on('eco:jar', (p) => { if (p && p.jars) api.setBalances(p.jars); }),
     bus.on('eco:season', (r) => { if (r && r.jars) api.setBalances(r.jars); if (r && r.debt != null) api.setDebt(r.debt, r.spark); }),
     bus.on('eco:loan', (p) => { if (p && p.debt != null) api.setDebt(p.debt, null); }),
     bus.on('eco:spark', (p) => { if (p && p.spark != null) api.setDebt(null, p.spark); }),
   ];
-  render('*');
+  render('*'); syncEmpty();
   return api;
 }

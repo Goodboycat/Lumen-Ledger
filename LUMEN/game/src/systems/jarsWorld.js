@@ -7,7 +7,9 @@
 //   J.withdraw(jar, amount?) → amount moved. Invest refuses mid-season (eco.state.ended falsy → 'locked'); Save/Spend/Protect are free.
 //   J.press() / J.release()  → the E key / ✋ button. press = one deposit at once; holding ≥ HOLD_S withdraws instead, then repeats every REPEAT_S.
 //   J.spillPouch(frac?)      → 42C: a Collector contact knocks min(SPILL_FRAC·pouch, SPILL_CAP) ✦ onto the ground (onSpill(amount) drops the coins).
-//   J.register(id, mesh)     → 43: a 5th jar (e.g. 'festival'); eco must know the id or deposits are denied.
+//   J.register(id, mesh)     → 43: a 5th jar (e.g. 'festival'); eco must know the id or deposits are denied. 48E: jars are BUILDABLES — Game.js calls
+//                              register on build:placed {id:'jar_*'} and J.unregister(id) on build:removed (its balance → pouch in ONE place, DOM tag
+//                              removed, emits jars:removed {jar, refunded}). J.get(id) → mesh | null. Deposits to an unregistered key → 0 (no eco noise).
 //   J.update(dt)             → hold detection + DOM labels (name + amount, visible ≤ LABEL_R). J.destroy() → 0 listeners, labels removed.
 // Bus: jars:deposit {jar, amount} · jars:withdraw {jar, amount} · jars:near {jar|null} (on change) · jars:locked {jar} · jars:spill {amount}
 // Truth stays in eco.state.jars (eco.allocate / eco.withdraw); wireEconomy's `eco:jar` listener keeps the 1D setFill in sync, J only
@@ -36,7 +38,18 @@ export function createJarsWorld(opts = {}) {
   const dist = (m) => { const h = heroPos(), p = jarPos(m); return h && p ? Math.hypot(h.x - p.x, h.z - p.z) : Infinity; };
   const seasonLocked = (jar) => jar === 'invest' && !eco.state.ended;
 
-  J.register = (id, mesh) => { if (id && mesh) jars.set(id, mesh); return J; };
+  J.register = (id, mesh) => { if (id && mesh) { jars.set(id, mesh); bus.emit('jars:registered', { jar: id }); } return J; };
+  J.get = (id) => jars.get(id) || null;
+  // 48E: demolish → the jar's whole balance goes back to the pouch HERE (and only here) so place → demolish → place again is 0 / not doubled.
+  J.unregister = (id) => {
+    if (!id || !jars.has(id)) return 0;
+    const bal = Math.max(0, Math.round(eco.state.jars?.[id] || 0));
+    let refunded = 0; if (bal > 0) { try { refunded = eco.withdraw(id, bal) || 0; } catch { refunded = 0; } }
+    jars.delete(id); const tag = J.tags.get(id); if (tag) { tag.remove(); J.tags.delete(id); }
+    if (J.heldJar === id) J.release(); if (J.lastNear === id) { J.lastNear = null; bus.emit('jars:near', { jar: null }); }
+    bus.emit('jars:removed', { jar: id, refunded, spark: eco.state.spark });
+    return refunded;
+  };
   J.ids = () => [...jars.keys()]; J.meshOf = (id) => jars.get(id) || null;   // 48D: Game.js landTap routes a tap on a jar mesh to sb.interact()
   J.near = () => { let best = null, bd = NEAR_R; for (const [id, m] of jars) { const d = dist(m); if (d <= bd) { bd = d; best = id; } } return best; };
   J.fill01 = (id) => { const j = eco.state.jars; const tot = Math.max(1, Object.values(j).reduce((a, v) => a + v, 0)); return Math.min(1, (j[id] || 0) / tot); };

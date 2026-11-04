@@ -31,7 +31,7 @@ export const ICONS = {
   jar_spend: '🫙', jar_save: '🫙', jar_invest: '🫙', jar_protect: '🫙', fence_post: '🪵', fence_rail: '🪵', fence_gate: '🚪', crate: '📦', barrel: '🛢️',
   lantern_post: '🏮', lantern_hanging: '🏮', sign_arrow: '➡️', sign_board: '🪧', sign_hanging: '🪧', bench: '🪑', path_dirt: '🟫', path_stone: '⬜', banner_string: '🎏', flower_pot: '🪴', water_trough: '🛁',
 };
-export const CATEGORY_LABELS = { stall: 'Stalls', decor: 'Decor', nature: 'Nature', landmark: 'Landmarks', crew: 'Crew & Land' };
+export const CATEGORY_LABELS = { jar: 'Jars', stall: 'Stalls', decor: 'Decor', nature: 'Nature', landmark: 'Landmarks', crew: 'Crew & Land' };
 // BUGFIX B24: helpers + zone unlocks were debug-key only (H/Z). The 'crew' tab lists what the integrator offers via api.offers()
 // → [{ id, name, icon, cost, text, kind:'helper'|'zone', owned, blocker }] and a tap emits ui:build { action:'buy', id }.
 export const OFFER_ICONS = { helper_tallyOwl: '🦉', helper_packMole: '🧺', helper_sparkBee: '⚡', helper_guardTortoise: '🛡', helper_scoutFox: '👀', helper_gardenerSnail: '🌱', zone_west: '🗺', zone_east: '⚓', zone_far: '🗼' };
@@ -44,6 +44,7 @@ export function mountBuildMenu(root, opts = {}) {
   const sparkFn = typeof opts.spark === 'function' ? opts.spark : null;
   const iconFn = opts.icon || ((id) => ICONS[id] || '▪️');
   const cats = [...(opts.categories || ['stall', 'decor', 'nature'])]; if (opts.crewTab !== false && !cats.includes('crew')) cats.push('crew');
+  if (!cats.includes('jar') && opts.jarTab !== false && Object.values(catalog).some((e) => e && e.category === 'jar')) cats.unshift('jar');   // 48E: the Jars tab IS the guide to where the jars are — first
   const st = { open: false, placing: null, selected: null, placedById: new Map(), spark: sparkFn ? sparkFn() : (opts.spark ?? 0), cat: cats[0], locked: new Set(opts.locked || []), counts: {}, demolish: false };
 
   const wrap = el('section', 'll-build'); wrap.id = 'll-build';
@@ -103,7 +104,8 @@ export function mountBuildMenu(root, opts = {}) {
   // S29: one stall per type — a placed stall type is OWNED: its card shows a level badge (L1–L3) instead of a count and Deploy turns into
   //   "✓ Deployed · L2" (disabled) so the player reaches for ⬆ Upgrade. Decor / nature keep their counts and stay unlimited.
   const isStallId = (id) => (catalog[id] || {}).category === 'stall';
-  const ownedLevel = (id) => { if (!isStallId(id)) return 0; const l = placedOf(id); return l.length ? Math.max(...l.map((e) => e.level || 1)) : 0; };
+  const isJarId = (id) => (catalog[id] || {}).category === 'jar';   // 48E: one per key, no levels
+  const ownedLevel = (id) => { if (isJarId(id)) return countOf(id) > 0 ? 1 : 0; if (!isStallId(id)) return 0; const l = placedOf(id); return l.length ? Math.max(...l.map((e) => e.level || 1)) : 0; };
   const LEVEL_NAMES = { 1: 'L1', 2: 'L2', 3: 'L3 ★' };
 
   // B24: 'crew' tab = offers (helpers + zones) from the integrator; a card buys, no placement
@@ -154,7 +156,7 @@ export function mountBuildMenu(root, opts = {}) {
       card.classList.toggle('selected', st.selected === id);
       const n = countOf(id); const lvl = ownedLevel(id);
       card.classList.toggle('owned', lvl > 0); card.classList.toggle('maxed', lvl >= 3);
-      card.classList.toggle('has-count', n > 0); card.lastChild.textContent = lvl > 0 ? LEVEL_NAMES[lvl] || 'L' + lvl : n;
+      card.classList.toggle('has-count', n > 0); card.lastChild.textContent = lvl > 0 ? (isJarId(id) ? '✓' : LEVEL_NAMES[lvl] || 'L' + lvl) : n;   // 48E: a placed jar wears ✓, never a level
       if (lvl > 0 && cEl) cEl.innerHTML = iconize(lvl >= 3 ? '★ max' : '✓ yours');
       card.classList.toggle('poor', !locked && lvl === 0 && !affordable(cost));   // an owned stall is never "too expensive" — it is already bought
     }

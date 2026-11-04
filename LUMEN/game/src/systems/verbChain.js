@@ -41,7 +41,7 @@ export function installVerbChain(lg) {
     bonk: () => { V.flags.swung = false; },
     stall: () => { V.flags.placed = false; },
     // 42B: light the lantern nearest the Save jar (W.jars[1]) and bark the way; done = jars:deposit (any jar — the walk is the lesson)
-    deposit: () => { V.flags.applied = false; const sb = lg.sb, jar = sb?.world?.jars?.[1]; if (!jar) return; const jp = jar.position;
+    deposit: () => { V.flags.applied = false; const sb = lg.sb, jar = sb?.jarsWorld?.get?.('save') || null; if (!jar) return;   // 48E: Save jar only if the player built one const jp = jar.position;
       let best = null, bd = Infinity; for (const l of sb.world.lanterns || []) { const d = Math.hypot(l.position.x - jp.x, l.position.z - jp.z); if (d < bd) { bd = d; best = l; } }
       best?.userData?.setLit?.(true); V.flags.litLantern = best;
       bus.emit('story:bark', { speaker: 'owl', text: 'Carry it to the Save jar — by the cottage, the blue one.', anchor: { x: jp.x, y: 1.3, z: jp.z }, ttl: 3.6 }); },

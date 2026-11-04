@@ -186,7 +186,9 @@ function buildScenery(sb, rnd) {
   W.waterfall = place(makeProp('waterfall', { height: 2.4 }), east.center.x + 2, east.center.z + 2.5, { rot: Math.PI, w: 2, d: 2, parent: east.group });
   W.live.push(W.lighthouse, W.cottage, W.pier, W.waterfall, ...W.towers);
   // live decor: 4 jars by the cottage, 5 lanterns, hanging sign + banner at the plaza entrance
-  JAR_IDS.forEach((id, i) => { const j = place(makeProp(id, { fill: 0.25 }), -8 + i, 3); W.jars.push(j); W.live.push(j); });
+  // 48E: jars are BUILDABLES — nothing is pre-placed (the old `-8+i, 3` row hung one jar over water). W.jars stays an (empty) array for v1 consumers;
+  //      the truth is sb.jarsWorld.get(key) (may be null). JAR_IDS still names the 4 catalog props (jar_spend … jar_protect).
+  void JAR_IDS;
   for (const [x, z] of [[-1.5, -8], [1.5, -8], [-6, -2], [5, 4], [-2, 5.5]]) { const l = place(makeProp(rnd() < 0.5 ? 'lantern_post' : 'lantern_hanging'), x, z); l.userData.setLit?.(false); W.lanterns.push(l); W.live.push(l); }
   W.live.push(place(makeProp('sign_hanging'), -5, -6), place(makeProp('banner_string'), -1, -4.5, { w: 2 }));
   // static decor + nature → baked per zone
@@ -303,7 +305,7 @@ function wireEconomy(sb) {
   off.push(bus.on('build:placed', (p) => { if (p?.id && p.entry?.category === 'stall') sb.signTint(p.id); }));
   off.push(bus.on('build:upgraded', (p) => { if (p?.id) sb.signTint(p.id); }));   // level rebuild = new sign mesh
   off.push(bus.on('eco:fog', (p) => { const f = p?.fog01 ?? eco.state.fog01; vfx.fog?.setCoverage?.(f); world.towers.forEach((t) => t.userData.setActive?.(f > 0.3)); if (f > 0.6) vfx.debtPulse?.(0.4); }));
-  off.push(bus.on('eco:jar', () => { const j = eco.state.jars, tot = Math.max(1, j.spend + j.save + j.invest + j.protect); ['spend', 'save', 'invest', 'protect'].forEach((k, i) => world.jars[i]?.userData.setFill?.(Math.min(1, j[k] / tot))); }));
+  off.push(bus.on('eco:jar', () => { const j = eco.state.jars, tot = Math.max(1, j.spend + j.save + j.invest + j.protect); ['spend', 'save', 'invest', 'protect'].forEach((k) => sb.jarsWorld?.get?.(k)?.userData.setFill?.(Math.min(1, j[k] / tot))); }));   // 48E: placed jars only
   off.push(bus.on('eco:season', (r) => {
     sb.stats.seasons++; sb.stats.reports.push(r);
     const spot = sb.hero.root.position.clone().setY(2); vfx.pop?.show?.(spot, `Season ${r.season} ★${r.stars}`, { color: '#FFD54F', dur: 1.6, size: 1.1 });
@@ -395,6 +397,11 @@ function installJarsWorld(sb) {
   const J = createJarsWorld({ bus, eco, jars: sb.world.jars, hero, vfx, sequences: sb.game.sequences, labels: sb.labelsRoot || null, camera: () => sb.game.camera?.three || sb.game.camera,
     onSpill: (a) => { const h = hero.root.position; let left = a; for (let i = 0; left > 0 && i < 4; i++) { const v = i === 3 ? left : Math.max(1, Math.round(a / 4)); left -= v; const ang = Math.random() * Math.PI * 2; sb.dropTip?.(h.x + Math.cos(ang) * 0.9, h.z + Math.sin(ang) * 0.9, v); } sb.stats.spilled = (sb.stats.spilled || 0) + a; } });
   sb.jarsWorld = J;
+  // 48E: jars are buildables. build:placed {id:'jar_*'} → register(key, group) + the panel row shows; build:removed → unregister (balance → pouch) + row hides.
+  const jarKeyOf = (p) => { const id = String(p?.id || p?.entry?.id || ''); return id.startsWith('jar_') ? id.slice(4) : null; };
+  sb._offs.push(bus.on('build:placed', (p) => { const k = jarKeyOf(p); if (!k) return; const g = p.group || p.entry?.group; if (g) { g.userData.jar = k; J.register(k, g); g.userData.setFill?.(J.fill01(k)); } }));
+  sb._offs.push(bus.on('build:removed', (p) => { const k = jarKeyOf(p); if (k) J.unregister(k); }));
+  for (const e of sb.build?.placed?.values?.() || []) { const k = jarKeyOf(e); if (k && e.group) { e.group.userData.jar = k; J.register(k, e.group); } }   // jars already placed (restore order)
   sb.interact = () => {
     if (J.near()) return J.press() || 'jar';
     if (sb.pier?.near?.()) return sb.pier.interact() || 'pier';                     // 42D: the Baron waits at the pier → pay interest / repay
@@ -410,7 +417,7 @@ function installJarsWorld(sb) {
   sb.signHoldTick = () => { const sh = sb._signHold; if (sh && !sh.fired && sb.game.time - sh.t0 >= 0.5) { sh.fired = true; bus.emit('ui:price', { id: sh.id, delta: -1 }); } };
   sb.interactRelease = () => { J.release(); sb.pier?.release?.(); const sh = sb._signHold; if (sh) { sb._signHold = null; if (!sh.fired) bus.emit('ui:price', { id: sh.id, delta: +1 }); } };
   // bark on an absorbed event at the Protect jar (P2): the spatial choice pays back visibly
-  const protectBark = (title, amount) => { const m = sb.world.jars[3]; if (m) bus.emit('story:bark', { speaker: 'owl', text: `The Protect jar ate the ${title || 'shock'}${amount ? ` (${amount} ✦)` : ''}. That is what it is for.`, anchor: { x: m.position.x, y: 1.2, z: m.position.z }, ttl: 3.4 }); };
+  const protectBark = (title, amount) => { const m = J.get('protect'); if (m) bus.emit('story:bark', { speaker: 'owl', text: `The Protect jar ate the ${title || 'shock'}${amount ? ` (${amount} ✦)` : ''}. That is what it is for.`, anchor: { x: m.position.x, y: 1.2, z: m.position.z }, ttl: 3.4 }); };
   sb._offs.push(bus.on('eco:absorbed', (p) => protectBark(eco.events?.[p?.id]?.title)));                                  // Bubble Shield path
   sb._offs.push(bus.on('eco:event', (p) => { if (p?.effect?.absorbed > 0) protectBark(p.event?.title, p.effect.absorbed); }));   // the jar itself absorbed (4A rule)
   sb._offs.push(() => { J.destroy(); sb.jarsWorld = null; });

@@ -25,6 +25,8 @@
 
 import * as THREE from '../../vendor/three.module.js';
 /** P10: friendly ids → catalog ids (the Warm Loaf Bakery card is `stall_bread`); saves keep the catalog id. */
+/** S29 stalls + 48E jars: one placed prop per catalog id. */
+const UNIQUE_CATS = new Set(['stall', 'jar']);
 export const PROP_ALIASES = { stall_bakery: 'stall_bread', stall_loaf: 'stall_bread' };
 import { Sequence } from '../anim/Sequencer.js';
 import { Easing } from '../anim/Easing.js';
@@ -96,9 +98,9 @@ export class BuildSystem {
   occupied(x, z) { return this.cells.get(key(Math.round(x), Math.round(z))) || null; }
   /** S29: the ONE placed stall of catalog id `id` (stalls are unique per type), or null. Decor / nature always return null. */
   owned(id) {
-    const e = this.entry(id); if (!e || e.category !== 'stall') return null;
+    const e = this.entry(id); if (!e || !UNIQUE_CATS.has(e.category)) return null;   // 48E: jars are unique too (one Save jar)
     const cid = this.catalog[id] ? id : PROP_ALIASES[id];
-    for (const p of this.placed.values()) if (p.id === cid && p.category === 'stall' && !p.scenery) return p;
+    for (const p of this.placed.values()) if (p.id === cid && UNIQUE_CATS.has(p.category) && !p.scenery) return p;
     return null;
   }
   /** S29: why `id` cannot be placed at all right now (independent of the cell): 'duplicate' when a stall of that type already stands, else null. */
