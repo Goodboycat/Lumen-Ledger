@@ -42,18 +42,21 @@ No spreadsheets. The spreadsheet is the island.
 *~25 minutes for the story run · keyboard, mouse or touch · plays in the browser, nothing to install.*
 
 ### How to play
-1. **Build** — press **B** (or the 🔨 button), pick a stall, walk the green ghost to a free tile, confirm. *Needs* stalls (Fruit, Bakery, Fish, Tea) sell volume; *wants* stalls (Flower Cart, Toy Box, Lantern Shop, Pottery, Cloth Weaver, Book Nook, Tool Smith) sell margin — but only when Glimmers have Spark left.
+1. **Build** — press **B** or **tap the ground**: the tray opens with a green ghost on that tile; pick a stall, confirm. *Needs* stalls (Fruit, Bakery, Fish, Tea) sell volume; *wants* stalls (Flower Cart, Toy Box, Lantern Shop, Pottery, Cloth Weaver, Book Nook, Tool Smith) sell margin — but only when Glimmers have Spark left.
 2. **Sell** — Glimmers queue, browse and pay. Coins fly to Pip. Price near the fair price keeps them happy; 1.4× and they stomp off angry.
-3. **Split** — walk to the four jars by the cottage and press **E** to put 10 Spark in (hold E to take it back out); do it before the season's income lands. Save ≥ 200 Spark is what pushes the fog back; Protect absorbs storm damage; Invest grows 8 % ± 4 %.
+3. **Split** — the four jars are **yours to place** (first tray tab, one of each, no cost); walk up to a jar to put 10 Spark in (hold to take it back out); do it before the season's income lands. Save ≥ 200 Spark is what pushes the fog back; Protect absorbs storm damage; Invest grows 8 % ± 4 %.
 4. **Review** — at the season bell, read your Ledger, collect stars, tap CONTINUE. One lesson per season, ten seasons, one lighthouse.
 
 ### Controls
+Three verbs — **move · attack · dash**; **tap the ground to build; walk up to things to use them** (jars, tills, Glimmers — no interact button). The only text that ever pops is a blue once-only tutor card; tap it or wait 8 s.
+
 | Action | Keyboard | Touch |
 |---|---|---|
 | Move Pip | WASD / arrows | left‑side virtual joystick |
-| Hammer / confirm | Space · J · Enter | **A** button |
-| Interact | E · F | **B** button |
-| Build menu | B | 🔨 button |
+| Attack / confirm | Space · J · Enter | **A** button (drawn icon) |
+| Dash | Shift | dash button (drawn icon) |
+| Use (jar, till, sign, NPC) | walk up to it (E · F also work) | walk up to it |
+| Build menu | B | tap empty ground |
 | Abilities | Q W E R F G | ability tray |
 | Pause / settings | Esc · P | ⏸ in the HUD · Android back button |
 | Dialogue | Enter / click · 1–4 for choices | tap · choice buttons |
