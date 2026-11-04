@@ -44,7 +44,6 @@ export const DEFAULT_EVENTS = {
   // voice_<speaker> (pip / owl / baron / glimmer / collector). Narrator / unknown speakers keep the neutral dlg_blip.
   'ui:dialogue:say':   { sfx: 'dlg_blip',    cooldown: 0.05, pick: (p) => ({ sfx: VOICE_SFX[p?.speaker] || 'dlg_blip' }) },
   'story:bark':        { sfx: 'dlg_blip',    cooldown: 0.25, vol: 0.45, pick: (p) => ({ sfx: VOICE_SFX[p?.speaker] || 'dlg_blip' }) }, // 41A P3: speech bubble = one quiet voice hum (no duck, no modal)
-  'story:toast':       { sfx: 'toast',       cooldown: 0.4, vol: 0.6 },
   'story:lesson':      { sfx: 'quest_complete', cooldown: 2, vol: 0.7 },                          // lesson card earned
   'game:unlock':       { sfx: 'chest',       cooldown: 2 },                                           // S25 endless unlocked
   'ui:choice':         { sfx: 'click',       cooldown: 0.1 },

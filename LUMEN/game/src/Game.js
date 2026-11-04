@@ -698,7 +698,6 @@ export function createLumenGame(game, opts = {}) {
     n = SPEEDS.includes(+n) ? +n : 1; lg.speed = n;
     if (game.hitStop?.active) { const i = game.hitStop.targets.indexOf(game); if (i >= 0) game.hitStop.saved[i] = n; } else game.timeScale = n;
     bus.emit('game:speed', { speed: n });
-    if (!silent && lg.sb) bus.emit('ui:toast', { text: n > 1 ? `Time ×${n} — tap ⏩ or press T to slow down` : 'Normal speed', kind: 'info', icon: '⏩', id: 'speed', duration: 1400 });
     return n;
   };
   lg._offs.push(bus.on('ui:speed', (p) => { if (!lg.sb || (lg.state !== 'playing' && lg.state !== 'endless')) return; const next = p?.cycle ? SPEEDS[(SPEEDS.indexOf(lg.speed) + 1) % SPEEDS.length] : p?.speed; lg.setSpeed(next); }));
@@ -963,7 +962,7 @@ function installRunWires(lg) {
   offs.push(() => { if (ui?.build) { ui.build.offers = null; ui.build.priceOf = null; } });
   // BUGFIX B13: closing the tray never leaves a live ghost. BUGFIX P13: demolish mode SURVIVES closing the tray (the player closes it to see the
   // island and tap a stall) — the tray's own close() keeps st.demolish, the HUD toast says how to leave it, and Esc / re-open ✕ / a pick ends it.
-  on('ui:build:close', () => { if (build.mode === 'place') build.exit(); if (lg.demolishMode) bus.emit('ui:toast', { text: 'Demolish mode: tap a building to sell it (50 % refund) · ' + (lg.game.input?.isTouch ? '✕ Done or 🔨 to leave' : 'Esc or ✕ Done to stop'), kind: 'warn', icon: '💥', id: 'demolish-mode', duration: 6000, action: { label: 'Stop', emit: 'ui:demolish:stop' } }); });   // BUGFIX P28: touch has a tappable Stop
+  on('ui:build:close', () => { if (build.mode === 'place') build.exit(); });   // 48H: demolish toast deleted. BUGFIX P28: touch has a tappable Stop
   // BUGFIX B13: a placed STALL ends placement in both layers (no accidental second purchase on the next click); cheap decor/nature stay
   // armed for quick fences/paths and Esc / ✕ cancel them. build.exit() emits build:exit → the tray leaves placing.
   on('build:placed', (p) => { if (!p?.silent && build.mode === 'place' && String(p?.id).startsWith('stall_')) build.exit(); });
@@ -992,17 +991,17 @@ function installRunWires(lg) {
     const ok = eco.allocate(d); if (ok) bus.emit('game:allocated', { moved, deltas: d, spark: eco.state.spark, auto: true }); return ok ? moved : 0;
   };
   on('eco:spark', (p) => { if (p && p.delta > 0 && (p.reason === 'sale' || String(p.reason || '').startsWith('tip:'))) lg.autoSplit(p.delta); });
-  on('ui:jar:auto', (p) => { lg.autoApply = !!p?.on; if (p?.pct) lg.jarPct = { ...p.pct }; if (p?.source !== 'restore') bus.emit('ui:toast', { text: lg.autoApply ? 'Pay yourself first: every sale is split into your jars automatically' : 'AUTO off — use APPLY to move Spark into the jars', kind: lg.autoApply ? 'ok' : 'info', icon: '⚡', id: 'jar-auto', duration: 2600 }); });
+  on('ui:jar:auto', (p) => { lg.autoApply = !!p?.on; if (p?.pct) lg.jarPct = { ...p.pct }; });
   if (ui?.jars?.setAuto && ui.jars.auto !== lg.autoApply) ui.jars.setAuto(lg.autoApply, 'restore');
   // BUGFIX B11: ↩ on a jar → Spark back into the pouch. BUGFIX B01: PAY BARON → economy.repay (the only way to clear principal; isWin needs debt 0).
   on('ui:jar:withdraw', (p) => { if (!p?.jar) return; const a = eco.withdraw(p.jar, p.amount); if (a > 0) bus.emit('game:withdrew', { jar: p.jar, amount: a, spark: eco.state.spark }); });
   lg.repay = (amount) => { const a = eco.repay(amount != null ? amount : eco.state.debt); if (a > 0) { bus.emit('game:repaid', { amount: a, debt: eco.state.debt, spark: eco.state.spark }); ui?.hud?.sync?.(eco.state); } return a; };
-  on('ui:repay', (p) => { const a = lg.repay(p?.amount); if (a > 0 && p?.source === 'hud') bus.emit('ui:toast', { text: eco.state.debt > 0 ? `Paid the Baron ${a} ✦ — ${eco.state.debt} ✦ left` : `Paid the Baron ${a} ✦ — DEBT FREE!`, kind: eco.state.debt > 0 ? 'ok' : 'gold', icon: '💸', id: 'repay', duration: 2400 }); });   // S05: HUD PAY gets a toast (the jars panel shows its own debt row)
+  on('ui:repay', (p) => { lg.repay(p?.amount); });   // 48H: HUD PAY toast deleted (the jars panel shows its own debt row)
   // ability keys — only while playing/endless and no modal owns the screen (dialogue keys 1–4, ledger Enter, pause Esc)
   lg.ability = (name) => { if (!lg.sb || (lg.state !== 'playing' && lg.state !== 'endless') || lg.game.paused) return null; return sb.ability(name); };
   // BUGFIX P27: 🔨 on the touch pad while a ghost is up CONFIRMS placement (BuildSystem._onAction already did via input.press) — it must
   //   not toggle (= close) the tray, which emitted ui:build:close → build.exit() and cancelled the placement. In demolish mode 🔨 leaves it (P28).
-  on('ui:touch', (p) => { if (p?.action !== 'build' || lg.game.paused) return; if (build.mode === 'place') return; if (lg.demolishMode) { lg.demolishMode = false; ui?.build?.cancel?.(); bus.emit('ui:toast', { text: 'Demolish mode off', kind: 'info', icon: '💥', id: 'demolish-mode', duration: 1500 }); return; } ui?.build?.toggle?.(); });
+  on('ui:touch', (p) => { if (p?.action !== 'build' || lg.game.paused) return; if (build.mode === 'place') return; if (lg.demolishMode) { lg.demolishMode = false; ui?.build?.cancel?.(); return; } ui?.build?.toggle?.(); });
   on('ui:demolish:stop', () => { lg.demolishMode = false; ui?.build?.cancel?.(); });   // S09: also fired by the floating ✕ Done pill (was bus.on → leaked one listener per run)
   // BUGFIX P43: the season ends (ledger review) / the run ends → drop the build ghost, demolish mode and the open tray so nothing stays armed
   //   behind the Ledger modal or into the next season. ui.build.cancel() emits ui:build {action:'cancel'} → build.exit() + lg.demolishMode=false.
@@ -1019,7 +1018,7 @@ function installRunWires(lg) {
     const e = build.nearestUpgradable(hero.root.position.x, hero.root.position.z, 2.5);
     if (e) { lg.demolishMode = false; if (ui?.build?.state) ui.build.state.demolish = false; return build.upgrade(e) ? 'upgrade' : 'denied'; }   // S34 / P79
     const near = build.nearest(hero.root.position.x, hero.root.position.z, 2.5);
-    if (near && !near.scenery && near.category === 'stall' && near.level >= 3) { bus.emit('ui:toast', { text: `${near.id.replace('stall_', '')} stall is already max level`, kind: 'info', icon: '⬆', id: 'interact', duration: 1800 }); return 'max'; }
+    if (near && !near.scenery && near.category === 'stall' && near.level >= 3) { return 'max'; }
     ui?.build?.open?.(); return 'tray';
   };
   on('ui:touch', (p) => { if (p?.action === 'interact') lg.interact(); if (p?.action === 'interact:release') lg.sb?.interactRelease?.(); });   // 42B: ✋ hold → withdraw (touch.js emits the release when it supports it)
@@ -1037,7 +1036,7 @@ function installRunWires(lg) {
   if (lg.game.input) lg.game.input.onTap = (world, ev) => {
     if (build.mode === 'place') { if (ui?.isModal?.()) return; build.moveTo(world.x, world.z); if (ev?.pointerType === 'mouse') build.confirm(); return; }
     // BUGFIX P17: prefer the prop under the cursor in 3D (roof / sign / awning) — the ground-plane point sits ~1.9 u behind a 2.2 u tall stall
-    if (lg.demolishMode) { const e = build.pick(lg.game.input?._ray?.ray) || build.nearest(world.x, world.z, 1.2); if (e && !e.scenery) build.demolish(e); else if (e && e.scenery) bus.emit('ui:toast', { text: 'That is part of the island — only things YOU built can be sold', kind: 'info', icon: '🌿', id: 'scenery-sell', duration: 2200 }); return; }   // P23: explain instead of silent refusal
+    if (lg.demolishMode) { const e = build.pick(lg.game.input?._ray?.ray) || build.nearest(world.x, world.z, 1.2); if (e && !e.scenery) build.demolish(e); else if (e && e.scenery) return; }   // P23: explain instead of silent refusal
     if (lg.selectTap?.(world, ev)) return;
     if (lg.landTap?.(world, ev)) return;   // 48D: tap a jar → use it · tap empty ground → the build tray opens on that cell
     prevTap?.(world, ev);
@@ -1082,12 +1081,12 @@ function installRunWires(lg) {
     if (!lg.sb || lg.game.paused || ui?.isModal?.() || build.mode === 'place' || lg.demolishMode) return false;
     const e = build.pick(lg.game.input?._ray?.ray) || build.nearest(world.x, world.z, 1.0);
     if (!e) return false;
-    if (e.scenery) { bus.emit('ui:toast', { text: 'That is part of the island — tap a stall you built to inspect it', kind: 'info', icon: '🌿', id: 'scenery-sell', duration: 1800 }); return true; }
+    if (e.scenery) { return true; }
     const cat = e.category || build.entry?.(e.id)?.category || 'stall';
     ui?.build?.setCategory?.(cat); ui?.build?.open?.(); ui?.build?.select?.(e.id);
     lg.inspected = { id: e.id, level: e.level || 1, at: lg.game.time };
     bus.emit('ui:inspect', { id: e.id, level: e.level || 1, category: cat, cost: e.cost });
-    bus.emit('ui:toast', { text: `${(build.entry?.(e.id)?.name) || e.id.replace(/^stall_/, '')}${cat === 'stall' ? ` · L${e.level || 1}` : ''} — Deploy, Upgrade or Sell it from the tray`, kind: 'info', icon: '🔍', id: 'inspect', duration: 2000 });
+
     return true;
   };
   offs.push(() => { if (lg.game.input) lg.game.input.onTap = prevTap; });
@@ -1103,14 +1102,13 @@ function installRunWires(lg) {
       const e = build.dragStart(world.x, world.z, ray);
       if (!e) return false;
       lg.dragging = e;
-      bus.emit('ui:toast', { text: `Moving ${(build.entry?.(e.id)?.name) || e.id.replace(/^stall_/, '')} — drop it on green · ${inp.isTouch ? '✋' : 'R'} rotates`, kind: 'info', icon: '✋', id: 'drag', duration: 1600 });
+
       return true;
     };
     inp.onDrag = (world) => { if (lg.dragging) build.dragMove(world.x, world.z); };
     inp.onDragEnd = (world, ev, cancelled) => {
       if (!lg.dragging) return; lg.dragging = null;
-      const moved = build.dragEnd(!!cancelled);
-      if (!moved && !cancelled) bus.emit('ui:toast', { text: 'Cannot stand there — it hopped back', kind: 'warn', icon: '🚫', id: 'drag', duration: 1500 });
+      build.dragEnd(!!cancelled);   // 48H: 'hopped back' toast deleted
     };
   }
   on('build:moved', () => { sb.syncStalls(); for (const h of sb.helpers) if (h.stall) seatHelper(sb, h, h.stall); });   // helpers follow their stall
