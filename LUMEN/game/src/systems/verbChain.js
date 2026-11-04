@@ -87,7 +87,7 @@ export function installVerbChain(lg) {
     if (V.step < 0 || !lg.sb || lg.cine?.active || dialogueOpen()) return;
     V.t += dt; V.total += dt; const id = VERB_STEPS[V.step];
     if (DONE[id]()) return enter(V.step + 1);
-    if (V.t >= AUTO_S) { V.autoBarks++; bus.emit('story:toast', { id: 'verb-later-' + id, text: 'Later, then.', icon: '🦉', kind: 'info' }); return enter(V.step + 1); }
+    if (V.t >= AUTO_S) { V.autoBarks++; return enter(V.step + 1);   // 48A: silent auto-advance (toast deleted) }
     if (V.t >= PULSE_S && !V.flags.pulsed) { V.flags.pulsed = true; ui(hints[id], KEYS[id], true); }
   };
   // once bonk completes, pay the sword's first job: 3 coins

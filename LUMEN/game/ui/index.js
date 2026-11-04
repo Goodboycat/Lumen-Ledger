@@ -1,10 +1,10 @@
-// 10C — ONE mount for the whole UI (7A HUD/jars/build · 7B ledger/dialogue/toast · 7C title/pause/touch). DOM only, no Three.
+// 10C — ONE mount for the whole UI (7A HUD/jars/build · 7B ledger/dialogue · 7C title/pause/touch). DOM only, no Three.
 //   import { mountUI } from './ui/index.js';
 //   const ui = mountUI(root, { bus, stats: () => game.stats, input: game.input, catalog: PROP_CATALOG, spark: () => eco.state.spark,
 //                              seasonsToWin: 10, hasSave: false, onOutline: setOutlineThickness, touch: true });
 //   per frame: ui.update(dt)   (all panels are mounted with selfDrive:false so the game loop is the single clock)
 //   ui.destroy()               (removes every panel + bus listener — used by restart / back-to-title)
-// Order matters (7A/7B/7C notes): title first (owns the screen) → HUD → jars → build → ledger → dialogue → toast → pause → touch (last: auto-hides under modals).
+// Order matters (7A/7B/7C notes): title first (owns the screen) → HUD → jars → build → ledger → dialogue → pause → touch (last: auto-hides under modals).
 // Ledger is mounted with autoOpen:false — 10C opens it on `story:review` (8B) so the story lines play BEFORE the review sheet.
 import { mountHUD } from './hud.js';
 import { mountReveal } from './reveal.js';   // S41/15A: progressive HUD (jars collapsed, staged widget reveal for tutorial skippers)
@@ -12,7 +12,6 @@ import { mountJars } from './jars.js';
 import { mountBuildMenu } from './build.js';
 import { mountLedger } from './ledger.js';
 import { mountDialogue } from './dialogue.js';
-import { mountToast } from './toast.js';
 import { mountWave } from './wave.js';     // S41/15D: Collector wave banner + edge arrows pointing at off-screen enemies
 import { mountNudge } from './nudge.js';   // S42/16B: 'Touch here!' hand on the ⏩ button when nothing is happening
 import { mountBarks } from './bark.js';
@@ -23,7 +22,7 @@ import { mountTouch } from './touch.js';
 import { mountSeasonInfo } from './seasons.js';
 
 export const UI_VERSION = 'S50';
-export const UI_CSS = ['ui/base.css', 'ui/hud.css', 'ui/jars.css', 'ui/build.css', 'ui/ledger.css', 'ui/dialogue.css', 'ui/toast.css', 'ui/wave.css', 'ui/bark.css', 'ui/title.css', 'ui/pause.css', 'ui/touch.css', 'ui/seasons.css'];   // 46B: ui/tutorial.css deleted (old overlay tutorial gone)
+export const UI_CSS = ['ui/base.css', 'ui/hud.css', 'ui/jars.css', 'ui/build.css', 'ui/ledger.css', 'ui/dialogue.css', 'ui/wave.css', 'ui/bark.css', 'ui/title.css', 'ui/pause.css', 'ui/touch.css', 'ui/seasons.css'];   // 46B: ui/tutorial.css deleted (old overlay tutorial gone)
 
 /**
  * @param {HTMLElement} root  overlay root (#game-root). Panels append themselves; the canvas stays underneath.
@@ -42,7 +41,7 @@ export function mountUI(root, opts = {}) {
   add('build', mountBuildMenu(root, { bus, catalog: opts.catalog || {}, spark: opts.spark || 0, categories: opts.categories || ['stall', 'decor', 'nature'], noHotkey: true, noEsc: true }));
   add('ledger', mountLedger(root, { bus, seasonsToWin, autoOpen: false, selfDrive: false }));
   add('dialogue', mountDialogue(root, { bus, pauseGame: opts.pauseGame !== false, selfDrive: false, cps: opts.cps }));
-  add('toast', mountToast(root, { bus, max: 3 }));
+  // 48A: toast deleted — no top notifications. ui.toast is undefined; callers use ui.toast?.
   add('wave', mountWave(root, { bus }));   // S41/15D — index.html binds camera/enemies via ui.wave.bind({...}) once the sandbox exists
   if (opts.nudge !== false) add('nudge', mountNudge(root, { bus }));   // S42/16B — Game.js binds the bored() predicate via ui.nudge.bind({...})
   if (opts.barks !== false) add('barks', mountBarks(root, { bus }));

@@ -1133,7 +1133,7 @@ if (doUI) {
     console.log(`  build: ${stalls} stall cards · B opens · select stall_fruit → ui:build{select,40} · poor → denied shake · locked silent · build:enter → placing banner · ghost red · placed → owned L1 badge + "✓ yours" + Deploy disabled · 2nd deploy denied(duplicate) · upgraded → L2 / L3 ★ maxed · removed → deployable again · decor keeps counts · eco:spark refresh · ${lm} paid landmarks · decor tab · denied text · Esc  OK`);
   } catch (err) { bad++; console.log('  build FAIL →', err.message); }
 
-  // 7B: ledger.js / dialogue.js / toast.js. Checks: eco:season → ledger opens with rows/chips/title, count-up settles via update(dt),
+  // 7B: ledger.js / dialogue.js (toast.js deleted 48A). Checks: eco:season → ledger opens with rows/chips/title, count-up settles via update(dt),
   // skip() → all final, stars on/off, lesson card from LESSONS + story:lesson override, CONTINUE → ui:continue {outcome}, eco:win/eco:lose headers,
   // dialogue typewriter cps + punctuation pauses, story:line queue, advance → ui:advance / hide, choices → ui:choice + keys 1–4, ui:pause on/off,
   // toast push/coalesce ×N/max/clear + bus listeners (build:placed, eco:denied, eco:event, cust:angry ×2 coalesce).
@@ -1205,30 +1205,20 @@ if (doUI) {
     dlg.destroy(); if (dlg.el.parentNode) throw new Error('destroy');
     console.log('  dialogue: story:line ×2 → open + queue 1 + ui:pause on · Tally-Owl portrait · typewriter 50 cps partial → done (punct. pauses) · advance → ui:advance / next line (Pip happy) · tap while typing = skip · Enter → close + ui:pause off · choices ×2, advance blocked, key 2 → ui:choice{1,Refuse} · narrator · generic "Z" · story:end · destroy  OK');
   } catch (err) { bad++; console.log('  dialogue FAIL →', err.message); }
-  // 6. Toasts
+  // 6. 48A NO TOASTS — toast.js/toast.css deleted. mountUI must expose no toast, and spamming the old events must create no DOM.
   try {
-    const { mountToast } = await import(pathToFileURL(resolve('ui/toast.js')).href);
-    const toast = mountToast(root, { bus, max: 3, duration: 0 }); // duration 0 → no auto-dismiss (deterministic)
-    const h = toast.push('Hello', { kind: 'ok', icon: '🔨' });
-    if (toast.count !== 1 || !h || !h.el.classList.contains('ok') || !/hammer|svg|🔨/.test(h.el.querySelector('.ll-toast-icon').innerHTML) || h.el.querySelector('.ll-toast-text').textContent !== 'Hello') throw new Error('push');
-    toast.push('Hello'); if (toast.count !== 1 || h.el.querySelector('.ll-toast-badge').textContent !== '×2' || !h.el.classList.contains('bump')) throw new Error('coalesce same text');
-    toast.push({ text: 'A', id: 'k' }); toast.push({ text: 'B', id: 'k' }); if (toast.count !== 2 || toast.items[0].count !== 2) throw new Error('coalesce by id ' + JSON.stringify(toast.items));
-    toast.push('C'); toast.push('D'); if (toast.count !== 3 || toast.items.some((t) => t.text === 'Hello')) throw new Error('max 3 drops oldest ' + JSON.stringify(toast.items));
-    if (toast.el.children[0].querySelector('.ll-toast-text').textContent !== 'D') throw new Error('newest on top');
-    h.close(); toast.clear(); if (toast.count !== 0) throw new Error('clear');
-    const closed = toast.push('bye'); closed.el.click(); if (toast.count !== 0) throw new Error('click dismiss');
-    bus.emit('build:placed', { id: 'stall_fruit' }); if (toast.count !== 1 || toast.items[0].text !== 'Fruit built') throw new Error('build:placed → ' + JSON.stringify(toast.items));
-    bus.emit('eco:denied', { cost: 90 }); if (toast.items[0].text !== 'Not enough Spark (need 90)' || !toast.el.children[0].classList.contains('bad')) throw new Error('eco:denied');
-    bus.emit('eco:event', { event: { title: 'Spark Storm', text: 'Repairs 40.' } }); if (!/^Spark Storm: Repairs 40\./.test(toast.items[0].text)) throw new Error('eco:event');
-    bus.emit('cust:angry', { reason: 'waited' }); bus.emit('cust:angry', { reason: 'waited' }); if (toast.count !== 3 || toast.items[0].count !== 2 || !/left angry \(waited\)/.test(toast.items[0].text)) throw new Error('cust:angry coalesce ' + JSON.stringify(toast.items));
-    bus.emit('eco:loan', { kind: 'repay', delta: 50, debt: 100 }); if (toast.items[0].text !== 'Repaid 50 — debt 100') throw new Error('eco:loan');
-    bus.emit('story:toast', { text: 'Tip!' }); if (toast.items[0].text !== 'Tip!' || !/owl|svg|🦉/.test(toast.el.children[0].querySelector('.ll-toast-icon').innerHTML)) throw new Error('story:toast owl icon');
-    const quiet = mountToast(root, { bus, listen: false, duration: 0 }); bus.emit('build:placed', { id: 'x' }); if (quiet.count !== 0) throw new Error('listen:false'); quiet.destroy();
-    // auto-dismiss (real timer)
-    const timed = mountToast(root, { bus, listen: false, duration: 30 }); timed.push('zap'); await sleep(90); if (timed.count !== 0) throw new Error('auto-dismiss'); timed.destroy();
-    toast.destroy(); if (toast.el.parentNode) throw new Error('destroy');
-    console.log('  toast: push ok/🔨 · coalesce text ×2 + id ×2 · max 3 drops oldest, newest on top · close/clear/click · build:placed "Fruit built" · eco:denied (need 90) bad · eco:event title: text · cust:angry ×2 coalesce · eco:loan repay · story:toast 🦉 · listen:false · auto-dismiss 30 ms · destroy  OK');
-  } catch (err) { bad++; console.log('  toast FAIL →', err.message); }
+    const { existsSync } = await import('node:fs');
+    if (existsSync(resolve('ui/toast.js')) || existsSync(resolve('ui/toast.css'))) throw new Error('ui/toast.* still exists');
+    const { mountUI } = await import(pathToFileURL(resolve('ui/index.js')).href);
+    const nb = new EventBus(); const r2 = document.createElement('div'); document.body.appendChild(r2);
+    const ui = mountUI(r2, { bus: nb });
+    if (ui.toast !== undefined) throw new Error('ui.toast should be undefined');
+    for (let i = 0; i < 20; i++) nb.emit('ui:toast', { text: 'spam ' + i }); for (let i = 0; i < 5; i++) nb.emit('story:toast', { id: 't' + i, text: 'spam' });
+    nb.emit('build:placed', { id: 'stall_fruit' }); nb.emit('eco:denied', { cost: 90 }); nb.emit('eco:event', { event: { title: 'X', text: 'y' } });
+    if (document.querySelectorAll('[class*="toast"]').length !== 0) throw new Error('toast DOM present');
+    ui.destroy?.(); r2.remove();
+    console.log('  48A NO TOASTS: toast.js/css gone · ui.toast undefined · ui:toast ×20 + story:toast ×5 + build/eco events → 0 [class*=toast] nodes  OK');
+  } catch (err) { bad++; console.log('  48A NO TOASTS FAIL →', err.message); }
 
   // 7C: touch.js / title.js / pause.js. Checks: joyVector pure (clamp, deadzone, normalize), joystick simulate → input.joystick.vec + onJoystick,
   // buttons → input.press + actions held + ui:touch, repeat timer, enabled/badge, hides on modal events, show/hide/destroy;

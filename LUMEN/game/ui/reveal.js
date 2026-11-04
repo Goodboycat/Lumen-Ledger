@@ -1,7 +1,7 @@
 // LUMEN LEDGER — Progressive HUD reveal (S41 / 15A). DOM only, no Three.
 //
 //   import { mountReveal } from './ui/reveal.js';
-//   const rv = mountReveal(ui, { bus });     // ui = mountUI() result (needs ui.hud / ui.jars / ui.touch / ui.toast)
+//   const rv = mountReveal(ui, { bus });     // ui = mountUI() result (needs ui.hud / ui.jars / ui.touch)
 //   rv.stage · rv.staged (bool) · rv.reveal(key, {quiet}) · rv.revealAll({quiet}) · rv.hideAll() · rv.destroy()
 //
 // Why: playtest — a first-time player who SKIPS the tutorial faces 5 unexplained widgets at once (jars panel, Debt-Fog bar,
@@ -65,7 +65,7 @@ export function mountReveal(ui, opts = {}) {
     reveal(k, { quiet } = {}) {
       if (!REVEAL_ORDER.includes(k) || st.shown.has(k)) return api;
       st.shown.add(k); pop(nodes()[k]);
-      if (!quiet && st.staged && ui?.toast?.push && TOAST[k]) ui.toast.push({ ...TOAST[k], kind: 'info', id: 'reveal', duration: 6500 });
+      // 48A: no toast — the widget appearing is the only signal.
       if (st.shown.size >= REVEAL_ORDER.length) st.staged = false;
       bus.emit('ui:reveal', { key: k, quiet: !!quiet, left: api.stage });
       return api;
