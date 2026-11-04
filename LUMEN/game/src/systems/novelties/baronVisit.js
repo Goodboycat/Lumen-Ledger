@@ -7,7 +7,7 @@
 import * as THREE from '../../../vendor/three.module.js';
 
 export const BARON = { walkSec: 2.5, timeout: 25, tauntEvery: 4.2, near: 3, flashNear: 3, fleeSec: 2.0, leaveSec: 2.2, scam: 'zeroInterestLoan', spot: { x: 0, z: -3.2 } };
-const PITCH = ['A zero-interest* loan, keeper. One hundred and fifty Spark. Today only.', 'Sign here. The small print is… decorative.'];
+const PITCH = ['A zero-interest* loan, keeper. 150 Spark. Today only; the Baker already took one.', 'Just initial that you looked. Most pay 20 %; for you, zero*.'];   // 48G tactic vocabulary: urgency · social proof · foot-in-the-door · anchoring
 
 export function createBaronVisit() {
   const V = { id: 'baronVisit', g: null, anim: null, state: 'off', t: 0, tauntT: 0, from: null, to: null, offered: false, answered: false, sb: null, offs: [], pitchI: 0 };

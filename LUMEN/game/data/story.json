@@ -70,7 +70,7 @@
       "id": "scams",
       "season": 5,
       "title": "Too-Good Deals",
-      "lesson": "Secret, urgent and guaranteed: if a deal has all three, it is built so you do not think. Real offers survive a night's sleep.",
+      "lesson": "Four tricks sell a bad deal: hurry (only today), everyone-does-it, a tiny first yes, and a number picked to make the rest look cheap. Real offers survive a night's sleep.",
       "tip": "Spot the tells: hurry · secrecy · \"guaranteed\" · an asterisk."
     },
     "compoundGrowth": {
@@ -1840,7 +1840,7 @@
         },
         {
           "speaker": "owl",
-          "text": "Look closer: that asterisk is the whole deal.",
+          "text": "Hurry, everyone-did-it, a tiny yes: all four, Pip.",
           "ttl": 3.6
         },
         {
