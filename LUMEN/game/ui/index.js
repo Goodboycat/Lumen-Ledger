@@ -22,7 +22,7 @@ import { mountPause } from './pause.js';
 import { mountTouch } from './touch.js';
 import { mountSeasonInfo } from './seasons.js';
 
-export const UI_VERSION = 'S49';
+export const UI_VERSION = 'S50';
 export const UI_CSS = ['ui/base.css', 'ui/hud.css', 'ui/jars.css', 'ui/build.css', 'ui/ledger.css', 'ui/dialogue.css', 'ui/toast.css', 'ui/wave.css', 'ui/bark.css', 'ui/title.css', 'ui/pause.css', 'ui/touch.css', 'ui/seasons.css'];   // 46B: ui/tutorial.css deleted (old overlay tutorial gone)
 
 /**

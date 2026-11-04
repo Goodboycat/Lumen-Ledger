@@ -20,6 +20,9 @@ LUMEN/
 > Everything from update 17 onward in the old plan (regions/biomes/World v3, 13B, 14) is **stopped**. Next IDs: `40A 40B 41A–41D 42A–42D 43Z 44Z 45Z`
 > (see `LUMEN_extras/README_pipeline.md` "## Next"; `game/tools/next.sh` prints the one to do).
 
+## Measure-fix (47, S50, 2026-11-04) — version shown in the title menu: `S50 · jam build`
+Two PLAY_BUGS rows closed, no new system (ship rule 4): telemetry `modalSeconds` now **counts the time a dialogue box is open** (the opening Owl dialogue pauses the game, so the old per-tick sampler never saw it — PLAY_BUGS 45B-2; `tests/telemetry.test.mjs` 6 pass), and `PERF.md` records the real-browser **167 draw calls @ S47 game zoom** with the **≤ 180** jam budget (45B-3). Remaining rows 45B-4/5 are harness notes only. Zip: `bash tools/itch_zip.sh` → **9.7 MB · 334 files · sha256 `8c42303f50b5394466814d5a9393cb121c30f345a4cbf373bb50569b058c53c0`**. Handoff `LUMEN_extras/game/docs/HANDOFF_47.md`.
+
 ## Quiet (46, S49, 2026-11-04) — version shown in the title menu: `S49 · jam build`
 Comfort by deletion, no new system: the S1 tutorial verb chain now **waits for the Owl's opening dialogue** to close (it used to count its 25 s auto-advance while you were still reading — PLAY_BUGS 45B-1), the old 11-step overlay tutorial (`?oldtutorial`, pause-menu TUTORIAL) and the legacy `?sliders=1` jars panel are **removed**, and the itch page / GDD now describe the jars as they are (walk to them, press E). Zip: `bash tools/itch_zip.sh` → **9.7 MB · 334 files · sha256 `0bc0ed8398d179c254d18a0b51cc32be7ede1baca9f1246d1e989c6263cda00f`**. Handoffs `HANDOFF_46Z.md`, `HANDOFF_46D.md`.
 
