@@ -77,6 +77,7 @@ try {
   const seasonSeconds = +params.get('season') || undefined;                               // ?season=30 → fast seasons (testing); default = BALANCE 150 s
   const storyData = await fetch('./data/story.json').then((r) => { if (!r.ok) throw new Error('data/story.json ' + r.status); return r.json(); });
   const seasons = await fetch('./data/seasons.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);   // 43A: season scripts (null → legacy marks)
+  const tutorData = params.has('notutor') ? null : await fetch('./data/tutor.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);   // 48F: curiosity cards (null → no tutor panel, game still runs)
   // Icons: every former emoji is a procedural drawing (ui/icons.js) baked to ui/icons/*.png by tools/icons_png.mjs. ?svgicons keeps inline SVG.
   if (!params.has('svgicons')) await usePngIcons('./ui/icons/');
 
@@ -89,6 +90,7 @@ try {
     onOutline: setOutlineThickness, touch: true, storyData,
     jarsSummary: true,                                                                   // 42B: jars are places — read-only summary. 46C: the ?sliders=1 legacy panel flag is gone (mountJars({summary:false}) remains for tests only)
     version: `${GAME_VERSION} · jam build`,
+    tutorData, tutorSeen: Save.load()?.tutorSeen || [],                                   // 48F: blue once-per-profile cards; seen ids come back from the save slot (Game.js applySnapshot also merges on CONTINUE)
   });
   const lg = createLumenGame(game, { ui, storyData, seasons, seasonSeconds, seed: +params.get('seed') || undefined, debugKeys: params.has('debug'), cinematics: !params.has('nocine'), verbs: !(params.has('autoplay') || params.has('notutorial')),   // 46B: ?oldtutorial gone
     telemetryEndpoint: params.get('telemetry') || null });   // S18: ?nocine = no title orbit / arrival / victory shots · 40A: ?telemetry=<url> opts in to a POST per session (default OFF)
