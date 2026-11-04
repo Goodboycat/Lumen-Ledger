@@ -37,6 +37,7 @@ export function createJarsWorld(opts = {}) {
   const seasonLocked = (jar) => jar === 'invest' && !eco.state.ended;
 
   J.register = (id, mesh) => { if (id && mesh) jars.set(id, mesh); return J; };
+  J.ids = () => [...jars.keys()]; J.meshOf = (id) => jars.get(id) || null;   // 48D: Game.js landTap routes a tap on a jar mesh to sb.interact()
   J.near = () => { let best = null, bd = NEAR_R; for (const [id, m] of jars) { const d = dist(m); if (d <= bd) { bd = d; best = id; } } return best; };
   J.fill01 = (id) => { const j = eco.state.jars; const tot = Math.max(1, Object.values(j).reduce((a, v) => a + v, 0)); return Math.min(1, (j[id] || 0) / tot); };
 

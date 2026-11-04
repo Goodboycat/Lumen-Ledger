@@ -726,7 +726,7 @@ export function createLumenGame(game, opts = {}) {
   lg.update = (dt, _g, dtReal) => {
     ui?.update?.(dtReal ?? dt);                                                       // UI animates even while the game is paused
     lg.cine?.update(dtReal ?? dt);                                                    // S18: cinematics run on the real clock (title is paused)
-    if (lg.sb && !game.paused) { lg.story?.update?.(dt); emitTick(lg); lg.tut?.update?.(dt); lg.verbs?.update?.(dt); }
+    if (lg.sb && !game.paused) { lg.story?.update?.(dt); emitTick(lg); lg.tut?.update?.(dt); lg.verbs?.update?.(dt); lg.proxTick?.(dt); }   // 48D: proximity interact
   };
   game.add({ update: (dt, g, dtReal) => lg.update(dt, g, dtReal) });
   lg.destroy = () => { for (const f of offs) f(); offs.length = 0; lg.teardown?.(); lg.cine?.dispose?.(); lg.cine = null; };
@@ -1031,8 +1031,42 @@ function installRunWires(lg) {
     // BUGFIX P17: prefer the prop under the cursor in 3D (roof / sign / awning) — the ground-plane point sits ~1.9 u behind a 2.2 u tall stall
     if (lg.demolishMode) { const e = build.pick(lg.game.input?._ray?.ray) || build.nearest(world.x, world.z, 1.2); if (e && !e.scenery) build.demolish(e); else if (e && e.scenery) bus.emit('ui:toast', { text: 'That is part of the island — only things YOU built can be sold', kind: 'info', icon: '🌿', id: 'scenery-sell', duration: 2200 }); return; }   // P23: explain instead of silent refusal
     if (lg.selectTap?.(world, ev)) return;
+    if (lg.landTap?.(world, ev)) return;   // 48D: tap a jar → use it · tap empty ground → the build tray opens on that cell
     prevTap?.(world, ev);
   };
+  // 48D (HUSH D1): the ✋ Interact and 🔨 Build touch buttons are gone. Their two jobs move into the world:
+  //   · tap a JAR (≤ 1.2 u of its mesh) → sb.interact() (deposit); tap the Baron / scam NPC when near → same dispatcher.
+  //   · tap EMPTY LAND with the tray closed → bus 'ui:tap:land' {x,z} + the tray opens; the next build.enter(id) starts its ghost on that
+  //     cell (lg.tapCell, consumed once, forgotten after 20 s or when the tray closes). Tray already open + land tap = placement confirm (unchanged).
+  lg.tapCell = null;
+  lg.landTap = (world) => {
+    if (!lg.sb || lg.game.paused || ui?.isModal?.() || build.mode === 'place' || build.mode === 'drag' || lg.demolishMode || !world) return false;
+    const J = lg.sb.jarsWorld; const ids = J?.ids?.() || [];
+    for (const id of ids) { const m = J.meshOf?.(id); const p = m?.position || m; if (p && Math.hypot(p.x - world.x, p.z - world.z) <= 1.2) { lg.interact(); return true; } }
+    if ((lg.sb.pier?.near?.() || lg.sb.scamNpc?.near?.() || lg.sb.novelty?.near?.()) && hero?.root && Math.hypot(hero.root.position.x - world.x, hero.root.position.z - world.z) <= 2.5) { lg.interact(); return true; }
+    if (ui?.build?.isOpen) return false;                                                   // open tray: a land tap is handled by the tray / placement
+    if (lg.sb.island?.isLand && !lg.sb.island.isLand(world.x, world.z)) return false;     // water: nothing to build on
+    lg.tapCell = { x: world.x, z: world.z, at: lg.game.time };
+    bus.emit('ui:tap:land', { x: world.x, z: world.z });
+    ui?.build?.open?.();
+    return true;
+  };
+  offs.push(bus.on('ui:build:close', () => { lg.tapCell = null; }));
+  offs.push(bus.on('build:enter', () => { const c = lg.tapCell; lg.tapCell = null; if (c && lg.game.time - c.at < 20 && build.mode === 'place') build.moveTo(c.x, c.z); }));
+  // 48D proximity interact (replaces ✋ for the Baron pier / scam NPC): hero ≤ 1.3 u of them and standing still 0.6 s → sb.interact() once;
+  //   re-armed when the hero leaves the radius. Jars keep E / tap (a deposit must be a choice); the panel just un-collapses nearby (jars:near).
+  lg._prox = { still: 0, fired: false };
+  lg.proxTick = (dt) => {
+    const sb = lg.sb; if (!sb || lg.game.paused || ui?.isModal?.() || build.mode !== 'idle') return;
+    const near = sb.pier?.near?.(1.3) || sb.scamNpc?.near?.(1.3) || false;
+    if (!near) { lg._prox.still = 0; lg._prox.fired = false; return; }
+    const h = hero; const moving = h?.moving || (h?.vel && h.vel.lengthSq() > 1e-4);
+    lg._prox.still = moving ? 0 : lg._prox.still + dt;
+    if (!lg._prox.fired && lg._prox.still >= 0.6) { lg._prox.fired = true; sb.interact?.(); }
+  };
+  let _nearT = null;
+  offs.push(bus.on('jars:near', (p) => { if (_nearT) { clearTimeout(_nearT); _nearT = null; } if (p?.jar) { ui?.jars?.setCollapsed?.(false); ui?.jars?.focus?.(p.jar); } else _nearT = setTimeout(() => { _nearT = null; ui?.jars?.setCollapsed?.(true); }, 1500); }));
+  offs.push(() => { if (_nearT) clearTimeout(_nearT); });
   // S06: tap / click a stall (or any prop YOU built) on the island → inspect it: the Build Tray opens on its tab with its card selected,
   //   so 🚀 Deploy another · ⬆ Upgrade · 💰 Sell · price −/+ are one tap away. The 3D pick (roof / sign) comes first, then the ground cell.
   //   Scenery is "part of the island" (P23) and only gets a toast. Returns true when a prop was selected (the tap is consumed).
