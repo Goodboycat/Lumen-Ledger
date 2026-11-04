@@ -71,6 +71,17 @@ test('ring buffer trims at 50; modal seconds sample only inside the first 90 s; 
   const before = bus.count(); T.destroy(); assert.equal(bus.count(), 0); assert.ok(before > 0);
 });
 
+test('47A: dialogue open→close is counted in modalSeconds even when the paused game emits no eco:tick (PLAY_BUGS 45B-2)', () => {
+  const bus = mockBus(), storage = mem(); let t = 0;
+  const T = createTelemetry({ bus, storage, now: () => t, isModal: () => false });
+  bus.emit('ui:start', { mode: 'story' });
+  t += 2000; bus.emit('ui:dialogue:open', {}); t += 43000; bus.emit('ui:dialogue:close', {});        // 43 s under the opening box, 0 ticks
+  assert.ok(Math.abs(T.session.modalSeconds - 43) < 0.1, 'modalSeconds ' + T.session.modalSeconds);
+  t += 40000; bus.emit('ui:dialogue:open', {}); t += 20000; bus.emit('ui:title');                    // 85 s → 105 s: only 5 s inside the 90 s window
+  assert.ok(Math.abs(T.session.modalSeconds - 48) < 0.1, 'clamped ' + T.session.modalSeconds);
+  T.destroy(); assert.equal(bus.count(), 0);
+});
+
 test('disabled → records nothing, never throws', () => {
   const bus = mockBus(); const T = createTelemetry({ bus, enabled: false });
   bus.emit('ui:start', { mode: 'story' }); bus.emit('eco:spark', { delta: 5, reason: 'tip:walk' }); bus.emit('ui:title');

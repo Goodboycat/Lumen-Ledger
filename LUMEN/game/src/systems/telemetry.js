@@ -69,10 +69,16 @@ export function createTelemetry(opts = {}) {
   });
   on('eco:season', (r) => { if (!enabled || !T.session) return; const s = T.session; s.seasonsPlayed = Math.max(s.seasonsPlayed, r?.season || 0); const next = (r?.season || 0) + 1; ctx.season = next; ctx.day01 = 0; if (next >= 2) T.mark('s2'); if (next >= 3) T.mark('s3'); });
   on('eco:tick', (p) => {
-    if (!enabled || !T.session || !p) return; ctx.season = p.season ?? ctx.season; ctx.day01 = p.day01 ?? ctx.day01;
+    if (!enabled || !T.session || !p) return; if (dlgOpenAt != null) return; /* 47A: dialogue window is summed on close */ ctx.season = p.season ?? ctx.season; ctx.day01 = p.day01 ?? ctx.day01;
     const t = tOf(); if (lastTick != null && t <= 90 && isModal && isModal()) T.session.modalSeconds += Math.max(0, Math.min(0.5, t - lastTick)); lastTick = t;
   });
-  on('ui:title', () => T.end('title'));
+  // 47A (PLAY_BUGS 45B-2): the opening dialogue pauses the game → no eco:tick samples → modalSeconds missed ~43 s. Count dialogue
+  // open→close on the session clock directly (same ≤ 90 s window). ui.isModal() still covers ledger/pause while ticks run.
+  let dlgOpenAt = null;
+  const dlgClose = () => { if (dlgOpenAt == null || !T.session) { dlgOpenAt = null; return; } const t0 = Math.min(90, dlgOpenAt), t1 = Math.min(90, tOf()); if (t1 > t0) T.session.modalSeconds += t1 - t0; dlgOpenAt = null; lastTick = null; };
+  on('ui:dialogue:open', () => { if (!enabled || !T.session || T.session.quit) return; if (dlgOpenAt == null) dlgOpenAt = tOf(); });
+  on('ui:dialogue:close', dlgClose);
+  on('ui:title', () => { dlgClose(); T.end('title'); });
   on('eco:lose', (p) => T.end('lose', { state: 'ending', season: p?.season }));
   on('eco:win', (p) => T.end('win', { state: 'ending', season: p?.season }));
   T.destroy = () => { for (const f of offs) f(); offs = []; };
