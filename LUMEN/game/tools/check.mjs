@@ -1090,7 +1090,7 @@ if (doUI) {
   try {
     const { mountBuildMenu } = await import(pathToFileURL(resolve('ui/build.js')).href);
     const { PROP_CATALOG } = await import(pathToFileURL(resolve('src/assets/props.js')).href);
-    const menu = mountBuildMenu(root, { bus, catalog: PROP_CATALOG, spark: () => 100, categories: ['stall', 'decor', 'nature', 'landmark'] });
+    const menu = mountBuildMenu(root, { bus, catalog: PROP_CATALOG, spark: () => 100, categories: ['stall', 'decor', 'nature', 'landmark'], jarTab: false });   // 48E unshifts the Jars tab first; this section tests the stall flow
     const stalls = Object.values(PROP_CATALOG).filter((e) => e.category === 'stall').length;
     if (menu.cards.size !== stalls) throw new Error(`stall cards ${menu.cards.size} ≠ ${stalls}`);
     pressKey('b'); if (!menu.isOpen || !ev['ui:build:open']) throw new Error('hotkey B');
