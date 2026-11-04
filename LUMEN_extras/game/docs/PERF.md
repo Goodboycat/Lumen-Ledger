@@ -62,6 +62,10 @@ Browser (10B/10D smoke, before 11A): index.html title 162 dc, in play 169–253 
   (camera ~22 u, 1–2 zones visible) the typical count is in the 100–150 band. The ≤ 150 line is **not** asserted in check.mjs because the
   `--world` test places all four zones in view (rule 9: an unreachable budget is a measurement, not a gate). `WORLD_BUDGET` stays 320.
 - 60 fps on 4× CPU throttle: not measurable headless; the governor is the safety net (drops to 0.85 dpr within 3 s).
+- **S47 real-browser (45B gate D5, 2026-11-03):** `index.html?mute&debug`, 1280×720, S1 play at game zoom → **167 draw calls**
+  (`renderer.info.render.calls`). Up from the S39 "110–135" note because phases 43–44 added price/want bubbles (DOM, 0 calls) but also
+  sign tint cones, HOT/COLD glyphs, night-market lanterns and seasonal props. Budget for the jam build is **≤ 180 at game zoom**
+  (PLAY_BUGS 45B-3, closed 47B). Only merge the small UI sprite meshes if a phone drops below 30 fps (SUBMISSION_CHECKLIST D10).
 
 
 ## S02 — 60 fps floor on every phone (2026-10-23)
