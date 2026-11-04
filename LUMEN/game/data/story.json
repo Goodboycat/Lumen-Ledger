@@ -719,12 +719,78 @@
       "pitch": [
         {
           "speaker": "collector",
-          "text": "Exclusive! A Zero-Interest* Loan of 150 Spark. Zero! Today only, don't tell the owl.",
+          "text": "Good evening, Pip. A Zero-Interest* Loan, 150 Spark, for established stallholders only. That is you.",
           "mood": "happy"
         },
         {
           "speaker": "collector",
-          "text": "Shall I write you in?",
+          "text": "No need to decide anything. Just have a look at the paper. Looking is free.",
+          "choices": [
+            {
+              "id": "look",
+              "text": "Let me see the paper"
+            },
+            {
+              "id": "walk",
+              "text": "Not today"
+            }
+          ]
+        }
+      ],
+      "walk": [
+        {
+          "speaker": "collector",
+          "text": "Not even a look? Hm. The Baker looked. Well. Your loss, I suppose."
+        },
+        {
+          "speaker": "owl",
+          "text": "He asked for something tiny first: just a look. Small yeses are how the big ones get started."
+        }
+      ],
+      "look": [
+        {
+          "speaker": "collector",
+          "text": "See? Zero. Right there, in big letters. The Baker took one, and the Smith. They thanked me.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "collector",
+          "text": "Most folk pay the Baron 20 %. This is zero*. Just initial here to show you read it. Then we talk.",
+          "choices": [
+            {
+              "id": "sign",
+              "text": "Initial it"
+            },
+            {
+              "id": "ask",
+              "text": "What happens in season two?"
+            },
+            {
+              "id": "stall",
+              "text": "I'll think about it"
+            }
+          ]
+        }
+      ],
+      "sign": [
+        {
+          "speaker": "collector",
+          "text": "Initialled, signed, same thing! Zero for one season, then 35 % per season. Compounding. Toodle-oo!",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "First a look, then an initial, then a signature. Each step was small, so you never saw the whole stair."
+        }
+      ],
+      "ask": [
+        {
+          "speaker": "collector",
+          "text": "Season two? A modest 35 % per season. Compounding. But everyone repays in season one, so who cares?"
+        },
+        {
+          "speaker": "collector",
+          "text": "The boat leaves at dusk and the offer with it. In or out?",
           "choices": [
             {
               "id": "accept",
@@ -732,7 +798,27 @@
             },
             {
               "id": "refuse",
-              "text": "What's the asterisk for?"
+              "text": "Out."
+            }
+          ]
+        }
+      ],
+      "stall": [
+        {
+          "speaker": "collector",
+          "text": "Think? Of course. Only, the ink dries at dusk. The Baker did not need to think. Nor did the Smith."
+        },
+        {
+          "speaker": "collector",
+          "text": "You walked all the way over here, Pip. Don't let that be for nothing. Yes or no?",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "Take the 150 Spark"
+            },
+            {
+              "id": "refuse",
+              "text": "No."
             }
           ]
         }
@@ -740,23 +826,28 @@
       "accept": [
         {
           "speaker": "collector",
-          "text": "Signed! Zero interest for exactly one season, then 35 % per season. Compounding. Toodle-oo!",
+          "text": "Splendid! Zero for exactly one season, then 35 % per season. Compounding. Toodle-oo!",
           "mood": "happy"
         },
         {
           "speaker": "owl",
-          "text": "It was the asterisk, Pip, and in my experience it is always the asterisk that costs you."
+          "text": "The asterisk, Pip. He hurried you so you would not count, and in my experience the asterisk always costs."
         }
       ],
       "refuse": [
         {
           "speaker": "collector",
-          "text": "The asterisk? Oh, it's tiny. Barely a footnote. 35 % after the first season. Compounding. Why do you ask?"
+          "text": "No? After I walked you through it? Fine. Fine. Don't come crying when the Baker has two stalls.",
+          "mood": "angry"
         },
         {
           "speaker": "pip",
-          "text": "Thirty-five per cent is NOT zero. I may be new, but I can count to zero. No thank you. Loudly.",
+          "text": "Thirty-five per cent is NOT zero. I can count to zero, and I can count to dusk.",
           "mood": "shout"
+        },
+        {
+          "speaker": "owl",
+          "text": "He said hurry, and he said everyone else did it. Neither is a reason. You counted anyway. Well done."
         }
       ],
       "tell": "The asterisk. *Zero for one season, then 35 % per season — compounding."
@@ -768,12 +859,78 @@
       "pitch": [
         {
           "speaker": "collector",
-          "text": "Hand me 80 Spark and I will hand you 160 back next season. Guaranteed! The Baron himself guarantees it!",
+          "text": "Pip! Here, a free 5 Spark sample, no strings. Now: hand me 80 and I hand you 160 next season. Guaranteed.",
           "mood": "happy"
         },
         {
           "speaker": "collector",
-          "text": "Well?",
+          "text": "No decision yet. Just read the certificate. It has a seal and everything.",
+          "choices": [
+            {
+              "id": "look",
+              "text": "Let me see the certificate"
+            },
+            {
+              "id": "walk",
+              "text": "Not today"
+            }
+          ]
+        }
+      ],
+      "walk": [
+        {
+          "speaker": "collector",
+          "text": "Keep the sample, then. Though a thank-you would be customary. The Baker said thank you."
+        },
+        {
+          "speaker": "owl",
+          "text": "He gave you a gift so you would feel you owed him one. A gift with a hook in it is not a gift."
+        }
+      ],
+      "look": [
+        {
+          "speaker": "collector",
+          "text": "A seal from the Baron's own notary. Notarised doubling! The Baker is in, the Smith is in, half the pier is in.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "collector",
+          "text": "Some pay 100 for this. For you, after the sample, 80. Just initial here to hold your place.",
+          "choices": [
+            {
+              "id": "sign",
+              "text": "Initial it"
+            },
+            {
+              "id": "ask",
+              "text": "Who pays the 160?"
+            },
+            {
+              "id": "stall",
+              "text": "I'll think about it"
+            }
+          ]
+        }
+      ],
+      "sign": [
+        {
+          "speaker": "collector",
+          "text": "Held, paid, same thing! Your 80 Spark is now on its way to… somewhere. Guaranteed to be somewhere!",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "A seal is just wax, Pip. He wore authority like a hat, and a hat has never guaranteed anything."
+        }
+      ],
+      "ask": [
+        {
+          "speaker": "collector",
+          "text": "Who pays? Next season's buyers pay you, and the season after pays them. It goes on forever. Probably."
+        },
+        {
+          "speaker": "collector",
+          "text": "The certificates run out at dusk. Hold yours or lose it.",
           "choices": [
             {
               "id": "accept",
@@ -781,7 +938,27 @@
             },
             {
               "id": "refuse",
-              "text": "Who guarantees the guarantee?"
+              "text": "Lose it, then."
+            }
+          ]
+        }
+      ],
+      "stall": [
+        {
+          "speaker": "collector",
+          "text": "Think it over? Certainly. The Baker thought it over for about one second. The boat leaves at dusk."
+        },
+        {
+          "speaker": "collector",
+          "text": "You've already taken the sample, Pip. Might as well finish what you started.",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "Double it!"
+            },
+            {
+              "id": "refuse",
+              "text": "No."
             }
           ]
         }
@@ -794,17 +971,18 @@
         },
         {
           "speaker": "owl",
-          "text": "Nobody can guarantee growth, Pip. Anyone who claims to is selling something else entirely, and in this case the something else was you."
+          "text": "Nobody can guarantee growth, Pip. The seal, the crowd and the clock were all there so you would not ask."
         }
       ],
       "refuse": [
         {
           "speaker": "collector",
-          "text": "Who guarantees the— look, it's guaranteed, that's what the word is FOR."
+          "text": "No? After a free sample and a notarised seal? Some people have no gratitude at all.",
+          "mood": "angry"
         },
         {
           "speaker": "owl",
-          "text": "Guaranteed returns do not exist, so that was a very good instinct."
+          "text": "A gift, a crowd, a hat and a clock, and not one of them answered your question. You noticed. Good."
         }
       ],
       "tell": "\"Guaranteed\" returns do not exist. Anyone who guarantees growth is selling something else."
@@ -816,16 +994,104 @@
       "pitch": [
         {
           "speaker": "collector",
-          "text": "Lucky Lantern Raffle! 40 Spark a ticket, the prize is inside the box, and the box closes in TEN SECONDS!",
-          "mood": "shout"
+          "text": "Lucky Lantern Raffle! 40 Spark a ticket, prize in the box, drawn tonight. Pip, you look lucky to me.",
+          "mood": "happy"
         },
         {
           "speaker": "collector",
-          "text": "Nine! Eight!",
+          "text": "No need to buy. Just come and hold a ticket. See how it feels. Holding is free.",
+          "choices": [
+            {
+              "id": "look",
+              "text": "Let me hold one"
+            },
+            {
+              "id": "walk",
+              "text": "Not today"
+            }
+          ]
+        }
+      ],
+      "walk": [
+        {
+          "speaker": "collector",
+          "text": "Not even hold one? Everyone else holds one. Suit yourself."
+        },
+        {
+          "speaker": "owl",
+          "text": "\"Just hold it\" is a small yes. He wanted the small one so the big one would feel natural."
+        }
+      ],
+      "look": [
+        {
+          "speaker": "collector",
+          "text": "Feel that? A winning ticket. The Baker bought three. The Smith bought five. The box closes in TEN seconds!",
+          "mood": "happy"
+        },
+        {
+          "speaker": "collector",
+          "text": "Nine! Eight! Most pay 60 for a golden-lantern ticket. For you, 40. Seven!",
+          "mood": "shout",
+          "choices": [
+            {
+              "id": "sign",
+              "text": "Quick, one ticket!"
+            },
+            {
+              "id": "ask",
+              "text": "What's in the box?"
+            },
+            {
+              "id": "stall",
+              "text": "Count slower."
+            }
+          ]
+        }
+      ],
+      "sign": [
+        {
+          "speaker": "collector",
+          "text": "Sold! And the prize is… a very nice feeling. Congratulations!",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Ten seconds, a crowd, and a 'normal price' nobody ever paid. All three were there so you would not count."
+        }
+      ],
+      "ask": [
+        {
+          "speaker": "collector",
+          "text": "In the box? A prize. A lovely one. Possibly a lantern. Possibly a feeling. Six! Five!"
+        },
+        {
+          "speaker": "collector",
+          "text": "You have come this far, Pip. Four!",
           "choices": [
             {
               "id": "accept",
-              "text": "Quick, one ticket!"
+              "text": "One ticket!"
+            },
+            {
+              "id": "refuse",
+              "text": "Open the box first."
+            }
+          ]
+        }
+      ],
+      "stall": [
+        {
+          "speaker": "collector",
+          "text": "Slower? Fine. Fiiive. Foouur. The Baker is on his sixth ticket. Everyone is waiting on you. Three."
+        },
+        {
+          "speaker": "collector",
+          "text": "Two! Last chance, and you've already held it!",
+          "mood": "shout",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "One ticket!"
             },
             {
               "id": "refuse",
@@ -842,18 +1108,23 @@
         },
         {
           "speaker": "owl",
-          "text": "Urgency combined with a prize you cannot inspect is a classic pairing. If you must act right now, the deal has been built so that you do not have time to think."
+          "text": "Urgency and a prize you cannot inspect. If you must act right now, the deal was built so you could not think."
         }
       ],
       "refuse": [
         {
           "speaker": "collector",
-          "text": "Open it FIRST? That's— that's not how a raffle— seven! Six!"
+          "text": "Open it FIRST? That is not how a— one! Zero! Well. The box will reopen tomorrow, as it happens.",
+          "mood": "angry"
         },
         {
           "speaker": "pip",
-          "text": "Take your time counting. I'll be over here, keeping my Spark and not winning a feeling.",
+          "text": "Tomorrow? Then there was never a hurry. I'll be over here, keeping my Spark and not winning a feeling.",
           "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "The clock was the whole trick. A real deal survives a night's sleep. This one did not survive a question."
         }
       ],
       "tell": "Urgency + a prize you cannot inspect. If you must act NOW, the deal is built for you to not think."
