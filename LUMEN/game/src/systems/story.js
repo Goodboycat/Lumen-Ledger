@@ -19,9 +19,9 @@
 //     With `opts.ledgerLinesBeforeReview` (default true) it also emits `story:review {report}` when those lines finish — 10C mounts the
 //     Ledger with `autoOpen:false` and calls `ledger.show(report)` on that event. Set false if the Ledger should open first.
 //   • Events (`eco:event {id}` / `onEvent(id)`): `events[id]`. Scams (`eco:scam offer` / `onScam(offer)`): `scams[offer.id].pitch`; the
-//     pitch's last line carries `choices`; `ui:choice {index}` / `choose(i)`: an id with an array on the scam node (48G `look`/`sign`/`ask`/`stall`)
-//     swaps that array in as the next decision (group stays 'scam'); `accept` → `economy.acceptOffer()`, `refuse`/`walk` → `refuseOffer()`,
-//     then plays the `accept` / `refuse` / `walk` leaf lines and emits `story:lesson` with the scam's `tell` (lesson 'Too-Good Deals').
+//     pitch's last line carries `choices`; `ui:choice {index}` / `choose(i)`: the id's array on the scam node ENDS IN choices (48G `look`/`ask`/
+//     `stall`) → swapped in as the next decision (group stays 'scam'); otherwise it is a leaf: `accept`/`sign` → `economy.acceptOffer()`,
+//     `refuse`/`walk`/other → `refuseOffer()`, then the leaf lines play and `story:lesson` carries the scam's `tell` (lesson 'Too-Good Deals').
 //   • `eco:win` → `ending.win` then `ending.endlessUnlock`, `story:lesson` planningForAGoal, then `story:finale {endless:true}`.
 //     `eco:lose` → `ending.lose`, then `story:finale {endless:false}`.
 //   • Tutorial toasts: for every `tutorial[i].trigger` bus event, emits `story:toast {text,icon}` ONCE per run (ids kept in state.toastsFired).
@@ -141,18 +141,19 @@ export class StorySystem {
     this.state.choicesMade++;
     const offer = this.pendingOffer; const meta = this.current?.meta || {};
     const result = { index: i, choice, group: this.current?.group, offer: offer || null, outcome: null };
-    // 48G: an inner branch id (look / sign / ask / stall …) on the CURRENT scam node = the next decision, not an outcome. The branch array
-    // replaces the running lines (same group 'scam', pendingOffer kept) so the box stays open; only accept / refuse / walk reach economy.
-    const inner = this.current?.group === 'scam' && offer && !['accept', 'refuse', 'walk'].includes(choice.id) ? linesFor(this.data, 'scam', offer.id, choice.id) : [];
-    if (inner.length) {
-      this.current.lines = inner; this.current.i = 0; result.branch = choice.id;
-      this._show(inner[0]); this.bus.emit('story:choice', result); return result;
+    // 48G: the choice id names an array on the CURRENT scam node. If that array ends in choices again it is an INNER branch (look / ask / stall
+    // = the next decision): it replaces the running lines (same group 'scam', pendingOffer kept) so the box stays open, no outcome yet.
+    // Otherwise it is a LEAF: accept + sign = economy.acceptOffer, everything else (refuse / walk / unknown) = refuseOffer, leaf lines follow.
+    const arr = this.current?.group === 'scam' && offer ? linesFor(this.data, 'scam', offer.id, choice.id) : [];
+    if (arr.length && arr[arr.length - 1].choices) {
+      this.current.lines = arr; this.current.i = 0; result.branch = choice.id;
+      this._show(arr[0]); this.bus.emit('story:choice', result); return result;
     }
     if (this.current?.group === 'scam' && offer) {
-      const accept = choice.id === 'accept';                                              // 48G: walk + refuse (+ any unknown id) = refuse outcome
+      const accept = choice.id === 'accept' || choice.id === 'sign';
       this.pendingOffer = null;
       result.outcome = accept ? (this.economy?.acceptOffer?.(offer) ?? { accepted: true }) : (this.economy?.refuseOffer?.(offer) ?? { accepted: false, refused: true });
-      const after = linesFor(this.data, 'scam', offer.id, accept ? 'accept' : (choice.id === 'walk' ? 'walk' : 'refuse'));   // 48G: walk has its own 2-line leaf
+      const after = arr.length ? arr : linesFor(this.data, 'scam', offer.id, accept ? 'accept' : 'refuse');   // 48G: sign / walk have their own leaf lines
       const tell = this.data?.scams?.[offer.id]?.tell || offer.tell;
       // queue the outcome lines FIRST (front), then finish the pitch: story:end is only emitted when nothing follows, so 7B's dialogue
       // box stays open and simply shows the next line (its choose() → ui:choice → here → story:line happens inside one tick).

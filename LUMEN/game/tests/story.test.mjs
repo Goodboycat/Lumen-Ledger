@@ -84,27 +84,55 @@ ok(linesFor(null, 'opening', 1).length === 0 && linesFor(data, 'ledger', 99, 'lo
   const offer = eco.offerScam('zeroInterestLoan');
   ok(story.isPlaying && story.current.group === 'scam' && story.line.speaker === 'collector' && !story.line.choices, 'eco:scam → pitch line 1 (no choices yet)');
   bus.emit('ui:advance', {});
-  ok(story.line.choices && story.line.choices.length === 2 && story.line.choices[0].id === 'accept' && story.line.choices[1].id === 'refuse', 'pitch line 2 carries accept/refuse choices');
+  ok(story.line.choices && story.line.choices.length === 2 && story.line.choices[0].id === 'look' && story.line.choices[1].id === 'walk', '48G pitch line 2 carries D1 look/walk choices');
   const before = ev['story:line'].length; bus.emit('ui:advance', {});
   ok(ev['story:line'].length === before && story.line.choices, 'ui:advance blocked while choices are shown');
-  const debt0 = eco.state.debt, spark0 = eco.state.spark;
+  // 48G: look → D2 (sign / ask / stall) swaps the branch in, same group, no outcome yet, box stays open
   bus.emit('ui:choice', { index: 0 });
+  ok(story.current.group === 'scam' && story.pendingOffer && story.line.text === data.scams.zeroInterestLoan.look[0].text && last(ev['story:choice']).branch === 'look' && last(ev['story:choice']).outcome === null && eco.pendingOffer, '48G look → D2 branch lines, group scam, no outcome, pendingOffer kept');
+  bus.emit('ui:advance', {});
+  ok(story.line.choices?.map((c) => c.id).join() === 'sign,ask,stall', '48G D2 = sign/ask/stall');
+  const debt0 = eco.state.debt, spark0 = eco.state.spark;
+  bus.emit('ui:choice', { index: 0 }); // sign = accept outcome
   ok(eco.state.debt === debt0 + 150 && eco.state.spark === spark0 + 150 && eco.pendingOffer === null && eco.ledger.scamsAccepted === 1, 'accept → economy.acceptOffer (debt +150, spark +150)');
-  ok(story.isPlaying && story.current.group === 'scamResult' && story.line.text === data.scams.zeroInterestLoan.accept[0].text, 'accept lines follow with NO story:end in between');
+  ok(story.isPlaying && story.current.group === 'scamResult' && story.line.text === data.scams.zeroInterestLoan.sign[0].text, '48G sign leaf lines follow with NO story:end in between');
   ok(!ev['story:end'].some((e) => e.group === 'scam'), 'story:end not emitted between pitch and result (dialogue box stays open)');
   const L = last(ev['story:lesson']);
   ok(L.lesson === offer.tell && L.title === 'Too-Good Deals' && L.accepted === true && L.scam === 'zeroInterestLoan', 'story:lesson = the scam tell');
-  ok(last(ev['story:choice']).outcome.accepted === true && last(ev['story:choice']).choice.id === 'accept', 'story:choice {outcome, choice}');
+  ok(last(ev['story:choice']).outcome.accepted === true && last(ev['story:choice']).choice.id === 'sign', 'story:choice {outcome, choice}');
   drain(bus, story);
   // refuse path
   const fog0 = eco.state.fog01; eco.offerScam('luckyLantern'); drain(bus, story, 1);
   ok(eco.ledger.scamsRefused === 1 && eco.state.fog01 < fog0 && last(ev['story:lesson']).accepted === false, 'refuse → economy.refuseOffer (fog −0.02), lesson accepted:false');
-  ok(ev['story:line'].some((l) => l.text === data.scams.luckyLantern.refuse[1].text), 'refuse lines played');
+  ok(ev['story:line'].some((l) => l.text === data.scams.luckyLantern.walk[1].text), '48G walk (D1 pick 1) → walk leaf lines played');
   // unknown scam id → synthesized pitch still offers a choice
   eco.scams.mystery = { id: 'mystery', title: 'Mystery Box', cost: 10, tell: 'no tell', lesson: 'scams' }; eco.offerScam('mystery');
   ok(story.isPlaying && story.line.text === 'Mystery Box', 'unknown scam → fallback pitch from offer.title');
   bus.emit('ui:advance', {}); ok(story.line.choices?.length === 2, 'fallback pitch has choices'); bus.emit('ui:choice', { index: 1 });
   ok(!story.isPlaying && eco.ledger.scamsRefused === 2, 'fallback refuse → refuseOffer, nothing left to play');
+}
+
+// ---- 48G: every lesson-'scams' tree walked headless — look→stall→refuse / look→sign / walk / look→ask→accept → exactly ONE eco:scamResult per path
+{
+  const ids = Object.keys(data.scams).filter((id) => data.scams[id].lesson === 'scams');
+  const pick = (bus, story, id) => { const i = story.line.choices.findIndex((c) => c.id === id); if (i < 0) throw new Error('no choice ' + id + ' on ' + story.line.text); bus.emit('ui:choice', { index: i }); };
+  const toChoice = (bus, story) => { let n = 0; while (story.isPlaying && !story.line?.choices && n++ < 20) bus.emit('ui:advance', {}); };
+  const run = (id, path) => {
+    const { bus, eco, ev, story } = mk(); const res = []; bus.on('eco:scamResult', (r) => res.push(r));
+    story.update(0); drain(bus, story); eco.offerScam(id);
+    for (const step of path) { toChoice(bus, story); pick(bus, story, step); }
+    drain(bus, story);
+    const owl = ev['story:line'].filter((l) => l.group === 'scamResult' && l.speaker === 'owl');
+    return { res, owl, eco, lesson: last(ev['story:lesson']), choices: ev['story:choice'], ends: ev['story:end'].length };
+  };
+  let good = 0;
+  for (const id of ids) {
+    const a = run(id, ['look', 'stall', 'refuse']), b = run(id, ['look', 'sign']), c = run(id, ['walk']), d = run(id, ['look', 'ask', 'accept']);
+    const one = (r, acc) => r.res.length === 1 && r.res[0].accepted === acc && r.lesson.accepted === acc && r.owl.length >= 1 && r.ends === 2;
+    if (one(a, false) && one(b, true) && one(c, false) && one(d, true) && a.eco.ledger.scamsRefused === 1 && b.eco.ledger.scamsAccepted === 1 && a.choices.length === 3 && c.choices.length === 1) good++;
+    else console.log('   ', id, a.res.length, b.res.length, c.res.length, d.res.length, a.owl.length, a.ends);
+  }
+  ok(ids.length === 3 && good === 3, `48G ${ids.length} lesson-scams trees: look→stall→refuse / look→sign / walk / look→ask→accept → exactly one eco:scamResult each (refuse,accept,refuse,accept) + Owl afterword + one story:end`);
 }
 
 // ---- queueing: opening + event + scam back-to-back → single story:end at the very end
