@@ -1178,8 +1178,13 @@ if (doUI) {
   } catch (err) { bad++; console.log('  ledger FAIL →', err.message); }
   // 5. Dialogue
   try {
-    const { mountDialogue, SPEAKERS } = await import(pathToFileURL(resolve('ui/dialogue.js')).href);
+    const { mountDialogue, SPEAKERS, GLIMMER_COLORS, glimmerHex } = await import(pathToFileURL(resolve('ui/dialogue.js')).href);
     if (!SPEAKERS.pip || !SPEAKERS.baron || !SPEAKERS.owl) throw new Error('SPEAKERS');
+    // 48C: the UI copy of the Glimmer colours must match the world's GLIMMER_INFO (glimmers.js imports Three, so dialogue.js keeps a copy)
+    { const { GLIMMER_INFO } = await import(pathToFileURL(resolve('src/assets/creatures/glimmers.js')).href);
+      const keys = Object.keys(GLIMMER_INFO); if (keys.length !== 12 || Object.keys(GLIMMER_COLORS).length !== 12) throw new Error('GLIMMER_COLORS: 12 types expected');
+      for (const k of keys) if (GLIMMER_COLORS[k] !== GLIMMER_INFO[k].color) throw new Error(`GLIMMER_COLORS.${k} ${GLIMMER_COLORS[k]?.toString(16)} != GLIMMER_INFO ${GLIMMER_INFO[k].color.toString(16)}`);
+      if (glimmerHex('kid') !== '#80deea' || glimmerHex('owl') !== null) throw new Error('glimmerHex'); }
     const dlg = mountDialogue(root, { bus, cps: 50, pauseGame: true, selfDrive: false });
     const q = (s) => dlg.el.querySelector(s);
     bus.emit('story:line', { speaker: 'owl', text: 'Hoo! Books open.' });            // 16 chars, 2 punctuation pauses (×6) → 16 + 10 = 26 "ticks" @ 50 cps ≈ 0.52 s
@@ -1201,6 +1206,11 @@ if (doUI) {
     pressKey('2'); if (!ev['ui:choice'] || ev['ui:choice'][0].index !== 1 || ev['ui:choice'][0].text !== 'Refuse' || ev['ui:choice'][0].line.speaker !== 'baron' || dlg.isOpen) throw new Error('key 2 → choice ' + JSON.stringify(ev['ui:choice'] && ev['ui:choice'][0] && ev['ui:choice'][0].index));
     dlg.say('Just narration.'); if (!q('.ll-dlg-portrait').classList.contains('hidden') || q('.ll-dlg-name').style.display !== 'none') throw new Error('narrator hides portrait/name');
     dlg.say({ speaker: 'zed', text: 'who?' }); if (q('.ll-blob-initial').textContent !== 'Z' || !q('.ll-blob').classList.contains('generic')) throw new Error('generic speaker initial');
+    // 48C: Glimmer type as speaker → glimmer portrait + its world colour in --sp; Fog Collector keeps its own speaker; owl clears --sp
+    dlg.say({ speaker: 'kid', text: 'hi' }); if (!q('.ll-dlg-box').classList.contains('sp-glimmer') || q('.ll-dlg-box').style.getPropertyValue('--sp') !== '#80deea') throw new Error('kid speaker --sp ' + q('.ll-dlg-box').style.getPropertyValue('--sp'));
+    dlg.say({ speaker: 'glimmer', type: 'saver', text: 'hi' }); if (q('.ll-dlg-box').style.getPropertyValue('--sp') !== '#aed581') throw new Error('glimmer+type --sp');
+    dlg.say({ speaker: 'collector', text: 'pay' }); if (!q('.ll-dlg-box').classList.contains('sp-collector') || q('.ll-dlg-box').style.getPropertyValue('--sp')) throw new Error('collector must stay Fog Collector');
+    dlg.say({ speaker: 'owl', text: 'hoo' }); if (q('.ll-dlg-box').style.getPropertyValue('--sp')) throw new Error('--sp must clear for non-glimmers');
     bus.emit('story:end'); if (dlg.isOpen) throw new Error('story:end');
     dlg.destroy(); if (dlg.el.parentNode) throw new Error('destroy');
     console.log('  dialogue: story:line ×2 → open + queue 1 + ui:pause on · Tally-Owl portrait · typewriter 50 cps partial → done (punct. pauses) · advance → ui:advance / next line (Pip happy) · tap while typing = skip · Enter → close + ui:pause off · choices ×2, advance blocked, key 2 → ui:choice{1,Refuse} · narrator · generic "Z" · story:end · destroy  OK');

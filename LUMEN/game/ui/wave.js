@@ -7,7 +7,7 @@
 //
 // Why: playtest — "Collectors landed" was a 6 s toast at the top; players read it late (or never) and did not know WHERE the
 //   fog-men were, because they spawn at the pier, often off-screen. Now:
-//   • BANNER: a big red ribbon slides across the screen for ~2.4 s ("⚠ 2 DEBT COLLECTORS LANDED" / "🎩 BARON GILT LANDS").
+//   • BANNER: a big red ribbon slides across the screen for ~2.4 s (icon warn + "2 DEBT COLLECTORS LANDED" / icon tophat + "BARON GILT LANDS").
 //   • EDGE ARROWS: while any enemy is in 'chase' state and OFF-SCREEN, a pulsing red chevron sits on the screen edge pointing at it
 //     (distance in metres under it). On-screen enemies get no arrow (the red ring + sprite are enough). Arrows vanish when the wave
 //     is beaten / walks home / the season ends. Hidden under modals (dialogue, pause, ledger) by index.js not calling update.
@@ -64,7 +64,7 @@ export function mountWave(root, opts = {}) {
     },
     destroy() { for (const f of offs) f(); layer.remove(); },
   };
-  function mkArrow() { const a = { el: el('div', 'll-wave-arrow'), chev: el('div', 'll-wave-chev', '➤'), icon: el('span', 'll-wave-ico', icon('fog')), dist: el('span', 'll-wave-dist', '') }; a.el.append(a.chev, a.icon, a.dist); layer.append(a.el); return a; }
+  function mkArrow() { const a = { el: el('div', 'll-wave-arrow'), chev: el('div', 'll-wave-chev', icon('arrow')), icon: el('span', 'll-wave-ico', icon('fog')), dist: el('span', 'll-wave-dist', '') }; a.el.append(a.chev, a.icon, a.dist); layer.append(a.el); return a; }
   function hideArrows() { for (const a of arrows) a.el.style.display = 'none'; }
 
   const offs = [

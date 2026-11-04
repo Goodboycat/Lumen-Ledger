@@ -31,6 +31,16 @@ export const SPEAKERS = {
   narrator: { name: '',           cls: 'narrator', initial: '' },
 };
 
+// 48C: per-type Glimmer colours — a copy of GLIMMER_INFO[type].color (src/assets/creatures/glimmers.js imports Three, so the
+// UI cannot import it). check.mjs --ui asserts the two tables agree. A Glimmer speaker key (or speaker 'glimmer' + line.type)
+// paints the name-plate / blob with its world colour via the --sp CSS variable instead of the one fixed blue.
+export const GLIMMER_COLORS = {
+  regular: 0x4fc3f7, saver: 0xaed581, spender: 0xf48fb1, vip: 0xfff176,
+  impulse: 0xFF8A65, haggler: 0xB39DDB, kid: 0x80DEEA, elder: 0xBCAAA4,
+  tourist: 0xFFF176, critic: 0x90A4AE, collector: 0xCE93D8, newbie: 0xA5D6A7,
+};
+export const glimmerHex = (type) => (type in GLIMMER_COLORS ? '#' + GLIMMER_COLORS[type].toString(16).padStart(6, '0') : null);
+
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = iconize(html); return e; };
 
 export function mountDialogue(root, opts = {}) {
@@ -62,7 +72,12 @@ export function mountDialogue(root, opts = {}) {
   const retrigger = (node, cls) => { node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls); };
 
   const setSpeaker = (line) => {
-    const key = line.speaker || 'narrator'; const sp = SPEAKERS[key] || { name: key, cls: 'generic', initial: String(key)[0].toUpperCase() };
+    const key = line.speaker || 'narrator';
+    // 48C: a Glimmer type used as speaker ('saver', 'kid', …) is a Glimmer with that type's colour. 'collector' stays the Fog Collector.
+    const gType = (key !== 'collector' && key in GLIMMER_COLORS) ? key : (key === 'glimmer' && line.type in GLIMMER_COLORS ? line.type : null);
+    const sp = SPEAKERS[key] || (gType ? SPEAKERS.glimmer : null) || { name: key, cls: 'generic', initial: String(key)[0].toUpperCase() };
+    const hex = gType ? glimmerHex(gType) : null;
+    if (hex) box.style.setProperty('--sp', hex); else box.style.removeProperty('--sp');
     blob.className = 'll-blob ' + sp.cls + (line.mood ? ' mood-' + line.mood : '');
     initial.textContent = sp.cls === 'generic' ? sp.initial : '';
     portrait.classList.toggle('hidden', sp.cls === 'narrator' && !line.portrait);
