@@ -56,6 +56,7 @@ const doEnemies = args.includes('--enemies');      // S16 src/systems/enemies.js
 const doRegions = args.includes('--regions');      // 17A src/world/regions/Regions.js: 7 regions / 6 gates from data/regions.json, at(), debounce enter, load/unload (visible + animators paused), flags → canOpen, sealed → noregion, isLand union, destroy
 const doBarks = args.includes('--barks');          // 41A tools/checks/barks.mjs: story.json barks ≤ 60 chars, opening = 2 lines, ≥ 5 story:bark in 12 s headless, 0 replay on resume, mountBarks destroy clean
 const doVerbs = args.includes('--verbs');
+const doTutor = args.includes('--tutor');          // 48F ui/tutor.js: tests/tutor.test.mjs (once per profile, one at a time / drop, tap/key/ttl dismiss, match filters, lull, verb chain → 5 tutor:hint, no #verb-hint DOM)
 const doUnlocks = args.includes('--unlocks');      // 41D src/systems/unlocks.js: tests/unlocks.test.mjs (2 starters, locked no-op, 3/6/9/12 ★ order, save v2 + v1 migrate, win = all 6)          // 41B src/systems/verbChain.js: tests/verbs.test.mjs (scripted chain, idle auto-complete, skip/resume, destroy)
 const doTelemetry = args.includes('--telemetry');  // 40A src/systems/telemetry.js: unit tests + headless createLumenGame S1→S3 → session has play/firstStall(player-placed)/firstSale/s2/s3, sparkHandled ≤ sparkTotal (ratio printed = S44 baseline), quit on ui:title, export parses, destroy → listeners restored
 const doSpring = args.includes('--spring');        // S44 JellySpring/setSquash stability at speed ×3 + low fps (tests/spring.test.mjs, pure Node)
@@ -1947,6 +1948,14 @@ if (doVerbs) {
   const pass = /^# pass (\d+)/m.exec(t.stdout || '')?.[1], fail = /^# fail (\d+)/m.exec(t.stdout || '')?.[1];
   if (t.status !== 0 || fail !== '0') { bad++; console.log('  tests/verbs.test.mjs FAIL →', (t.stdout || '').split('\n').filter((l) => l.startsWith('not ok')).slice(0, 5).join(' | ')); }
   else console.log(`  tests/verbs.test.mjs → ${pass} pass, 0 fail OK`);
+}
+if (doTutor) {
+  const { spawnSync } = await import('node:child_process');
+  console.log('\n48F CURIOSITY TUTOR:');
+  const t = spawnSync(process.execPath, ['--test', 'tests/tutor.test.mjs'], { encoding: 'utf8' });
+  const pass = /^# pass (\d+)/m.exec(t.stdout || '')?.[1], fail = /^# fail (\d+)/m.exec(t.stdout || '')?.[1];
+  if (t.status !== 0 || fail !== '0') { bad++; console.log('  tests/tutor.test.mjs FAIL →', (t.stdout || '').split('\n').filter((l) => l.startsWith('not ok')).slice(0, 5).join(' | ')); }
+  else console.log(`  tests/tutor.test.mjs → ${pass} pass, 0 fail (ui:build:open ×3 → 1 card · deposit while up → dropped · seen persisted · tap/key/8 s → tutor:dismissed{ms} · lull 25 s once · verb chain 5 tutor:hint, no #verb-hint) OK`);
 }
 if (doUnlocks) {
   const { spawnSync } = await import('node:child_process');
