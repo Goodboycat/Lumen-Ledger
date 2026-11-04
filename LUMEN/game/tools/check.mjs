@@ -1246,9 +1246,10 @@ if (doUI) {
     const v3 = joyVector(0, -28, 56, 0.12); if (!(v3.ny < 0 && v3.ny > -1 && v3.mag > 0.4 && v3.mag < 0.5)) throw new Error('joyVector half ' + JSON.stringify(v3));
     const presses = []; const input = { isTouch: false, actions: { attack: false, interact: false, build: false, dash: false }, joystick: { active: false, id: -1, radius: 56, vec: { x: 0, y: 0, set(x, y) { this.x = x; this.y = y; } } }, press: (n) => presses.push(n), onJoystick: null };
     let joyCalls = 0; input.onJoystick = () => joyCalls++;
-    const touch = mountTouch(root, input, { bus, buttons: ['attack', 'interact', 'build'] });
+    const touch = mountTouch(root, input, { bus, buttons: ['attack', 'interact', 'build', 'dash'] });   // 48D: interact/build are filtered out → attack + dash only
     if (touch.visible || touch.el.classList.contains('on')) throw new Error('should be hidden on desktop'); touch.show(); if (!touch.visible || !document.body.classList.contains('is-touch')) throw new Error('show');
-    if (Object.keys(touch.buttons).length !== 3 || !TOUCH_BUTTONS.attack) throw new Error('buttons');
+    if (Object.keys(touch.buttons).length !== 2 || !TOUCH_BUTTONS.attack || !TOUCH_BUTTONS.dash || TOUCH_BUTTONS.interact || TOUCH_BUTTONS.build || touch.buttons.interact || touch.buttons.build) throw new Error('buttons');   // 48D: no Interact / Build button
+    if (touch.el.querySelectorAll('.ll-touch-btn').length !== 2 || /[⚔✋🔨💨]/.test(touch.el.innerHTML) || !touch.el.querySelector('.ll-touch-btn.attack .ll-ico, .ll-touch-btn.attack img')) throw new Error('48D: 2 drawn buttons');
     touch.simulateJoystick(56, 0); if (!input.joystick.active || Math.abs(input.joystick.vec.x - 1) > 1e-9 || input.joystick.vec.y !== 0 || !touch.base.classList.contains('on') || joyCalls < 2) throw new Error('joystick feed ' + JSON.stringify(input.joystick.vec));
     touch.simulateJoystick(0, -28, true); if (input.joystick.active || input.joystick.vec.x !== 0 || touch.base.classList.contains('on') || !touch.knob.classList.contains('release')) throw new Error('joystick release');
     touch.simulatePress('attack'); if (presses[0] !== 'attack' || !ev['ui:touch'] || ev['ui:touch'][0].action !== 'attack' || input.actions.attack) throw new Error('press attack ' + JSON.stringify(presses));
@@ -1257,7 +1258,7 @@ if (doUI) {
     await sleep(500); const n = presses.filter((p) => p === 'attack').length; if (n < 3) throw new Error('attack repeat 220 ms while held: ' + n);
     bAtk.dispatchEvent({ type: 'pointerup' }); if (input.actions.attack || bAtk.classList.contains('down')) throw new Error('release attack');
     touch.setEnabled('attack', false); const n2 = presses.length; touch.simulatePress('attack'); if (presses.length !== n2 || !bAtk.classList.contains('off')) throw new Error('disabled still presses'); touch.setEnabled('attack', true);
-    touch.setBadge('build', '!'); if (touch.buttons.build.badge.textContent !== '!' || !touch.buttons.build.el.classList.contains('pulse')) throw new Error('badge'); touch.setBadge('build', '');
+    touch.setBadge('dash', '!'); if (touch.buttons.dash.badge.textContent !== '!' || !touch.buttons.dash.el.classList.contains('pulse')) throw new Error('badge'); touch.setBadge('dash', ''); touch.setBadge('build', '!');   // 48D: badge on a deleted button is a no-op
     bus.emit('ui:ledger:open', {}); if (!touch.el.classList.contains('modal')) throw new Error('modal hide'); bus.emit('ui:ledger:close', {}); if (touch.el.classList.contains('modal')) throw new Error('modal show');
     bus.emit('build:enter', {}); if (!bAtk.disabled) throw new Error('build:enter disables attack'); bus.emit('build:exit', {}); if (bAtk.disabled) throw new Error('build:exit re-enables');
     touch.hide(); if (touch.visible) throw new Error('hide'); touch.destroy(); if (touch.el.parentNode) throw new Error('destroy');
