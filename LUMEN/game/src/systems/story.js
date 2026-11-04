@@ -199,6 +199,8 @@ export class StorySystem {
   /** Emit `story:bark` for one line. Speaker → default anchor (pip→hero · owl→owl · baron→baron). */
   bark(line, group = 'bark') {
     if (!line || !line.text) return null;
+    // 48B BARK DIET: every word bark (group + index/text) plays ONCE PER RUN; pricing/wants/demand stay once-per-season (44A, keyed elsewhere).
+    if (!/^(pricing|wants|demand)/.test(group)) { const key = 'w:' + group + ':' + (line.id ?? line.text); if (this.state.barksPlayed.includes(key)) return null; this.state.barksPlayed.push(key); }
     const anchor = line.anchor || ({ pip: 'hero', owl: 'owl', baron: 'baron' }[line.speaker] || 'hero');
     const p = { speaker: line.speaker || 'owl', text: line.text, anchor, ttl: line.ttl || 3.2, group };
     this.bus.emit('story:bark', p); return p;

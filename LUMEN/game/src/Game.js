@@ -411,7 +411,6 @@ function installJarsWorld(sb) {
   const protectBark = (title, amount) => { const m = sb.world.jars[3]; if (m) bus.emit('story:bark', { speaker: 'owl', text: `The Protect jar ate the ${title || 'shock'}${amount ? ` (${amount} ✦)` : ''}. That is what it is for.`, anchor: { x: m.position.x, y: 1.2, z: m.position.z }, ttl: 3.4 }); };
   sb._offs.push(bus.on('eco:absorbed', (p) => protectBark(eco.events?.[p?.id]?.title)));                                  // Bubble Shield path
   sb._offs.push(bus.on('eco:event', (p) => { if (p?.effect?.absorbed > 0) protectBark(p.event?.title, p.effect.absorbed); }));   // the jar itself absorbed (4A rule)
-  sb._offs.push(bus.on('jars:locked', (p) => bus.emit('story:bark', { speaker: 'owl', text: 'Locked till the ledger.', anchor: 'hero', ttl: 2.2 })));
   sb._offs.push(() => { J.destroy(); sb.jarsWorld = null; });
 }
 

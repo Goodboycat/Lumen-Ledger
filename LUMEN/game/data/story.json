@@ -1270,42 +1270,9 @@
       "regular": "Regulars"
     },
     "walkIn": [
-      {
-        "speaker": "pip",
-        "text": "So this is Glowmarket. My very foggy island!",
-        "at": 0.6
-      },
-      {
-        "speaker": "owl",
-        "text": "I kept your grandmother's books, Pip.",
-        "at": 2.2
-      },
-      {
-        "speaker": "pip",
-        "text": "Is the fog included, or is that extra?",
-        "at": 3.8
-      },
-      {
-        "speaker": "owl",
-        "text": "That haze over the pier is the Baron's.",
-        "at": 5.2
-      },
-      {
-        "speaker": "baron",
-        "text": "Do take your time repaying. I love compounding.",
-        "at": 6.6
-      },
-      {
-        "speaker": "pip",
-        "text": "Can he take twenty per cent of ME?",
-        "at": 7.8
-      },
-      {
-        "speaker": "owl",
-        "text": "Not if we sell first. Walk on.",
-        "at": 8.8
-      }
-    ],
+        {"speaker": "pip", "text": "So this is Glowmarket. My very foggy island!", "at": 0.6},
+        {"speaker": "owl", "text": "Not if we sell first. Walk on.", "at": 2.4}
+      ],
     "firstCoin": [
       {
         "speaker": "pip",
