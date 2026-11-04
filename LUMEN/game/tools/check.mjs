@@ -1805,6 +1805,14 @@ if (doSave) {
   // season 2, spark/stalls/helpers/toastsFired identical, no toast replays, the S2 opening is not replayed. (3) exportText → clear → importText
   // → hasSave again · bad text refused. (4) forced lose → save cleared → title has no CONTINUE.
   console.log('\nSAVE (10D):');
+  // 48E: save v4 migration unit tests (v3 → 4 jar_* build entries, snapJarsToLand) — pure Node, run first
+  try {
+    const { spawnSync } = await import('node:child_process');
+    const t = spawnSync(process.execPath, ['--test', 'tests/save.test.mjs'], { encoding: 'utf8' });
+    const pass = ((t.stdout || '').match(/^# pass (\d+)/m) || [])[1], fail = ((t.stdout || '').match(/^# fail (\d+)/m) || [])[1];
+    if (t.status !== 0 || fail !== '0') throw new Error((t.stdout || '').split('\n').filter((l) => l.startsWith('not ok')).slice(0, 5).join(' | ') || (t.stderr || '').split('\n')[0]);
+    console.log(`  48E tests/save.test.mjs → ${pass} pass, ${fail} fail (v3 → 4 jar_* entries at (-8+i,3), balances kept · snapJarsToLand +z/−z/+x ≤ 6 · v4 untouched)  OK`);
+  } catch (err) { bad++; console.log('  48E tests/save.test.mjs FAIL →', err.message); }
   try {
     const { installDomShim } = await import(pathToFileURL(resolve('tools/domshim.mjs')).href); installDomShim();
     const THREE = await import(pathToFileURL(resolve('vendor/three.module.js')).href);

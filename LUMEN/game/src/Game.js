@@ -1274,7 +1274,7 @@ function applySnapshot(lg, sb, snap) {
   // BUGFIX B14: unlocked zones come back from the owned zone_* upgrades BEFORE the buildings are re-placed (locked zones are water → placements rejected)
   for (const id of eco.state.owned || []) { const u = eco.upgrades?.[id]; if (u?.kind === 'zone' && Number.isInteger(u.effect?.zone)) { if (sb.island.unlockInstant?.(u.effect.zone)) lg.stats.zonesRestored = (lg.stats.zonesRestored || 0) + 1; } }
   if (lg.stats.zonesRestored) sb.cust?.reroute?.();
-  if (Array.isArray(snap.build) && snap.build.length) { build.load(snap.build); sb.syncStalls?.(); sb.cust?.reroute?.(); }   // BUGFIX: syncStalls is authoritative (skips decor/nature, adds L2/L3 upkeep)
+  if (Array.isArray(snap.build) && snap.build.length) { Save.snapJarsToLand(snap.build, (x, z) => sb.island.isLand(x, z) && !build.occupied(x, z)); build.load(snap.build); sb.syncStalls?.(); sb.cust?.reroute?.(); }   // 48E: legacy (< v4) jars synthesized at (-8+i,3) snap onto free land — no floating jar   // BUGFIX: syncStalls is authoritative (skips decor/nature, adds L2/L3 upkeep)
   for (const id of snap.helpers || []) { const type = String(id).replace(/^helper_/, ''); if (HELPER_TYPES.includes(type) && !sb.helpers.some((h) => h.type === type)) hireHelper(sb, type, { free: true }); }
   // BUGFIX P18: a restored position on water (old save, zone that is no longer unlocked) is pulled back to the nearest land cell (or the plaza)
   if (snap.hero && sb.hero?.root) { sb.hero.root.position.set(snap.hero.x, 0, snap.hero.z); if (!sb.island.isLand(snap.hero.x, snap.hero.z) && !sb.hero.recoverToLand?.()) sb.hero.root.position.set(0, 0, 1); lg.game.camera?.snapTo?.(sb.hero.root.position); }

@@ -12,9 +12,36 @@
 // snapshot. Anything missing in an old save falls back to the fresh-sandbox value (forward-compatible by omission).
 
 export const SAVE_KEY = 'lumen.save';
-export const SAVE_VERSION = 3;                // 41D: v2 adds abilities[] + starsTotal; v1 snapshots still parse (migrate → ABILITY_START, 0 ★)
+export const SAVE_VERSION = 4;                // 41D: v2 adds abilities[] + starsTotal; v1 snapshots still parse (migrate → ABILITY_START, 0 ★)
                                               // 43D: v3 adds novelty (active id|null, mid-season resume re-starts it) + noveltiesSeen[] (story state; NEW chip once per id)
-export const SAVE_VERSIONS_OK = [1, 2, 3];
+                                              // 48E: v4 — jars are BUILDABLES (build[] carries jar_* entries). v1–v3 saves had 4 implicit jars at (-8+i, 3):
+                                              //      parseSnapshot synthesizes the 4 jar_* build entries (balances untouched); applySnapshot snaps them onto land via snapJarsToLand.
+export const SAVE_VERSIONS_OK = [1, 2, 3, 4];
+/** 48E: where the pre-48E world placed its 4 jars (Game.js `place(makeProp(id,{fill:.25}), -8+i, 3)` — the row that hung one jar over water). */
+export const LEGACY_JAR_ROW = [['jar_spend', -8, 3], ['jar_save', -7, 3], ['jar_invest', -6, 3], ['jar_protect', -5, 3]];
+export const JAR_SNAP_TRIES = 6;
+/** 48E migration half 1 (no world needed): a < v4 snapshot gets 4 jar_* build entries at the legacy row unless it already carries jars. */
+export function synthesizeLegacyJars(d) {
+  const build = Array.isArray(d.build) ? d.build : (d.build = []);
+  if (build.some((e) => typeof e?.id === 'string' && e.id.startsWith('jar_'))) return 0;
+  let n = 0; for (const [id, cx, cz] of LEGACY_JAR_ROW) { build.push({ id, cx, cz, rot: 0, level: 1, cost: 0, legacyJar: true }); n++; }
+  d.jarsMigrated = true; return n;
+}
+/** 48E migration half 2 (needs the world): every jar_* entry that is NOT on land moves +1 z until `isLand(x,z)` (max JAR_SNAP_TRIES), so no
+ *  legacy save shows a floating jar. `isLand` may also check occupancy. Returns how many entries moved. Idempotent; safe on v4 saves. */
+export function snapJarsToLand(build, isLand) {
+  if (!Array.isArray(build) || typeof isLand !== 'function') return 0;
+  let moved = 0;
+  for (const e of build) {
+    if (!e || typeof e.id !== 'string' || !e.id.startsWith('jar_')) continue;
+    let x = +e.cx, z = +e.cz, ok = !!isLand(x, z);
+    for (let t = 0; !ok && t < JAR_SNAP_TRIES; t++) { z += 1; ok = !!isLand(x, z); }
+    if (!ok) { z = +e.cz; for (let t = 0; !ok && t < JAR_SNAP_TRIES; t++) { z -= 1; ok = !!isLand(x, z); } }   // nothing south → try north
+    if (!ok) { z = +e.cz; for (let t = 0; !ok && t < JAR_SNAP_TRIES; t++) { x += 1; ok = !!isLand(x, z); } }   // still nothing → east
+    if (ok && (x !== +e.cx || z !== +e.cz)) { e.cx = x; e.cz = z; moved++; }
+  }
+  return moved;
+}
 //               // bump the MAJOR when a snapshot can no longer be applied; minor changes stay v1 (fields optional)
 export const EXPORT_PREFIX = 'LUMEN1:';
 
@@ -95,6 +122,7 @@ export function parseSnapshot(raw) {
   if (d.novelty != null && typeof d.novelty !== 'string') return null;
   if (d.noveltiesSeen != null && (!Array.isArray(d.noveltiesSeen) || d.noveltiesSeen.some((a) => typeof a !== 'string'))) return null;
   if (Math.floor(+d.v) < 3) { d.novelty = null; d.noveltiesSeen = []; }   // 43D migrate v1/v2 → no active novelty, nothing seen (story.state falls back to [])
+  if (Math.floor(+d.v) < 4) synthesizeLegacyJars(d);                       // 48E migrate v1–v3 → 4 jar_* build entries (land-snap happens in applySnapshot)
   return d;
 }
 
@@ -150,4 +178,4 @@ export function describe(snap) {
   return parts.join(' · ');
 }
 
-export default { SAVE_KEY, SAVE_VERSION, snapshot, save, load, clear, hasSave, exportText, importText, describe, parseSnapshot };
+export default { SAVE_KEY, SAVE_VERSION, snapshot, save, load, clear, hasSave, exportText, importText, describe, parseSnapshot, synthesizeLegacyJars, snapJarsToLand };
