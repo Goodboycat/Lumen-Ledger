@@ -99,7 +99,7 @@ export function mountNudge(root, opts = {}) {
   on('game:resumed', () => { st.armed = true; });
   on('eco:season', () => api.hide('season'));
   on('eco:win', () => api.hide('win')); on('eco:lose', () => api.hide('lose'));
-  for (const n of ['ui:tutorial:open', 'ui:ledger:open', 'ui:dialogue:open', 'ui:seasons:open', 'ui:title:open']) on(n, () => api.hide('modal'));
+  for (const n of ['ui:ledger:open', 'ui:dialogue:open', 'ui:seasons:open', 'ui:title:open']) on(n, () => api.hide('modal'));
   on('ui:pause', (p) => { if (p && p.on) api.hide('pause'); });
   on('ui:touch', (p) => { if (p && p.action === 'ability') api.hide('busy'); });
   on('game:start', () => { st.armed = true; });

@@ -197,7 +197,7 @@ export function mountTouch(root, input, opts = {}) {
     bus.on('ui:dialogue:open', () => wrap.classList.add('modal')), bus.on('ui:dialogue:close', () => wrap.classList.remove('modal')),
     bus.on('ui:title:open', () => wrap.classList.add('modal')), bus.on('ui:title:close', () => wrap.classList.remove('modal')),
     bus.on('ui:pause', (p) => wrap.classList.toggle('modal', !!(p && p.on))),
-    bus.on('ui:season:close', () => wrap.classList.remove('modal')), bus.on('ui:tutorial:close', () => wrap.classList.remove('modal')),
+    bus.on('ui:season:close', () => wrap.classList.remove('modal')),
     bus.on('build:enter', () => { api.setEnabled('attack', false); strip.classList.add('placing'); }), bus.on('build:exit', () => { api.setEnabled('attack', true); strip.classList.remove('placing'); }),
     // S08: the sandbox answers every ability — success → cooldown sweep (COOLDOWN_S from the payload or 5 s) · refused → shake
     bus.on('sandbox:ability:start', (p) => { if (p?.name && abilities[p.name]) api.setCooldown(p.name, p.cooldown ?? 5); }),

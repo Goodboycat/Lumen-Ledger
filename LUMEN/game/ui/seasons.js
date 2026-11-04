@@ -133,7 +133,6 @@ export function mountSeasonInfo(root, opts = {}) {
     bus.on('ui:continue', (p) => { if ((p?.outcome || 'season') === 'season' && opts.autoBanner !== false) setTimeout(() => api.requestBanner(st.season), 120); }),
     bus.on('ui:dialogue:close', () => setTimeout(() => api._flush(), 60)),
     bus.on('ui:ledger:close', () => setTimeout(() => api._flush(), 60)),
-    bus.on('ui:tutorial:close', () => setTimeout(() => api._flush(), 60)),
     // P54 / S23: the Season banner / lesson card waits while a cinematic (arrival / victory) owns the screen
     bus.on('cine:begin', (p) => { if (p?.shot !== 'title') { st.cine = true; api.hideBanner(); } }),
     bus.on('cine:end', () => { st.cine = false; setTimeout(() => api._flush(), 300); }),

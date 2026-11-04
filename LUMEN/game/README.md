@@ -69,7 +69,7 @@ game/
     systems/            economy.js + economyData.js (pure JS, 4 jars, loans, events, scams) · build.js · customers.js + flowfield.js · story.js · save.js · perf.js · enemies.js (S16–S20: Debt Collectors + Baron Gilt boss)
     vfx/                VFX.js base · pack1 (coins, confetti, rings, trails) · pack2 (Debt Fog ring, vignette, lighthouse beam, fogRecede) · storm.js · cinematics.js (S18: title orbit, arrival walk-in, victory lighthouse)
     world/Island.js     three-lobe island, zones, grid, isLand, pier edge
-    Game.js             createSandbox (world + systems on one loop) · createLumenGame (state machine, UI + story wiring, save, tutorial, perf)
+    Game.js             createSandbox (world + systems on one loop) · createLumenGame (state machine, UI + story wiring, save, verb-chain tutorial, perf)
   ui/                   pure HTML/CSS/JS: hud, jars, build tray, ledger, dialogue, toast, title, pause/settings, touch pad, index.js (mountUI)
   data/story.json       207 lines of dialogue, 10 lesson cards, 6 scam scripts, 10 events, endings, tutorial toasts
   audio/manifest.json   33 SFX + 6 music ids with synth sketches (ships silent-proof; drop .ogg files in and set fetchFiles:true)

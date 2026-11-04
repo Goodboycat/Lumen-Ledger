@@ -30,7 +30,6 @@
 <link rel="stylesheet" href="ui/pause.css">
 <link rel="stylesheet" href="ui/touch.css">
 <link rel="stylesheet" href="ui/seasons.css">
-<link rel="stylesheet" href="ui/tutorial.css">
 <link rel="stylesheet" href="ui/cinematics.css">
 <style>
   /* the Foundation HUD/help/touch markup is replaced by the 7A/7B/7C panels; only a tiny debug readout stays (hidden on phones) */
@@ -91,9 +90,8 @@ try {
     onOutline: setOutlineThickness, touch: true, storyData,
     jarsSummary: !params.has('sliders'),                                                 // 42B: jars are places — the panel is a read-only summary; ?sliders=1 = legacy 7A sliders + APPLY
     version: `${GAME_VERSION} · jam build`,
-    autoTutorial: params.has('oldtutorial') && !params.has('autoplay') && !params.has('notutorial'),   // 41B: old 11-step overlay only with ?oldtutorial                   // guided tutorial on the first PLAY (?notutorial / ?autoplay skip it)
   });
-  const lg = createLumenGame(game, { ui, storyData, seasons, seasonSeconds, seed: +params.get('seed') || undefined, debugKeys: params.has('debug'), cinematics: !params.has('nocine'), verbs: !(params.has('autoplay') || params.has('notutorial') || params.has('oldtutorial')),
+  const lg = createLumenGame(game, { ui, storyData, seasons, seasonSeconds, seed: +params.get('seed') || undefined, debugKeys: params.has('debug'), cinematics: !params.has('nocine'), verbs: !(params.has('autoplay') || params.has('notutorial')),   // 46B: ?oldtutorial gone
     telemetryEndpoint: params.get('telemetry') || null });   // S18: ?nocine = no title orbit / arrival / victory shots · 40A: ?telemetry=<url> opts in to a POST per session (default OFF)
   ui.wave?.bind({ camera: game.camera.three, enemies: () => lg.sb?.enemies, hero: () => lg.sb?.hero });   // S41/15D: edge arrows project enemies through the live camera
   ui.barks?.bind({ camera: game.camera.three, hero: () => lg.sb?.hero, owl: () => lg.sb?.owl || lg.sb?.helpers?.owl || lg.sb?.hero, baron: () => lg.sb?.enemies?.baron || lg.sb?.enemies?.active?.find?.((e) => e.kind === 'baron') || lg.sb?.hero });   // 41A: speech bubbles project through the live camera (missing anchor → hero)

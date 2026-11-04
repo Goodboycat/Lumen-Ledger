@@ -2216,7 +2216,6 @@ if (doCine) {
     if (!lg.story?.held) throw new Error('story not held during arrival');
     const pier = sb.world.pierSpawn, startD = Math.hypot(hero.root.position.x - pier.x, hero.root.position.z - pier.z); if (startD > 3) throw new Error('hero not at the pier (' + startD.toFixed(1) + ')');
     step(); if (ui.dialogue.isOpen) throw new Error('S1 opening leaked during the arrival shot');
-    if (ui.tutorial?.isOpen) throw new Error('tutorial opened during the arrival shot');
     run(1.5); const d1 = hero.root.position.distanceTo(new THREE.Vector3(0, 0, 1)); if (!(d1 < startD - 0.5 || startD < 2)) throw new Error('Pip is not walking in (' + d1.toFixed(1) + ' vs ' + startD.toFixed(1) + ')');
     if (game.paused) throw new Error('arrival should run unpaused');
     const finite = (v) => Number.isFinite(v.x) && Number.isFinite(v.y) && Number.isFinite(v.z);
@@ -2225,9 +2224,8 @@ if (doCine) {
     if (C.active || !ev['cine:end'] || ev['cine:end'][0].shot !== 'arrival' || ev['cine:end'][0].skipped) throw new Error('arrival did not end (' + (n / 30).toFixed(1) + ' s)');
     if (hero.inputOverride || lg.story.held || has('ll-cine-on') || camera.cine) throw new Error('arrival did not release hero/story/camera');
     const dEnd = hero.root.position.distanceTo(new THREE.Vector3(0, 0, 1)); if (!(dEnd < 3)) throw new Error('Pip did not reach the plaza (' + dEnd.toFixed(1) + ')');
-    run(1); if (!ui.dialogue.isOpen && !ui.tutorial?.isOpen) throw new Error('neither S1 opening nor the tutorial after cine:end');
-    const tutFirst = !!ui.tutorial?.isOpen;
-    if (ui.tutorial?.isOpen) ui.tutorial.close('skip');
+    run(1); if (!ui.dialogue.isOpen) throw new Error('no S1 opening after cine:end');   // 46B: overlay tutorial deleted
+    const tutFirst = false;
     step(); const dl = drain(); if (!dl && !tutFirst) throw new Error('no opening lines after arrival');
     console.log(`  2. PLAY → showcase reused (no rebuild) · arrival: Pip pier→plaza (${startD.toFixed(1)} → ${dEnd.toFixed(1)} m) in ${(n / 30).toFixed(1)} s, override + story hold + HUD fade released · tutorial${tutFirst ? ' opened after cine:end' : ' deferred'} · S1 opening ${dl} lines  OK`);
     // 3. restart → arrival → SKIP
@@ -2238,7 +2236,7 @@ if (doCine) {
     let m = 0; while (C.active && m < 90) { step(); m++; }
     if (C.active || ev['cine:end'].length !== ends + 1 || !ev['cine:end'][ends].skipped) throw new Error('SKIP did not end the shot');
     if (lg.sb.hero.inputOverride || lg.story.held) throw new Error('skip did not release');
-    const sbW = lg.sb; if (ui.tutorial?.isOpen) ui.tutorial.close('skip'); run(0.2); drain();
+    const sbW = lg.sb; run(0.2); drain();
     console.log(`  3. ui:restart → no replay · ui:title → showcase again → PLAY → arrival → SKIP → cine:end {skipped} after ${(m / 30).toFixed(2)} s blend-out, released  OK`);
     // 4. victory
     const lampStates = []; const lh = sbW.world.lighthouse; const origSet = lh?.userData?.setState; if (lh?.userData) lh.userData.setState = (s) => { lampStates.push(s); origSet?.call(lh.userData, s); };
@@ -2261,7 +2259,7 @@ if (doCine) {
     let r = 0; while (C.active && r < 60) { step(); r++; } if (C.active || ev['cine:end'].length !== e0 + 1) throw new Error('rm arrival did not cut');
     if (r > 30) throw new Error('rm cut took ' + (r / 30).toFixed(2) + ' s');
     lg.reduceMotion = false; bus.emit('ui:settings', { key: 'reduceMotion', value: false });
-    if (ui.tutorial?.isOpen) ui.tutorial.close('skip'); drain();
+    drain();
     bus.emit('ui:title'); step(); const before = meshes(); lg.destroy(); const after = meshes();
     if (after !== 0 || C._el !== null && !lg.cine === false) throw new Error('teardown left ' + after + ' meshes');
     const ui2 = mountUI(document.body, { bus: new EventBus(), stats: () => game.stats, input: game.input, catalog: PROP_CATALOG, seasonsToWin: 10, touch: false, version: 'check' });
