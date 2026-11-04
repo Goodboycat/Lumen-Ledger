@@ -36,16 +36,19 @@ Legend: ✅ exists today · 🔜 owned by a later chat · ☐ manual step on sub
 ## D. Quality gates before upload
 | # | Gate | Command / file | Status |
 |---|---|---|---|
-| D1 | Headless suite | `node tools/check.mjs --props --creatures --hero --abilities --economy --build --customers --ui --story --vfx --world --sandbox --game --save --audio` → ALL OK | ✅ (2026‑10‑19) |
-| D2 | Full game walk headless | included in D1 (`--game`: S1 → S3 → win → endless → lose → title, 3070 frames) | ✅ |
-| D3 | Browser smoke, 0 console errors | `bash tools/setup_browser.sh && node tools/smoke.mjs index.html --close` → ERRORS none | ✅ (12: 121–133 dc) |
-| D4 | Mobile check, 3 viewports (360×800 · 800×360 · 1280×720) | 0 overflow/overlap/scroll, taps ≥ 44 px | ✅ (11B) |
-| D5 | Perf budget | ≤ 150 draw calls in play (`docs/PERF.md`: 110–135) | ✅ |
-| D6 | Save round‑trip | `check.mjs --save` + manual: play a season, reload, CONTINUE | ✅ headless / ☐ manual |
-| D7 | Relative paths only (itch CDN sub‑path, WebView) | 11B audit; `grep -rn '"/src\|"/ui\|"/vendor' index.html ui src` → none | ✅ |
-| D8 | Audio unlock on first gesture; `?mute` works | 12 · click‑to‑launch on itch | ✅ |
-| D9 | Zip sanity after build | `unzip -l lumen-ledger-web.zip \| head` shows `index.html`, `src/`, `ui/`, `vendor/`, `data/`, `audio/` — no `tools/ tests/ docs/ demo_*` | ✅ dry‑run S39 (no tools/tests/docs/demo in zip) |
+| D1 | Headless suite | `node tools/check.mjs` → ALL OK | ✅ 45B (2026‑11‑04, S47) |
+| D2 | Full game walk headless | included in D1 (`--game`: S1 → S3 → win → endless → lose → title) | ✅ 45B |
+| D3 | Browser smoke, 0 console errors | Playwright `index.html?mute&debug` 1280×720, title → PLAY → dialogue drained → play: `pageerror` + console.error = **0** | ✅ 45B (S47) |
+| D4 | Mobile check, 3 viewports (360×800 · 800×360 · 1280×720) | `qa_mobile.mjs` 3/3 green after the bark-transform + joystick-knob CSS fix | ✅ 45B |
+| D5 | Perf budget | ≤ 180 draw calls in play (45B prompt budget; `docs/PERF.md` measured 110–135 at S39) — **167** measured in S1 play, 95 k tris, SwiftShader | ✅ 45B (167 ≤ 180; over the old 150 note → PLAY_BUGS 45B-3) |
+| D6 | Save round‑trip | `check.mjs --save` + browser: `lg.save.write()` at S1 day 0.42 / 77 coins → reload → CONTINUE visible → resumed S1 day01 0.42, coins 77, verb chain at step 0 | ✅ headless / ✅ manual 45B |
+| D7 | Relative paths only (itch CDN sub‑path, WebView) | `grep -rn "src=\"/\|href=\"/\|fetch('/" index.html ui src` → **0** | ✅ 45B |
+| D8 | Audio unlock on first gesture; `?mute` works | `window.lumenAudioCtx` absent on the title, created after the first Enter (index.html queues title music until `input:first`); `?mute` boots with 0 errors | ✅ 45B |
+| D9 | Zip sanity after build | `bash tools/itch_zip.sh` → 9.7 MB, 336 files; root = `index.html favicon.png icon.png icon-192.png src/ ui/ data/ audio/ vendor/` — no `tools/ tests/ docs/ demo_*` | ✅ 45B (S47) |
 | D10 | Fresh‑profile play‑through on a phone from the live itch URL (one season, title → ledger) | ☐ submission day | ☐ |
+| D11 | 1280×720 no‑scroll (itch iframe) | `scrollWidth/Height` = 1280/720 = viewport in title and play | ✅ 45B |
+| D12 | Android back = Esc | `history.pushState` sentinel + `popstate` (index.html:139): `page.goBack()` → URL unchanged, `game.paused = true` | ✅ 45B |
+| D13 | Title footer shows the version | footer text `jam build · S47` visible on the title (`ui/title.js` `opts.version`) | ✅ 45B |
 
 ## E. Android APK (bonus deliverable, Chat 14)
 | # | Item | Artefact | Status |
@@ -62,10 +65,10 @@ Legend: ✅ exists today · 🔜 owned by a later chat · ☐ manual step on sub
 5. Jam page → **Submit your project** → theme answer = `ITCH_PAGE.md §3` → attach/link GDD, video, budget as the form asks.
 6. Commit `LUMEN/README.md` row "SUBMITTED <date> <itch URL>"; push.
 
-## G. S39 dry run (2026-10-27) — checklist vs. `tools/itch_zip.sh` output
-- A1 ✅ zip builds: 9.6 MB, 305 files, `index.html` at root. A2/A4 docs exist, PDFs ☐. A3 video 🔜 (not recorded yet).
-- D9 ✅ no `tools/ tests/ docs/ demo_*` in the zip. D7 relative paths unchanged.
-- Size: 9.6 MB is fine for itch (1 GB limit) but it's ~18× the old 0.54 MB note. Biggest files: island_day.ogg 1.7 MB,
-  island_endless.ogg 1.6 MB, title.ogg 1.0 MB, fog_lose.ogg 0.7 MB, ledger.ogg 0.7 MB. Optional: re-encode music at ~64 kbps
-  to get under ~5 MB for a faster first load on phones.
-- Still open before 2026-11-15: A3 trailer, C6 cover, C7 screenshots, GDD §11 names, D10 phone play-through, D1 full suite re-run.
+## G. S47 dry run (2026-11-04, chat 45B) — replaces the S39 dry run
+- Measured in a real headless Chromium (Playwright 1.47, SwiftShader GL, 1280×720, `?mute`). Harness: `tools/play.mjs --script funnel` + two one-off probes (gates, save round-trip). 0 page errors, 0 console errors across title → PLAY → dialogue → play → back → reload → CONTINUE.
+- D1–D9, D11–D13 ✅ (table above). D10 ☐ needs the live itch URL + a phone.
+- A1 ✅ zip builds: 9.7 MB, 336 files, `index.html` at root (was 9.6 MB / 305 files at S39; +31 files = phase 43–44 data/ui). A2/A4 docs exist, PDFs ☐. A3 video 🔜.
+- Draw calls in play: **167** (S39 note said 110–135; phase 43–44 added price bubbles, sign tints, wants icons). Within the 45B budget of 180; the old 150 line is stale → `PLAY_BUGS.md 45B-3`.
+- Funnel (FUNNEL_BASELINE "## 45B browser"): PLAY ✅, firstSale 55.5 s, firstCoinInHand 95.3 s (`tip:walk`), S2/S3 not reached in 238 s because SwiftShader runs at fps ≈ 1 (maxDt clamp = 1/10 speed) and the verb chain freezes the season clock up to 125 s. Findings → `PLAY_BUGS.md 45B-1 / 45B-2`.
+- Still open before 2026-11-15: A3 trailer, GDD §11 names, D10 phone play-through, re-run `tools/play.mjs --script funnel` on a real GPU for a comparable S2/S3 row.
