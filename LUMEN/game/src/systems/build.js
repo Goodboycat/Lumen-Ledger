@@ -100,7 +100,7 @@ export class BuildSystem {
   owned(id) {
     const e = this.entry(id); if (!e || !UNIQUE_CATS.has(e.category)) return null;   // 48E: jars are unique too (one Save jar)
     const cid = this.catalog[id] ? id : PROP_ALIASES[id];
-    for (const p of this.placed.values()) if (p.id === cid && UNIQUE_CATS.has(p.category) && !p.scenery) return p;
+    for (const p of this.placed.values()) if (p.id === cid && (UNIQUE_CATS.has(p.category) || UNIQUE_CATS.has(this.entry(p.id)?.category)) && !p.scenery) return p;   // 48E: the jar group's userData.category is 'decor' (shared decor maker) — trust the catalog
     return null;
   }
   /** S29: why `id` cannot be placed at all right now (independent of the cell): 'duplicate' when a stall of that type already stands, else null. */
@@ -280,7 +280,7 @@ export class BuildSystem {
     const group = this._build(id, { level: opts.level || 1 });
     group.rotation.y = rot * Math.PI / 2;
     group.position.copy(this.anchorToWorld(id, cx, cz, rot));
-    const entry = { id, group, level: group.userData.level || opts.level || 1, cells: this.cellsFor(id, cx, cz, rot), rot, cost: cost + (opts.level > 1 && opts.cost == null ? [2, 3].slice(0, opts.level - 1).reduce((a, l) => a + this.upgradeCost(l), 0) : 0), cx, cz, category: group.userData.category || e.category || 'prop', uid: ++this._counter };
+    const entry = { id, group, level: group.userData.level || opts.level || 1, cells: this.cellsFor(id, cx, cz, rot), rot, cost: cost + (opts.level > 1 && opts.cost == null ? [2, 3].slice(0, opts.level - 1).reduce((a, l) => a + this.upgradeCost(l), 0) : 0), cx, cz, category: e.category === 'jar' ? 'jar' : (group.userData.category || e.category || 'prop'), uid: ++this._counter };   // 48E: jars keep category 'jar' (decor maker stamps 'decor')
     this.placed.set(key(cx, cz), entry);
     for (const c of entry.cells) this.cells.set(key(c.x, c.z), entry);
     this.parent.add(group);

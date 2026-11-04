@@ -28,6 +28,9 @@ export async function run({ resolve, pathToFileURL }) {
     const sb = createSandbox(game, { headless: true, seasonSeconds: 150, seed: 7 });
     if (sb.enemies) sb.enemies.enabled = false;
     const J = sb.jarsWorld; if (!J || typeof sb.interact !== 'function' || typeof sb.interactRelease !== 'function') throw new Error('sb.jarsWorld / sb.interact / sb.interactRelease missing');
+    // 48E: jars are BUILDABLES — a fresh sandbox has 0 jars; place the 4 (cost 0) on free land cells far from the origin (near() at (0,0) must stay null)
+    if (J.jars.size !== 0) throw new Error('48E fresh sandbox should have 0 jars, has ' + [...J.jars.keys()].join(','));
+    { const cells = sb.island.gridCells().filter((c) => Math.hypot(c.x, c.z) > 3); for (const k of ['spend', 'save', 'invest', 'protect']) { const c = cells.find((c) => sb.build.canPlace('jar_' + k, c.x, c.z, 0)); if (!c) throw new Error('48E no free cell for jar_' + k); if (!sb.build.place('jar_' + k, c.x, c.z, 0, { animate: false })) throw new Error('48E place jar_' + k); } }
     if (J.jars.size !== 4 || !['spend', 'save', 'invest', 'protect'].every((k) => J.jars.has(k))) throw new Error('jars map ' + [...J.jars.keys()].join(','));
     const meshes0 = meshCount(scene); const isCreature = (o) => { for (let p = o; p && p !== scene; p = p.parent) if (/^(cust_|helper|enemy|coll|baron)/.test(p.name || '')) return true; return false; }; const nonCreature = () => { let n = 0; scene.traverse((o) => { if (o.isMesh && !isCreature(o)) n++; }); return n; }; const meshesNC0 = nonCreature();
     const dt = 1 / 30; const step = () => { game.time += dt; game.sequences.update(dt); game.tweens.update(dt); for (const s of game.systems) s.update?.(dt); /* sb.update ticks J.update */ if (sb.eco.pendingOffer) sb.eco.refuseOffer(); };
@@ -93,9 +96,34 @@ export async function run({ resolve, pathToFileURL }) {
     eco.state.spark = 30; if (J.spillPouch() !== 3) throw new Error('10 % of 30 should spill 3');
 
     // ---------------------------------------------------------------- 5. budgets + destroy
-    // 0 new meshes from J: customers spawn during the run (cust_*), so count everything that is NOT a creature. Jars were placed by buildWorld.
+    // 0 new meshes from J: customers spawn during the run (cust_*), so count everything that is NOT a creature. Jars were placed above via build.place.
     if (nonCreature() !== meshesNC0) throw new Error(`+${nonCreature() - meshesNC0} non-creature meshes (J must add 0)`);
     if (J.tags.size > 4) throw new Error('DOM tags ' + J.tags.size);
+
+    // ---------------------------------------------------------------- 48E JAR BUILDABLES: place → deposit → demolish (balance → pouch) → place again (0) · duplicate denied · consumers null-safe
+    {
+      const B = sb.build; const saveE = [...B.placed.values()].find((e) => e.id === 'jar_save'); if (!saveE) throw new Error('48E jar_save entry missing');
+      if (B.placeBlocker('jar_save') !== 'duplicate') throw new Error('48E second jar_save should be duplicate, got ' + B.placeBlocker('jar_save'));
+      const any = sb.island.gridCells().find((c) => !B.occupied(c.x, c.z) && B.canPlace('bench', c.x, c.z, 0)); if (any && B.canPlace('jar_save', any.x, any.z, 0) !== false) throw new Error('48E canPlace(jar_save) on a free cell must be false while one stands');
+      const removed = []; const offR = bus.on('jars:removed', (p) => removed.push(p));
+      eco.state.jars.save = 0; eco.state.spark = 10; hp.set(saveE.group.position.x, 0, saveE.group.position.z); step(); if (J.near() !== 'save' || sb.interact() !== 'deposit') throw new Error('48E deposit at placed save jar'); sb.interactRelease(); step();
+      if (eco.state.jars.save !== 10 || eco.state.spark !== 0) throw new Error(`48E after deposit save ${eco.state.jars.save} pouch ${eco.state.spark}`);
+      hp.set(0, 0, 0); step();
+      if (!B.demolish(saveE, { animate: false })) throw new Error('48E demolish jar_save refused');
+      if (J.get('save') !== null || removed.length !== 1 || removed[0].jar !== 'save' || removed[0].refunded !== 10 || eco.state.jars.save !== 0 || eco.state.spark !== 10) throw new Error(`48E demolish: get ${J.get('save')} removed ${JSON.stringify(removed)} save ${eco.state.jars.save} pouch ${eco.state.spark}`);
+      if (J.deposit('save') !== 0 || eco.state.spark !== 10) throw new Error('48E deposit to an unregistered jar must be 0');
+      if (J.near() !== null) throw new Error('48E near after demolish ' + J.near());
+      if (B.placeBlocker('jar_save') !== null) throw new Error('48E jar_save should be placeable again');
+      const c2 = sb.island.gridCells().filter((c) => Math.hypot(c.x, c.z) > 3).find((c) => B.canPlace('jar_save', c.x, c.z, 0)); if (!c2 || !B.place('jar_save', c2.x, c2.z, 0, { animate: false })) throw new Error('48E re-place jar_save');
+      if (!J.get('save') || eco.state.jars.save !== 0 || eco.state.spark !== 10) throw new Error(`48E re-placed jar: balance ${eco.state.jars.save} pouch ${eco.state.spark} (must be 0 / 10 — not lost, not doubled)`);
+      offR();
+      // consumers with a missing Protect jar: eco:event absorbed → no throw, no bark
+      const protE = [...B.placed.values()].find((e) => e.id === 'jar_protect'); if (!protE || !B.demolish(protE, { animate: false })) throw new Error('48E demolish jar_protect');
+      const barks = []; const offB = bus.on('story:bark', (p) => barks.push(p)); bus.emit('eco:event', { event: { title: 'Storm' }, effect: { absorbed: 12 } }); offB();
+      if (J.get('protect') !== null || barks.length) throw new Error('48E protectBark with no Protect jar should stay silent, barks ' + barks.length);
+      bus.emit('eco:jar', { jars: { ...eco.state.jars } });   // setFill consumer with a null jar must not throw
+      console.log('  48E jar buildables: fresh 0 jars → build.place ×4 · 2nd jar_save = duplicate · deposit 10 → demolish → pouch +10, get(save) null, deposit 0 · re-place → 0 · no Protect jar → eco:event silent  OK');
+    }
     destroySandbox(sb);
     if (!J.destroyed || J.tags.size !== 0 || sb.jarsWorld) throw new Error('destroy left J alive');
     console.log(`  jarsWorld: near spend/save/null · 48D ids()/meshOf() · 35 ✦ → 10,10,10,5 + empty (no eco:denied) · Invest hold → locked · Save hold → 10 then repeat ${REPEAT_S}s · walk-away releases · spill 100→92 (cap 8) · +0 meshes · destroy  OK`);
