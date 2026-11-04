@@ -27,9 +27,9 @@ if (SHIP) {
   p.on('console', (m) => { if (m.type() === 'error') errors.push('[console] ' + m.text()); });
   const sleep = (ms) => p.waitForTimeout(ms);
   const shot = async (name) => { await p.screenshot({ path: `${OUT}/${name}.png` }); console.log('shot', `${OUT}/${name}.png`); };
-  // boot: title screen stays up (no ui:start) so shot 1 can take it; ?debug=0 is a no-op key, kept per the prompt
+  // boot: title screen stays up (no ui:start) so shot 1 can take it. NO ?debug key at all: index.html uses params.has("debug"), so ?debug=0 still showed the fps·calls pill (45A pass 2)
   const boot = async (extra = '') => {
-    await p.goto(`http://127.0.0.1:${port}/index.html?debug=0&mute&notutorial&nocine${extra}`, { waitUntil: 'load' });
+    await p.goto(`http://127.0.0.1:${port}/index.html?mute&notutorial&nocine${extra}`, { waitUntil: 'load' });
     await sleep(2200);
   };
   // start a story run (same as PLAY) and return sb once it exists
