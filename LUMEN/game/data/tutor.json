@@ -1,0 +1,24 @@
+{
+  "_": "48F curiosity tutorial (HANDOFF_48Z D2). Reactive cards: each shows ONCE per profile, after the player did something, ≤ 60 chars, dies on tap / any key / ttl. `on` = bus event, `match` = payload filter (string ending in * = prefix). `point` = CSS selector the hand icon sits beside. Cards with `on: tutor:hint` are the S1 verb chain (src/systems/verbChain.js emits tutor:hint {id}).",
+  "ttl": 8,
+  "lull": 25,
+  "cards": [
+    { "id": "verb:move",     "on": "tutor:hint", "match": { "id": "move" },    "icon": "dash",       "text": "Move Pip: WASD or tap the ground." },
+    { "id": "verb:coin",     "on": "tutor:hint", "match": { "id": "coin" },    "icon": "spark",      "text": "Grab the coin ahead." },
+    { "id": "verb:bonk",     "on": "tutor:hint", "match": { "id": "bonk" },    "icon": "swords",     "text": "Swing your sword: Space." },
+    { "id": "verb:stall",    "on": "tutor:hint", "match": { "id": "stall" },   "icon": "hammer",     "text": "Tap empty ground, pick a stall, Deploy." },
+    { "id": "verb:deposit",  "on": "tutor:hint", "match": { "id": "deposit" }, "icon": "jar",        "text": "Carry it to the Save jar, press E." },
+
+    { "id": "onBuildOpen",   "on": "ui:build:open",                            "icon": "hammer",     "text": "Tap a stall, then Deploy.", "point": ".ll-build-tab" },
+    { "id": "onDemolish",    "on": "ui:build", "match": { "action": "demolish" }, "icon": "warn",    "text": "Careful — demolish sells for half." },
+    { "id": "onDecorTab",    "on": "ui:build:tab", "match": { "cat": "decor" }, "icon": "heart",      "text": "Decor lifts the mood. Mood lifts sales." },
+    { "id": "onFirstStall",  "on": "build:placed", "match": { "id": "stall_*" }, "icon": "basket",   "text": "Walk up to your stall to see the price." },
+    { "id": "onFirstCoin",   "on": "eco:spark", "match": { "reason": "tip*" },  "icon": "coinbag",    "text": "Coins go in the pouch. Jars keep them safe.", "point": ".ll-build-tab[data-cat=jar]" },
+    { "id": "onJarsTab",     "on": "ui:build:tab", "match": { "cat": "jar" },   "icon": "jar",        "text": "One of each. Place them where you walk." },
+    { "id": "onFirstDeposit","on": "jars:deposit",                              "icon": "shield",     "text": "Saved Spark earns. Pouch Spark gets spilled." },
+    { "id": "onWave",        "on": "enemy:wave",                                "icon": "swords",     "text": "Collectors chase coins. Hit them or outrun." },
+    { "id": "onSeason2",     "on": "eco:season", "match": { "season": 2 },     "icon": "calendar",   "text": "Each season: one HOT and one COLD good." },
+    { "id": "onLocked",      "on": "jars:locked",                               "icon": "lock",       "text": "Invest unlocks at the Ledger." },
+    { "id": "onCuriosityLull", "on": null,                                      "icon": "point",      "text": "Tap empty ground to build." }
+  ]
+}

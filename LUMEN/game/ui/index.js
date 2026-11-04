@@ -14,6 +14,7 @@ import { mountLedger } from './ledger.js';
 import { mountDialogue } from './dialogue.js';
 import { mountWave } from './wave.js';     // S41/15D: Collector wave banner + edge arrows pointing at off-screen enemies
 import { mountNudge } from './nudge.js';   // S42/16B: 'Touch here!' hand on the ⏩ button when nothing is happening
+import { mountTutor } from './tutor.js';   // 48F: curiosity tutorial — blue glass card, once per profile, reactive (data/tutor.json)
 import { mountBarks } from './bark.js';
 import { mountAbilityChips } from './abilityChips.js';   // 41D: six ability chips, locked = dim + ★ cost    // 41A: speech bubbles projected from hero/owl/baron (story:bark) — never modal
 import { mountTitle } from './title.js';
@@ -22,7 +23,7 @@ import { mountTouch } from './touch.js';
 import { mountSeasonInfo } from './seasons.js';
 
 export const UI_VERSION = 'S50';
-export const UI_CSS = ['ui/base.css', 'ui/hud.css', 'ui/jars.css', 'ui/build.css', 'ui/ledger.css', 'ui/dialogue.css', 'ui/wave.css', 'ui/bark.css', 'ui/title.css', 'ui/pause.css', 'ui/touch.css', 'ui/seasons.css'];   // 46B: ui/tutorial.css deleted (old overlay tutorial gone)
+export const UI_CSS = ['ui/base.css', 'ui/hud.css', 'ui/jars.css', 'ui/build.css', 'ui/ledger.css', 'ui/dialogue.css', 'ui/wave.css', 'ui/bark.css', 'ui/title.css', 'ui/pause.css', 'ui/touch.css', 'ui/seasons.css', 'ui/tutor.css'];   // 46B: ui/tutorial.css deleted (old overlay tutorial gone)
 
 /**
  * @param {HTMLElement} root  overlay root (#game-root). Panels append themselves; the canvas stays underneath.
@@ -45,6 +46,7 @@ export function mountUI(root, opts = {}) {
   add('wave', mountWave(root, { bus }));   // S41/15D — index.html binds camera/enemies via ui.wave.bind({...}) once the sandbox exists
   if (opts.nudge !== false) add('nudge', mountNudge(root, { bus }));   // S42/16B — Game.js binds the bored() predicate via ui.nudge.bind({...})
   if (opts.barks !== false) add('barks', mountBarks(root, { bus }));
+  if (opts.tutor !== false && opts.tutorData) add('tutor', mountTutor(root, { bus, data: opts.tutorData, seen: opts.tutorSeen || [] }));   // 48F — Game.js binds touched() + persists ui.tutor.seen (save v4 tutorSeen)
   if (opts.abilityChips !== false) add('abilityChips', mountAbilityChips(root, { bus }));   // 41D — Game.js emits ui:abilities on start/resume   // 41A — index.html binds camera/hero/owl/baron via ui.barks.bind({...})
   // S11: ONE Escape dispatcher. Panels no longer listen for Escape themselves (hotkey:false / noEsc) — a single capture-phase window
   // listener walks a priority stack and the FIRST layer that owns the screen consumes the press:
@@ -77,7 +79,7 @@ export function mountUI(root, opts = {}) {
   if (opts.reveal !== false) add('reveal', mountReveal(ui, { bus, storageKey: opts.tutorialKey }));
 
   /** One clock for every panel (count-ups, typewriter, fps readout). */
-  ui.update = (dt) => { ui.hud.update(dt); ui.ledger.update(dt); ui.dialogue.update(dt); if (ui.wave) { if (ui.isModal()) ui.wave.setVisible(false); else { ui.wave.setVisible(true); ui.wave.update(dt); } } if (ui.reveal?.staged && !ui.isModal()) ui.reveal.update(dt); if (ui.nudge) { if (ui.isModal()) ui.nudge.hide('modal'); else ui.nudge.update(dt); } if (ui.barks) ui.barks.update(dt); };
+  ui.update = (dt) => { ui.hud.update(dt); ui.ledger.update(dt); ui.dialogue.update(dt); if (ui.wave) { if (ui.isModal()) ui.wave.setVisible(false); else { ui.wave.setVisible(true); ui.wave.update(dt); } } if (ui.reveal?.staged && !ui.isModal()) ui.reveal.update(dt); if (ui.nudge) { if (ui.isModal()) ui.nudge.hide('modal'); else ui.nudge.update(dt); } if (ui.barks) ui.barks.update(dt); if (ui.tutor && !ui.isModal()) ui.tutor.update(dt); };
   /** True when any modal owns the screen (title / ledger / dialogue / pause / season card) → the game loop should be paused. */
   ui.isModal = () => !!(ui.title?.isOpen || ui.ledger?.isOpen || ui.dialogue?.isOpen || ui.pause?.isOpen || ui.seasons?.isOpen);
   // B = build tray toggle, only when no modal owns the screen and not while placing (Esc cancels placing — 7A handles that one itself).

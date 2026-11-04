@@ -1,6 +1,6 @@
-// 41B (re-opened by user, minimal scope): diegetic verb chain — five verbs, one floating hint, no overlay, never blocks.
+// 41B (re-opened by user, minimal scope): diegetic verb chain — five verbs, no overlay, never blocks. 48F: no DOM here — hints go out as tutor:hint.
 // installVerbChain(lg) → V · V.steps · V.step (index | -1 done) · V.skip() · V.update(dt) · V.destroy()
-// bus: tut:step {id,index} · tut:done {seconds, skipped} · tut:skip.   Season clock (sb.eco.tick) is frozen while V.step >= 0.
+// bus: tut:step {id,index} · tut:done {seconds, skipped} · tut:skip · tutor:hint {id,key,text,pulse} (48F).   Season clock (sb.eco.tick) is frozen while V.step >= 0.
 // State persisted in lg.story.state.verbStep (-1 = done) so resume restarts at the current step.
 // Simplification vs. the original prompt: 'bonk' completes on any sword swing (combat:hit|combat:miss) and pays 3 coins — no crate prop.
 export const VERB_STEPS = ['move', 'coin', 'bonk', 'stall', 'deposit'];
@@ -11,28 +11,16 @@ const PULSE_S = 10, AUTO_S = 25;
 export function installVerbChain(lg) {
   const { bus } = lg, offs = [];
   const on = (n, f) => offs.push(bus.on(n, f));
-  const V = lg.verbs = { steps: VERB_STEPS, step: -1, t: 0, total: 0, flags: {}, autoBarks: 0, el: null };
+  const V = lg.verbs = { steps: VERB_STEPS, step: -1, t: 0, total: 0, flags: {}, autoBarks: 0 };
   const hints = Object.assign({}, HINTS, ...(lg.story?.data?.verbs || []).map((x) => ({ [x.id]: x.hint })));
   const hero = () => lg.sb?.hero?.root?.position;
   const ahead = (d) => { const r = lg.sb.hero.root, a = r.rotation?.y || 0, p = r.position; return { x: p.x + Math.sin(a) * d, z: p.z + Math.cos(a) * d }; };
   const persist = () => { if (lg.story?.state) lg.story.state.verbStep = V.step; };
 
-  // ---- tiny DOM chip (absent headless) ---------------------------------------------------------------------------
-  const doc = typeof document !== 'undefined' ? document : null;
-  function ui(text, key, pulse) {
-    if (!doc) return;
-    if (!V.el) {
-      V.el = doc.createElement('div'); V.el.id = 'verb-hint';
-      V.el.style.cssText = 'position:fixed;left:50%;bottom:22%;transform:translateX(-50%);z-index:40;display:flex;gap:8px;align-items:center;padding:8px 14px;border-radius:14px;background:rgba(20,24,40,.82);color:#ffe9b0;font:600 15px system-ui,sans-serif;pointer-events:none;max-width:90vw;transition:transform .2s';
-      V.skipEl = doc.createElement('button'); V.skipEl.id = 'verb-skip'; V.skipEl.textContent = 'Skip';
-      V.skipEl.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:41;min-width:44px;min-height:44px;padding:0 14px;border-radius:12px;border:0;background:rgba(20,24,40,.82);color:#fff;font:600 14px system-ui,sans-serif;cursor:pointer';
-      V.skipEl.onclick = () => V.skip();
-      doc.body.appendChild(V.el); doc.body.appendChild(V.skipEl);
-    }
-    V.el.innerHTML = `<span style="border:1px solid #ffe9b0;border-radius:6px;padding:1px 6px;font-size:${pulse ? 17 : 12}px">${key}</span><span>${text}</span>`;
-    V.el.style.transform = `translateX(-50%) scale(${pulse ? 1.12 : 1})`;
-  }
-  function hideUI() { V.el?.remove(); V.skipEl?.remove(); V.el = V.skipEl = null; }
+  // 48F: the floating chip + Skip button are deleted (HANDOFF_48Z D2). Each step emits tutor:hint {id, key, text} and ui/tutor.js
+  //   (data/tutor.json cards verb:<id>) shows it once per profile. Pulse at PULSE_S re-emits the hint (tutor drops it if already seen).
+  function ui(text, key, pulse) { bus.emit('tutor:hint', { id: VERB_STEPS[V.step], key, text, pulse: !!pulse }); }
+  function hideUI() {}
 
   // ---- steps -----------------------------------------------------------------------------------------------------
   const SETUP = {

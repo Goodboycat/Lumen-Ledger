@@ -6,8 +6,8 @@
 //   nd.update(dt) (from ui.update, only when no modal owns the screen) · nd.show() · nd.hide() · nd.visible · nd.destroy()
 //
 // Why: playtest — between waves the island is empty for 20–40 s and players sit and wait. Nobody finds the ⏩ button on their own.
-//   When the game has been "boring" for `idleS` seconds (bound predicate true the whole time) a cartoon hand 👆 bobs beside the HUD's
-//   ⏩ speed button with a "Touch here!" bubble. Tapping the bubble = tapping the button (ui:speed cycle). It hides the moment
+//   When the game has been "boring" for `idleS` seconds (bound predicate true the whole time) a drawn pointing hand bobs beside the HUD's
+//   ⏩ speed button (48F: no bubble, no words). Tapping the hand = tapping the button (ui:speed cycle). It hides the moment
 //   the predicate turns false (customers arrive, a wave lands), when speed changes (game:speed > 1), under modals (ui:*:open),
 //   on season end, and on game:title. It re-arms after `cooldownS` so it does not nag: at most once per `cooldownS` and never more
 //   than `maxShows` times per game (people learn after two).
@@ -30,14 +30,13 @@ export function mountNudge(root, opts = {}) {
   const st = { t: 0, cool: 0, shows: 0, visible: false, armed: true, offs: [], raf: 0 };
 
   // ---- DOM
-  let wrap = null, bubble = null, hand = null;
+  let wrap = null, hand = null;
   if (hasDoc) {
     wrap = el('div', 'll-nudge'); wrap.setAttribute('aria-hidden', 'true');
-    hand = el('div', 'll-nudge-hand'); hand.innerHTML = icon('point');                          // 48C: pointing hand = drawn icon, not 👆
-    bubble = el('button', 'll-nudge-bubble'); bubble.type = 'button';
-    bubble.innerHTML = icon('fastforward');                                                      // 48C HUSH: no words — the bubble IS the fast-forward icon
-    bubble.addEventListener('click', (e) => { e.stopPropagation?.(); bus.emit('ui:speed', { cycle: true, source: 'nudge' }); api.hide('tap'); });
-    wrap.append(hand, bubble);
+    // 48F (HANDOFF_48Z D2): the bubble is gone — the bobbing hand beside ⏩ IS the card. Tapping the hand = tapping ⏩.
+    hand = el('button', 'll-nudge-hand'); hand.type = 'button'; hand.innerHTML = icon('point');   // 48C: pointing hand = drawn icon, not 👆
+    hand.addEventListener('click', (e) => { e.stopPropagation?.(); bus.emit('ui:speed', { cycle: true, source: 'nudge' }); api.hide('tap'); });
+    wrap.append(hand);
     (root || document.body).appendChild(wrap);
   }
 
@@ -48,7 +47,7 @@ export function mountNudge(root, opts = {}) {
     const b = btn.getBoundingClientRect(), host = (root && root.getBoundingClientRect) ? root.getBoundingClientRect() : { left: 0, top: 0 };
     if (!b.width && !b.height) { wrap.classList.remove('show'); return; }       // button hidden (staged / modal) → nothing to point at
     wrap.classList.add('show');
-    // hand sits just under the button, bubble under the hand; clamp so it never leaves the viewport on narrow phones
+    // hand sits just under the button; clamp so it never leaves the viewport on narrow phones
     const vw = (typeof window !== 'undefined' && window.innerWidth) || 800;
     const x = Math.max(70, Math.min(vw - 110, b.left + b.width / 2 - host.left));
     wrap.style.left = `${Math.round(x)}px`; wrap.style.top = `${Math.round(b.bottom - host.top + 4)}px`;

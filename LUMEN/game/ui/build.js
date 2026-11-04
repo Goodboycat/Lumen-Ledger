@@ -87,7 +87,7 @@ export function mountBuildMenu(root, opts = {}) {
 
   // tabs
   const tabEls = {};
-  for (const c of cats) { const b = el('button', 'll-build-tab', CATEGORY_LABELS[c] || c); b.addEventListener('click', () => { st.cat = c; renderGrid(); }); tabs.append(b); tabEls[c] = b; }
+  for (const c of cats) { const b = el('button', 'll-build-tab', CATEGORY_LABELS[c] || c); b.dataset.cat = c; b.setAttribute?.('data-cat', c); b.addEventListener('click', () => { st.cat = c; renderGrid(); bus.emit('ui:build:tab', { cat: c }); });   // 48F: tutor cards onDecorTab / onJarsTab tabs.append(b); tabEls[c] = b; }
   tabs.append(sparkEl);
 
   const items = () => Object.entries(catalog).filter(([id, e]) => e && e.category === st.cat && (opts.showAll || !(e.category === 'landmark' && !e.cost)) && !(opts.hide && opts.hide.includes(id)));

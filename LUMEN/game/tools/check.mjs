@@ -1357,9 +1357,9 @@ if (doUI) {
     nb.emit('ui:ledger:open', {}); run(6); nd.show(); nb.emit('ui:ledger:open', {}); if (nd.visible) throw new Error('modal did not hide');
     nb.emit('game:title', {}); bored = true; run(5); if (nd.visible) throw new Error('showed on the title (disarmed)');
     nb.emit('game:start', {}); run(2.1); if (!nd.visible) throw new Error('did not re-arm on game:start');
-    const bub = nroot.querySelector('.ll-nudge-bubble'); if (bub && bub.click) { bub.click(); if (!sp.length || sp[sp.length - 1].source !== 'nudge') throw new Error('bubble click did not emit ui:speed cycle'); if (nd.visible) throw new Error('bubble click did not hide'); }
+    if (nroot.querySelector('.ll-nudge-bubble')) throw new Error('48F: nudge bubble must be deleted'); const bub = nroot.querySelector('.ll-nudge-hand'); if (bub && bub.click) { bub.click(); if (!sp.length || sp[sp.length - 1].source !== 'nudge') throw new Error('hand click did not emit ui:speed cycle'); if (nd.visible) throw new Error('hand click did not hide'); }
     nd.destroy(); if (NUDGE_DEFAULTS.idleS !== 7 || NUDGE_DEFAULTS.maxShows !== 3) throw new Error('defaults changed');
-    console.log(`  nudge (S42): bored ${2}s → show · busy → hide · cooldown + maxShows cap · ui:speed / game:speed / modal / eco:season hide · game:title disarms, game:start re-arms · bubble click → ui:speed{cycle}  OK`);
+    console.log(`  nudge (S42): bored ${2}s → show · busy → hide · cooldown + maxShows cap · ui:speed / game:speed / modal / eco:season hide · game:title disarms, game:start re-arms · 48F hand click (no bubble) → ui:speed{cycle}  OK`);
   } catch (err) { bad++; console.log('  nudge FAIL →', err.message); }
 }
 
