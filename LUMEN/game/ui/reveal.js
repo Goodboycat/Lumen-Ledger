@@ -68,6 +68,7 @@ export function mountReveal(ui, opts = {}) {
       // 48A: no toast — the widget appearing is the only signal.
       if (st.shown.size >= REVEAL_ORDER.length) st.staged = false;
       bus.emit('ui:reveal', { key: k, quiet: !!quiet, left: api.stage });
+      bus.emit('reveal:shown', { key: k });   // 48F: the only reveal signal besides the widget itself (tutor.json cards may name it)
       return api;
     },
     revealAll({ quiet = true } = {}) { for (const k of REVEAL_ORDER) api.reveal(k, { quiet }); st.staged = false; return api; },
