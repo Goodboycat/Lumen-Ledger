@@ -65,6 +65,14 @@ Legend: ✅ exists today · 🔜 owned by a later chat · ☐ manual step on sub
 5. Jam page → **Submit your project** → theme answer = `ITCH_PAGE.md §3` → attach/link GDD, video, budget as the form asks.
 6. Commit `LUMEN/README.md` row "SUBMITTED <date> <itch URL>"; push.
 
+## F-dry. S48 runbook rehearsal (2026-11-04, chat 45C) — "done" = done in the sandbox, "would do" = user step on submission day
+1. ✅ **done** — `git pull` (origin/main = sandbox), D1 `node tools/check.mjs` → ALL OK after the S48 bump; `bash tools/itch_zip.sh` → `/tmp/LumenLedger_itch.zip` 9.7 MB · 336 files · sha256 `f07679fa14035e58b4377551230cf4c93f94ecc00c17adff85a096eb97f90080`; D9 re-verified (1× `index.html` at root, `data/seasons.json` + `data/story.json` + `audio/manifest.json` present, 0 absolute `src="/`/`href="/` refs). **Rebuild the zip on the day** (`bash tools/itch_zip.sh` — any commit after S48 changes the sha).
+2. ☐ **would do** — GDD §11 / BUDGET bracketed names + print-to-PDF: user step (needs real names + a Markdown viewer). Not done by a chat.
+3. ✅ **done** (45A) — 6 shots + cover are in `LUMEN_extras/game/docs/screenshots/45_ship/` (`1_title … 6_pier.png`, `cover.png` 630×500); the old `LUMEN/screenshots/13A_itch/` path in step 3 is superseded.
+4. ☐ **would do** — itch: create project → paste `ITCH_PAGE.md §1` (viewport 1280×720, fullscreen ON, mobile friendly ON, Embed in page) → upload the zip (browser; **no APK** — 14 skipped, see HANDOFF_45C) → description §2 → 6 screenshots + cover (no trailer — 13B skipped) → **Save & view** → **ship rule 5**: open the itch *preview* page, title shows `S48 · jam build`, PLAY → first dialogue → place a stall → reload → CONTINUE → then D10 on a phone (touch pad, no scroll).
+5. ☐ **would do** — Jam page → Submit your project → theme answer = `ITCH_PAGE.md §3` → attach GDD / budget as the form asks (video: "none" — HTML5 build + page are the deliverables).
+6. ☐ **would do** — commit `LUMEN/README.md` top "**Play:**" line with the itch URL + "SUBMITTED <date>"; `bash tools/wip.sh "SUBMITTED"`.
+
 ## G. S47 dry run (2026-11-04, chat 45B) — replaces the S39 dry run
 - Measured in a real headless Chromium (Playwright 1.47, SwiftShader GL, 1280×720, `?mute`). Harness: `tools/play.mjs --script funnel` + two one-off probes (gates, save round-trip). 0 page errors, 0 console errors across title → PLAY → dialogue → play → back → reload → CONTINUE.
 - D1–D9, D11–D13 ✅ (table above). D10 ☐ needs the live itch URL + a phone.
