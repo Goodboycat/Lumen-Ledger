@@ -90,7 +90,7 @@ try {
     hasWon: () => Save.hasWon(),                                                          // S25: ∞ ENDLESS appears only after the first story win (lumen.unlocks)
     onOutline: setOutlineThickness, touch: true, storyData,
     jarsSummary: !params.has('sliders'),                                                 // 42B: jars are places — the panel is a read-only summary; ?sliders=1 = legacy 7A sliders + APPLY
-    version: `jam build · ${GAME_VERSION}`,
+    version: `${GAME_VERSION} · jam build`,
     autoTutorial: params.has('oldtutorial') && !params.has('autoplay') && !params.has('notutorial'),   // 41B: old 11-step overlay only with ?oldtutorial                   // guided tutorial on the first PLAY (?notutorial / ?autoplay skip it)
   });
   const lg = createLumenGame(game, { ui, storyData, seasons, seasonSeconds, seed: +params.get('seed') || undefined, debugKeys: params.has('debug'), cinematics: !params.has('nocine'), verbs: !(params.has('autoplay') || params.has('notutorial') || params.has('oldtutorial')),
