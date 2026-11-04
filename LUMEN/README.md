@@ -1,6 +1,6 @@
 # LUMEN — Lumen Ledger (Zoud GameLab jam, "Make FinLit Fun", due 2026-11-15)
 
-**Play:** itch.io page → _(URL filled in by the user after upload; see `game/docs/SUBMISSION_CHECKLIST.md` §F)_ · locally: `cd LUMEN/game && python3 -m http.server 3000` → http://localhost:3000/ · jam build = `bash tools/itch_zip.sh` → `/tmp/LumenLedger_itch.zip`.
+**Play:** https://goodboycat.itch.io/lumen-ledger (itch.io, browser + phone) · locally: `cd LUMEN/game && python3 -m http.server 3000` → http://localhost:3000/ · jam build = `bash tools/itch_zip.sh` → `/tmp/LumenLedger_itch.zip`.
 
 This folder holds **only the game and the jam documents**.
 Dev material (screenshots, demos, chat prompts, handoffs, plans) was moved to `../LUMEN_extras/`
@@ -16,6 +16,8 @@ LUMEN/
     README.md         how to play, controls, URL flags
 ```
 
+> **PLAN NOTICE (2026-11-04):** Phase 48 "HUSH" is next — comfort by DELETION (kill toasts, bark diet, delete ✋/🔨 buttons, jars become buildables, blue once-only tutor cards, scam dialogue with 3 decisions). Plan + per-chat prompts: `../LUMEN_extras/game/docs/HANDOFF_48Z.md`, `prompts/48A…48H`. `bash game/tools/next.sh` prints the ID to do.
+>
 > **PLAN NOTICE (2026-11-02):** development now follows **`../LUMEN_extras/game/docs/MASTER_PLAN_V6.md`** ("One game, not two").
 > Everything from update 17 onward in the old plan (regions/biomes/World v3, 13B, 14) is **stopped**. Next IDs: `40A 40B 41A–41D 42A–42D 43Z 44Z 45Z`
 > (see `LUMEN_extras/README_pipeline.md` "## Next"; `game/tools/next.sh` prints the one to do).
