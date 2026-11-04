@@ -76,3 +76,18 @@ Reading: phase 43 changed *what happens inside* a season (storm warning, night m
 | modalSeconds (0–90 s) | 0.0 | 0.0 | 0.0 | 0 |
 
 Reading: phase 44 made prices, wants and seasonal demand *readable* without touching the first-90-seconds funnel. Hands 86.3 % ≥ 80 % and reach S2 100 % ≥ 40 % → **45Z UNGATED**. Reach S3 is 100 % on the synthetic player, but the islands decision (HANDOFF_44D) stays **NO** — the credit condition (≥ 10 chats before Nov 12) is not met and the real-human reach-S2 still needs itch telemetry (`?telemetry=<url>`).
+
+## 45B browser (2026-11-04) — first REAL-browser row (Playwright headless Chromium, SwiftShader GL, 1280×720, `?mute`, ×3)
+`NODE_PATH=tools/node_modules node tools/play.mjs --script funnel` → `window.lumenTelemetry.export()` → `tools/shots/funnel_browser_45B.json` → `node tools/funnel.mjs tools/shots/funnel_browser_45B.json --md`. n = 1 session, 238 s wall clock, quit = back to title by the harness.
+
+| step | 44D synthetic (n=20, game-time) | **45B browser** (n=1, wall clock) | reading |
+|---|---|---|---|
+| play | 0.00 s | **0.00 s** | PLAY via Enter on the title works (title → S1 opening dialogue). |
+| firstStall | 30.03 s (scripted) | **not reached** | the harness's `B` + `1` at ~30 s landed while the S1 opening dialogue was still open (dialogue eats keys) → no stall placed in 238 s. **Finding 45B-1.** |
+| firstSale | 7.10 s | **55.53 s** | starter stalls sell to the first wave only after the opening dialogue is drained (~43 s of dialogue in a real browser vs 0 s headless). |
+| firstCoinInHand | 150.20 s (script collects at season end) | **95.27 s** (`tip:walk`) | real: Pip walked over a dropped tip — the 42A tip loop works in a browser. |
+| s2 / s3 | 150.20 / 300.33 s | **not reached** | two causes, both measured (see Suspected): (1) the 41B verb chain **freezes the season clock** (`sb.eco.tick` is a no-op while `V.step >= 0`) and auto-advances one verb per 25 s → up to 125 s with `day01 = 0`; (2) SwiftShader renders at **fps ≈ 1**, `core/Game.js maxDt = 0.1` clamps every frame to 0.1 s game-time → the game ran at ≈ 1/10 wall-clock speed even at ×3. 238 s wall ≈ 24–70 s game time. |
+| Spark through Pip's hands | 86.3 % | **100 %** (3 / 3) | only the 3 verb-chain reward coins were earned; nothing from stalls — not comparable. |
+| modalSeconds (0–90 s) | 0.0 s | **0.0 s** | ❗ telemetry did not count the ~43 s of S1 opening dialogue (probe: `ui.dialogue.isOpen = true` at 21 s and 43 s). `modalSeconds` only sums `ui:modal` ledger time, not `dialogue`. **Finding 45B-2** — PLAN's "≈ 50 s" estimate is still the best number for dialogue. |
+
+**Caption / honesty:** this is a *harness* number, not a human one. The sandbox GPU is SwiftShader; at fps ≈ 1 the funnel can't reach S2 in the 2.5 min budget regardless of game design. The row is still the first real evidence of two things the synthetic run can never see: the opening dialogue holds the player ~43 s before anything sells, and `modalSeconds` under-reports it. Re-run `tools/play.mjs --script funnel` on a machine with a real GPU (fps 60) for a comparable S2/S3 row — the harness is reusable (P3 done).
