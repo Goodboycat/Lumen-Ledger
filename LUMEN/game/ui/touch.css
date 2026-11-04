@@ -16,6 +16,7 @@
 .ll-joy-base.on { opacity: 1; }
 .ll-joy-ring { position: absolute; inset: -6px; border-radius: 50%; border: 4px solid var(--gold); opacity: 0; pointer-events: none; transition: opacity .08s linear; }
 .ll-joy-knob { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff3c4, var(--gold) 50%, var(--gold-dark)); border: 3px solid var(--ink); transform: translate(-50%, -50%); box-shadow: 0 4px 0 var(--ink); will-change: transform; }
+.ll-joy-base:not(.on) .ll-joy-knob { visibility: hidden; }   /* 45B: knob hidden with its base (qa_mobile counts own-opacity only) */
 .ll-joy-knob.release { transition: transform .18s cubic-bezier(.34,1.56,.64,1); }
 
 /* Button pad: right / bottom cluster */

@@ -15,8 +15,9 @@
 .ll-bark.owl { background: #F3E9DC; } .ll-bark.owl .who { color: #6D4C2A; }
 .ll-bark.baron { background: #EDE4F7; } .ll-bark.baron .who { color: var(--fog); }
 .ll-bark.collector { background: #E0F7FA; }
-@keyframes ll-bark-in { from { opacity: 0; transform: translate(-50%, -100%) scale(.6); } to { opacity: 1; transform: translate(-50%, -100%) scale(1); } }
-@keyframes ll-bark-out { from { opacity: 1; } to { opacity: 0; transform: translate(-50%, -112%) scale(.92); } }
+/* 45B: keyframes must NOT touch `transform` — with fill-mode both they overrode the inline translate(sx,sy) from bark.js place() forever, parking every bark at (0,0) off-screen. Individual `scale`/`translate` compose with it. */
+@keyframes ll-bark-in { from { opacity: 0; scale: .6; } to { opacity: 1; scale: 1; } }
+@keyframes ll-bark-out { from { opacity: 1; } to { opacity: 0; scale: .92; translate: 0 -12%; } }
 @media (max-width: 480px) { .ll-bark { font-size: 13px; max-width: min(220px, 78vw); } }
 @media (prefers-reduced-motion: reduce) { .ll-bark, .ll-bark.out { animation-duration: .01s; } }
 
