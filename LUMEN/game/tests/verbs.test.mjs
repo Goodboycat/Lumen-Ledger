@@ -52,3 +52,17 @@ test('skip, resume mid-chain, done-save never replays, destroy → 0 listeners',
   b.lg.verbs.destroy(); const after = [...b.bus.map.values()].reduce((n, s) => n + s.size, 0);
   assert.equal(after, 5, 'only the 5 test log listeners remain → chain left 0 listeners');
 });
+
+test('46A: chain waits for the opening dialogue (PLAY_BUGS 45B-1) and does not count time under one', () => {
+  const { lg, bus, log, frame } = makeLg();
+  const dlg = { isOpen: true }; lg.ui = { dialogue: dlg };
+  installVerbChain(lg); bus.emit('game:start', {});
+  assert.deepEqual(steps(log), [], 'no step while the S1 opening is up'); assert.equal(lg.verbs.step, -1); assert.equal(lg.verbs.pending, 0);
+  for (let i = 0; i < 300; i++) frame();                                   // 30 s of reading → no "Later, then."
+  assert.equal(log.filter((e) => e[0] === 'story:toast').length, 0);
+  dlg.isOpen = false; bus.emit('ui:dialogue:close', {});
+  assert.deepEqual(steps(log), ['move']); assert.equal(lg.verbs.pending, null);
+  dlg.isOpen = true; for (let i = 0; i < 300; i++) frame(); assert.equal(lg.verbs.t, 0, 'timer frozen under a mid-chain dialogue');
+  dlg.isOpen = false; for (let i = 0; i < 252; i++) frame(); assert.equal(steps(log).at(-1), 'coin', 'auto-advance resumes once the box closes');
+  bus.emit('game:title', {}); assert.equal(lg.verbs.pending, null);
+});

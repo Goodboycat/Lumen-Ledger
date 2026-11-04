@@ -75,10 +75,16 @@ export function installVerbChain(lg) {
   function silenceOldGates() { for (const n of ['tut:move', 'tut:build', 'tut:jars']) lg.tut?.fired?.add(n); }
   const eligible = () => (lg.opts.verbs === true || (lg.opts.verbs !== false && typeof document !== 'undefined' && !lg.opts.headless && !globalThis.__llDomShim)) && lg.opts.tutorial !== false && lg.mode === 'story' && (lg.sb?.eco?.state?.season ?? 1) === 1;
 
-  V.start = (i = 0) => { if (!lg.sb) return; V.total = 0; V.autoBarks = 0; freezeEco(lg.sb); silenceOldGates(); enter(i); };
+  // 46A (PLAY_BUGS 45B-1): the S1 opening dialogue swallows B/1/E while the chain was already counting its 25 s auto-advance →
+  //   the chain now starts only when no dialogue box is open (deferred until 'ui:dialogue:close'), and V.update does not count
+  //   time while one is open. Headless tests have no ui → unaffected.
+  const dialogueOpen = () => !!lg.ui?.dialogue?.isOpen;
+  V.pending = null;                           // step index waiting for the dialogue to close (null = none)
+  V.start = (i = 0) => { if (!lg.sb) return; if (dialogueOpen()) { V.pending = i; return; } V.pending = null; V.total = 0; V.autoBarks = 0; freezeEco(lg.sb); silenceOldGates(); enter(i); };
+  on('ui:dialogue:close', () => { if (V.pending !== null && lg.sb) { const i = V.pending; V.pending = null; V.start(i); } });
   V.skip = () => { if (V.step < 0) return; bus.emit('tut:skip', { at: VERB_STEPS[V.step] }); finish(true); };
   V.update = (dt) => {
-    if (V.step < 0 || !lg.sb || lg.cine?.active) return;
+    if (V.step < 0 || !lg.sb || lg.cine?.active || dialogueOpen()) return;
     V.t += dt; V.total += dt; const id = VERB_STEPS[V.step];
     if (DONE[id]()) return enter(V.step + 1);
     if (V.t >= AUTO_S) { V.autoBarks++; bus.emit('story:toast', { id: 'verb-later-' + id, text: 'Later, then.', icon: '🦉', kind: 'info' }); return enter(V.step + 1); }
@@ -89,7 +95,7 @@ export function installVerbChain(lg) {
 
   on('game:start', () => { if (lg._resuming) return; const st = lg.story?.state; if (st && st.verbStep === -1 && lg.opts.verbsAlways !== true) return; if (eligible()) V.start(0); });
   on('game:resumed', () => { const s = lg.story?.state?.verbStep; if (typeof s === 'number' && s >= 0 && eligible()) V.start(s); });
-  on('game:title', () => { if (V.step >= 0) { V.step = -1; hideUI(); } });
+  on('game:title', () => { V.pending = null; if (V.step >= 0) { V.step = -1; hideUI(); } });
   V.destroy = () => { hideUI(); for (const f of offs) try { f(); } catch (_) {} offs.length = 0; };
   lg._offs?.push(V.destroy);
   return V;
