@@ -16,6 +16,7 @@
 // Events emitted : ui:nudge { on: true|false, why }
 
 import { bus as defaultBus } from '../src/core/EventBus.js';
+import { icon } from './icons.js';   // 48C: drawn icons (ui/icons/*.png via tools/icons_png.mjs), no emoji glyphs
 
 export const NUDGE_DEFAULTS = { idleS: 7, cooldownS: 45, maxShows: 3 };
 
@@ -32,9 +33,9 @@ export function mountNudge(root, opts = {}) {
   let wrap = null, bubble = null, hand = null;
   if (hasDoc) {
     wrap = el('div', 'll-nudge'); wrap.setAttribute('aria-hidden', 'true');
-    hand = el('div', 'll-nudge-hand', '👆');
+    hand = el('div', 'll-nudge-hand'); hand.innerHTML = icon('point');                          // 48C: pointing hand = drawn icon, not 👆
     bubble = el('button', 'll-nudge-bubble'); bubble.type = 'button';
-    bubble.innerHTML = '<b>Touch here!</b><small>Nothing happening? Speed up time ⏩</small>';
+    bubble.innerHTML = icon('fastforward');                                                      // 48C HUSH: no words — the bubble IS the fast-forward icon
     bubble.addEventListener('click', (e) => { e.stopPropagation?.(); bus.emit('ui:speed', { cycle: true, source: 'nudge' }); api.hide('tap'); });
     wrap.append(hand, bubble);
     (root || document.body).appendChild(wrap);

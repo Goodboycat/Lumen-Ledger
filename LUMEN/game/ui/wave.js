@@ -12,7 +12,7 @@
 //     (distance in metres under it). On-screen enemies get no arrow (the red ring + sprite are enough). Arrows vanish when the wave
 //     is beaten / walks home / the season ends. Hidden under modals (dialogue, pause, ledger) by index.js not calling update.
 
-import { iconize } from './icons.js';
+import { iconize, icon } from './icons.js';
 
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 const MAX_ARROWS = 6, EDGE = 26;   // px inset from the viewport edge (clear of the HUD bar / jars)
@@ -57,23 +57,23 @@ export function mountWave(root, opts = {}) {
         const ax = cx + dx * t, ay = cy + dy * t; const ang = Math.atan2(dy, dx) * 180 / Math.PI;
         const a = arrows[used] || (arrows[used] = mkArrow()); used++;
         a.el.style.display = ''; a.el.style.transform = `translate(${ax.toFixed(0)}px, ${ay.toFixed(0)}px) translate(-50%, -50%)`;
-        a.chev.style.transform = `rotate(${ang.toFixed(0)}deg)`; a.el.classList.toggle('baron', e.kind === 'baron'); a.icon.textContent = e.kind === 'baron' ? '🎩' : '🌫';
+        a.chev.style.transform = `rotate(${ang.toFixed(0)}deg)`; a.el.classList.toggle('baron', e.kind === 'baron'); a.icon.innerHTML = icon(e.kind === 'baron' ? 'tophat' : 'fog');   // 48C: drawn icon
         if (hp) { const d = Math.hypot(p.x - hp.x, p.z - hp.z); a.dist.textContent = Math.round(d) + ' m'; } else a.dist.textContent = '';
       }
       for (let i = used; i < arrows.length; i++) arrows[i].el.style.display = 'none';
     },
     destroy() { for (const f of offs) f(); layer.remove(); },
   };
-  function mkArrow() { const a = { el: el('div', 'll-wave-arrow'), chev: el('div', 'll-wave-chev', '➤'), icon: el('span', 'll-wave-ico', '🌫'), dist: el('span', 'll-wave-dist', '') }; a.el.append(a.chev, a.icon, a.dist); layer.append(a.el); return a; }
+  function mkArrow() { const a = { el: el('div', 'll-wave-arrow'), chev: el('div', 'll-wave-chev', '➤'), icon: el('span', 'll-wave-ico', icon('fog')), dist: el('span', 'll-wave-dist', '') }; a.el.append(a.chev, a.icon, a.dist); layer.append(a.el); return a; }
   function hideArrows() { for (const a of arrows) a.el.style.display = 'none'; }
 
   const offs = [
     bus.on('enemy:wave', (p) => {
       if (!p) return; tracking = true;
-      if (p.boss) api.show(`🎩 BARON GILT LANDS AT THE PIER${p.count > 1 ? ` · +${p.count - 1} 🌫` : ''}`, { kind: 'boss', duration: 2.8 });
-      else api.show(`⚠ ${p.count} DEBT COLLECTOR${p.count > 1 ? 'S' : ''} LANDED — follow the arrows`, { kind: 'warn', duration: 2.6 });
+      if (p.boss) api.show(`${icon('tophat')} BARON GILT LANDS AT THE PIER${p.count > 1 ? ` · +${p.count - 1} ${icon('fog')}` : ''}`, { kind: 'boss', duration: 2.8 });   // 48C: drawn icons
+      else api.show(`${icon('warn')} ${p.count} DEBT COLLECTOR${p.count > 1 ? 'S' : ''} LANDED — follow the arrows`, { kind: 'warn', duration: 2.6 });
     }),
-    bus.on('enemy:defeated', () => { const sys = deps && (typeof deps.enemies === 'function' ? deps.enemies() : deps.enemies); if (sys && !sys.active.length) { tracking = false; hideArrows(); api.show('✓ Collectors beaten!', { kind: 'good', duration: 1.6 }); } }),
+    bus.on('enemy:defeated', () => { const sys = deps && (typeof deps.enemies === 'function' ? deps.enemies() : deps.enemies); if (sys && !sys.active.length) { tracking = false; hideArrows(); api.show(`${icon('check')} Collectors beaten!`, { kind: 'good', duration: 1.6 }); } }),
     bus.on('eco:season', () => { tracking = false; hideArrows(); api.hide(); }),
     bus.on('eco:win', () => { tracking = false; hideArrows(); api.hide(); }),
     bus.on('eco:lose', () => { tracking = false; hideArrows(); api.hide(); }),

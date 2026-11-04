@@ -188,6 +188,9 @@ def('skipnext', () => O(32, 32, 27, C.blue) + P('M16 20L36 32L16 44Z', '#fff') +
 def('magnify', () => O(26, 26, 17, C.sky) + hi(20, 19, 5, 3, 0.7) + L('M38 38L56 56', 9) + L('M38 38L56 56', 4, C.wood));
 def('broom', () => L('M44 6L26 36', 6) + L('M44 6L26 36', 2.6, C.wood) + P('M14 34L34 40L30 60Q20 62 10 54Z', C.gold) + L('M18 42L14 56M24 44L22 58', 2, C.goldD) + R(13, 30, 22, 8, 3, C.red));
 def('megaphone', () => P('M10 26H22L48 12V52L22 38H10Z', C.red) + R(8, 24, 8, 16, 3, C.redD) + P('M22 38L20 56H28L30 40Z', C.dark) + L('M52 24Q58 32 52 40', 3.5) + L('M54 16Q64 32 54 48', 3, C.redD));
+// ---------- 48C: the last three glyphs without a drawing (♥ ➤ · 🚫 → cross) ----------
+def('heart', () => P('M32 56L10 34Q2 24 10 15Q18 7 32 20Q46 7 54 15Q62 24 54 34Z', C.red) + hi(20, 20, 6, 3, 0.4));
+def('arrow', () => P('M6 22H34V8L58 32L34 56V42H6Z', C.gold) + hi(14, 26, 10, 3, 0.4));
 
 // ---------- S35: character FACES for the dialogue portraits (drawn, not CSS) — face_<who>[_<mood>] ----------
 // kind: pip (orange cap of hair, skin face, sword-scarf KNOT at the collar — no more "red stick") · baron (purple, top hat, monocle)
@@ -252,6 +255,7 @@ export const EMOJI = {
   '💧': 'droplet', '🪵': 'log', '🚪': 'door', '📦': 'crate', '🛢️': 'barrel', '🛢': 'barrel', '➡️': 'signArrow', '🪧': 'signBoard', '🪑': 'bench', '🟫': 'pathDirt',
   '⬜': 'pathStone', '🎏': 'banner', '🪴': 'pot', '🛁': 'trough', '▪️': 'square', '▪': 'square', '↩': 'undo', '↩️': 'undo',
   '⏩': 'fastforward', '⏭': 'skipnext', '🔍': 'magnify', '🧹': 'broom', '📣': 'megaphone',
+  '♥': 'heart', '❤': 'heart', '➤': 'arrow', '🚫': 'cross',
 };
 
 const cache = new Map();

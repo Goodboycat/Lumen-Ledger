@@ -2650,6 +2650,9 @@ if (doIcons) {
       const missing = I.ICON_NAMES.filter((n) => !man.names.includes(n) || !fs.existsSync(`ui/icons/${n}.png`));
       if (missing.length) throw new Error('png bake stale — missing: ' + missing.slice(0, 6).join(', ') + ' (run node tools/icons_png.mjs)');
       if (!fs.existsSync('ui/icons/sheet.png')) throw new Error('ui/icons/sheet.png missing');
+      // 48C: the nudge hand + fast-forward bubble and the wave banner glyphs ship as baked PNGs (user rule: procedural → sheet → png, no emoji)
+      for (const n of ['hand', 'point', 'fastforward', 'warn', 'tophat', 'fog', 'check', 'heart', 'arrow']) { const f = `ui/icons/${n}.png`; if (!fs.existsSync(f) || fs.statSync(f).size <= 200) throw new Error(`48C: ${f} missing or ≤ 200 bytes`); }
+      for (const [f, bad] of [['ui/nudge.js', /[👆⏩]/u], ['ui/wave.js', /[🎩🌫⚠✓➤]/u]]) { const src = fs.readFileSync(f, 'utf8').split('\n').filter((l) => !/^\s*\/\//.test(l)).map((l) => l.replace(/\/\/.*$/, '')).join('\n'); if (bad.test(src)) throw new Error(`48C: ${f} still prints an emoji glyph (use icon('name'))`); }
       I.setIconMode('png', man, './ui/icons/'); const img = I.icon('🦉'); I.setIconMode('svg');
       if (!img.startsWith('<img') || !img.includes('owl.png')) throw new Error('png mode did not emit <img>');
       baked = `${man.names.length} PNGs @ ${man.size}px + sheet ${man.cols}×${man.rows} · png mode → <img>`;

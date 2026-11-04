@@ -1,15 +1,17 @@
 /* LUMEN LEDGER — S41/15D: Collector wave banner + edge arrows (ui/wave.js) */
 .ll-wave-layer { position: absolute; inset: 0; pointer-events: none; z-index: 28; overflow: hidden; }
-.ll-wave-banner { position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%) scaleX(0); transform-origin: center; padding: 10px 28px 12px; font: 800 20px/1.1 var(--font); letter-spacing: .5px; color: #fff; text-align: center; text-shadow: 0 2px 0 rgba(0,0,0,.35); background: #c62828; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 5px 0 var(--ink); opacity: 0; transition: transform .22s cubic-bezier(.34,1.56,.64,1), opacity .18s; max-width: min(92vw, 560px); white-space: normal; }
+.ll-wave-banner { position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%); transform-origin: center; padding: 10px 28px 12px; font: 800 20px/1.1 var(--font); letter-spacing: .5px; color: #fff; text-align: center; text-shadow: 0 2px 0 rgba(0,0,0,.35); background: #c62828; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 5px 0 var(--ink); opacity: 0; transition: opacity .2s; max-width: min(92vw, 560px); white-space: normal; }
 .ll-wave-banner::before, .ll-wave-banner::after { content: ''; position: absolute; left: -100vw; right: -100vw; height: 3px; background: repeating-linear-gradient(90deg, #ffeb3b 0 18px, #c62828 18px 36px); top: -9px; opacity: .9; }
 .ll-wave-banner::after { top: auto; bottom: -9px; }
-.ll-wave-banner.show { transform: translate(-50%, -50%) scaleX(1); opacity: 1; animation: ll-wave-pulse .6s ease-in-out 2 alternate; }
+.ll-wave-banner.show { transform: translate(-50%, -50%) scaleX(1); opacity: .55; animation: none; }   /* 48C HUSH: semi-transparent, no pulse, no slide */
+.ll-wave-banner { pointer-events: none; }
+.ll-wave-banner .ll-ico { width: 1.1em; height: 1.1em; vertical-align: -0.18em; }
 .ll-wave-banner.boss { background: #4a148c; } .ll-wave-banner.good { background: #2e7d32; } .ll-wave-banner.good::before, .ll-wave-banner.good::after { display: none; }
 @keyframes ll-wave-pulse { from { filter: brightness(1); } to { filter: brightness(1.25); } }
 .ll-wave-arrow { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 0; will-change: transform; animation: ll-wave-blink 1s ease-in-out infinite alternate; }
 .ll-wave-chev { font-size: 30px; line-height: 1; color: #e53935; -webkit-text-stroke: 1.5px var(--ink); filter: drop-shadow(0 2px 0 var(--ink)); }
 .ll-wave-arrow.baron .ll-wave-chev { color: #ab47bc; font-size: 36px; }
-.ll-wave-ico { font-size: 16px; line-height: 1; margin-top: -4px; }
+.ll-wave-ico { font-size: 16px; line-height: 0; margin-top: -4px; } .ll-wave-ico .ll-ico { width: 18px; height: 18px; }
 .ll-wave-dist { font: 800 10px/1 var(--font); color: #fff; background: var(--ink); border-radius: 6px; padding: 2px 5px; margin-top: 2px; }
 @keyframes ll-wave-blink { from { opacity: .7; } to { opacity: 1; } }
 @media (max-width: 640px) { .ll-wave-banner { font-size: 15px; padding: 8px 16px 10px; } .ll-wave-chev { font-size: 24px; } }
