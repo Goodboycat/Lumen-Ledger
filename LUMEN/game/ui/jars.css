@@ -79,3 +79,17 @@ body.is-touch .ll-jars-debt .ll-btn { min-height: 44px; }
 .ll-jar-tag { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); padding: 3px 8px; border: 2px solid var(--ink); border-radius: 10px; background: var(--paper, #fff8e7); color: var(--ink); font-size: 11px; font-weight: 700; white-space: nowrap; pointer-events: none; z-index: 18; box-shadow: 0 2px 0 var(--ink); opacity: .85; transition: opacity .15s, transform .15s; }
 .ll-jar-tag.near { opacity: 1; transform: translate(-50%, -100%) scale(1.12); background: #fff1b8; }
 .ll-jar-tag.spend { border-color: #c9803a; } .ll-jar-tag.save { border-color: #3a8bc9; } .ll-jar-tag.invest { border-color: #6a3ac9; } .ll-jar-tag.protect { border-color: #3ac976; }
+
+/* 48E — mobile scroll affordance (no words): on narrow screens the panel can grow past the viewport, so it scrolls; a bottom fade +
+   a 6 px chevron say "there is more". The chevron hides once scrollTop > 0 (ui/jars.js toggles .scrolled on one scroll listener). */
+@media (max-width: 700px) {
+  .ll-jars { max-height: min(46vh, 340px); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    mask-image: linear-gradient(#000 85%, transparent); -webkit-mask-image: linear-gradient(#000 85%, transparent); }
+  .ll-jars::-webkit-scrollbar { display: none; }
+  .ll-jars.collapsed, .ll-jars.scrolled { mask-image: none; -webkit-mask-image: none; }
+  .ll-jars::after { content: ''; position: sticky; display: block; bottom: 2px; left: 50%; width: 6px; height: 6px; margin: -8px auto 0;
+    border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink); transform: rotate(45deg); opacity: .55; pointer-events: none;
+    animation: ll-jars-chev 1.2s ease-in-out infinite alternate; }
+  .ll-jars.collapsed::after, .ll-jars.scrolled::after, .ll-jars.empty::after { display: none; }
+  @keyframes ll-jars-chev { from { translate: 0 0; } to { translate: 0 3px; } }
+}

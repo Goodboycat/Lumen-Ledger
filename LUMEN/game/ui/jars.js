@@ -187,8 +187,11 @@ export function mountJars(root, opts = {}) {
     show(k) { if (rows[k]) { rows[k].row.hidden = false; retrigger(rows[k].icon, 'pop'); } syncEmpty(); return api; },
     hide(k) { if (rows[k]) rows[k].row.hidden = true; syncEmpty(); return api; },
     shown() { return JAR_ORDER.filter((k) => rows[k] && !rows[k].row.hidden); },
-    destroy() { offs.forEach((f) => f()); panel.remove(); },
+    destroy() { offs.forEach((f) => f()); panel.removeEventListener?.('scroll', onScroll); panel.remove(); },
   };
+  // 48E mobile scroll affordance: jars.css (max-width 700px) fades the bottom + shows a 6 px chevron; ONE scroll listener hides it once scrolled.
+  const onScroll = () => panel.classList.toggle('scrolled', (panel.scrollTop || 0) > 0);
+  panel.addEventListener?.('scroll', onScroll, { passive: true });
   const syncEmpty = () => { const none = !JAR_ORDER.some((k) => rows[k] && !rows[k].row.hidden); panel.classList.toggle('empty', none); panel.hidden = none && opts.placed !== 'all'; };
   const jarKey = (p) => { const id = String(p?.id || p?.entry?.id || ''); return id.startsWith('jar_') ? id.slice(4) : null; };
   const offs = [
