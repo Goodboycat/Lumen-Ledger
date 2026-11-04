@@ -29,7 +29,7 @@ You are **Pip**, a young *Channeler* who inherits a bankrupt island market, **Gl
 ```
 
 **Second-to-second (action layer):** walk Pip (WASD / virtual joystick), hammer to build (B), pick stalls from a tray, drag the price, use six **abilities** (Q W E R F G) that are each a playable metaphor for a FinLit idea (§5).
-**Minute-to-minute (tycoon layer):** choose which stall to build (needs vs wants), set prices against the fair price (Glimmer mood: happy ≤ 1.1× · sad ~1.3× · angry ≥ 1.4×), hire helper creatures, split income into jars with four sliders that always sum to 100 %.
+**Minute-to-minute (tycoon layer):** choose which stall to build (needs vs wants), set prices against the fair price (Glimmer mood: happy ≤ 1.1× · sad ~1.3× · angry ≥ 1.4×), hire helper creatures, carry income to four jars by the cottage (E = deposit, hold E = withdraw).
 **Season-to-season (story layer):** opening dialogue → mid-season nudge → optional event/scam → Ledger Review (lesson, stars, CONTINUE) → next season. Ten seasons, then the finale.
 
 ### Season clock & economy (defaults, 4B-tuned)
@@ -52,7 +52,7 @@ One lesson per season, in `BALANCE.lessons` order. Every lesson has (a) a **mech
 
 | S | Lesson id | Concept | How the player *plays* it | Story beat |
 |---|---|---|---|---|
-| 1 | `budgeting` | A budget is a plan for money before it is spent | 4 jar sliders always sum to 100 %; APPLY before income arrives | *The Inheritance* — Owl explains the jars, Baron introduces “compounding” |
+| 1 | `budgeting` | A budget is a plan for money before it is spent | 4 physical jars by the cottage — carry Spark there and press E before income arrives | *The Inheritance* — Owl explains the jars, Baron introduces “compounding” |
 | 2 | `needsVsWants` | Needs first, wants after | Needs-stalls (tea, fruit, bread, fish) are volume; wants-stalls (flower, toy, lantern, pottery…) are margin but fragile | Glimmers queue for bread while the toy stall idles |
 | 3 | `emergencyFund` | 3 months of costs set aside | Save ≥ 200 is the threshold that pushes the fog back; **Bubble Shield** ability = Protect jar | *Leaky Roof* / *Storm* events test the fund |
 | 4 | `goodVsBadInterest` | 5 % earned vs 20 % owed, compounding | Save jar visibly grows; Baron's debt chip grows faster; **Fog Sweep** = repay highest-interest first | Baron offers to “extend” the loan |

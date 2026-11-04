@@ -44,7 +44,7 @@ No spreadsheets. The spreadsheet is the island.
 ### How to play
 1. **Build** — press **B** (or the 🔨 button), pick a stall, walk the green ghost to a free tile, confirm. *Needs* stalls (Fruit, Bakery, Fish, Tea) sell volume; *wants* stalls (Flower Cart, Toy Box, Lantern Shop, Pottery, Cloth Weaver, Book Nook, Tool Smith) sell margin — but only when Glimmers have Spark left.
 2. **Sell** — Glimmers queue, browse and pay. Coins fly to Pip. Price near the fair price keeps them happy; 1.4× and they stomp off angry.
-3. **Split** — drag the four jar sliders (always 100 %) and tap **APPLY** before the season's income lands. Save ≥ 200 Spark is what pushes the fog back; Protect absorbs storm damage; Invest grows 8 % ± 4 %.
+3. **Split** — walk to the four jars by the cottage and press **E** to put 10 Spark in (hold E to take it back out); do it before the season's income lands. Save ≥ 200 Spark is what pushes the fog back; Protect absorbs storm damage; Invest grows 8 % ± 4 %.
 4. **Review** — at the season bell, read your Ledger, collect stars, tap CONTINUE. One lesson per season, ten seasons, one lighthouse.
 
 ### Controls

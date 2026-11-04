@@ -88,7 +88,7 @@ try {
     hasSave: () => Save.hasSave(),                                                        // 10D: localStorage slot → CONTINUE on the title (reload resumes)
     hasWon: () => Save.hasWon(),                                                          // S25: ∞ ENDLESS appears only after the first story win (lumen.unlocks)
     onOutline: setOutlineThickness, touch: true, storyData,
-    jarsSummary: !params.has('sliders'),                                                 // 42B: jars are places — the panel is a read-only summary; ?sliders=1 = legacy 7A sliders + APPLY
+    jarsSummary: true,                                                                   // 42B: jars are places — read-only summary. 46C: the ?sliders=1 legacy panel flag is gone (mountJars({summary:false}) remains for tests only)
     version: `${GAME_VERSION} · jam build`,
   });
   const lg = createLumenGame(game, { ui, storyData, seasons, seasonSeconds, seed: +params.get('seed') || undefined, debugKeys: params.has('debug'), cinematics: !params.has('nocine'), verbs: !(params.has('autoplay') || params.has('notutorial')),   // 46B: ?oldtutorial gone
