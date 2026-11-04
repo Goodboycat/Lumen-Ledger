@@ -7,7 +7,7 @@
 //   exportText(snap) / importText(text)   // P3: base64 JSON text with a "LUMEN1:" prefix — copy/paste for the Flutter WebView when storage is wiped
 // Snapshot shape (v1):
 //   { v, at, version, mode, state, seasonsToWin, eco: <Economy.serialize() string>, build: [{id,cx,cz,rot,level,cost}], story: {v,state}|null,
-//     helpers: ['helper_runner', …], jars: {save,invest,protect} pct or null, settings? }
+//     helpers: ['helper_runner', …], jars: {save,invest,protect} pct or null, settings?, tutorSeen: ['onBuildOpen', …] (48F) }
 // Rules: a save is written by the integrator at season end + on review→playing (autosave) — never per frame. Loading NEVER mutates the
 // snapshot. Anything missing in an old save falls back to the fresh-sandbox value (forward-compatible by omission).
 
@@ -84,6 +84,7 @@ export function snapshot(lg) {
     sched: sb.sched ? { event: !!sb.sched.event, scam: !!sb.sched.scam } : null,
     novelty: sb.novelty?.id || null,                                                   // 43D (v3): active novelty → applySnapshot calls novelties.start(id, season) again when midSeason
     noveltiesSeen: lg.story?.state?.noveltiesSeen ? [...lg.story.state.noveltiesSeen] : [],   // 43D (v3): mirror of story.state (also inside `story`), kept top-level for describe()/tools
+    tutorSeen: Array.isArray(lg.ui?.tutor?.seen) ? [...lg.ui.tutor.seen] : (Array.isArray(lg.tutorSeen) ? [...lg.tutorSeen] : []),   // 48F (v4 field): curiosity-card ids shown once per profile (ui/tutor.js)
   };
 }
 
@@ -122,6 +123,8 @@ export function parseSnapshot(raw) {
   if (d.novelty != null && typeof d.novelty !== 'string') return null;
   if (d.noveltiesSeen != null && (!Array.isArray(d.noveltiesSeen) || d.noveltiesSeen.some((a) => typeof a !== 'string'))) return null;
   if (Math.floor(+d.v) < 3) { d.novelty = null; d.noveltiesSeen = []; }   // 43D migrate v1/v2 → no active novelty, nothing seen (story.state falls back to [])
+  if (d.tutorSeen != null && (!Array.isArray(d.tutorSeen) || d.tutorSeen.some((a) => typeof a !== 'string'))) d.tutorSeen = [];   // 48F: tolerant — a bad list means "show the cards again", never a dropped slot
+  if (!Array.isArray(d.tutorSeen)) d.tutorSeen = [];                        // 48F migrate: saves before the field → nothing seen
   if (Math.floor(+d.v) < 4) synthesizeLegacyJars(d);                       // 48E migrate v1–v3 → 4 jar_* build entries (land-snap happens in applySnapshot)
   return d;
 }

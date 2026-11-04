@@ -82,3 +82,11 @@ test('all 4 legacy jars snapped onto land when the row is half water (the real w
   assert.deepEqual(d.build.find((e) => e.id === 'jar_spend').cz, 4);
   assert.deepEqual(d.build.find((e) => e.id === 'jar_invest').cz, 3);
 });
+
+// 48F — tutorSeen (curiosity cards shown once per profile) rides in the v4 snapshot; old / bad lists degrade to [] (never a dropped slot)
+test('48F tutorSeen: v3 save → [], v4 list kept, non-string list → [], garbage → [] (slot still parses)', () => {
+  assert.deepEqual(parseSnapshot(JSON.stringify(v3())).tutorSeen, []);
+  assert.deepEqual(parseSnapshot(JSON.stringify(v3({ v: 4, tutorSeen: ['onBuildOpen', 'verb:move'] }))).tutorSeen, ['onBuildOpen', 'verb:move']);
+  assert.deepEqual(parseSnapshot(JSON.stringify(v3({ v: 4, tutorSeen: ['ok', 7] }))).tutorSeen, []);
+  const d = parseSnapshot(JSON.stringify(v3({ v: 4, tutorSeen: 'nope' }))); assert.ok(d, 'still a valid slot'); assert.deepEqual(d.tutorSeen, []);
+});
