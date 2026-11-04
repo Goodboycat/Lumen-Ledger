@@ -15,6 +15,7 @@ export async function checkBarks() {
     const speakers = new Set(Object.keys(data.speakers || {}));
     const B = data.barks || {}; let n = 0;
     for (const [g, lines] of Object.entries(B)) for (const l of (Array.isArray(lines) ? lines : Object.values(lines).flat())) {
+      if (typeof l !== 'object' || l === null) continue; // 48B: name maps (wantsWho) are not bark lines
       n++; if (!l.text || l.text.length > 60) throw new Error(`barks.${g} line > 60 chars: "${l.text}"`);
       if (!speakers.has(l.speaker)) throw new Error(`barks.${g} unknown speaker ${l.speaker}`);
     }
