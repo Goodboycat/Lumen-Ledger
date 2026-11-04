@@ -121,7 +121,7 @@ export function makeLighthouse(opts = {}) {
     out.userData.state = s;
   };
   const out = finish(raw, 'lighthouse', opts, { footprint: [3, 3], name: 'Lighthouse', live: [lamp, glass, halo, beamPivot], update,
-    extra: { setState, state: 'dark', lampPos: new THREE.Vector3(0, lampY, 0), lamp, beamPivot } });
+    extra: { setState, state: 'dark', lampPos: new THREE.Vector3(0, lampY * (opts.scale ?? 1), 0), lamp, beamPivot } });   // 48B-1: lampPos is in parent units (scaled)
   setState(opts.state || 'dark');
   return out;
 }

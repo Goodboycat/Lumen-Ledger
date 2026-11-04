@@ -173,7 +173,9 @@ function buildScenery(sb, rnd) {
   // BUGFIX B07: the 3 starter stall footprints are reserved BEFORE any scenery is scattered, so no seed can block them
   for (const s of STARTER_STALLS) { const fp = PROP_CATALOG[s.id]?.footprint || [1, 1]; const [w, d] = (s.rot & 1) ? [fp[1], fp[0]] : fp; take(s.cx, s.cz, w, d); }
   // landmarks
-  W.lighthouse = place(makeProp('lighthouse'), far.center.x, far.center.z - 1, { rot: Math.PI, w: 2, d: 2, parent: far.group }); take(far.center.x - 1, far.center.z - 2, 1, 2);
+  // 48B-1: the lighthouse is the goal of the whole game, so it must be visible from season 1. It stands on its own rock in the sea
+  // at the Far Point (parent = island.group, NOT far.group which is hidden until zone_far is bought) and is tall (scale 1.6 → lamp ≈ 9 u).
+  W.lighthouse = place(makeProp('lighthouse', { scale: 1.6 }), far.center.x, far.center.z - 1, { rot: Math.PI, w: 3, d: 3, parent: island.group }); take(far.center.x - 1, far.center.z - 2, 3, 3);
   W.cottage = place(makeProp('cottage'), -6, 6, { rot: 0.5, w: 2, d: 2 }); W.cottage.userData.setLit?.(true); take(-7, 5, 3, 3);
   const edge = island.landEdge(1, 0) || { x: 10, z: 0 };
   W.pier = makeProp('pier', { length: 4 }); W.pier.position.set(edge.x + 0.5, 0, edge.z + 0.5); start.group.add(W.pier);
