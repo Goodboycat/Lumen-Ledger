@@ -35,11 +35,11 @@ test('scripted chain: move → coin → bonk → stall → deposit → done, eco
   assert.equal(log.filter((e) => e[0] === 'ui:pause').length, 0);
 });
 
-test('idle path: every step auto-completes after 25 s with "Later, then."', () => {
+test('idle path: every step auto-completes after 25 s silently (48A: no "Later, then." toast)', () => {
   const { lg, bus, log, frame } = makeLg();
   installVerbChain(lg); bus.emit('game:start', {});
   for (let i = 0; i < 5 * 252; i++) frame();
-  assert.equal(log.filter((e) => e[0] === 'story:toast' && e[1].text === 'Later, then.').length, 5);
+  assert.equal(log.filter((e) => e[0] === 'story:toast').length, 0);   // 48A: toasts deleted — auto-advance is silent
   assert.ok(log.some((e) => e[0] === 'tut:done')); assert.equal(lg.verbs.step, -1);
 });
 
