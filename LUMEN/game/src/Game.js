@@ -1227,7 +1227,7 @@ function installDebugHooks(lg) {
     speed(n = 1) { const r = lg.setSpeed(n); return { ok: r === +n, speed: r }; },
     /** Spawn a stranger (scam id, or random). 'fair' = n/a until T4. false when one is already active or an offer is pending. */
     stranger(id) {
-      const sb = lg.sb; if (!sb) return noSb(); if (id === 'fair') return { na: 'T4' };
+      if (id === 'fair') return { na: 'T4' }; const sb = lg.sb; if (!sb) return noSb();   // T0-B: n/a answered before the sandbox guard so the panel can probe it on the title screen
       const ids = Object.keys(sb.eco.scams || {}); if (id && !ids.includes(id)) return { ok: false, why: 'unknown scam id', ids };
       if (sb.eco.pendingOffer) return { ok: false, why: 'offer already pending' };
       let how = 'npc'; let ok = !!(sb.scamNpc?.spawn?.(id));

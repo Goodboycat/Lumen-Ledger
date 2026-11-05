@@ -38,7 +38,7 @@ const CSS = `
 export function mountDebugPanel(root, { lg, game } = {}) {
   const D = lg?.debug;
   if (!D) throw new Error('mountDebugPanel: lg.debug missing (Game.js installDebugHooks)');
-  const doc = (root && root.ownerDocument) || (typeof document !== 'undefined' ? document : null);
+  const doc = typeof document !== 'undefined' ? document : null;
   if (!doc) throw new Error('mountDebugPanel: no document');
   const el = (tag, cls, txt) => { const n = doc.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; };
 
@@ -58,8 +58,9 @@ export function mountDebugPanel(root, { lg, game } = {}) {
   const btn = (label, onTap, cls) => { const b = el('button', cls, label); b.type = 'button'; b.addEventListener('click', onTap); return b; };
   const naBtn = (label, na) => { const b = el('button', null, `${label} — n/a (${na})`); b.type = 'button'; b.disabled = true; b.dataset.na = na; return b; };
   const row = (...kids) => { const r = el('div', 'lld-row'); kids.forEach((k) => k && r.appendChild(k)); body.appendChild(r); return r; };
-  const sel = (ids, first) => { const s = el('select'); if (first) s.appendChild(new Option(first.label, first.value)); ids.forEach((id) => s.appendChild(new Option(id, id))); return s; };
-  const ctx = { D, lg, game, el, show, call, btn, naBtn, row, sel, body };
+  const opt = (label, value) => { const o = el('option', null, label); o.value = value; return o; };   // no `new Option` (tools/domshim.mjs has none)
+  const sel = (ids, first) => { const s = el('select'); if (first) s.appendChild(opt(first.label, first.value)); ids.forEach((id) => s.appendChild(opt(id, id))); return s; };
+  const ctx = { D, lg, game, el, show, call, btn, naBtn, row, sel, opt, body };
 
   buildSections(ctx);
 
@@ -72,7 +73,7 @@ export function mountDebugPanel(root, { lg, game } = {}) {
     panel: {
       el: aside,
       get isOpen() { return aside.classList.contains('open'); },
-      refresh() { try { stateBox.textContent = JSON.stringify(D.state(), null, 1); } catch (err) { stateBox.textContent = 'state() threw: ' + (err?.message || err); } },
+      refresh() { ctx.refill?.(); try { stateBox.textContent = JSON.stringify(D.state(), null, 1); } catch (err) { stateBox.textContent = 'state() threw: ' + (err?.message || err); } },
       open() { aside.classList.add('open'); api.panel.refresh(); if (!timer) timer = setInterval(() => aside.isConnected && api.panel.isOpen && api.panel.refresh(), 1000); },
       close() { aside.classList.remove('open'); if (timer) { clearInterval(timer); timer = 0; } },
       toggle() { api.panel.isOpen ? api.panel.close() : api.panel.open(); },
@@ -86,6 +87,56 @@ export function mountDebugPanel(root, { lg, game } = {}) {
 
 /** Button sections — one row per hook. Grown below (BIG-FILE rule: skeleton first). */
 function buildSections(ctx) {
-  const { D, btn, naBtn, row, call } = ctx;
-  row(btn('+100 ✦', () => call('grant', 100)), btn('dump state', () => call('dump')));
+  const { D, lg, el, btn, naBtn, row, call, sel, opt, body } = ctx;
+  const h4 = (t) => body.appendChild(el('h4', null, t));
+  const num = (tag, v, min, max, step) => { const i = el('input'); i.type = 'number'; i.value = v; i.min = min; i.max = max; i.step = step; i.setAttribute('aria-label', tag); return i; };
+  // a hook whose probe (called with no live sandbox → `{ na }` or `{ ok:false }`) says n/a renders disabled. Probes are side-effect free
+  // because every hook returns noSb() before PLAY; for 'fair' stranger / crisis / unlockJar the hook returns { na } unconditionally.
+  const naOf = (name, ...args) => { try { const r = D[name]?.(...args); return r && r.na ? r.na : null; } catch { return null; } };
+  const sb = () => lg.sb;
+  const ids = {
+    scams: () => Object.keys(sb()?.eco?.scams || {}),
+    events: () => Object.keys(sb()?.eco?.events || {}),
+    crew: () => (D.hire && (D.hire('__probe__')?.types)) || [],   // hire('__probe__') → { ok:false, why:'unknown crew type', types } once a sandbox exists; before PLAY → noSb()
+  };
+
+  h4('economy');
+  row(btn('+100 ✦', () => call('grant', 100)), btn('+1000 ✦', () => call('grant', 1000)), btn('dump state', () => call('dump')));
+
+  h4('time');
+  const seasonN = num('season', 1, 1, 10, 1);
+  row(seasonN, btn('→ season N', () => call('season', +seasonN.value)));
+  const dayF = num('day', 0.7, 0, 0.99, 0.1);
+  row(dayF, btn('set day', () => call('day', +dayF.value)));
+  row(btn('×1', () => call('speed', 1)), btn('×2', () => call('speed', 2)), btn('×3', () => call('speed', 3)), btn('×4', () => call('speed', 4)));
+
+  h4('world');
+  const scamSel = sel([], { label: 'random scam', value: '' });
+  row(scamSel, btn('spawn stranger', () => call('stranger', scamSel.value || undefined)));
+  const fairNa = naOf('stranger', 'fair');
+  row(fairNa ? naBtn('fair stranger', fairNa) : btn('fair stranger', () => call('stranger', 'fair')), btn('spawn wave', () => call('wave')));
+  const evSel = sel([]);
+  row(evSel, btn('trigger event', () => call('event', evSel.value)));
+  const crisisNa = naOf('crisis', 'any');
+  row(crisisNa ? naBtn('trigger crisis', crisisNa) : btn('trigger crisis', () => call('crisis', evSel.value)));
+
+  h4('jars & crew');
+  const jarSel = sel(['spend', 'save', 'invest', 'protect']);
+  const jarNa = naOf('unlockJar', 'save');
+  row(jarSel, jarNa ? naBtn('unlock jar', jarNa) : btn('unlock jar', () => call('unlockJar', jarSel.value)));
+  const crewSel = sel([], { label: 'next unowned', value: '' });
+  row(crewSel, btn('hire crew', () => call('hire', crewSel.value || undefined)));
+
+  h4('save');
+  row(btn('clear tutor-seen', () => call('clearTutor')), btn('reset save', () => call('resetSave')));
+
+  // the id lists depend on the live sandbox (only after PLAY) — refill them whenever the panel refreshes
+  const fill = (s, list, keepFirst) => {
+    const want = list.join('|'); if (s.dataset.ids === want) return; s.dataset.ids = want;
+    const cur = s.value; const first = keepFirst ? s.children[0] : null;
+    [...s.children].forEach((c) => c.remove()); if (first) s.appendChild(first); list.forEach((id) => s.appendChild(opt(id, id)));
+    if ([...s.children].some((o) => o.value === cur)) s.value = cur;
+  };
+  ctx.refill = () => { fill(scamSel, ids.scams(), true); fill(evSel, ids.events(), false); fill(crewSel, ids.crew(), true); };
+  ctx.refill();
 }

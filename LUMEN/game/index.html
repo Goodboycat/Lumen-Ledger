@@ -97,6 +97,8 @@ try {
   ui.wave?.bind({ camera: game.camera.three, enemies: () => lg.sb?.enemies, hero: () => lg.sb?.hero });   // S41/15D: edge arrows project enemies through the live camera
   ui.barks?.bind({ camera: game.camera.three, hero: () => lg.sb?.hero, owl: () => lg.sb?.owl || lg.sb?.helpers?.owl,   /* 48B: no hero fallback — unresolved = dropped */ baron: () => lg.sb?.enemies?.baron || lg.sb?.enemies?.active?.find?.((e) => e.kind === 'baron') || lg.sb?.hero });   // 41A: speech bubbles project through the live camera (missing anchor → hero)
   window.ui = ui; window.lg = lg; window.sb = () => lg.sb; window.eco = () => lg.sb?.eco;
+  // T0-B (FUN_PASS §4 T0): `?debug=1` lazy-mounts the DOM debug panel (src/debug/panel.js) + window.LUMEN_DEBUG. Bare `?debug` = only the F3 stats line.
+  if (params.get('debug') === '1') { const { mountDebugPanel } = await import('./src/debug/panel.js'); window.LUMEN_DEBUG = mountDebugPanel(document.body, { lg, game }); }
   // 12: audio — bus→SFX map + music; AudioContext is created only inside the first gesture (bus 'input:first' below). Missing
   // Ludo.ai files fall back to the manifest's synth sketches, so the build is never silent. Volumes follow the 7C settings sliders.
   const audio = createAudio({ bus: game.bus, settings: ui.pause?.settings });
