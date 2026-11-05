@@ -12,7 +12,7 @@ Dev material (demos, tests, tools, screenshots, handoffs) lives in `../../LUMEN_
 | **itch.io** | upload `lumen-ledger-web.zip` built by the recipe in `docs/ITCH_PAGE.md §6` (index.html at the zip root, viewport 1280 × 720, "click to launch") |
 | **Android** | Flutter WebView APK (Chat 14) loads this same folder from assets; `?import=LUMEN1:<base64>` restores a save exported from the web build |
 
-Useful URL flags: `?autoplay` skip the title · `?endless` start in Endless · `?season=30` 30‑second seasons (testing) · `?debug` fps / draw calls / dpr overlay · `?nocine` no cinematics (title orbit / arrival walk-in / victory lighthouse) · `?cinelog` console trace of the cinematic bus events · `?mute` · `?nohistory` (disable the Android back‑button sentinel).
+Useful URL flags: `?autoplay` skip the title · `?endless` start in Endless · `?season=30` 30‑second seasons (testing) · `?debug` fps / draw calls / dpr overlay · `?debug=1` (S52) the **debug panel** — ▣ tab top‑right: grant ✦, jump season/day, speed ×1–4, summon a stranger / Collector wave / event, hire crew, clear tutor cards, reset save, `state()`/`dump()` JSON (`window.LUMEN_DEBUG`; nothing is loaded without the flag) · `?nocine` no cinematics (title orbit / arrival walk-in / victory lighthouse) · `?cinelog` console trace of the cinematic bus events · `?mute` · `?nohistory` (disable the Android back‑button sentinel).
 
 **Controls** — WASD/arrows move · Space/J/Enter hammer/confirm · E/F interact · **B** build menu · Q W E R F G abilities (**tap** W = Bubble Shield, **hold** W = walk; R rotates the ghost while placing) · jars panel: ↩ withdraws half a jar, **PAY BARON** repays debt from the pouch · **T** (or the ⏩ button in the Season pill) cycles time speed 1× → 2× → 3× (resets to 1× on pause, dialogue, season end) · Esc/P pause · Enter/click advances dialogue, 1–4 picks a choice. Touch: left virtual joystick, Attack + Dash buttons, ability chips, ⏸ in the HUD — **tap empty ground = build** (the tray opens with the ghost on that cell) · **walk up to things = use them** (jars un-collapse the panel; the Baron / a pitching Collector talk when you stand still 0.6 s; tap a jar to deposit). Full table in `docs/GDD.md §6`.
 
@@ -84,7 +84,7 @@ No build step, no npm, no bundler, no CDN: vanilla ES modules + one vendored lib
 ```bash
 cd LUMEN/game
 node tools/check.mjs                       # imports every src/**/*.js — ~1 s, no browser
-node tools/check.mjs --props --creatures --hero --abilities --economy --build --customers --ui --story --vfx --world --sandbox --game --save --audio --enemies --storm --cinematics --knockback
+node tools/check.mjs --props --creatures --hero --abilities --economy --build --customers --ui --story --vfx --world --sandbox --game --save --audio --enemies --storm --cinematics --knockback --debug
                                            # full headless suite ~5 s: builds every prop/creature, runs the economy sim, walks the whole game S1→win→endless→lose
 node tests/economy.sim.mjs --sweep         # balance: sensible wins S10 17/20 seeds, borrow-everything loses S3–S5
 bash tools/setup_browser.sh && node tools/smoke.mjs index.html --shots --close   # optional browser smoke (errors, fps, draw calls, PNGs → tools/shots/)

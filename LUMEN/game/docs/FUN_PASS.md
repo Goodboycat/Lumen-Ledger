@@ -254,10 +254,10 @@ Status: TODO · WIP · DONE (all tests PASS) · NOT DONE (say what remains)
 
 | Task | Status | Version | Note (≤ 2 lines) |
 |------|--------|---------|------------------|
-| T0 Debug panel | WIP | S52 | split into 3 chats (see T0 text): T0-A hooks · T0-B panel · T0-C gate+ship |
+| T0 Debug panel | DONE | S52 | 3 chats T0-A/B/C (2026-11-05). `?debug=1` → `src/debug/panel.js` over `lg.debug`; gate `--debug` 17/17; GAME_VERSION/UI_VERSION S52; READMEs noted. T0.2 phone taps = human check still open |
 | T0-A hooks `lg.debug` | DONE | — | Game.js: `installDebugHooks(lg)` before game:ready; `lg.debug.{grant,season,day,speed,stranger,wave,event,crisis,unlockJar,hire,clearTutor,resetSave,state,dump}`; speed 4 only with opts.debugKeys. `--game` PASS · headless 22/22 PASS (state() no NaN, HUD spark/season match) |
-| T0-B panel `?debug=1` | TODO | — | src/debug/panel.js + index.html, window.LUMEN_DEBUG |
-| T0-C gate `--debug` + S52 | TODO | S52 | tools/gates/debug.mjs, all gates green, version bump, §6 DONE |
+| T0-B panel `?debug=1` | DONE | — | `src/debug/panel.js` `mountDebugPanel(root,{lg,game})`: aside#ll-debug + own <style>, ▣ tab, 19 buttons (3 n/a disabled T1/T4/T7) + 4 selects, 1 Hz state readout while open; index.html `?debug=1` → `window.LUMEN_DEBUG`; headless 27/27 |
+| T0-C gate `--debug` + S52 | DONE | S52 | `tools/gates/debug.mjs` + `--debug` in check.mjs 17/17 (T0.1 no global/aside pre-mount · T0.3 0 scene.add, meshes unchanged · T0.4 HUD === state()) · version S52 · README flag line + root README section |
 | T1 Jars | TODO | S53 | |
 | T2 Curiosity guide | TODO | S54 | §7.A: guide for EVERYTHING, 3 entry points, codex in pause |
 | T2b Powers answer every press | TODO | S55 | §7.B: hold = guide card, every press = visible answer |
@@ -276,6 +276,8 @@ Checkpoint lines (append-only; newest last; format: `date · task.step · what c
 - 2026-11-04 · addendum A · §7 added (guide structure, full guide coverage, powers-feedback task T2b, verb-chain deposit bug) from a second S51 code read · no code changed · next: T0
 - 2026-11-05 · T0.plan · explore done ONCE (grep only); hook map + 3-chat split written into §4 T0 so no later chat explores · no code changed · next: T0-A
 - 2026-11-05 · T0-A · Game.js `installDebugHooks(lg)` (+ `event(id)` hook; `speed(4)` gated by opts.debugKeys; crew types are camelCase `tallyOwl` etc., not `tally_owl`) · `node tools/check.mjs --game` PASS · headless hook test 22/22 PASS (state() no NaN before/after PLAY; grant→HUD `.ll-spark-val` equal; season(3)→HUD 'Season 3') · next: T0-B
+- 2026-11-05 · T0-B · `src/debug/panel.js` + index.html `?debug=1` (bare `?debug` keeps the F3 line) · Game.js stranger('fair') → n/a before the sandbox guard · headless 27/27 PASS · next: T0-C
+- 2026-11-05 · T0-C · `tools/gates/debug.mjs` + `--debug` flag 17/17 PASS · GAME_VERSION + UI_VERSION → S52 · game README flag line + `--debug` in the test line, root README "Fun pass T0" section · no test asserts S51 · key gates re-run (see commit) · T0 DONE · next: T1 Jars
 
 ## 7. Addendum A (2026-11-04, second S51 code read) — guide structure, guide coverage, powers feedback
 Where §7 and §4 differ, §7 wins. Nothing here was implemented; it is design + root causes for T2 / T2b.
