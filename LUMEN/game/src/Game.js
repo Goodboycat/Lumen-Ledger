@@ -695,7 +695,7 @@ export function createLumenGame(game, opts = {}) {
   //   win/lose, title and whenever a dialogue/ledger/menu pauses the game (so a cut-scene never runs at 3×).
   const SPEEDS = [1, 2, 3]; lg.speed = 1;
   lg.setSpeed = (n, { silent } = {}) => {
-    n = SPEEDS.includes(+n) ? +n : 1; lg.speed = n;
+    n = SPEEDS.includes(+n) || (+n === 4 && opts.debugKeys) ? +n : 1; lg.speed = n;   // T0-A: ×4 only with opts.debugKeys (debug panel)
     if (game.hitStop?.active) { const i = game.hitStop.targets.indexOf(game); if (i >= 0) game.hitStop.saved[i] = n; } else game.timeScale = n;
     bus.emit('game:speed', { speed: n });
     return n;
@@ -728,6 +728,7 @@ export function createLumenGame(game, opts = {}) {
   installSave(lg);                                                                  // 10D: autosave + ui:start {mode:'continue'} + tutorial gates
   installTelemetry(lg);                                                             // 40A: anonymous funnel recorder (PLAN v6 §5); network off unless opts.telemetryEndpoint
   installCinematics(lg);                                                            // S18: title orbit showcase · arrival walk-in · victory lighthouse
+  installDebugHooks(lg);                                                            // T0-A (FUN_PASS §4 T0): lg.debug.* hooks, no DOM, no window global (panel = T0-B)
 
   // ---- loop: UI clock + story clock + HUD day bar -------------------------------------------------------------------------
   lg.update = (dt, _g, dtReal) => {
@@ -1197,6 +1198,82 @@ function installSeasonLoop(lg) {
 // live sb.eco (keeps the 10B bus wires) → build.load → StorySystem.deserialize (toasts fire once across reloads) → helpers re-hired for free →
 // HUD sync → 'playing' at the saved season's start. lose / back-to-title from a finished run → clear(). opts.storage overrides localStorage.
 export const SAVE_VERSION = Save.SAVE_VERSION;
+// ---- T0-A (FUN_PASS §4 T0): debug hooks. lg.debug = { grant, season, day, speed, stranger, wave, event, crisis, unlockJar, hire, clearTutor, resetSave, state, dump }.
+//   Pure hooks: no DOM, no window global, zero cost unless called. The `?debug=1` panel (T0-B, src/debug/panel.js) and the headless
+//   gate (T0-C, tools/gates/debug.mjs) call these. Hooks whose system does not exist yet return { na: 'T#' } so the panel can
+//   render them disabled as "n/a (T#)". Every hook returns a plain object (never throws) so a phone tap can never break the game.
+function installDebugHooks(lg) {
+  const { bus, game } = lg; const ui = lg.ui;
+  const noSb = () => ({ ok: false, why: 'no sandbox (press PLAY first)' });
+  const num = (v, d = 0) => (Number.isFinite(+v) ? +v : d);
+  const D = {
+    /** +N ✦ into the pouch (default 100). economy.earn emits eco:spark → HUD. */
+    grant(n = 100) { const sb = lg.sb; if (!sb) return noSb(); n = Math.max(0, Math.round(num(n, 100))); sb.eco.earn(n, 'debug'); return { ok: true, spark: sb.eco.state.spark, granted: n }; },
+    /** Jump to season N (1..seasonsToWin): day 0, fresh ledger; the scheduler re-reads the seasons.json row on its next tick. Skips the opening. */
+    season(n = 1) {
+      const sb = lg.sb; if (!sb) return noSb(); const eco = sb.eco, s = eco.state;
+      const max = Math.max(1, num(eco.config?.seasonsToWin, 10)); n = Math.min(max, Math.max(1, Math.round(num(n, 1))));
+      s.season = n; s.day01 = 0; eco.ledger = eco._freshLedger(); eco.pendingOffer = null;
+      if (sb.enemies) sb.enemies.waveSeason = 0;                                      // allow this season's wave again
+      if (lg.story?.state) { lg.story.state.season = n; lg.story.state.openingPlayed = n; }   // skip the opening dialogue
+      ui?.hud?.setSeason?.(n, 0); ui?.hud?.setSeasonSeconds?.(eco.seasonSecondsFor(n));
+      sb.updateScheduler?.(0);                                                        // scheduler: S.season !== s.season → new marks for this row
+      bus.emit('debug:season', { season: n });
+      return { ok: true, season: n, seasonSeconds: eco.seasonSecondsFor(n) };
+    },
+    /** Set day 0.0–0.99; marks with at < f fire on the next scheduler tick (0.7 = wave). */
+    day(f = 0) { const sb = lg.sb; if (!sb) return noSb(); f = Math.min(0.99, Math.max(0, num(f, 0))); sb.eco.state.day01 = f; sb.updateScheduler?.(0); return { ok: true, day01: f }; },
+    /** Time scale 1/2/3 (4 only with opts.debugKeys). */
+    speed(n = 1) { const r = lg.setSpeed(n); return { ok: r === +n, speed: r }; },
+    /** Spawn a stranger (scam id, or random). 'fair' = n/a until T4. false when one is already active or an offer is pending. */
+    stranger(id) {
+      const sb = lg.sb; if (!sb) return noSb(); if (id === 'fair') return { na: 'T4' };
+      const ids = Object.keys(sb.eco.scams || {}); if (id && !ids.includes(id)) return { ok: false, why: 'unknown scam id', ids };
+      if (sb.eco.pendingOffer) return { ok: false, why: 'offer already pending' };
+      let how = 'npc'; let ok = !!(sb.scamNpc?.spawn?.(id));
+      if (!ok) { how = 'direct'; ok = !!sb.eco.offerScam(id); }
+      return { ok, how, id: sb.eco.pendingOffer?.id || id || null, ids };
+    },
+    /** Spawn this season's Collector wave now (bypasses the one-per-season guard). */
+    wave() { const sb = lg.sb; if (!sb) return noSb(); if (!sb.enemies) return { ok: false, why: 'no enemies system' }; sb.enemies.enabled = true; sb.enemies.waveSeason = 0; const w = sb.enemies.spawnWave(sb.eco.state.season) || []; return { ok: w.length > 0, count: w.length, ids: Object.keys(sb.eco.events || {}) }; },
+    /** Apply an economy event (storm, …) right now via eco.applyEvent; storm also triggers the visible storm. */
+    event(id) {
+      const sb = lg.sb; if (!sb) return noSb(); const ids = Object.keys(sb.eco.events || {}); if (!id || !ids.includes(id)) return { ok: false, why: 'unknown event id', ids };
+      if (id === 'storm') sb.storm?.hit?.();
+      const out = sb.eco.applyEvent(id); return { ok: !!out, id, effect: out?.effect || null, ids };
+    },
+    crisis() { return { na: 'T7' }; },
+    unlockJar() { return { na: 'T1' }; },
+    /** Hire a crew member for free (type = HELPER_TYPES entry, or the next unowned). */
+    hire(type) { const sb = lg.sb; if (!sb) return noSb(); if (type && !HELPER_TYPES.includes(type)) return { ok: false, why: 'unknown crew type', types: HELPER_TYPES }; const h = hireHelper(sb, type || null, { free: true }); return { ok: !!h, type: h?.type || null, crew: sb.helpers.map((x) => x.type), types: HELPER_TYPES }; },
+    /** Forget every guide card seen (tutor + save). */
+    clearTutor() { const seen = ui?.tutor?.seen; if (Array.isArray(seen)) seen.length = 0; lg.tutorSeen = []; if (lg.sb) lg.save?.write?.(); return { ok: true, hintsSeen: Array.isArray(seen) ? seen.length : 0 }; },
+    /** Delete the save slot (the running game is untouched). */
+    resetSave() { const ok = !!lg.save?.clear?.(); return { ok, hasSave: !!lg.save?.has?.() }; },
+    /** Plain JSON mirror of the HUD truth. Never NaN (every number is finite-guarded). */
+    state() {
+      const sb = lg.sb, eco = sb?.eco; const sum = eco?.summary?.() || null;
+      const jars = sum?.jars || {}; for (const k of Object.keys(jars)) jars[k] = num(jars[k]);
+      return {
+        version: GAME_VERSION, state: lg.state, mode: lg.mode, paused: !!game.paused, speed: num(lg.speed, 1),
+        season: num(sum?.season ?? eco?.state?.season, 0), day01: num(sum?.day01 ?? eco?.state?.day01, 0),
+        spark: num(sum?.spark ?? eco?.state?.spark, 0), debt: num(sum?.debt ?? eco?.state?.debt, 0), fog01: num(sum?.fog01 ?? eco?.state?.fog01, 0),
+        jars: { balances: jars, placed: sb?.jarsWorld?.ids?.() || [], unlocked: 'n/a(T1)' },
+        crew: (sb?.helpers || []).map((h) => h.type),
+        hintsSeen: [...(ui?.tutor?.seen || lg.tutorSeen || [])],
+        scamsSeen: [...(lg.story?.state?.scamsSeen || [])],
+        pendingOffer: eco?.pendingOffer?.id || null,
+        enemies: num(sb?.enemies?.active?.length, 0),
+        drawCalls: num(game.stats?.drawCalls, 0),
+        hasSave: !!lg.save?.has?.(),
+      };
+    },
+    /** state() as a pretty string (panel "dump" button → console / clipboard). */
+    dump() { const s = D.state(); const text = JSON.stringify(s, null, 2); if (typeof console !== 'undefined') console.log('[LUMEN_DEBUG]', text); return text; },
+  };
+  lg.debug = D;
+}
+
 function installSave(lg) {
   const { bus, ui, opts } = lg, on = (n, f) => lg._offs.push(bus.on(n, f));
   const storage = opts.storage;

@@ -255,7 +255,7 @@ Status: TODO · WIP · DONE (all tests PASS) · NOT DONE (say what remains)
 | Task | Status | Version | Note (≤ 2 lines) |
 |------|--------|---------|------------------|
 | T0 Debug panel | WIP | S52 | split into 3 chats (see T0 text): T0-A hooks · T0-B panel · T0-C gate+ship |
-| T0-A hooks `lg.debug` | TODO | — | Game.js only, `installDebugHooks(lg)` |
+| T0-A hooks `lg.debug` | DONE | — | Game.js: `installDebugHooks(lg)` before game:ready; `lg.debug.{grant,season,day,speed,stranger,wave,event,crisis,unlockJar,hire,clearTutor,resetSave,state,dump}`; speed 4 only with opts.debugKeys. `--game` PASS · headless 22/22 PASS (state() no NaN, HUD spark/season match) |
 | T0-B panel `?debug=1` | TODO | — | src/debug/panel.js + index.html, window.LUMEN_DEBUG |
 | T0-C gate `--debug` + S52 | TODO | S52 | tools/gates/debug.mjs, all gates green, version bump, §6 DONE |
 | T1 Jars | TODO | S53 | |
@@ -275,6 +275,7 @@ Checkpoint lines (append-only; newest last; format: `date · task.step · what c
 - 2026-11-04 · baseline · brief created from the S51 web build audit · no task started
 - 2026-11-04 · addendum A · §7 added (guide structure, full guide coverage, powers-feedback task T2b, verb-chain deposit bug) from a second S51 code read · no code changed · next: T0
 - 2026-11-05 · T0.plan · explore done ONCE (grep only); hook map + 3-chat split written into §4 T0 so no later chat explores · no code changed · next: T0-A
+- 2026-11-05 · T0-A · Game.js `installDebugHooks(lg)` (+ `event(id)` hook; `speed(4)` gated by opts.debugKeys; crew types are camelCase `tallyOwl` etc., not `tally_owl`) · `node tools/check.mjs --game` PASS · headless hook test 22/22 PASS (state() no NaN before/after PLAY; grant→HUD `.ll-spark-val` equal; season(3)→HUD 'Season 3') · next: T0-B
 
 ## 7. Addendum A (2026-11-04, second S51 code read) — guide structure, guide coverage, powers feedback
 Where §7 and §4 differ, §7 wins. Nothing here was implemented; it is design + root causes for T2 / T2b.
