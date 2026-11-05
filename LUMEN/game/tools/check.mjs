@@ -41,6 +41,7 @@ const doGame = args.includes('--game');            // 10C the whole game headles
 const doSave = args.includes('--save');            // 10D save/load + tutorial: play to S2 → autosave → fresh lg → CONTINUE → same season/spark/stalls/toasts; export/import text; lose clears
 const doPerf = args.includes('--perf');            // 11A src/systems/perf.js: BlobShadows (N discs → 1 InstancedMesh), CreatureLOD tiers + hysteresis, PixelRatioGovernor steps, countGeometries
 const doKnockback = args.includes('--knockback');  // S32 tools/gates/knockback.mjs: CreatureAnimator.hit slide/decay/stun/canStand clamp · customers knocked → walkable, re-path, sales continue, browsers walk back · helpers are sword targets (slide, helper:hit, walk back to seat)
+const doDebug = args.includes('--debug');          // T0 tools/gates/debug.mjs: lg.debug hooks + src/debug/panel.js on domshim — no global before mount, 0 scene.add, HUD spark/season === state(), every live button returns a plain object, 3 n/a buttons
 const doJarsWorld = args.includes('--jarsworld');  // 42B tools/gates/jarsworld.mjs: jars are places — near(), E deposit 10/5 + empty, hold-E withdraw (Invest locked), spillPouch cap 8, +0 meshes, panel summary default + legacy APPLY
 const doNovelties = args.includes('--novelties');  // 43B tools/gates/novelties.mjs: S2 stormWarning (warn ×1, bark, darken, restore) · S3 nightMarket (light ≤0.4, spill ×2, spend ×1.3, chip) · 1 active · 0 leaks
 const doSeasons = args.includes('--seasons');      // 43A tools/gates/seasons.mjs: data/seasons.json validates, S1 = legacy marks, real sandbox S1→S3 fires every mark once, season:novelty S2/S3, fallback, 0 leaks
@@ -2635,6 +2636,10 @@ if (doTill) {
 if (doJarsWorld) {
   try { const { run } = await import(pathToFileURL(resolve('tools/gates/jarsworld.mjs')).href); bad += await run({ resolve, pathToFileURL }); }
   catch (err) { bad++; console.log('  jarsworld gate FAIL →', err.message.split('\n')[0]); }
+}
+if (doDebug) {
+  try { const { run } = await import(pathToFileURL(resolve('tools/gates/debug.mjs')).href); bad += await run({ resolve, pathToFileURL }); }
+  catch (err) { bad++; console.log('  debug gate FAIL →', err.message.split('\n')[0]); }
 }
 if (doRaid) {
   try { const { run } = await import(pathToFileURL(resolve('tools/gates/raid.mjs')).href); bad += await run({ resolve, pathToFileURL }); }
