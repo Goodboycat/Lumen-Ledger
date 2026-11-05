@@ -108,7 +108,7 @@ export async function run({ resolve, pathToFileURL }) {
     const ser = st.serialize(); const st2 = StorySystem.deserialize(ser, null, { bus: new EventBus(), data: story, autoplay: false, tutorial: false });
     if (!st2.state.noveltiesSeen.includes('nightMarket') || !st2.state.noveltiesSeen.includes('raidDouble')) throw new Error('noveltiesSeen lost on deserialize: ' + JSON.stringify(st2.state.noveltiesSeen));
     st.destroy?.(); st2.destroy?.();
-    if (SAVE_VERSION !== 3) throw new Error('SAVE_VERSION ' + SAVE_VERSION);
+    if (!(SAVE_VERSION >= 3)) throw new Error('SAVE_VERSION ' + SAVE_VERSION);   // 43D introduced v3 (novelty fields); 48E bumped to v4 — the gate only needs ≥ 3
     const ECO = { state: { season: 3, spark: 10, jars: {} } };
     const v2 = parseSnapshot(JSON.stringify({ v: 2, t: 1, season: 3, midSeason: true, eco: ECO, build: [], story: { v: 1, state: {} }, jars: {}, helpers: [], abilities: ['dash', 'shield'], starsTotal: 2 }));
     if (!v2 || v2.novelty !== null || !Array.isArray(v2.noveltiesSeen) || v2.noveltiesSeen.length) throw new Error('v2 migrate → ' + JSON.stringify(v2 && { novelty: v2.novelty, seen: v2.noveltiesSeen }));

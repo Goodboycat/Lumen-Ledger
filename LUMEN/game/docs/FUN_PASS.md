@@ -277,7 +277,7 @@ Checkpoint lines (append-only; newest last; format: `date · task.step · what c
 - 2026-11-05 · T0.plan · explore done ONCE (grep only); hook map + 3-chat split written into §4 T0 so no later chat explores · no code changed · next: T0-A
 - 2026-11-05 · T0-A · Game.js `installDebugHooks(lg)` (+ `event(id)` hook; `speed(4)` gated by opts.debugKeys; crew types are camelCase `tallyOwl` etc., not `tally_owl`) · `node tools/check.mjs --game` PASS · headless hook test 22/22 PASS (state() no NaN before/after PLAY; grant→HUD `.ll-spark-val` equal; season(3)→HUD 'Season 3') · next: T0-B
 - 2026-11-05 · T0-B · `src/debug/panel.js` + index.html `?debug=1` (bare `?debug` keeps the F3 line) · Game.js stranger('fair') → n/a before the sandbox guard · headless 27/27 PASS · next: T0-C
-- 2026-11-05 · T0-C · `tools/gates/debug.mjs` + `--debug` flag 17/17 PASS · GAME_VERSION + UI_VERSION → S52 · game README flag line + `--debug` in the test line, root README "Fun pass T0" section · no test asserts S51 · key gates re-run (see commit) · T0 DONE · next: T1 Jars
+- 2026-11-05 · T0-C · `tools/gates/debug.mjs` + `--debug` flag 17/17 PASS · GAME_VERSION + UI_VERSION → S52 · game README flag line + `--debug` in the test line, root README "Fun pass T0" section · no test asserts S51 · key gates re-run: all green except pre-existing `--firstplayer` seed 3 / `--till` 78.9 % (PLAY_BUGS 48D-1, identical on 3c01103) + stale 43D `SAVE_VERSION !== 3` assert fixed to `>= 3` (PLAY_BUGS T0-C-1) · T0 DONE · next: T1 Jars
 
 ## 7. Addendum A (2026-11-04, second S51 code read) — guide structure, guide coverage, powers feedback
 Where §7 and §4 differ, §7 wins. Nothing here was implemented; it is design + root causes for T2 / T2b.
