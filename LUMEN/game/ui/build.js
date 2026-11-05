@@ -45,7 +45,7 @@ export function mountBuildMenu(root, opts = {}) {
   const iconFn = opts.icon || ((id) => ICONS[id] || '▪️');
   const cats = [...(opts.categories || ['stall', 'decor', 'nature'])]; if (opts.crewTab !== false && !cats.includes('crew')) cats.push('crew');
   if (!cats.includes('jar') && opts.jarTab !== false && Object.values(catalog).some((e) => e && e.category === 'jar')) cats.unshift('jar');   // 48E: the Jars tab IS the guide to where the jars are — first
-  const st = { open: false, placing: null, selected: null, placedById: new Map(), spark: sparkFn ? sparkFn() : (opts.spark ?? 0), cat: cats[0], locked: new Set(opts.locked || []), counts: {}, demolish: false };
+  const st = { open: false, placing: null, selected: null, placedById: new Map(), spark: sparkFn ? sparkFn() : (opts.spark ?? 0), cat: cats[0], locked: new Set(opts.locked || []), counts: {}, demolish: false, hidden: new Set(opts.hide || []), isNew: new Set() };   // T1-A: hidden = not listed at all (locked jars); isNew = NEW tag until first placed
 
   const wrap = el('section', 'll-build'); wrap.id = 'll-build';
   const toggle = el('button', 'll-build-toggle', '🔨 BUILD <span class="ll-key">B</span>');
@@ -90,7 +90,7 @@ export function mountBuildMenu(root, opts = {}) {
   for (const c of cats) { const b = el('button', 'll-build-tab', CATEGORY_LABELS[c] || c); b.dataset.cat = c; b.setAttribute?.('data-cat', c); b.addEventListener('click', () => { st.cat = c; renderGrid(); bus.emit('ui:build:tab', { cat: c }); }); /* 48F: tutor cards onDecorTab / onJarsTab */ tabs.append(b); tabEls[c] = b; }
   tabs.append(sparkEl);
 
-  const items = () => Object.entries(catalog).filter(([id, e]) => e && e.category === st.cat && (opts.showAll || !(e.category === 'landmark' && !e.cost)) && !(opts.hide && opts.hide.includes(id)));
+  const items = () => Object.entries(catalog).filter(([id, e]) => e && e.category === st.cat && (opts.showAll || !(e.category === 'landmark' && !e.cost)) && !st.hidden.has(id));   // T1-A: st.hidden (setHidden) replaces the static opts.hide
   const cards = new Map();
   const retrigger = (node, cls) => { node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls); };
   const affordable = (cost) => (cost || 0) <= st.spark;
@@ -139,6 +139,7 @@ export function mountBuildMenu(root, opts = {}) {
       card.append(el('span', 'll-card-fp', (e.footprint || [1, 1]).join('×')), el('span', 'll-card-icon', iconFn(id, e)), el('span', 'll-card-name', e.name || id),
         el('span', 'll-card-cost' + (cost ? '' : ' free'), cost ? `${cost} ✦` : 'free'), el('span', 'll-card-count', '0'));
       card.title = `${e.name || id} · ${cost} Spark · ${(e.footprint || [1, 1]).join('×')} cells`;
+      if (st.isNew.has(id)) { card.classList.add('is-new'); card.dataset.isNew = '1'; card.append(el('span', 'll-card-new', 'NEW')); }   // T1-A: a freshly unlocked jar wears NEW until first placed
       card.addEventListener('click', () => api.select(id));
       grid.append(card); cards.set(id, card);
     });
@@ -273,6 +274,16 @@ export function mountBuildMenu(root, opts = {}) {
     },
     setGhostOk(ok) { okBtn.classList.toggle('ok', !!ok); okBtn.classList.toggle('no', !ok); okBtn.innerHTML = iconize(ok ? '✓ place' : '✕ blocked'); return api; },
     setSpark(n) { st.spark = Math.round(+n || 0); refreshCards(); return api; },
+    // T1-A (FUN_PASS §4 T1): hidden ids are not listed in any tab (locked jars). Re-renders the grid when open. `hidden()` = current list (gates).
+    setHidden(ids) { st.hidden = new Set(Array.isArray(ids) ? ids : []); if (st.selected && st.hidden.has(st.selected)) st.selected = null; if (st.open) renderGrid(); return api; },
+    hidden() { return [...st.hidden]; },
+    /** ids listed in a category right now (what the player would see) — gates assert T1.1/T1.2 on this. */
+    listed(cat = st.cat) { return Object.entries(catalog).filter(([id, e]) => e && e.category === cat && (opts.showAll || !(e.category === 'landmark' && !e.cost)) && !st.hidden.has(id)).map(([id]) => id); },
+    /** NEW tag on a card until it is first placed (build:placed clears it). */
+    markNew(id) { if (!id || !catalog[id]) return api; st.isNew.add(id); if (st.open) renderGrid(); return api; },
+    isNew(id) { return st.isNew.has(id); },
+    /** 1.2 s pulse on a tab (class ll-new) — the reveal when a jar unlocks. Works with the tray closed too (the toggle button pulses). */
+    pulseTab(cat) { const b = tabEls[cat]; if (b) { retrigger(b, 'll-new'); clearTimeout(b._newT); b._newT = setTimeout(() => b.classList.remove('ll-new'), 1200); } retrigger(toggle, 'll-new'); clearTimeout(toggle._newT); toggle._newT = setTimeout(() => toggle.classList.remove('ll-new'), 1200); return api; },
     setLocked(id, on = true) { on ? st.locked.add(id) : st.locked.delete(id); refreshCards(); return api; },
     setUnlocked(ids) { for (const id of ids || []) st.locked.delete(id); refreshCards(); return api; },
     lockAllExcept(ids) { st.locked = new Set(Object.keys(catalog).filter((k) => !ids.includes(k))); refreshCards(); return api; },
@@ -310,7 +321,7 @@ export function mountBuildMenu(root, opts = {}) {
     bus.on('build:ghost', (p) => { api.setGhostOk(p && p.ok); }),
     // BUGFIX B13: placing UI follows the BuildSystem — only build:exit leaves placing (it used to drop the banner here while the
     // world ghost stayed armed, so Esc no longer cancelled and a later click could still spend Spark)
-    bus.on('build:placed', (p) => { if (p && p.id) { st.counts[p.id] = (st.counts[p.id] || 0) + 1; track(p, true); } refreshCards(); }),
+    bus.on('build:placed', (p) => { if (p && p.id) { st.counts[p.id] = (st.counts[p.id] || 0) + 1; track(p, true); if (st.isNew.delete(p.id)) { const c = cards.get(p.id); if (c) { c.classList.remove('is-new'); delete c.dataset.isNew; c.querySelector?.('.ll-card-new')?.remove(); } } } refreshCards(); }),   // T1-A: first placement clears the NEW tag
     bus.on('build:removed', (p) => { if (p && p.id) { st.counts[p.id] = Math.max(0, (st.counts[p.id] || 0) - 1); track(p, false); } refreshCards(); }),
     bus.on('build:upgraded', (p) => { if (p && p.id) track(p, true); if (p && p.level) footTxt.innerHTML = iconize(`⬆ upgraded to L${p.level}!`); refreshCards(); }),
     bus.on('build:denied', (p) => { const id = (p && p.id) || st.selected || st.placing; const c = id && cards.get(id); if (c) retrigger(c, 'denied'); footTxt.innerHTML = iconize(p && p.why2 === 'duplicate' ? `one stall per type — your ${(catalog[id] || {}).name || id} is L${p.level || 1}: ⬆ upgrade it` : 'denied: ' + ((p && p.why) || '?')); }),

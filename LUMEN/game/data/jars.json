@@ -1,0 +1,7 @@
+{
+  "_": "T1-A (FUN_PASS §4 T1): per-jar unlock rule, designer-editable. unlock = bus event name ('start' = unlocked from minute 1). match = payload fields that must equal (missing = any). Order here = tray order once unlocked. Game.js passes this to createJarUnlocks; missing file → the same defaults baked into src/systems/jarUnlocks.js.",
+  "spend":   { "unlock": "start",         "why": "daily money" },
+  "save":    { "unlock": "till:collect",  "why": "first till sweep: you have income, now keep some" },
+  "protect": { "unlock": "novelty:start", "match": { "id": "stormWarning" }, "why": "S2 storm warning: emergency fund" },
+  "invest":  { "unlock": "eco:season",    "match": { "season": 2 }, "why": "after the S2 Ledger: money that grows" }
+}

@@ -19,6 +19,7 @@ import { attachAbilities, ABILITY_NAMES, FINLIT } from './anim/heroAbilities.js'
 import { installVerbChain } from './systems/verbChain.js';
 import { installUnlocks } from './systems/unlocks.js';                          // 41D: 2 starters + 4 earned by ledger stars
 import { createJarsWorld } from './systems/jarsWorld.js';                       // 42B: jars are places — walk to a jar, E deposits 10 ✦, hold E withdraws
+import { createJarUnlocks } from './systems/jarUnlocks.js';                     // T1-A: jars unlock one by one (data/jars.json rules) → tray hides locked jar cards
 import { PROP_CATALOG, makeProp, STALL_TYPES, JAR_IDS, swayAll, swayDecor, updateLandmarks, makeFlowerField, makeGrassTufts } from './assets/props.js';
 import { bakeStatic, bakeShells, disposeBatch } from './assets/props/bake.js';
 import { BlobShadows, CreatureLOD } from './systems/perf.js';   // 11A (S40: PixelRatioGovernor no longer wired — quality is locked to the Settings preset)
@@ -70,6 +71,7 @@ export function createSandbox(game, opts = {}) {
   // ---- systems ------------------------------------------------------------------------------------------------------
   const bus = game.bus;
   sb.storyData = opts.storyData || null;                          // 42D: parsed data/story.json (pier lines; createLumenGame passes its own)
+  sb.jarsData = opts.jarsData || null;                            // T1-A: parsed data/jars.json (null → DEFAULT_JAR_RULES in systems/jarUnlocks.js)
   sb.scamNpcs = opts.scamNpcs ?? !opts.headless;                 // 42D: the scheduler's scam mark spawns a pitching Collector (talk to open the deal); headless keeps eco.offerScam() direct unless opted in
   sb.seasons = createSeasonScript(opts.seasons || null);        // 43A: parsed data/seasons.json (null → legacy SCHEDULER_MARKS rows); createLumenGame passes its own
   if (!sb.seasons.legacy) { const errs = sb.seasons.validate(); if (errs.length) { sb.log.push('seasons.json invalid: ' + errs[0]); sb.seasons = createSeasonScript(null); } }
@@ -397,6 +399,10 @@ function installJarsWorld(sb) {
   const J = createJarsWorld({ bus, eco, jars: sb.world.jars, hero, vfx, sequences: sb.game.sequences, labels: sb.labelsRoot || null, camera: () => sb.game.camera?.three || sb.game.camera,
     onSpill: (a) => { const h = hero.root.position; let left = a; for (let i = 0; left > 0 && i < 4; i++) { const v = i === 3 ? left : Math.max(1, Math.round(a / 4)); left -= v; const ang = Math.random() * Math.PI * 2; sb.dropTip?.(h.x + Math.cos(ang) * 0.9, h.z + Math.sin(ang) * 0.9, v); } sb.stats.spilled = (sb.stats.spilled || 0) + a; } });
   sb.jarsWorld = J;
+  // T1-A: unlock state. Spend from the start; Save on the first till sweep; Protect at the S2 storm warning; Invest after the S2 Ledger (data/jars.json).
+  //   The tray hides locked jar cards (ui/build.js setHidden); jars:unlocked → pulse the Jars tab + NEW tag (wired in createLumenGame, the UI owner).
+  sb.jarUnlocks = createJarUnlocks({ bus, data: sb.jarsData });
+  sb._offs.push(() => { sb.jarUnlocks?.destroy(); sb.jarUnlocks = null; });
   // 48E: jars are buildables. build:placed {id:'jar_*'} → register(key, group) + the panel row shows; build:removed → unregister (balance → pouch) + row hides.
   const jarKeyOf = (p) => { const id = String(p?.id || p?.entry?.id || ''); return id.startsWith('jar_') ? id.slice(4) : null; };
   sb._offs.push(bus.on('build:placed', (p) => { const k = jarKeyOf(p); if (!k) return; const g = p.group || p.entry?.group; if (g) { g.userData.jar = k; J.register(k, g); g.userData.setFill?.(J.fill01(k)); } }));
@@ -760,7 +766,7 @@ function installStart(lg) {
     if (reuse) lg.showcaseSb = null;                                                   // keep it out of teardown's way
     lg.teardown?.();
     const balance = lg.mode === 'endless' ? { ...(opts.balance || {}), winRequiresSeasons: false, endless: true } : opts.balance;
-    const sb = lg.sb = reuse || createSandbox(game, { headless: !!opts.headless, storyData: opts.storyData, seasons: opts.seasons, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, starterStalls: lg._resuming ? false : undefined, labelsRoot: lg.ui?.root || null, pierPays: lg.pierPays });
+    const sb = lg.sb = reuse || createSandbox(game, { headless: !!opts.headless, storyData: opts.storyData, jarsData: opts.jarsData, seasons: opts.seasons, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, starterStalls: lg._resuming ? false : undefined, labelsRoot: lg.ui?.root || null, pierPays: lg.pierPays });
     if (reuse) { lg.stats.showcaseReused = (lg.stats.showcaseReused || 0) + 1; game.followTarget = sb.hero.root.position; }
     sb.modalOpen = () => !!(ui?.dialogue?.isOpen || ui?.ledger?.isOpen);                 // P62: the Collector wave waits for the dialogue box to close
     if (lg.mode === 'endless') sb.updateScheduler = wrapNoScam(sb);                      // endless: events yes, Baron's deals no
@@ -961,6 +967,13 @@ function installRunWires(lg) {
   // ui:price handler moved to wireEconomy (44A) — the sandbox owns it so the stall sign (E) and the build panel share ONE handler
   if (ui?.build) { ui.build.offers = lg.offers; ui.build.priceOf = (id) => ({ price: sb.cust?.price?.(id) ?? 0, fair: sb.cust?.fair?.(id) ?? 0 }); }
   offs.push(() => { if (ui?.build) { ui.build.offers = null; ui.build.priceOf = null; } });
+  // T1-A (FUN_PASS §4 T1): locked jars are NOT listed in the tray. sb.jarUnlocks.hiddenIds() → ui.build.setHidden; on jars:unlocked the Jars tab
+  //   pulses (ll-new 1.2 s), the new card carries a NEW tag until first placed (ui/build.js markNew) and a 1.2 s reveal ping over the tab. No modal.
+  if (ui?.build?.setHidden && sb.jarUnlocks) {
+    ui.build.setHidden(sb.jarUnlocks.hiddenIds());
+    on('jars:unlocked', (p) => { ui.build.setHidden(sb.jarUnlocks.hiddenIds()); if (p?.how !== 'restore') { ui.build.markNew?.('jar_' + p?.jar); ui.build.pulseTab?.('jar'); } });
+    offs.push(() => ui.build.setHidden?.([]));
+  }
   // BUGFIX B13: closing the tray never leaves a live ghost. BUGFIX P13: demolish mode SURVIVES closing the tray (the player closes it to see the
   // island and tap a stall) — the tray's own close() keeps st.demolish, the HUD toast says how to leave it, and Esc / re-open ✕ / a pick ends it.
   on('ui:build:close', () => { if (build.mode === 'place') build.exit(); });   // 48H: demolish toast deleted. BUGFIX P28: touch has a tappable Stop
@@ -1243,7 +1256,8 @@ function installDebugHooks(lg) {
       const out = sb.eco.applyEvent(id); return { ok: !!out, id, effect: out?.effect || null, ids };
     },
     crisis() { return { na: 'T7' }; },
-    unlockJar() { return { na: 'T1' }; },
+    /** T1-A: unlock a jar now (key spend|save|invest|protect). Emits jars:unlocked once; already-unlocked → ok:false. */
+    unlockJar(k) { const sb = lg.sb; if (!sb) return noSb(); const U = sb.jarUnlocks; if (!U) return { ok: false, why: 'no jarUnlocks' }; if (!k || !U.rules[k]) return { ok: false, why: 'unknown jar key', keys: Object.keys(U.rules) }; const was = U.isUnlocked(k); const did = U.unlockNow(k, 'debug'); return { ok: did, why: was ? 'already unlocked' : undefined, jar: k, unlocked: U.unlocked(), keys: Object.keys(U.rules) }; },
     /** Hire a crew member for free (type = HELPER_TYPES entry, or the next unowned). */
     hire(type) { const sb = lg.sb; if (!sb) return noSb(); if (type && !HELPER_TYPES.includes(type)) return { ok: false, why: 'unknown crew type', types: HELPER_TYPES }; const h = hireHelper(sb, type || null, { free: true }); return { ok: !!h, type: h?.type || null, crew: sb.helpers.map((x) => x.type), types: HELPER_TYPES }; },
     /** Forget every guide card seen (tutor + save). */
@@ -1258,7 +1272,7 @@ function installDebugHooks(lg) {
         version: GAME_VERSION, state: lg.state, mode: lg.mode, paused: !!game.paused, speed: num(lg.speed, 1),
         season: num(sum?.season ?? eco?.state?.season, 0), day01: num(sum?.day01 ?? eco?.state?.day01, 0),
         spark: num(sum?.spark ?? eco?.state?.spark, 0), debt: num(sum?.debt ?? eco?.state?.debt, 0), fog01: num(sum?.fog01 ?? eco?.state?.fog01, 0),
-        jars: { balances: jars, placed: sb?.jarsWorld?.ids?.() || [], unlocked: 'n/a(T1)' },
+        jars: { balances: jars, placed: sb?.jarsWorld?.ids?.() || [], unlocked: sb?.jarUnlocks?.unlocked?.() || [] },
         crew: (sb?.helpers || []).map((h) => h.type),
         hintsSeen: [...(ui?.tutor?.seen || lg.tutorSeen || [])],
         scamsSeen: [...(lg.story?.state?.scamsSeen || [])],
