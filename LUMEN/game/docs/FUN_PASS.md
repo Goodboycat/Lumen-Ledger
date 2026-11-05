@@ -58,6 +58,27 @@ Why: later tasks must be provable without grinding.
 Accept: T0.1 no panel/global without `?debug=1` · T0.2 every live button works on a phone · T0.3 0 extra draw calls · T0.4 `state()` matches the HUD.
 Touch: `index.html` (flag), new `src/debug/panel.js`, `Game.js` (expose hooks).
 
+T0 is split into THREE chats (T0-A, T0-B, T0-C). Each is one chat. DO NOT EXPLORE — the hook map below was read from S51 code (2026-11-05); trust it, grep only the one line you edit.
+- **T0-A · hooks** (Game.js only): `installDebugHooks(lg)` → `lg.debug = { grant, season, day, speed, stranger, wave, crisis, unlockJar, hire, clearTutor, resetSave, state, dump }`. Called at the end of `createLumenGame` (before `bus.emit('game:ready')`, Game.js ≈ L740). No DOM, no window global. Tests: `node tools/check.mjs --game` still green; `lg.debug.state()` returns JSON with no NaN.
+- **T0-B · panel** (new `src/debug/panel.js` + index.html): `index.html` after `window.ui = ui; window.lg = lg;` (≈ L97) add `if (params.get('debug') === '1') { const { mountDebugPanel } = await import('./src/debug/panel.js'); window.LUMEN_DEBUG = mountDebugPanel(document.body, { lg, game }); }`. Bare `?debug` keeps the old F3 stats line only. Panel = `<aside id="ll-debug">` + own `<style>`, collapsible ▣ tab top-right, buttons ≥ 44 px, `pointer-events` only on the panel. Every button calls `lg.debug.*`; buttons whose hook returns `{ na: 'T#' }` render disabled with label "n/a (T#)". `window.LUMEN_DEBUG = { ...lg.debug, panel }`.
+- **T0-C · gate + ship**: `tools/gates/debug.mjs` (+ `--debug` flag in `tools/check.mjs`, same pattern as `--jarsworld` ≈ L44 / L2636): (1) `createLumenGame` headless on domshim like `--game` → `lg.debug` exists, `window.LUMEN_DEBUG` undefined (T0.1 half); (2) mount panel with domshim → scene mesh count unchanged, `game.scene.add` never called (T0.3); (3) `grant(100)` → HUD `.ll-spark` text === `state().spark`; `season(3)` → HUD season text contains `Season 3` and `state().season === 3` (T0.4); (4) every live hook returns truthy/no throw. Then: run ALL gates (`node tools/check.mjs --economy --story --ui --sandbox --game --till --jarsworld --seasons --novelties --wants --pricing --pier --raid --knockback --firstplayer`), bump `GAME_VERSION` S52 (Game.js ≈ L669), note in README, mark T0 DONE in §6. T0.2 (phone) = human check: `index.html?debug=1&season=30` on a phone, tap each button.
+
+Hook map (S51 Game.js, all inside `createLumenGame` / `createSandbox` scope — `lg.sb` is the sandbox, `sb.eco` the Economy):
+- +100 ✦: `sb.eco.earn(n, 'debug')` (economy.js L258; emits eco:spark → HUD).
+- jump season N: `const s = sb.eco.state; s.season = n; s.day01 = 0; sb.eco.ledger = sb.eco._freshLedger();` then `ui.hud.setSeason(n, 0); ui.hud.setSeasonSeconds(sb.eco.seasonSecondsFor(n))`; the scheduler re-reads the seasons.json row by itself (`installScheduler` L339: `S.season !== s.season` → new marks). Story: `lg.story.state.openingPlayed = n` to skip the opening (else it waits for ui:continue anyway). Emit `debug:season {season}`.
+- set day: `sb.eco.state.day01 = clamp(f, 0, 0.99)`; marks with `at < f` fire on the next `sb.updateScheduler()` tick (desired: "day 0.7" = wave). HUD follows via `emitTick` (L745, 10 Hz).
+- time scale: `lg.setSpeed(n)` (L697) — SPEEDS = [1,2,3]; allow 4 only when `opts.debugKeys` (one-token change in setSpeed). HitStop-safe already.
+- spawn stranger: `sb.scamNpc?.spawn(id)` (scamNpc.js L37; false when one is active or `eco.pendingOffer`); fallback `sb.eco.offerScam(id)`. 'fair' stranger = n/a (T4). Scam ids = keys of `sb.eco.scams`.
+- spawn wave: `sb.enemies.waveSeason = null; sb.enemies.spawnWave(season)` (enemies.js L224 guards one wave per season).
+- crisis(id): n/a (T7). `event(id)`: `sb.nextEvent = id` then `sb.eco.state.day01` past the event mark, or call the eco event directly (economy.js `applyEvent`-family; grep `case 'event'` in installScheduler L347).
+- unlock jar: n/a (T1) — jars have no unlock state yet; `state().jars.placed = sb.jarsWorld.ids()`, balances = `sb.eco.state.jars`.
+- hire crew: `hireHelper(sb, type, { free: true })` (Game.js L581, module-private → hooks must live in Game.js); types = `HELPER_TYPES`.
+- clear tutor seen: `ui.tutor.seen.length = 0; lg.tutorSeen = []; lg.save.write()` (save.js L87 snapshots `ui.tutor.seen`).
+- reset save: `lg.save.clear()` (L1206).
+- state(): `{ version: GAME_VERSION, state: lg.state, mode: lg.mode, season, day01, spark, debt, fog01, speed: lg.speed, jars: { balances, placed, unlocked: 'n/a(T1)' }, crew: sb.helpers.map(h => h.type), hintsSeen: ui.tutor.seen, scamsSeen: lg.story?.state.scamsSeen, drawCalls: game.stats.drawCalls }` — `eco.summary()` (economy.js L592) already gives spark/jars/debt/fog01/season/day01.
+- HUD truth for T0.4: `ui/hud.js` `sparkVal` (class `ll-spark-val`? grep `sparkVal = el(`), `seasonTxt` text `Season N / 10`, day bar `dayFill.style.width`. HUD listens to eco:spark / eco:tick, so after a hook call step `lg.update(0.2)` once before comparing.
+- Draw calls: `game.stats.drawCalls` (core/Game.js L124, from `renderer.info`). The panel is DOM only → 0 by construction; the gate proves no `scene.add`.
+
 ### T1 · Jars unlock one by one and can be reached [S53]
 Ask: "activate each jar separately … jars inaccessible even after bought".
 1. `data/jars.json`, per-jar unlock rule (designer-editable). Defaults: Spend = start · Save = first till sweep · Protect = when the S2 storm warning starts (teaches emergency fund) · Invest = start of S3 (after the S2 ledger).
@@ -233,7 +254,10 @@ Status: TODO · WIP · DONE (all tests PASS) · NOT DONE (say what remains)
 
 | Task | Status | Version | Note (≤ 2 lines) |
 |------|--------|---------|------------------|
-| T0 Debug panel | TODO | S52 | |
+| T0 Debug panel | WIP | S52 | split into 3 chats (see T0 text): T0-A hooks · T0-B panel · T0-C gate+ship |
+| T0-A hooks `lg.debug` | TODO | — | Game.js only, `installDebugHooks(lg)` |
+| T0-B panel `?debug=1` | TODO | — | src/debug/panel.js + index.html, window.LUMEN_DEBUG |
+| T0-C gate `--debug` + S52 | TODO | S52 | tools/gates/debug.mjs, all gates green, version bump, §6 DONE |
 | T1 Jars | TODO | S53 | |
 | T2 Curiosity guide | TODO | S54 | §7.A: guide for EVERYTHING, 3 entry points, codex in pause |
 | T2b Powers answer every press | TODO | S55 | §7.B: hold = guide card, every press = visible answer |
@@ -250,6 +274,7 @@ Status: TODO · WIP · DONE (all tests PASS) · NOT DONE (say what remains)
 Checkpoint lines (append-only; newest last; format: `date · task.step · what changed · tests PASS/FAIL · what is left`):
 - 2026-11-04 · baseline · brief created from the S51 web build audit · no task started
 - 2026-11-04 · addendum A · §7 added (guide structure, full guide coverage, powers-feedback task T2b, verb-chain deposit bug) from a second S51 code read · no code changed · next: T0
+- 2026-11-05 · T0.plan · explore done ONCE (grep only); hook map + 3-chat split written into §4 T0 so no later chat explores · no code changed · next: T0-A
 
 ## 7. Addendum A (2026-11-04, second S51 code read) — guide structure, guide coverage, powers feedback
 Where §7 and §4 differ, §7 wins. Nothing here was implemented; it is design + root causes for T2 / T2b.
