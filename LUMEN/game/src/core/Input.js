@@ -61,7 +61,7 @@ export class Input {
         }
       }
       clearTimeout(this._holdT);
-      if (this.onHold) { const id = e.pointerId, cx = e.clientX, cy = e.clientY; this._holdT = setTimeout(() => { if (!this.pointerDown || this._dragId !== id || this.dragging || !this.onHold) return; const w = this.worldAt(cx, cy); if (w) this.onHold(w, e); }, this.holdMs); }
+      if (this.onHold) { const id = e.pointerId, cx = e.clientX, cy = e.clientY; this._holdT = setTimeout(() => { this._holdT = 0; if (!this.pointerDown || this._dragId !== id || this.dragging || !this.onHold) return; const w = this.worldAt(cx, cy); if (w) this.onHold(w, e); }, this.holdMs); }
     });
     d.addEventListener('pointermove', (e) => {
       if (this.joystick.active && e.pointerId === this.joystick.id) {

@@ -9,6 +9,7 @@ await p.goto('http://localhost:3000/index.html?debug=1&nocine&notutorial', { wai
 await p.waitForFunction(() => window.lg && window.ui, null, { timeout: 60000 });
 await p.evaluate(() => window.ui.title.buttons.story.click()); await p.waitForTimeout(3500);
 for (let i = 0; i < 25; i++) { if (!(await p.evaluate(() => ui.dialogue.isOpen))) break; await p.keyboard.press('Enter'); await p.waitForTimeout(250); }
+await p.evaluate(() => { document.querySelector('.ll-sb-ok')?.click(); }); await p.waitForTimeout(400);
 await p.evaluate(() => { window.__log = []; for (const n of ['tutor:shown', 'curious', 'jars:deposit', 'ui:tap:land']) lg.bus.on(n, (e) => __log.push([n, e.id || e.hint || e.jar || '', e.why || e.mode || ''].join(' '))); });
 // screen position of a world point
 const toScreen = (x, z) => p.evaluate(([x, z]) => { const cam = lg.game.camera.three || lg.game.camera; const el = lg.game.renderer.domElement; const v = new (lg.sb.hero.root.position.constructor)(x, 0.8, z).project(cam); const r = el.getBoundingClientRect(); return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height }; }, [x, z]);
@@ -17,7 +18,7 @@ const out = {};
 // 1. HOLD on the stall (hero far) → card, no tray
 const st = await p.evaluate(() => { const s = lg.sb.build.stalls()[0].group.position; lg.sb.hero.root.position.set(s.x + 6, 0, s.z + 5); return { x: s.x, z: s.z }; });
 await p.waitForTimeout(800); await clear();
-let pt = await toScreen(st.x, st.z); await p.mouse.move(pt.x, pt.y); await p.mouse.down(); await p.waitForTimeout(600); await p.mouse.up(); await p.waitForTimeout(300);
+let pt = await toScreen(st.x, st.z); await p.mouse.move(pt.x, pt.y); await p.mouse.down(); await p.waitForTimeout(1500); await p.mouse.up(); await p.waitForTimeout(300);
 out.holdStall = { log: await p.evaluate(() => __log.slice()), trayOpen: await p.evaluate(() => ui.build.isOpen) };
 await p.screenshot({ path: 'tools/shots/t2c_hold_stall.png' });
 // 2. short TAP on the stall → card (act: stall opens tray / select)
@@ -29,9 +30,10 @@ await p.evaluate(() => { ui.build.close?.(); lg.debug.unlockJar('save'); const s
   const c = sb.island.gridCells().filter((q) => Math.hypot(q.x - hp.x, q.z - hp.z) > 5 && Math.hypot(q.x - hp.x, q.z - hp.z) < 8).find((q) => sb.build.canPlace('jar_save', q.x, q.z, 0)); sb.build.place('jar_save', c.x, c.z, 0, { animate: false }); });
 await p.waitForTimeout(800); await clear();
 const jp = await p.evaluate(() => { const q = lg.sb.jarsWorld.get('save').position; return { x: q.x, z: q.z }; });
-pt = await toScreen(jp.x, jp.z); await p.mouse.move(pt.x, pt.y); await p.mouse.down(); await p.waitForTimeout(600); await p.mouse.up(); await p.waitForTimeout(500);
+pt = await toScreen(jp.x, jp.z); await p.mouse.move(pt.x, pt.y); await p.mouse.down(); await p.waitForTimeout(1500); await p.mouse.up(); await p.waitForTimeout(500);
 out.holdJar = { log: await p.evaluate(() => __log.slice()), walking: await p.evaluate(() => !!lg.sb.autoWalk), save: await p.evaluate(() => lg.sb.eco.state.jars.save) };
-await clear(); pt = await toScreen(jp.x, jp.z); await p.mouse.click(pt.x, pt.y); await p.waitForTimeout(5500);
+await clear(); pt = await toScreen(jp.x, jp.z); await p.mouse.click(pt.x, pt.y); await p.waitForTimeout(9000);
+out.tapJarWalk = await p.evaluate(() => ({ walking: !!lg.sb.autoWalk, hero: [lg.sb.hero.root.position.x, lg.sb.hero.root.position.z].map((v) => +v.toFixed(1)), eco: lg.sb.eco.state.spark }));
 out.tapJar = { log: await p.evaluate(() => __log.slice()), save: await p.evaluate(() => lg.sb.eco.state.jars.save) };
 await p.screenshot({ path: 'tools/shots/t2c_tap_jar.png' });
 // 4. far Collector tap

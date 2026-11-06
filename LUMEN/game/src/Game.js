@@ -1145,6 +1145,7 @@ function installRunWires(lg) {
     const e = build.pick(lg.game.input?._ray?.ray) || build.nearest(world.x, world.z, 1.0);
     if (!e) return false;
     if (e.scenery) { return true; }
+    if (typeof e.id === 'string' && e.id.startsWith('jar_')) return false;   // T2 fix: a jar is used (landTap: walk + deposit), not inspected — selectTap ran first and swallowed every real jar tap (found in a real-mouse run)
     const cat = e.category || build.entry?.(e.id)?.category || 'stall';
     ui?.build?.setCategory?.(cat); ui?.build?.open?.(); ui?.build?.select?.(e.id);
     lg.inspected = { id: e.id, level: e.level || 1, at: lg.game.time };
