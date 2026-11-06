@@ -4,7 +4,7 @@
 //   • T0.3  mountDebugPanel is DOM only: scene mesh count unchanged, game.scene.add never called, the panel lives in <aside id="ll-debug">
 //   • T0.4  state() === HUD truth: grant(100) → `.ll-spark-val` text == state().spark · season(3) → HUD 'Season 3' + state().season === 3
 //   • every live hook returns a plain object and never throws (before PLAY → { ok:false, why:'no sandbox…' }; after PLAY → ok:true or a reason)
-//   • the 3 n/a hooks (stranger 'fair' T4 · crisis T7 · unlockJar T1) answer { na } and render as exactly 3 disabled "n/a (T#)" buttons
+//   • the 2 n/a hooks (stranger 'fair' T4 · crisis T7) answer { na } and render as exactly 2 disabled "n/a (T#)" buttons
 //   • state() has no NaN anywhere, before and after PLAY · dump() is a parseable JSON string · panel.destroy() removes the aside
 // T0.2 (every button works on a phone) is a human check: index.html?debug=1&season=30 → tap each button.
 // Exports run({ resolve, pathToFileURL }) → number of failures (check.mjs adds it to `bad`).
@@ -51,14 +51,14 @@ export async function run({ resolve, pathToFileURL }) {
     if (typeof window !== 'undefined' && window.LUMEN_DEBUG !== undefined) throw new Error('window.LUMEN_DEBUG defined before the ?debug=1 mount');
     if (root.querySelector('#' + PANEL_ID)) throw new Error('#' + PANEL_ID + ' in the DOM before mount');
     ok('T0.1 no window.LUMEN_DEBUG and no #' + PANEL_ID + ' before the ?debug=1 mount');
-    // every hook before PLAY: plain object, no throw; the 3 n/a hooks answer { na } even on the title screen (panel probes them there)
+    // every hook before PLAY: plain object, no throw; the 2 n/a hooks answer { na } even on the title screen (panel probes them there)
     const quiet = (fn) => { const log = console.log; console.log = () => {}; try { return fn(); } finally { console.log = log; } };   // dump() prints [LUMEN_DEBUG] — keep the gate output readable
     const pre = {}; for (const h of HOOKS) { const r = h === 'dump' ? quiet(() => D.dump()) : D[h](h === 'stranger' ? 'fair' : h === 'season' ? 3 : h === 'speed' ? 1 : undefined); pre[h] = r; if (h === 'dump') { if (typeof r !== 'string') throw new Error('dump() before PLAY not a string'); } else plain(r, h + '() before PLAY'); }
     for (const h of ['grant', 'season', 'day', 'wave', 'event', 'hire']) if (pre[h].ok !== false || !/no sandbox/.test(pre[h].why || '')) throw new Error(`${h}() before PLAY → ${JSON.stringify(pre[h])} (want ok:false no sandbox)`);
-    if (pre.stranger.na !== 'T4' || pre.crisis.na !== 'T7' || pre.unlockJar.na !== 'T1') throw new Error(`n/a map wrong: fair ${pre.stranger.na} crisis ${pre.crisis.na} unlockJar ${pre.unlockJar.na}`);
+    if (pre.stranger.na !== 'T4' || pre.crisis.na !== 'T7' || pre.unlockJar.na !== undefined || pre.unlockJar.ok !== false) throw new Error(`n/a map wrong: fair ${pre.stranger.na} crisis ${pre.crisis.na} unlockJar ${JSON.stringify(pre.unlockJar)}`);
     noNaN(pre.state, 'pre'); if (pre.state.version !== GAME_VERSION || pre.state.state !== 'title' || pre.state.spark !== 0) throw new Error('state() before PLAY ' + JSON.stringify(pre.state).slice(0, 120));
     JSON.parse(pre.dump);
-    ok(`every hook before PLAY → plain object, 6 × "no sandbox", n/a = fair:T4 crisis:T7 unlockJar:T1 · state() no NaN (state '${pre.state.state}', v${pre.state.version}) · dump() parses`);
+    ok(`every hook before PLAY → plain object, 6 × "no sandbox", n/a = fair:T4 crisis:T7 (unlockJar live since T1-A) · state() no NaN (state '${pre.state.state}', v${pre.state.version}) · dump() parses`);
 
     // ---------------------------------------------------------------- T0.3 mount = DOM only
     const m0 = meshes(); const adds0 = sceneAdds; const tags0 = root.querySelectorAll('*').length;
@@ -68,7 +68,7 @@ export async function run({ resolve, pathToFileURL }) {
     if (!DBG.panel || typeof DBG.panel.open !== 'function' || typeof DBG.panel.toggle !== 'function' || typeof DBG.panel.destroy !== 'function') throw new Error('mount: panel api');
     for (const h of HOOKS) if (DBG[h] !== D[h]) throw new Error('LUMEN_DEBUG.' + h + ' is not lg.debug.' + h);
     const buttons = [...aside.querySelectorAll('button')]; const live = buttons.filter((b) => !b.disabled && !b.classList.contains('lld-tab')); const naBtns = buttons.filter((b) => b.disabled);
-    if (naBtns.length !== 3 || !naBtns.every((b) => /n\/a \(T[147]\)$/.test(b.textContent))) throw new Error('n/a buttons: ' + naBtns.map((b) => b.textContent).join(' | '));
+    if (naBtns.length !== 2 || !naBtns.every((b) => /n\/a \(T[47]\)$/.test(b.textContent))) throw new Error('n/a buttons: ' + naBtns.map((b) => b.textContent).join(' | '));
     if (live.length < 15) throw new Error('live buttons ' + live.length + ' < 15');
     const selects = aside.querySelectorAll('select').length; if (selects < 4) throw new Error('selects ' + selects);
     if (aside.classList.contains('open')) throw new Error('panel starts open');
@@ -146,8 +146,9 @@ export async function run({ resolve, pathToFileURL }) {
     ok(`event('${pick}') → ok (effect ${JSON.stringify(e1.effect)}) · unknown → ok:false + ${eBad.ids.length} ids${evIds.includes('storm') ? " · event('storm') ok + storm.hit" : ''}`);
 
     // crisis / unlockJar n/a after PLAY too
-    if (D.crisis('x').na !== 'T7' || D.unlockJar('save').na !== 'T1') throw new Error('crisis/unlockJar n/a after PLAY');
-    ok('crisis() → n/a T7 · unlockJar() → n/a T1 (also after PLAY)');
+    if (D.crisis('x').na !== 'T7') throw new Error('crisis n/a after PLAY');
+    { const uj = D.unlockJar('nope'); if (uj.ok !== false || !Array.isArray(uj.keys)) throw new Error('unlockJar(unknown) → ' + JSON.stringify(uj)); }
+    ok('crisis() → n/a T7 (also after PLAY) · unlockJar(unknown) → ok:false + keys (live since T1-A; the real unlock is asserted by --jars1)');
 
     // hire
     const crew0 = sb.helpers.length; const hr = plain(D.hire(), 'hire');
