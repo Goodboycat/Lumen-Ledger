@@ -408,7 +408,11 @@ function installJarsWorld(sb) {
   const jarKeyOf = (p) => { const id = String(p?.id || p?.entry?.id || ''); return id.startsWith('jar_') ? id.slice(4) : null; };
   sb._offs.push(bus.on('build:placed', (p) => { const k = jarKeyOf(p); if (!k) return; const g = p.group || p.entry?.group; if (g) { g.userData.jar = k; J.register(k, g); g.userData.setFill?.(J.fill01(k)); } }));
   sb._offs.push(bus.on('build:removed', (p) => { const k = jarKeyOf(p); if (k) J.unregister(k); }));
-  for (const e of sb.build?.placed?.values?.() || []) { const k = jarKeyOf(e); if (k && e.group) { e.group.userData.jar = k; J.register(k, e.group); } }   // jars already placed (restore order)
+  const registerPlacedJars = () => { for (const e of sb.build?.placed?.values?.() || []) { const k = jarKeyOf(e); if (k && e.group && J.get(k) !== e.group) { e.group.userData.jar = k; J.register(k, e.group); e.group.userData.setFill?.(J.fill01(k)); } } };
+  registerPlacedJars();   // jars already placed (restore order)
+  // T1-C (found by --jars1 T1.5): build.load() places SILENTLY (no build:placed) → after CONTINUE the saved jars were never registered with jarsWorld (pre-existing 48E gap:
+  //   a resumed run had jars on the ground that could not be used). build:loaded fires once per load → register them then.
+  sb._offs.push(bus.on('build:loaded', registerPlacedJars));
   sb.interact = () => {
     if (J.near()) return J.press() || 'jar';
     if (sb.pier?.near?.()) return sb.pier.interact() || 'pier';                     // 42D: the Baron waits at the pier → pay interest / repay

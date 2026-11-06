@@ -6,7 +6,9 @@
 //   • T1.3  (T1-B) Save placed ≥ 5 u from Pip, lg.landTap({x,z}) → Pip walks over and 10 ✦ move in within 6 s, hero ≤ 1.3 u, inputOverride released
 //           · a far tap on a jar is NOT swallowed · a tap on empty land still opens the tray · stick input / timeout / pause cancel the walk
 //   • T1.4  two jars: deposit into one → the other unchanged · remove one → only its balance returns to the pouch
-//   • T1.5/T1.6/T1.7 are T1-C (save field, legacy, verb chain) — asserted there.
+//   • T1.5  snapshot v4 carries jarsUnlocked → JSON → resume restores unlocks + placed jars, tray = unlocked, no replayed NEW reveals · legacy snapshot (field missing) derives from placed jars
+//   • T1.6  Invest withdraw mid-season → 0 moved + jars:locked · onLocked card says "Invest is locked until the Ledger."
+//   • T1.7  verb chain without a Save jar (tests/verbs.test.mjs, run by --verbs): unlocks Save, hints "Build the Save jar", done on deposit, no 25 s wait.
 // Exports run({ resolve, pathToFileURL }) → number of failures (check.mjs adds it to `bad`).
 export async function run({ resolve, pathToFileURL }) {
   let bad = 0; let n = 0;
@@ -24,7 +26,7 @@ export async function run({ resolve, pathToFileURL }) {
     const { PROP_CATALOG } = await imp('src/assets/props.js');
     const { readFileSync } = await import('node:fs'); const storyData = JSON.parse(readFileSync(resolve('data/story.json'), 'utf8'));
 
-    const bus = new EventBus(); const ev = {}; for (const nm of ['jars:unlocked', 'jars:deposit', 'jars:autowalk', 'jars:removed', 'ui:tap:land']) bus.on(nm, (p) => { (ev[nm] ??= []).push(p); });
+    const bus = new EventBus(); const ev = {}; for (const nm of ['jars:unlocked', 'jars:deposit', 'jars:autowalk', 'jars:removed', 'jars:locked', 'ui:tap:land']) bus.on(nm, (p) => { (ev[nm] ??= []).push(p); });
     const scene = new THREE.Scene();
     const game = { scene, bus, sequences: new SequencePlayer(), tweens, hitStop: new HitStop(), input: { pointerWorld: new THREE.Vector3(), hasPointerWorld: false, move: new THREE.Vector2(), joystick: new THREE.Vector2(), actions: {}, pressed: () => false, press() {} }, camera: { zoom: 1, shake() {} }, time: 0, timeScale: 1, paused: false, followTarget: null, systems: [], stats: { fps: 60, drawCalls: 0 }, add(s) { this.systems.push(s); return s; }, hitstop() {} };
     const root = document.body;
@@ -114,9 +116,31 @@ export async function run({ resolve, pathToFileURL }) {
     farAgain(); place('spend', 3, 9); const sp = J.get('spend').position; hp.set(sp.x, 0, sp.z); step(); eco._addSpark(60 - eco.state.spark, 'test');
     const saveBal = eco.state.jars.save; J.press(); J.release(); eq(eco.state.jars.save, saveBal, 'T1.4 other jar unchanged'); if ((eco.state.jars.spend || 0) < 10) throw new Error('spend deposit missing');
     const spendBal = eco.state.jars.spend; const pouchB = Math.floor(eco.state.spark);
-    const e0 = (ev['jars:removed'] || []).length; J.unregister('save'); const rem = (ev['jars:removed'] || []).slice(e0)[0];
+    const e0 = (ev['jars:removed'] || []).length; { const ent = [...sb.build.placed.values()].find((e) => e.id === 'jar_save'); if (!ent) throw new Error('no jar_save build entry'); sb.build.demolish(ent, { animate: false, refund: false }); }   // the real removal path (build:removed → unregister)
+    if (J.get('save')) throw new Error('jar_save still registered after demolish'); const rem = (ev['jars:removed'] || []).slice(e0)[0];
     eq(rem.refunded, saveBal, 'T1.4 refund = only the removed jar balance'); eq(eco.state.jars.spend, spendBal, 'T1.4 other jar balance after remove'); eq(Math.floor(eco.state.spark), pouchB + saveBal, 'T1.4 pouch after remove');
     ok(`T1.4 deposit into Spend leaves Save at ${saveBal} · removing Save returns only its ${saveBal} ✦ to the pouch, Spend stays ${spendBal}`);
+
+    // ---- T1.6 Invest refuses withdrawal mid-season (jars:locked), balance untouched
+    { farAgain(); place('invest', 3, 9); const ip = J.get('invest').position; hp.set(ip.x, 0, ip.z); step(); eco._addSpark(30, 'test'); J.press(); J.release();
+      const inv = eco.state.jars.invest; if (!(inv >= 10)) throw new Error('invest deposit missing'); const lk0 = (ev['jars:locked'] || []).length;
+      const w = J.withdraw('invest'); if (w !== 0 || eco.state.jars.invest !== inv) throw new Error('invest withdrawal not refused mid-season'); if ((ev['jars:locked'] || []).length !== lk0 + 1) throw new Error('no jars:locked');
+      const tutorJson = JSON.parse(readFileSync(resolve('data/tutor.json'), 'utf8')); const lockCard = tutorJson.cards.find((c) => c.id === 'onLocked'); if (!lockCard || !/locked until the Ledger/i.test(lockCard.text) || lockCard.text.length > 60) throw new Error('onLocked text: ' + lockCard?.text);
+      ok(`T1.6 Invest withdraw mid-season → 0 moved, jars:locked ×1, balance stays ${inv} · onLocked card "${lockCard.text}"`); }
+
+    // ---- T1.5 reload keeps unlocks + placed jars (real snapshot → JSON → resume)
+    { const Save = await imp('src/systems/save.js'); const unl = sb.jarUnlocks.serialize(); const placed = J.ids().slice().sort();
+      const snap = lg.save.snapshot(); eq(snap.jarsUnlocked, unl, 'T1.5 snapshot.jarsUnlocked'); eq(snap.v, 4, 'T1.5 SAVE_VERSION stays 4');
+      const parsed = Save.parseSnapshot(JSON.stringify(snap)); eq(parsed.jarsUnlocked, unl, 'T1.5 parse keeps jarsUnlocked');
+      const evBefore = (ev['jars:unlocked'] || []).length;
+      lg.toTitle?.('check'); storage.setItem(Save.SAVE_KEY, JSON.stringify(snap)); const resumed = lg.resume(parsed); if (!resumed) throw new Error('resume failed'); step(); drain(); game.paused = false;
+      const sb2 = lg.sb; if (!sb2 || sb2.jarUnlocks === sb.jarUnlocks) throw new Error('resume did not build a new sandbox'); if (sb2.enemies) sb2.enemies.enabled = false;
+      eq(sb2.jarUnlocks.serialize(), unl, 'T1.5 unlocks after resume'); eq(sb2.jarsWorld.ids().slice().sort(), placed, 'T1.5 placed jars after resume'); eq(ui.build.listed('jar').slice().sort(), unl.map((k) => 'jar_' + k).sort(), 'T1.5 tray after resume');
+      eq((ev['jars:unlocked'] || []).slice(evBefore).filter((e) => e.how !== 'restore').length, 0, 'T1.5 resume must not replay NEW reveals');
+      // legacy: same snapshot without the field, v3 → the placed jars + season progress count
+      const legacy = JSON.parse(JSON.stringify(snap)); delete legacy.jarsUnlocked; legacy.v = 3; const lp = Save.parseSnapshot(JSON.stringify(legacy)); if (!lp) throw new Error('legacy v3 snapshot rejected');
+      if (!lp.jarsUnlocked.includes('spend') || !placed.every((k) => lp.jarsUnlocked.includes(k))) throw new Error('legacy: placed jars not unlocked: ' + lp.jarsUnlocked);
+      ok(`T1.5 snapshot v4 jarsUnlocked [${unl}] → JSON → resume: same unlocks, same placed jars [${placed}], tray = unlocked, no replayed reveals · legacy (field missing, v3) → [${lp.jarsUnlocked}]`); }
 
     console.log(`  T1 JARS: ${n}/${n} PASS`);
   } catch (err) {
