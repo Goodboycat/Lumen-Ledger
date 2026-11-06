@@ -191,6 +191,10 @@ def('megaphone', () => P('M10 26H22L48 12V52L22 38H10Z', C.red) + R(8, 24, 8, 16
 // ---------- 48C: the last three glyphs without a drawing (♥ ➤ · 🚫 → cross) ----------
 def('heart', () => P('M32 56L10 34Q2 24 10 15Q18 7 32 20Q46 7 54 15Q62 24 54 34Z', C.red) + hi(20, 20, 6, 3, 0.4));
 def('arrow', () => P('M6 22H34V8L58 32L34 56V42H6Z', C.gold) + hi(14, 26, 10, 3, 0.4));
+// T4 (S57) stranger marker set: a golden bell ("someone is here, ring ring"), the stranger's smiling sun-hat face, a speech bubble. Same toon look as the rest.
+def('bell', () => shadow(32, 60, 14) + L('M32 4V9', 4) + P('M32 8Q16 10 15 30Q15 40 8 46H56Q49 40 49 30Q48 10 32 8Z', C.gold) + Pn('M32 12Q20 14 19 30Q19 36 16 41H26Q24 28 32 12Z', C.goldL) + R(6, 44, 52, 8, 4, C.goldD) + O(32, 56, 5.5, C.brownD) + hi(23, 24, 3, 8, 0.55) + L('M52 14Q58 18 58 26M56 8Q64 14 64 26', 3, C.goldD) + L('M12 14Q6 18 6 26M8 8Q0 14 0 26', 3, C.goldD));
+def('stranger', () => E(32, 20, 29, 8, C.wood) + P('M15 20Q15 4 32 4Q49 4 49 20Z', C.wood) + R(15, 14, 34, 6, 2, C.red) + O(32, 38, 20, C.skin) + hi(24, 30, 6, 3.5, 0.5) + eye(24, 36, 2.8) + eye(40, 36, 2.8) + On(19, 44, 4, C.pink, 0.55) + On(45, 44, 4, C.pink, 0.55) + L('M23 47Q32 56 41 47', 3.4));
+def('chat', () => P('M8 12Q8 6 14 6H50Q56 6 56 12V38Q56 44 50 44H30L16 58V44H14Q8 44 8 38Z', C.white) + hi(18, 14, 8, 2.6, 0.5) + On(22, 25, 3.4, INK) + On(32, 25, 3.4, INK) + On(42, 25, 3.4, INK));
 
 // ---------- S35: character FACES for the dialogue portraits (drawn, not CSS) — face_<who>[_<mood>] ----------
 // kind: pip (orange cap of hair, skin face, sword-scarf KNOT at the collar — no more "red stick") · baron (purple, top hat, monocle)
