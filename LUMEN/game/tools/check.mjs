@@ -396,7 +396,7 @@ if (doEconomy) {
   // through the public API: sensible strategy must win by season 10 with fog 0, borrow-everything must lose; serialize round-trip.
   const { spawnSync } = await import('node:child_process');
   console.log('\nECONOMY (4A):');
-  const t = spawnSync(process.execPath, ['tests/economy.test.mjs'], { encoding: 'utf8' });
+  const t = spawnSync(process.execPath, ['tests/economy.test.mjs'], { encoding: 'utf8', timeout: 120000, killSignal: 'SIGKILL' });
   const summary = (t.stdout || '').trim().split('\n').pop();
   if (t.status !== 0) { bad++; console.log('  tests/economy.test.mjs FAIL →', (t.stdout || '').split('\n').filter((l) => l.startsWith('FAIL')).slice(0, 5).join(' | ') || (t.stderr || '').split('\n')[0]); }
   else console.log('  tests/economy.test.mjs →', summary, 'OK');
@@ -859,7 +859,7 @@ if (doStory) {
   console.log('\nSTORY SYSTEM (8B):');
   try {
     const { spawnSync } = await import('node:child_process');
-    const t = spawnSync(process.execPath, ['tests/story.test.mjs'], { encoding: 'utf8' });
+    const t = spawnSync(process.execPath, ['tests/story.test.mjs'], { encoding: 'utf8', timeout: 120000, killSignal: 'SIGKILL' });
     const summary = (t.stdout || '').trim().split('\n').pop();
     if (t.status !== 0) throw new Error('tests/story.test.mjs → ' + ((t.stdout || '').split('\n').filter((l) => l.startsWith('FAIL')).slice(0, 5).join(' | ') || (t.stderr || '').split('\n')[0]));
     console.log('  tests/story.test.mjs →', summary, 'OK');
@@ -1827,7 +1827,7 @@ if (doSave) {
   // 48E: save v4 migration unit tests (v3 → 4 jar_* build entries, snapJarsToLand) — pure Node, run first
   try {
     const { spawnSync } = await import('node:child_process');
-    const t = spawnSync(process.execPath, ['--test', 'tests/save.test.mjs'], { encoding: 'utf8' });
+    const t = spawnSync(process.execPath, ['--test', 'tests/save.test.mjs'], { encoding: 'utf8', timeout: 120000, killSignal: 'SIGKILL' });
     const pass = ((t.stdout || '').match(/^# pass (\d+)/m) || [])[1], fail = ((t.stdout || '').match(/^# fail (\d+)/m) || [])[1];
     if (t.status !== 0 || fail !== '0') throw new Error((t.stdout || '').split('\n').filter((l) => l.startsWith('not ok')).slice(0, 5).join(' | ') || (t.stderr || '').split('\n')[0]);
     console.log(`  48E tests/save.test.mjs → ${pass} pass, ${fail} fail (v3 → 4 jar_* entries at (-8+i,3), balances kept · snapJarsToLand +z/−z/+x ≤ 6 · v4 untouched)  OK`);
@@ -1962,7 +1962,7 @@ if (doSave) {
 if (doVerbs) {
   const { spawnSync } = await import('node:child_process');
   console.log('\n41B VERBS:');
-  const t = spawnSync(process.execPath, ['--test', 'tests/verbs.test.mjs'], { encoding: 'utf8' });
+  const t = spawnSync(process.execPath, ['--test', 'tests/verbs.test.mjs'], { encoding: 'utf8', timeout: 120000, killSignal: 'SIGKILL' });
   const pass = /^# pass (\d+)/m.exec(t.stdout || '')?.[1], fail = /^# fail (\d+)/m.exec(t.stdout || '')?.[1];
   if (t.status !== 0 || fail !== '0') { bad++; console.log('  tests/verbs.test.mjs FAIL →', (t.stdout || '').split('\n').filter((l) => l.startsWith('not ok')).slice(0, 5).join(' | ')); }
   else console.log(`  tests/verbs.test.mjs → ${pass} pass, 0 fail OK`);
@@ -1970,7 +1970,7 @@ if (doVerbs) {
 if (doTutor) {
   const { spawnSync } = await import('node:child_process');
   console.log('\n48F CURIOSITY TUTOR:');
-  const t = spawnSync(process.execPath, ['--test', 'tests/tutor.test.mjs'], { encoding: 'utf8' });
+  const t = spawnSync(process.execPath, ['--test', 'tests/tutor.test.mjs'], { encoding: 'utf8', timeout: 120000, killSignal: 'SIGKILL' });
   const pass = /^# pass (\d+)/m.exec(t.stdout || '')?.[1], fail = /^# fail (\d+)/m.exec(t.stdout || '')?.[1];
   if (t.status !== 0 || fail !== '0') { bad++; console.log('  tests/tutor.test.mjs FAIL →', (t.stdout || '').split('\n').filter((l) => l.startsWith('not ok')).slice(0, 5).join(' | ')); }
   else console.log(`  tests/tutor.test.mjs → ${pass} pass, 0 fail (ui:build:open ×3 → 1 card · deposit while up → dropped · seen persisted · tap/key/8 s → tutor:dismissed{ms} · lull 25 s once · verb chain 5 tutor:hint, no #verb-hint) OK`);
@@ -1978,7 +1978,7 @@ if (doTutor) {
 if (doUnlocks) {
   const { spawnSync } = await import('node:child_process');
   console.log('\n41D UNLOCKS:');
-  const t = spawnSync(process.execPath, ['--test', 'tests/unlocks.test.mjs'], { encoding: 'utf8' });
+  const t = spawnSync(process.execPath, ['--test', 'tests/unlocks.test.mjs'], { encoding: 'utf8', timeout: 120000, killSignal: 'SIGKILL' });
   const pass = /^# pass (\d+)/m.exec(t.stdout || '')?.[1], fail = /^# fail (\d+)/m.exec(t.stdout || '')?.[1];
   if (t.status !== 0 || fail !== '0') { bad++; console.log('  tests/unlocks.test.mjs FAIL →', (t.stdout || '').split('\n').filter((l) => l.startsWith('not ok')).slice(0, 5).join(' | ')); }
   else console.log(`  tests/unlocks.test.mjs → ${pass} pass, 0 fail OK`);
@@ -1986,7 +1986,7 @@ if (doUnlocks) {
 if (doTelemetry) {
   const { spawnSync } = await import('node:child_process');
   console.log('\n40A TELEMETRY:');
-  const t = spawnSync(process.execPath, ['--test', 'tests/telemetry.test.mjs'], { encoding: 'utf8' });
+  const t = spawnSync(process.execPath, ['--test', 'tests/telemetry.test.mjs'], { encoding: 'utf8', timeout: 120000, killSignal: 'SIGKILL' });
   const pass = /^# pass (\d+)/m.exec(t.stdout || '')?.[1], fail = /^# fail (\d+)/m.exec(t.stdout || '')?.[1];
   if (t.status !== 0 || fail !== '0') { bad++; console.log('  tests/telemetry.test.mjs FAIL →', (t.stdout || '').split('\n').filter((l) => l.startsWith('not ok')).slice(0, 5).join(' | ') || (t.stderr || '').split('\n')[0]); }
   else console.log(`  tests/telemetry.test.mjs → ${pass} pass, 0 fail OK`);
@@ -2031,9 +2031,9 @@ if (doTelemetry) {
     console.log(`  headless S1→S3 (20 s/season): play ${S.steps.play}s · firstStall ${S.steps.firstStall}s (player, not starter) · firstSale ${S.steps.firstSale}s · firstCoinInHand ${S.steps.firstCoinInHand ?? 'never'} · s2 ${S.steps.s2}s · s3 ${S.steps.s3}s · quit ${S.quit.state}@S${S.quit.season} · export 1 session ${JSON.stringify(exp[0]).length} B · ${ms} ms  OK`);
     console.log(`  BASELINE (S44) Spark through Pip's hands: ${S.sparkHandled}/${S.sparkTotal} = ${(ratio * 100).toFixed(1)} %  (PLAN v6 §5 target ≥ 80 % after 42A)`);
     // 40B smoke: funnel.mjs --synthetic 3 (20 s seasons) must exit 0 and print the table (≤ 3 s)
-    const f0 = Date.now(); const f = spawnSync(process.execPath, ['tools/funnel.mjs', '--synthetic', '3', '--season', '20', '--quiet'], { encoding: 'utf8' });
+    const f0 = Date.now(); const f = spawnSync(process.execPath, ['tools/funnel.mjs', '--synthetic', '3', '--season', '20', '--quiet'], { encoding: 'utf8', timeout: 120000, killSignal: 'SIGKILL' });
     if (f.status !== 0 || !/firstSale\s+3\s+100 %/.test(f.stdout || '')) throw new Error('funnel.mjs --synthetic 3 → ' + (f.stderr || f.stdout || '').split('\n').filter(Boolean).slice(-2).join(' | '));
-    const fx = spawnSync(process.execPath, ['tools/funnel.mjs', 'tests/fixtures/funnel.json', '--md'], { encoding: 'utf8' }); if (fx.status !== 0 || !/\| play \| 3 \| 100 %/.test(fx.stdout || '')) throw new Error('funnel.mjs fixture → ' + (fx.stderr || '').split('\n')[0]);
+    const fx = spawnSync(process.execPath, ['tools/funnel.mjs', 'tests/fixtures/funnel.json', '--md'], { encoding: 'utf8', timeout: 120000, killSignal: 'SIGKILL' }); if (fx.status !== 0 || !/\| play \| 3 \| 100 %/.test(fx.stdout || '')) throw new Error('funnel.mjs fixture → ' + (fx.stderr || '').split('\n')[0]);
     console.log(`  40B funnel.mjs --synthetic 3 (20 s/season) + fixture --md → exit 0, table printed · ${Date.now() - f0} ms  OK`);
   } catch (err) { bad++; console.log('  telemetry FAIL →', err.message); }
 }
@@ -2041,7 +2041,7 @@ if (doSpring) {
   // S44 BUGFIX: bodies stretched tall + wide at speed ×2/×3 (worst in Spark Storm) — the JellySpring integrator diverged for dt ≥ ~0.12 s.
   const { spawnSync } = await import('node:child_process');
   console.log('\nSPRING (S44):');
-  const t = spawnSync(process.execPath, ['--test', 'tests/spring.test.mjs'], { encoding: 'utf8' });
+  const t = spawnSync(process.execPath, ['--test', 'tests/spring.test.mjs'], { encoding: 'utf8', timeout: 120000, killSignal: 'SIGKILL' });
   const pass = /^# pass (\d+)/m.exec(t.stdout || '')?.[1], fail = /^# fail (\d+)/m.exec(t.stdout || '')?.[1];
   if (t.status !== 0 || fail !== '0') { bad++; console.log('  tests/spring.test.mjs FAIL →', (t.stdout || '').split('\n').filter((l) => l.startsWith('not ok')).slice(0, 5).join(' | ') || (t.stderr || '').split('\n')[0]); }
   else console.log(`  tests/spring.test.mjs → ${pass} pass, 0 fail OK`);
