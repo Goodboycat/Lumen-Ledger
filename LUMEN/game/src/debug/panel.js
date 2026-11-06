@@ -91,7 +91,7 @@ function buildSections(ctx) {
   const h4 = (t) => body.appendChild(el('h4', null, t));
   const num = (tag, v, min, max, step) => { const i = el('input'); i.type = 'number'; i.value = v; i.min = min; i.max = max; i.step = step; i.setAttribute('aria-label', tag); return i; };
   // a hook whose probe (called with no live sandbox → `{ na }` or `{ ok:false }`) says n/a renders disabled. Probes are side-effect free
-  // because every hook returns noSb() before PLAY; for 'fair' stranger / crisis / unlockJar the hook returns { na } unconditionally.
+  // because every hook returns noSb() before PLAY; only crisis (T7) returns { na } unconditionally now.
   const naOf = (name, ...args) => { try { const r = D[name]?.(...args); return r && r.na ? r.na : null; } catch { return null; } };
   const sb = () => lg.sb;
   const ids = {

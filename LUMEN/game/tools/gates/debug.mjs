@@ -4,7 +4,7 @@
 //   • T0.3  mountDebugPanel is DOM only: scene mesh count unchanged, game.scene.add never called, the panel lives in <aside id="ll-debug">
 //   • T0.4  state() === HUD truth: grant(100) → `.ll-spark-val` text == state().spark · season(3) → HUD 'Season 3' + state().season === 3
 //   • every live hook returns a plain object and never throws (before PLAY → { ok:false, why:'no sandbox…' }; after PLAY → ok:true or a reason)
-//   • the 2 n/a hooks (stranger 'fair' T4 · crisis T7) answer { na } and render as exactly 2 disabled "n/a (T#)" buttons
+//   • the 1 n/a hook (crisis T7; stranger 'fair' went live in T4) answers { na } and renders as exactly 1 disabled "n/a (T#)" button
 //   • state() has no NaN anywhere, before and after PLAY · dump() is a parseable JSON string · panel.destroy() removes the aside
 // T0.2 (every button works on a phone) is a human check: index.html?debug=1&season=30 → tap each button.
 // Exports run({ resolve, pathToFileURL }) → number of failures (check.mjs adds it to `bad`).
@@ -51,14 +51,14 @@ export async function run({ resolve, pathToFileURL }) {
     if (typeof window !== 'undefined' && window.LUMEN_DEBUG !== undefined) throw new Error('window.LUMEN_DEBUG defined before the ?debug=1 mount');
     if (root.querySelector('#' + PANEL_ID)) throw new Error('#' + PANEL_ID + ' in the DOM before mount');
     ok('T0.1 no window.LUMEN_DEBUG and no #' + PANEL_ID + ' before the ?debug=1 mount');
-    // every hook before PLAY: plain object, no throw; the 2 n/a hooks answer { na } even on the title screen (panel probes them there)
+    // every hook before PLAY: plain object, no throw; the n/a hook (crisis) answers { na } even on the title screen (panel probes them there)
     const quiet = (fn) => { const log = console.log; console.log = () => {}; try { return fn(); } finally { console.log = log; } };   // dump() prints [LUMEN_DEBUG] — keep the gate output readable
     const pre = {}; for (const h of HOOKS) { const r = h === 'dump' ? quiet(() => D.dump()) : D[h](h === 'stranger' ? 'fair' : h === 'season' ? 3 : h === 'speed' ? 1 : undefined); pre[h] = r; if (h === 'dump') { if (typeof r !== 'string') throw new Error('dump() before PLAY not a string'); } else plain(r, h + '() before PLAY'); }
-    for (const h of ['grant', 'season', 'day', 'wave', 'event', 'hire']) if (pre[h].ok !== false || !/no sandbox/.test(pre[h].why || '')) throw new Error(`${h}() before PLAY → ${JSON.stringify(pre[h])} (want ok:false no sandbox)`);
-    if (pre.stranger.na !== 'T4' || pre.crisis.na !== 'T7' || pre.unlockJar.na !== undefined || pre.unlockJar.ok !== false) throw new Error(`n/a map wrong: fair ${pre.stranger.na} crisis ${pre.crisis.na} unlockJar ${JSON.stringify(pre.unlockJar)}`);
+    for (const h of ['grant', 'season', 'day', 'wave', 'event', 'hire', 'stranger']) if (pre[h].ok !== false || !/no sandbox/.test(pre[h].why || '')) throw new Error(`${h}() before PLAY → ${JSON.stringify(pre[h])} (want ok:false no sandbox)`);
+    if (pre.stranger.na !== undefined || pre.crisis.na !== 'T7' || pre.unlockJar.na !== undefined || pre.unlockJar.ok !== false) throw new Error(`n/a map wrong: fair ${JSON.stringify(pre.stranger)} crisis ${pre.crisis.na} unlockJar ${JSON.stringify(pre.unlockJar)}`);
     noNaN(pre.state, 'pre'); if (pre.state.version !== GAME_VERSION || pre.state.state !== 'title' || pre.state.spark !== 0) throw new Error('state() before PLAY ' + JSON.stringify(pre.state).slice(0, 120));
     JSON.parse(pre.dump);
-    ok(`every hook before PLAY → plain object, 6 × "no sandbox", n/a = fair:T4 crisis:T7 (unlockJar live since T1-A) · state() no NaN (state '${pre.state.state}', v${pre.state.version}) · dump() parses`);
+    ok(`every hook before PLAY → plain object, 7 × "no sandbox" (incl. stranger fair), n/a = crisis:T7 (unlockJar live since T1-A) · state() no NaN (state '${pre.state.state}', v${pre.state.version}) · dump() parses`);
 
     // ---------------------------------------------------------------- T0.3 mount = DOM only
     const m0 = meshes(); const adds0 = sceneAdds; const tags0 = root.querySelectorAll('*').length;
@@ -68,7 +68,7 @@ export async function run({ resolve, pathToFileURL }) {
     if (!DBG.panel || typeof DBG.panel.open !== 'function' || typeof DBG.panel.toggle !== 'function' || typeof DBG.panel.destroy !== 'function') throw new Error('mount: panel api');
     for (const h of HOOKS) if (DBG[h] !== D[h]) throw new Error('LUMEN_DEBUG.' + h + ' is not lg.debug.' + h);
     const buttons = [...aside.querySelectorAll('button')]; const live = buttons.filter((b) => !b.disabled && !b.classList.contains('lld-tab')); const naBtns = buttons.filter((b) => b.disabled);
-    if (naBtns.length !== 2 || !naBtns.every((b) => /n\/a \(T[47]\)$/.test(b.textContent))) throw new Error('n/a buttons: ' + naBtns.map((b) => b.textContent).join(' | '));
+    if (naBtns.length !== 1 || !naBtns.every((b) => /n\/a \(T7\)$/.test(b.textContent))) throw new Error('n/a buttons: ' + naBtns.map((b) => b.textContent).join(' | '));
     if (live.length < 15) throw new Error('live buttons ' + live.length + ' < 15');
     const selects = aside.querySelectorAll('select').length; if (selects < 4) throw new Error('selects ' + selects);
     if (aside.classList.contains('open')) throw new Error('panel starts open');
@@ -126,10 +126,14 @@ export async function run({ resolve, pathToFileURL }) {
     if (!st.ok || !['npc', 'direct'].includes(st.how)) throw new Error('stranger(' + scamIds[0] + ') → ' + JSON.stringify(st));
     const st2 = D.stranger(); if (st2.ok !== false || !/pending|active/.test(st2.why || '')) { if (st2.ok) { /* npc path may queue a second one only when the first is direct — accept but note */ } }
     const stBad = D.stranger('nope'); if (stBad.ok !== false || !Array.isArray(stBad.ids)) throw new Error('stranger(unknown) → ' + JSON.stringify(stBad));
-    const stFair = D.stranger('fair'); if (stFair.na !== 'T4') throw new Error('stranger(fair) na');
-    // clean up: refuse the pending offer (direct) and/or despawn the npc
+    if (D.stranger('fair').na) throw new Error('stranger(fair) must be live since T4');
+    // clean up: refuse the pending offer (direct) and/or despawn the npc, then the fair stranger really spawns (T4: a fair deal id)
     clearStranger();
-    ok(`stranger('${scamIds[0]}') → ok via ${st.how} (offer ${st.id})${pendingBefore ? ' · refused while a scheduler stranger was pending' : ''} · unknown id → ok:false + ${stBad.ids.length} ids · 'fair' → n/a T4 · cleared`);
+    const stFair = plain(D.stranger('fair'), 'stranger(fair)'); runS(0.1);
+    if (!stFair.ok) throw new Error('stranger(fair) → ' + JSON.stringify(stFair));
+    if (!Object.keys(eco.fairs || {}).includes(stFair.id)) throw new Error('stranger(fair) id is not a fair deal: ' + JSON.stringify(stFair));
+    clearStranger();
+    ok(`stranger('${scamIds[0]}') → ok via ${st.how} (offer ${st.id})${pendingBefore ? ' · refused while a scheduler stranger was pending' : ''} · unknown id → ok:false + ${stBad.ids.length} ids · 'fair' → live (deal ${stFair.id}) · cleared`);
 
     // wave
     const wv = plain(D.wave(), 'wave'); runS(0.1);
