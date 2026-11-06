@@ -24,6 +24,7 @@
 
 import { iconize, icon } from './icons.js';
 import { bus as defaultBus } from '../src/core/EventBus.js';
+import { starsFor } from '../src/systems/unlocks.js';   // T2b: locked chips stay visible on touch and show their ★ cost
 
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = iconize(html); return e; };
 
@@ -84,8 +85,9 @@ export function mountTouch(root, input, opts = {}) {
   for (const a of abilityList) {
     const b = el('button', 'll-touch-ab'); b.type = 'button'; b.dataset.ability = a.name; b.setAttribute('aria-label', a.label);
     const cd = el('i', 'll-touch-ab-cd'); const ic = el('span', 'll-touch-ab-ico', a.icon); const lab = el('span', 'll-touch-ab-lab', a.label);
-    b.append(cd, ic, lab); strip.appendChild(b);
-    abilities[a.name] = { el: b, cd, def: a, until: 0, total: 0, timer: 0 };
+    const fx = el('i', 'll-touch-ab-fx'); const cost = starsFor(a.name); const cs = el('small', 'll-touch-ab-cost', cost ? '★' + cost : '');   // T2b: effect bar (Shield / Stomp drain) + ★ cost while locked
+    b.append(cd, fx, ic, lab, cs); strip.appendChild(b);
+    abilities[a.name] = { el: b, cd, fx, def: a, until: 0, total: 0, timer: 0, hold: 0, held: false };
   }
   wrap.append(zone, strip, pad);
   root.appendChild(wrap);
@@ -152,12 +154,20 @@ export function mountTouch(root, input, opts = {}) {
     const a = abilities[name]; if (!a) return;
     e && e.stopPropagation && e.stopPropagation(); e && e.preventDefault && e.preventDefault();
     a.el.classList.add('down'); setTimeout(() => a.el.classList.remove('down'), 140);
-    if (a.until > nowMs()) { api.flashDenied(name); return; }
+    if (a.until > nowMs()) { bus.emit('sandbox:denied', { name, why: 'cooldown', secondsLeft: (a.until - nowMs()) / 1000 }); api.flashDenied(name); return; }   // T2b: a cooling chip answers "Ready in N s"
     bus.emit('ui:touch', { action: 'ability', name });
   };
+  // T2b: HOLD ≥ 350 ms = ask the guide (`ui:power:ask`, the press is NOT fired); a release before that = the normal press (so the press fires on release, not on down)
+  const HOLD_MS = 350;
   for (const name of Object.keys(abilities)) {
-    const b = abilities[name].el;
-    b.addEventListener('pointerdown', (e) => tapAbility(name, e));
+    const a = abilities[name], b = a.el;
+    b.addEventListener('pointerdown', (e) => {
+      e && e.stopPropagation && e.stopPropagation(); e && e.preventDefault && e.preventDefault();
+      a.el.classList.add('down'); a.held = false; if (a.hold) clearTimeout(a.hold);
+      a.hold = setTimeout(() => { a.hold = 0; a.held = true; a.el.classList.remove('down'); bus.emit('ui:power:ask', { name }); }, HOLD_MS);
+    });
+    const release = (e, cancel) => { e && e.stopPropagation && e.stopPropagation(); if (!a.hold) { a.el.classList.remove('down'); return; } clearTimeout(a.hold); a.hold = 0; if (cancel) a.el.classList.remove('down'); else tapAbility(name, e); };
+    b.addEventListener('pointerup', (e) => release(e, false)); b.addEventListener('pointercancel', (e) => release(e, true));
     b.addEventListener('contextmenu', (e) => e.preventDefault && e.preventDefault());
   }
   const tickCooldowns = () => {
@@ -189,7 +199,7 @@ export function mountTouch(root, input, opts = {}) {
     /** Simulated input for headless tests / tutorials: joystick drag in px from the touch origin. */
     simulateJoystick(dx, dy, done = false) { if (!st.joy.active) joyStart({ pointerId: 99, clientX: 100, clientY: 500 }); joyMove({ pointerId: 99, clientX: 100 + dx, clientY: 500 + dy }); if (done) joyEnd({ pointerId: 99 }); return api; },
     simulatePress(n) { down(n, { pointerId: 98 }); up(n); return api; },
-    destroy() { onBlur(); window.removeEventListener('blur', onBlur); if (st.cdTimer) clearInterval(st.cdTimer); st.cdTimer = 0; offs.forEach((f) => f()); wrap.remove(); },
+    destroy() { for (const a of Object.values(abilities)) if (a.hold) clearTimeout(a.hold); onBlur(); window.removeEventListener('blur', onBlur); if (st.cdTimer) clearInterval(st.cdTimer); st.cdTimer = 0; offs.forEach((f) => f()); wrap.remove(); },
   };
 
   const offs = [
@@ -206,6 +216,7 @@ export function mountTouch(root, input, opts = {}) {
     bus.on('ui:abilities', (p) => { const set = p?.abilities; for (const [n, a] of Object.entries(abilities)) a.el.classList.toggle('locked', !!set && !set.has(n)); }),
     bus.on('ability:unlock', (p) => { const a = p?.id && abilities[p.id]; if (a) { a.el.classList.remove('locked'); a.el.classList.add('pop'); setTimeout(() => a.el.classList.remove('pop'), 500); } }),
     bus.on('ability:locked', (p) => { if (p?.name && abilities[p.name]) api.flashDenied(p.name); }),
+    bus.on('ability:fx', (p) => { const a = p?.name && abilities[p.name]; if (!a) return; const f = Math.max(0, Math.min(1, +p.frac || 0)); a.fx.style.setProperty('--fx', String(f)); a.el.classList.toggle('fx', f > 0); }),   // T2b: Shield 30 s / Stomp 12 s drain (game time)
     bus.on('sandbox:denied', (p) => { if (p?.name && abilities[p.name]) api.flashDenied(p.name); }),
     bus.on('ui:build:open', () => strip.classList.add('tray')), bus.on('ui:build:close', () => strip.classList.remove('tray')),
   ];

@@ -1,0 +1,18 @@
+/* T2b — power answer pill. One line, ≤ 8 words, never modal, never catches input. Sits above the ability strip / tutor card. */
+.ll-pans { position: absolute; z-index: 36; left: 50%; bottom: calc(max(12px, env(safe-area-inset-bottom)) + 172px); transform: translateX(-50%) translateY(8px) scale(.96);
+  display: flex; align-items: center; gap: 8px; max-width: min(90vw, 340px); padding: 7px 14px 7px 9px; border-radius: 999px;
+  background: #FFF8E7; color: #263238; border: 3px solid #263238; box-shadow: 0 3px 0 #263238;
+  font: 800 14px/1.15 'Baloo 2', 'Nunito', system-ui, sans-serif; letter-spacing: .1px;
+  opacity: 0; pointer-events: none; transition: opacity .18s ease, transform .28s cubic-bezier(.34,1.56,.64,1); }
+.ll-pans.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+.ll-pans-ico { flex: none; width: 24px; height: 24px; line-height: 0; }
+.ll-pans-ico .ll-ico { width: 24px; height: 24px; display: block; }
+.ll-pans-ico:empty { display: none; }
+.ll-pans-txt { min-width: 0; }
+.ll-pans[data-kind="ok"], .ll-pans[data-kind="absorbed"] { background: #E8FFE9; }
+.ll-pans[data-kind="none"] { background: #E6F4FF; }
+.ll-pans[data-kind="cooldown"], .ll-pans[data-kind="busy"], .ll-pans[data-kind="blocked"] { background: #FFF1D6; }
+.ll-pans[data-kind="locked"] { background: #ECE7F5; }
+@media (min-width: 701px) { .ll-pans { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 74px); } }
+@media (max-height: 460px) { .ll-pans { bottom: calc(max(8px, env(safe-area-inset-bottom)) + 62px); font-size: 13px; } }
+@media (prefers-reduced-motion: reduce) { .ll-pans { transition: opacity .12s; } }

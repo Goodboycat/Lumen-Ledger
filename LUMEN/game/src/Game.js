@@ -18,8 +18,8 @@ import { attachMoves } from './anim/heroAnims.js';
 import { attachAbilities, ABILITY_NAMES, FINLIT } from './anim/heroAbilities.js';
 import { installVerbChain } from './systems/verbChain.js';
 import { installCuriosity } from './systems/curiosityWire.js';   // T2: curiosity guide — registry sources (jars, stalls, signs, tills, Collectors, Baron, stranger, crew)
-import { WHEN as POWER_WHEN, SHORT as POWER_SHORT } from './systems/powerAnswers.js';   // T2b: every power press answers in ≤ 8 words
-import { installUnlocks } from './systems/unlocks.js';                          // 41D: 2 starters + 4 earned by ledger stars
+import { WHEN as POWER_WHEN, lockedLine } from './systems/powerAnswers.js';   // T2b: every power press answers in ≤ 8 words
+import { installUnlocks, starsFor } from './systems/unlocks.js';                          // 41D: 2 starters + 4 earned by ledger stars
 import { createJarsWorld } from './systems/jarsWorld.js';                       // 42B: jars are places — walk to a jar, E deposits 10 ✦, hold E withdraws
 import { createJarUnlocks } from './systems/jarUnlocks.js';                     // T1-A: jars unlock one by one (data/jars.json rules) → tray hides locked jar cards
 import { PROP_CATALOG, makeProp, STALL_TYPES, JAR_IDS, swayAll, swayDecor, updateLandmarks, makeFlowerField, makeGrassTufts } from './assets/props.js';
@@ -567,8 +567,8 @@ function wireAbilities(sb) {
       return ctx;
     },
     haggleShout: () => { let t = near(4.5); if (!t.length) t = near(99).sort((a, b) => a.root.position.distanceToSquared(hero.root.position) - b.root.position.distanceToSquared(hero.root.position)).slice(0, 3); return { targets: t, text: t.length ? '+10%!' : 'DEAL?', onShout: (tg) => { if (!tg?.stall) return; const k = String(tg.stall.id).replace(/^stall_/, ''); const h = sb.haggle.get(k) || { n: 0 }; h.n++; sb.haggle.set(k, h); done('haggleShout', `${k} next sale price ×1.1, demand ×1.3 (${h.n} charged)`); if (game.time - sb._hagSaid > 1) { sb._hagSaid = game.time; answer('haggleShout', 'Haggle: next sale ×1.1'); } } }; },
-    growthStomp: () => ({ onPulse: (i, r, pct) => { sb.growth = { mul: 1 + pct / 100, until: game.time + GROWTH_S }; if (i === 2) { done('growthStomp', `all stalls demand ×${(1 + pct / 100).toFixed(2)} for ${GROWTH_S} s`); answer('growthStomp', `Stalls ×${+(1 + pct / 100).toFixed(2)} for ${GROWTH_S} s`); bus.emit('ability:effect', { name: 'growthStomp', seconds: GROWTH_S }); } } }),
-    bubbleShield: () => ({ event: sb.nextEvent ? (eco.events[sb.nextEvent]?.title || sb.nextEvent) : 'next event', onAbsorb: () => { sb.shield.until = game.time + SHIELD_S; done('bubbleShield', `shield armed ${SHIELD_S} s — next event absorbed`); answer('bubbleShield', `Shield ${SHIELD_S} s: next hit free`); bus.emit('ability:effect', { name: 'bubbleShield', seconds: SHIELD_S }); } }),
+    growthStomp: () => ({ onPulse: (i, r, pct) => { sb.growth = { mul: 1 + pct / 100, until: game.time + GROWTH_S }; if (i === 2) { done('growthStomp', `all stalls demand ×${(1 + pct / 100).toFixed(2)} for ${GROWTH_S} s`); answer('growthStomp', `Stalls ×${+(1 + pct / 100).toFixed(2)} for ${GROWTH_S} s`); } } }),
+    bubbleShield: () => ({ event: sb.nextEvent ? (eco.events[sb.nextEvent]?.title || sb.nextEvent) : 'next event', onAbsorb: () => { sb.shield.until = game.time + SHIELD_S; done('bubbleShield', `shield armed ${SHIELD_S} s — next event absorbed`); answer('bubbleShield', `Shield ${SHIELD_S} s: next hit free`); } }),
     fogSweep: () => ({ fog: { push: (o, d, s) => { const before = eco.state.fog01; eco.pushFog(s); done('fogSweep', `fog ${(before * 100) | 0}% → ${(eco.state.fog01 * 100) | 0}%`); if (before > 0.001) answer('fogSweep', `Fog ${(before * 100) | 0}% → ${(eco.state.fog01 * 100) | 0}%`); } } }),
     ledgerFlash: () => { const o = eco.pendingOffer; const npcTell = sb.scamNpc?.flash?.() || sb.novelty?.flash?.();   // 42D: near the pitching Collector the owl names the tell (scam:tell) even before any offer is open
       if (!o) return { cost: 0, trueCost: 0, text: npcTell ? `TELL: ${npcTell}` : 'no deal on the table', onReveal: () => { done('ledgerFlash', npcTell ? `tell named: ${npcTell}` : 'nothing to reveal'); if (npcTell) answer('ledgerFlash', `Tell: ${String(npcTell).split(/\s+/).slice(0, 6).join(' ')}`); } };
@@ -591,7 +591,11 @@ function wireAbilities(sb) {
     return seq;
   };
   // T2b: Magnet reports the sum it pulled in once the dash is over (or says it was too far) · Shield keeps a faint ring on Pip while armed (the existing bubble mesh, no new one)
+  sb._fx = {};
+  const fxTick = (name, until, total) => { const f = until > game.time ? Math.max(0, Math.min(1, (until - game.time) / total)) : 0; const last = sb._fx[name];
+    if (last === undefined ? f > 0 : (Math.abs(f - last) >= 0.02 || (f === 0 && last !== 0))) { sb._fx[name] = f; bus.emit('ability:fx', { name, frac: f }); } };   // chips drain a thin bar from this (game time, so ×2/×3 speed stays honest)
   sb.answerTick = () => {
+    fxTick('bubbleShield', sb.shield.until, SHIELD_S); fxTick('growthStomp', sb.growth.until, GROWTH_S);
     const m = sb._mag;
     if (m) {
       if (m.last != null) { if (game.time - m.last > 0.45) { sb._mag = null; if (m.sum > 0) answer('coinMagnetDash', `Magnet +${m.sum} ✦`); } }
@@ -604,7 +608,7 @@ function wireAbilities(sb) {
     else if (sb._ringOn) { sb._ringOn = false; b.visible = false; if (b.children[0]) b.children[0].visible = true; b.scale.setScalar(1); }
   };
   // T2b: a shield that eats an event says what it saved
-  sb._offs.push(bus.on('eco:absorbed', (p) => { const sp = eco.events?.[p?.id]?.effect?.spark; answer('bubbleShield', `🛡 ${typeof sp === 'number' && sp < 0 ? `−${-sp} ✦ ` : ''}absorbed`, 'absorbed'); bus.emit('ability:effect:end', { name: 'bubbleShield' }); }));
+  sb._offs.push(bus.on('eco:absorbed', (p) => { const sp = eco.events?.[p?.id]?.effect?.spark; answer('bubbleShield', `🛡 ${typeof sp === 'number' && sp < 0 ? `−${-sp} ✦ ` : ''}absorbed`, 'absorbed'); }));
 }
 // Debug keys (prompt P1): B build mode for the current pick · 1–9 pick a stall type · E end season (LedgerReport → console)
 // · H hire next helper (P3) · Z unlock next zone (buys the zone upgrade when affordable, else free in sandbox) · X demolish nearest
@@ -1055,7 +1059,11 @@ function installRunWires(lg) {
     const ok = eco.allocate(d); if (ok) bus.emit('game:allocated', { moved, deltas: d, spark: eco.state.spark }); return ok;
   };
   on('ui:jar:apply', (p) => lg.applyJars(p?.pct));
-  on('ui:ability', (p) => p?.name && lg.ability(p.name));                                        // 41D chips click
+  on('ui:ability', (p) => { if (!p?.name) return; if (lg.sb && (lg.state === 'playing' || lg.state === 'endless') && (ui?.isModal?.() || ui?.build?.isOpen || build.mode === 'place' || lg.game.paused)) { bus.emit('sandbox:denied', { name: p.name, why: 'blocked', reason: lg.game.paused && !ui?.isModal?.() ? 'paused' : ui?.isModal?.() ? 'modal' : build.mode === 'place' ? 'placing' : 'tray' }); return; } lg.ability(p.name); });                                        // 41D chips click
+  // T2b: HOLD a power chip (touch or desktop, ≥ 350 ms) = ask the guide, the press is NOT fired. Locked: the card AND the live ★ count.
+  on('ui:power:ask', (p) => { const n = p?.name; if (!n || !ui?.tutor) return; const u = lg.sb?.unlocks; const locked = !!(u && !u.abilities.has(n));
+    ui.tutor.ask('power:' + n);
+    if (locked) bus.emit('ability:answer', { name: n, text: lockedLine({ stars: starsFor(n), have: u.starsTotal }), kind: 'locked' }); });
   lg.syncAbilities = () => { const u = lg.sb?.unlocks; if (u) bus.emit('ui:abilities', { abilities: u.abilities, starsTotal: u.starsTotal }); };
   on('game:state', () => lg.syncAbilities()); on('ability:unlock', () => lg.syncAbilities());  // 41D HUD chips follow the set
   // S03: AUTO ("pay yourself first") — while on, every SALE (eco:spark reason 'sale' / tips) is split by the current sliders the moment it lands.
@@ -1103,7 +1111,7 @@ function installRunWires(lg) {
   // S08: touch ability strip → same gate as the Q W E R F G keys (playing / endless, not paused, no modal, tray closed, not placing)
   on('ui:touch', (p) => {
     if (p?.action !== 'ability' || !p.name) return;
-    if (ui?.isModal?.() || ui?.build?.isOpen || build.mode === 'place' || lg.game.paused) { bus.emit('sandbox:denied', { name: p.name, why: 'blocked' }); return; }
+    if (ui?.isModal?.() || ui?.build?.isOpen || build.mode === 'place' || lg.game.paused) { bus.emit('sandbox:denied', { name: p.name, why: 'blocked', reason: lg.game.paused && !ui?.isModal?.() ? 'paused' : ui?.isModal?.() ? 'modal' : build.mode === 'place' ? 'placing' : 'tray' }); return; }
     lg.ability(p.name);
   });
   // tap on the island while in demolish mode → demolish what is there (10B's onTap handles place mode)
@@ -1219,7 +1227,7 @@ function installRunWires(lg) {
       if (e.repeat) return;
       // BUGFIX P33: U = upgrade the stall next to Pip (the tutorial / README said so, but U was debug-only) — same handler as touch ✋
       if (e.code === 'KeyU' && !hotkeysBlocked() && lg.sb && lg.sb.build.mode !== 'place') { lg.interact(); return; }
-      const name = ABILITY_KEYS[e.code]; if (!name || hotkeysBlocked()) return;
+      const name = ABILITY_KEYS[e.code]; if (!name) return; if (hotkeysBlocked()) { if (lg.sb && (lg.state === 'playing' || lg.state === 'endless')) bus.emit('sandbox:denied', { name, why: 'blocked', reason: ui?.isModal?.() ? 'modal' : build.mode === 'place' ? 'placing' : 'tray' }); return; }
       if (e.code === 'KeyE' && lg.sb?.build?.mode !== 'place' && lg.sb?.build?.mode !== 'drag') { const r = lg.sb?.interact?.(); if (r) { eDown = true; return; } }   // 42B: E at a jar = deposit (hold = withdraw); elsewhere E stays growthStomp
       if (e.code === 'KeyW') { const k = lg.game.input?.keys; wDown = (k && MOVE_KEYS.some((c) => k.has(c))) ? 0 : (performance.now?.() || Date.now()); return; }
       if (e.code === 'KeyR' && lg.sb?.build?.mode === 'place') return;

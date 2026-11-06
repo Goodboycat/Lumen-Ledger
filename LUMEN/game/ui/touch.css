@@ -83,6 +83,11 @@ body.is-touch .help { display: none; }
 @media (max-width: 360px) { .ll-touch-ab { width: 40px; height: 46px; min-width: 40px; } .ll-touch-abilities { gap: 4px; } }
 
 /* 41D earned abilities: locked chips are hidden on touch (desktop HUD shows the star cost); pop on unlock */
-.ll-touch-ab.locked { display: none; }
+.ll-touch-ab.locked { opacity: .55; filter: grayscale(.85); border-style: dashed; }   /* T2b: locked chips stay visible (dim + ★ cost); a press answers "Locked. Earn ★…" */
+.ll-touch-ab-cost { display: none; position: absolute; right: 2px; bottom: 1px; font-size: 10px; font-weight: 900; color: #7A5A00; z-index: 2; text-shadow: 0 0 2px #FFF8E7, 0 0 2px #FFF8E7; }
+.ll-touch-ab.locked .ll-touch-ab-cost { display: block; }
+.ll-touch-ab.locked .ll-touch-ab-lab { display: none; }
+.ll-touch-ab-fx { position: absolute; left: 4px; right: 4px; top: 3px; height: 4px; border-radius: 3px; background: #7fe0ff; box-shadow: 0 0 0 1px var(--ink); transform-origin: left; transform: scaleX(var(--fx, 0)); opacity: 0; transition: opacity .15s; pointer-events: none; z-index: 3; }
+.ll-touch-ab.fx .ll-touch-ab-fx { opacity: 1; }
 .ll-touch-ab.pop { animation: ll-touch-ab-pop .5s cubic-bezier(.34,1.56,.64,1); }
 @keyframes ll-touch-ab-pop { 0% { transform: scale(.4); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
