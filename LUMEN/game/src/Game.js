@@ -18,6 +18,7 @@ import { attachMoves } from './anim/heroAnims.js';
 import { attachAbilities, ABILITY_NAMES, FINLIT } from './anim/heroAbilities.js';
 import { installVerbChain } from './systems/verbChain.js';
 import { installCuriosity } from './systems/curiosityWire.js';   // T2: curiosity guide — registry sources (jars, stalls, signs, tills, Collectors, Baron, stranger, crew)
+import { WHEN as POWER_WHEN, SHORT as POWER_SHORT } from './systems/powerAnswers.js';   // T2b: every power press answers in ≤ 8 words
 import { installUnlocks } from './systems/unlocks.js';                          // 41D: 2 starters + 4 earned by ledger stars
 import { createJarsWorld } from './systems/jarsWorld.js';                       // 42B: jars are places — walk to a jar, E deposits 10 ✦, hold E withdraws
 import { createJarUnlocks } from './systems/jarUnlocks.js';                     // T1-A: jars unlock one by one (data/jars.json rules) → tray hides locked jar cards
@@ -139,6 +140,7 @@ export function createSandbox(game, opts = {}) {
   sb.update = (dt, _g, dtReal) => {
     sb.island.update(dt);
     if (!headless) { const tw = game.realTime ?? game.time; swayAll(tw); swayDecor(tw); updateLandmarks(dt); }   // S18: wind keeps blowing on the (paused) title backdrop
+    sb.answerTick?.(dt);                                            // T2b: Magnet sum + Shield ring
     sb.autoWalkTick?.(dt);                                          // T1-B: tap a far jar → Pip walks over and deposits (steers hero.inputOverride)
     sb.hero.update(dt);
     sb.enemies.update(dt);
@@ -547,12 +549,16 @@ function wireAbilities(sb) {
   // ---- dispatcher: sb.ability(name) → hero.playMove(name, ctx). Returns the Sequence or null (busy / cooling down).
   const near = (r) => cust.active.filter((c) => (c.state === 'walk' || c.state === 'queue' || c.state === 'browse') && c.stall && Math.hypot(c.root.position.x - hero.root.position.x, c.root.position.z - hero.root.position.z) <= r);
   const done = (name, effect) => { bus.emit('sandbox:ability', { name, effect }); sb.log.push(`${name}: ${effect}`); };
+  // T2b: one visible answer per press (ui/powerAnswer.js shows 'ability:answer'; denied / locked are mapped there). kind: ok | none | absorbed
+  const answer = (name, text, kind = 'ok') => bus.emit('ability:answer', { name, text, kind });
+  const whenOf = (name) => sb.whenHint?.(name) || POWER_WHEN[name];
+  sb._mag = null; sb._hagSaid = -9;
   const CTX = {
     // magnet: with joystick input the dash follows the stick (3B); idle → aim at the richest cluster = nearest coin, dash far enough to reach it (≤ 6 u)
     coinMagnetDash: () => {
       // 42A: till stacks are magnet targets too — each stack's first coin stands in for the whole till (collect empties it)
       const tillTargets = sb.till ? [...sb.till.tills.values()].filter((t) => t.amount > 0).map((t) => ({ position: new THREE.Vector3(t.pos.x, 0.9, t.pos.z), value: t.amount, till: t.stallId })) : [];
-      const ctx = { coins: sb.coins.slice().concat(tillTargets), radius: TILL_MAGNET, onCollect: (c) => c.till ? sb.till.collect(c.till, 'magnet') : sb.collectCoin(c, 'magnet') };
+      const ctx = { coins: sb.coins.slice().concat(tillTargets), radius: TILL_MAGNET, onCollect: (c) => { if (sb._mag) { sb._mag.sum += Math.round(c.value || 0); sb._mag.last = game.time; } return c.till ? sb.till.collect(c.till, 'magnet') : sb.collectCoin(c, 'magnet'); } };
       const hp = hero.root.position, inp = game.input;
       if (!(inp?.move?.lengthSq() > 0.05) && ctx.coins.length) {
         let best = null, bd = Infinity; for (const c of ctx.coins) { const d = Math.hypot(c.position.x - hp.x, c.position.z - hp.z); if (d < bd) { bd = d; best = c; } }
@@ -560,23 +566,45 @@ function wireAbilities(sb) {
       }
       return ctx;
     },
-    haggleShout: () => { let t = near(4.5); if (!t.length) t = near(99).sort((a, b) => a.root.position.distanceToSquared(hero.root.position) - b.root.position.distanceToSquared(hero.root.position)).slice(0, 3); return { targets: t, text: t.length ? '+10%!' : 'DEAL?', onShout: (tg) => { if (!tg?.stall) return; const k = String(tg.stall.id).replace(/^stall_/, ''); const h = sb.haggle.get(k) || { n: 0 }; h.n++; sb.haggle.set(k, h); done('haggleShout', `${k} next sale price ×1.1, demand ×1.3 (${h.n} charged)`); } }; },
-    growthStomp: () => ({ onPulse: (i, r, pct) => { sb.growth = { mul: 1 + pct / 100, until: game.time + GROWTH_S }; if (i === 2) done('growthStomp', `all stalls demand ×${(1 + pct / 100).toFixed(2)} for ${GROWTH_S} s`); } }),
-    bubbleShield: () => ({ event: sb.nextEvent ? (eco.events[sb.nextEvent]?.title || sb.nextEvent) : 'next event', onAbsorb: () => { sb.shield.until = game.time + SHIELD_S; done('bubbleShield', `shield armed ${SHIELD_S} s — next event absorbed`); } }),
-    fogSweep: () => ({ fog: { push: (o, d, s) => { const before = eco.state.fog01; eco.pushFog(s); done('fogSweep', `fog ${(before * 100) | 0}% → ${(eco.state.fog01 * 100) | 0}%`); } } }),
+    haggleShout: () => { let t = near(4.5); if (!t.length) t = near(99).sort((a, b) => a.root.position.distanceToSquared(hero.root.position) - b.root.position.distanceToSquared(hero.root.position)).slice(0, 3); return { targets: t, text: t.length ? '+10%!' : 'DEAL?', onShout: (tg) => { if (!tg?.stall) return; const k = String(tg.stall.id).replace(/^stall_/, ''); const h = sb.haggle.get(k) || { n: 0 }; h.n++; sb.haggle.set(k, h); done('haggleShout', `${k} next sale price ×1.1, demand ×1.3 (${h.n} charged)`); if (game.time - sb._hagSaid > 1) { sb._hagSaid = game.time; answer('haggleShout', 'Haggle: next sale ×1.1'); } } }; },
+    growthStomp: () => ({ onPulse: (i, r, pct) => { sb.growth = { mul: 1 + pct / 100, until: game.time + GROWTH_S }; if (i === 2) { done('growthStomp', `all stalls demand ×${(1 + pct / 100).toFixed(2)} for ${GROWTH_S} s`); answer('growthStomp', `Stalls ×${+(1 + pct / 100).toFixed(2)} for ${GROWTH_S} s`); bus.emit('ability:effect', { name: 'growthStomp', seconds: GROWTH_S }); } } }),
+    bubbleShield: () => ({ event: sb.nextEvent ? (eco.events[sb.nextEvent]?.title || sb.nextEvent) : 'next event', onAbsorb: () => { sb.shield.until = game.time + SHIELD_S; done('bubbleShield', `shield armed ${SHIELD_S} s — next event absorbed`); answer('bubbleShield', `Shield ${SHIELD_S} s: next hit free`); bus.emit('ability:effect', { name: 'bubbleShield', seconds: SHIELD_S }); } }),
+    fogSweep: () => ({ fog: { push: (o, d, s) => { const before = eco.state.fog01; eco.pushFog(s); done('fogSweep', `fog ${(before * 100) | 0}% → ${(eco.state.fog01 * 100) | 0}%`); if (before > 0.001) answer('fogSweep', `Fog ${(before * 100) | 0}% → ${(eco.state.fog01 * 100) | 0}%`); } } }),
     ledgerFlash: () => { const o = eco.pendingOffer; const npcTell = sb.scamNpc?.flash?.() || sb.novelty?.flash?.();   // 42D: near the pitching Collector the owl names the tell (scam:tell) even before any offer is open
-      if (!o) return { cost: 0, trueCost: 0, text: npcTell ? `TELL: ${npcTell}` : 'no deal on the table', onReveal: () => done('ledgerFlash', npcTell ? `tell named: ${npcTell}` : 'nothing to reveal') };
+      if (!o) return { cost: 0, trueCost: 0, text: npcTell ? `TELL: ${npcTell}` : 'no deal on the table', onReveal: () => { done('ledgerFlash', npcTell ? `tell named: ${npcTell}` : 'nothing to reveal'); if (npcTell) answer('ledgerFlash', `Tell: ${String(npcTell).split(/\s+/).slice(0, 6).join(' ')}`); } };
       const cost = o.cost || o.amount || 0, trueCost = o.amount ? Math.round(o.amount * Math.pow(1 + (o.trueRate || 0), 3)) : cost;
-      return { cost, trueCost, text: o.payout === 0 ? `TRUE COST: ${cost} → you get 0` : undefined, onReveal: () => { eco.refuseOffer(o); done('ledgerFlash', `${o.title} revealed (true cost ${trueCost}) → refused`); } }; },
+      return { cost, trueCost, text: o.payout === 0 ? `TRUE COST: ${cost} → you get 0` : undefined, onReveal: () => { eco.refuseOffer(o); done('ledgerFlash', `${o.title} revealed (true cost ${trueCost}) → refused`); answer('ledgerFlash', `TRUE COST ${trueCost}`); } }; },
   };
   sb.ability = (name) => {
     if (!CTX[name] || !ABILITY_NAMES().includes(name)) return null;
-    if ((sb.cooldown[name] || -1) > game.time) { bus.emit('sandbox:denied', { name, why: 'cooldown' }); return null; }
-    const seq = hero.playMove(name, CTX[name]());
-    if (seq) { sb.cooldown[name] = game.time + COOLDOWN_S; bus.emit('sandbox:ability:start', { name, cooldown: COOLDOWN_S }); }   // S08: touch strip starts its sweep here
-    else bus.emit('sandbox:denied', { name, why: 'busy' });
+    if ((sb.cooldown[name] || -1) > game.time) { bus.emit('sandbox:denied', { name, why: 'cooldown', secondsLeft: sb.cooldown[name] - game.time }); return null; }
+    const ctx = CTX[name]();
+    const seq = hero.playMove(name, ctx);
+    if (seq) {
+      sb.cooldown[name] = game.time + COOLDOWN_S; bus.emit('sandbox:ability:start', { name, cooldown: COOLDOWN_S });   // S08: touch strip starts its sweep here
+      // T2b: pressed with nothing to act on → say what to do instead (the move still plays); with a target the callbacks answer with the numbers
+      const none = name === 'coinMagnetDash' ? !(ctx.coins && ctx.coins.length) : name === 'haggleShout' ? !(ctx.targets && ctx.targets.length) : name === 'ledgerFlash' ? ctx.text === 'no deal on the table'
+        : name === 'growthStomp' ? !(sb.build?.stalls?.().length) : name === 'fogSweep' ? !(eco.state.fog01 > 0.001) : false;
+      if (none) answer(name, whenOf(name), 'none');
+      else if (name === 'coinMagnetDash') sb._mag = { sum: 0, last: null, born: game.time };
+    } else bus.emit('sandbox:denied', { name, why: 'busy' });
     return seq;
   };
+  // T2b: Magnet reports the sum it pulled in once the dash is over (or says it was too far) · Shield keeps a faint ring on Pip while armed (the existing bubble mesh, no new one)
+  sb.answerTick = () => {
+    const m = sb._mag;
+    if (m) {
+      if (m.last != null) { if (game.time - m.last > 0.45) { sb._mag = null; if (m.sum > 0) answer('coinMagnetDash', `Magnet +${m.sum} ✦`); } }
+      else if (game.time - m.born > 1.4) { sb._mag = null; answer('coinMagnetDash', 'Too far. Dash closer.', 'none'); }
+    }
+    const b = hero.props?.bubble; if (!b) return;
+    const armed = game.time < sb.shield.until, inMove = hero.state === 'move' && hero.moveName === 'bubbleShield';
+    if (inMove) { if (b.children[0]) b.children[0].visible = true; sb._ringOn = false; return; }
+    if (armed) { sb._ringOn = true; b.visible = true; if (b.children[0]) b.children[0].visible = false; b.scale.setScalar(0.92 + 0.03 * Math.sin(game.time * 3)); }
+    else if (sb._ringOn) { sb._ringOn = false; b.visible = false; if (b.children[0]) b.children[0].visible = true; b.scale.setScalar(1); }
+  };
+  // T2b: a shield that eats an event says what it saved
+  sb._offs.push(bus.on('eco:absorbed', (p) => { const sp = eco.events?.[p?.id]?.effect?.spark; answer('bubbleShield', `🛡 ${typeof sp === 'number' && sp < 0 ? `−${-sp} ✦ ` : ''}absorbed`, 'absorbed'); bus.emit('ability:effect:end', { name: 'bubbleShield' }); }));
 }
 // Debug keys (prompt P1): B build mode for the current pick · 1–9 pick a stall type · E end season (LedgerReport → console)
 // · H hire next helper (P3) · Z unlock next zone (buys the zone upgrade when affordable, else free in sandbox) · X demolish nearest
