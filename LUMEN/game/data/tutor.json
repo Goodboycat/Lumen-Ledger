@@ -43,12 +43,12 @@
     {"id": "crew:guardTortoise", "icon": "shield", "text": "Guard Tortoise: Protect jar absorbs more.", "group": "crew", "target": "crew:guardTortoise", "on": "sandbox:hired", "match": {"type": "guardTortoise"}},
     {"id": "crew:scoutFox", "icon": "eyes", "text": "Scout Fox: sniffs out Too-Good Deals.", "group": "crew", "target": "crew:scoutFox", "on": "sandbox:hired", "match": {"type": "scoutFox"}},
     {"id": "crew:gardenerSnail", "icon": "sprout", "text": "Gardener Snail: reputation grows a bit.", "group": "crew", "target": "crew:gardenerSnail", "on": "sandbox:hired", "match": {"type": "gardenerSnail"}},
-    {"id": "power:coinMagnetDash", "icon": "dash", "text": "Magnet: dash pulls coins and tills to you.", "group": "powers", "on": "sandbox:ability", "match": {"name": "coinMagnetDash"}},
-    {"id": "power:bubbleShield", "icon": "shield", "text": "Shield: next bad event costs 0. Lasts 30 s.", "group": "powers", "on": "sandbox:ability", "match": {"name": "bubbleShield"}},
-    {"id": "power:growthStomp", "icon": "upgrade", "text": "Stomp: stalls sell more for 12 s.", "group": "powers", "on": "sandbox:ability", "match": {"name": "growthStomp"}},
-    {"id": "power:ledgerFlash", "icon": "bulb", "text": "Flash: shows a deal's TRUE cost. Use near a stranger.", "group": "powers", "on": "sandbox:ability", "match": {"name": "ledgerFlash"}},
-    {"id": "power:haggleShout", "icon": "megaphone", "text": "Haggle: next sale pays more. Use with customers.", "group": "powers", "on": "sandbox:ability", "match": {"name": "haggleShout"}},
-    {"id": "power:fogSweep", "icon": "broom", "text": "Sweep: pushes Debt Fog back at its edge.", "group": "powers", "on": "sandbox:ability", "match": {"name": "fogSweep"}},
+    {"id": "power:coinMagnetDash", "icon": "dash", "text": "Dash to coins and tills. Pulls them in.", "whenHint": "No coins near. Dash to a till.", "group": "powers", "on": "sandbox:ability", "match": {"name": "coinMagnetDash"}},
+    {"id": "power:bubbleShield", "icon": "shield", "text": "Next bad event costs 0. Lasts 30 s.", "whenHint": "Shield is ready. Use at the storm warning.", "group": "powers", "on": "sandbox:ability", "match": {"name": "bubbleShield"}},
+    {"id": "power:growthStomp", "icon": "upgrade", "text": "Stalls sell more for 12 s. Use when busy.", "whenHint": "No stalls to boost. Build one.", "group": "powers", "on": "sandbox:ability", "match": {"name": "growthStomp"}},
+    {"id": "power:ledgerFlash", "icon": "bulb", "text": "Shows a deal's TRUE cost. Use near a stranger.", "whenHint": "No deal open. Use near a stranger.", "group": "powers", "on": "sandbox:ability", "match": {"name": "ledgerFlash"}},
+    {"id": "power:haggleShout", "icon": "megaphone", "text": "Next sale pays +10 %. Use with customers.", "whenHint": "No customers. Wait by a stall.", "group": "powers", "on": "sandbox:ability", "match": {"name": "haggleShout"}},
+    {"id": "power:fogSweep", "icon": "broom", "text": "Pushes Debt Fog back. Use at the fog edge.", "whenHint": "No fog to sweep.", "group": "powers", "on": "sandbox:ability", "match": {"name": "fogSweep"}},
     {"id": "power:locked", "icon": "lock", "text": "Locked. Earn ★ at the Ledger.", "group": "powers", "on": "ability:locked"}
   ]
 }

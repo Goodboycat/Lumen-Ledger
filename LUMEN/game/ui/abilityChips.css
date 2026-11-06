@@ -5,7 +5,7 @@
 .ll-abil-key { font-size: 14px; color: #ffd36b; }
 .ll-abil-name { font-size: 10px; opacity: .9; }
 .ll-abil-cost { display: none; font-size: 10px; color: #ffd36b; margin-top: 1px; }
-.ll-abil-chip.locked { opacity: .45; border-style: dashed; filter: grayscale(.8); cursor: not-allowed; }
+.ll-abil-chip.locked { opacity: .55; border-style: dashed; filter: grayscale(.8); cursor: help; }
 .ll-abil-chip.locked .ll-abil-cost { display: block; }
 .ll-abil-chip.locked .ll-abil-name { display: none; }
 .ll-abil-chip.pop { animation: ll-abil-pop .5s cubic-bezier(.34,1.56,.64,1); border-color: #ffd36b; box-shadow: 0 0 14px rgba(255,211,107,.8); }
@@ -15,3 +15,9 @@
 @keyframes ll-abil-cd { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 body.ll-dlg-open .ll-abil, body.ll-modal .ll-abil { opacity: .25; }
 @media (pointer: coarse) { .ll-abil { display: none; } }   /* touch: 7C pad owns the buttons (41D P2 adds earned chips above it) */
+
+/* T2b: pressed + active-effect drain bar (Shield 30 s / Stomp 12 s), touch-action none so a hold is not a scroll */
+.ll-abil-chip { touch-action: none; user-select: none; -webkit-user-select: none; }
+.ll-abil-chip.down { transform: translateY(2px) scale(.96); }
+.ll-abil-fx { position: absolute; left: 0; top: 0; height: 3px; width: 100%; background: #9dff9d; transform-origin: left; transform: scaleX(var(--fx, 0)); opacity: 0; transition: transform .25s linear, opacity .2s; pointer-events: none; }
+.ll-abil-chip.fx .ll-abil-fx { opacity: 1; }

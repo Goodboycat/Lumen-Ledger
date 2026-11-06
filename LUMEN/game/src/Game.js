@@ -1064,6 +1064,9 @@ function installRunWires(lg) {
   on('ui:power:ask', (p) => { const n = p?.name; if (!n || !ui?.tutor) return; const u = lg.sb?.unlocks; const locked = !!(u && !u.abilities.has(n));
     ui.tutor.ask('power:' + n);
     if (locked) bus.emit('ability:answer', { name: n, text: lockedLine({ stars: starsFor(n), have: u.starsTotal }), kind: 'locked' }); });
+  // T2b-2: the "no target → do this" line is DATA (data/tutor.json power:<id>.whenHint); powerAnswers.WHEN is the fallback
+  const whenFromCards = (n) => ui?.tutor?.card?.('power:' + n)?.whenHint || null;
+  if (lg.sb) lg.sb.whenHint = whenFromCards; on('game:state', () => { if (lg.sb && lg.sb.whenHint !== whenFromCards) lg.sb.whenHint = whenFromCards; });
   lg.syncAbilities = () => { const u = lg.sb?.unlocks; if (u) bus.emit('ui:abilities', { abilities: u.abilities, starsTotal: u.starsTotal }); };
   on('game:state', () => lg.syncAbilities()); on('ability:unlock', () => lg.syncAbilities());  // 41D HUD chips follow the set
   // S03: AUTO ("pay yourself first") — while on, every SALE (eco:spark reason 'sale' / tips) is split by the current sliders the moment it lands.
