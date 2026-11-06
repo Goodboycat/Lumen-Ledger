@@ -82,6 +82,25 @@ export const SCAMS = {
     text: 'Pay 100 Spark, the notes are worth 30 by sunset. −70 net.' },
 };
 
+// ---------------------------------------------------------------- FAIRS — T4 (S57): genuinely GOOD deals from friendly strangers (contrast for the scams)
+// Same warm tone as a scam, but the terms are WRITTEN, small, checkable, and accepting is rewarded. `terms` = the one line a careful player can verify
+// (Ledger Flash near a fair stranger reads it out). `cost` is paid now, `payout` arrives at once (net = payout − cost). Never counted as a scam.
+export const FAIRS = {
+  coopCrate: { id: 'coopCrate', title: 'Co-op Supply Crate', lesson: 'scams', cost: 30, payout: 50,
+    pitch: 'Marigold: "Market co-op crate: 30 Spark, worth 50 at the Baker\'s. Receipt inside."',
+    terms: 'Written receipt. 30 in, 50 back, today. Ask the Baker.',
+    text: 'Pay 30 Spark, get a crate the Baker buys for 50. −30, +50.' },
+  honestSwap: { id: 'honestSwap', title: 'Honest Spark Swap', lesson: 'scams', cost: 20, payout: 34,
+    pitch: 'Butterbur: "Swap 20 Spark for 34 of my surplus lanterns. Weigh them first!"',
+    terms: 'You inspect the goods first. 20 in, 34 back. No deadline.',
+    text: 'Pay 20 Spark, get lanterns worth 34 at any stall. −20, +34.' },
+  neighborGift: { id: 'neighborGift', title: 'Neighbour\'s Sample Basket', lesson: 'scams', cost: 0, payout: 12,
+    pitch: 'Rosalind: "A sample basket for new stallholders. Free. Truly. Take it or leave it."',
+    terms: 'Free, no strings, no signature. Leaving is fine too.',
+    text: 'A free basket worth 12 Spark. Nothing to sign.' },
+};
+export const FAIR_IDS = Object.keys(FAIRS);
+
 // ---------------------------------------------------------------- UPGRADES tree — stall levels, helpers, zone unlocks
 // `kind` lets BuildSystem / UI group them. `requires` = other upgrade ids (or 'season:N') that must be owned first.
 export const UPGRADES = {
@@ -164,7 +183,7 @@ export function canBuyUpgrade(eco, upgradeId, owned = []) {
 
 /** Factory: a 4A Economy wired with the full 4B content and tuned balance. opts → Economy opts ({ bus, seed, autoSeason }). */
 export function makeEconomy(opts = {}, balance = BALANCE_TUNED) {
-  return new Economy(balance, { events: EVENTS, scams: SCAMS, upgrades: UPGRADES, ...opts });
+  return new Economy(balance, { events: EVENTS, scams: SCAMS, fairs: FAIRS, upgrades: UPGRADES, ...opts });
 }
 
-export default { EVENTS, SCAMS, UPGRADES, BALANCE_TUNED, makeEconomy, pickEvent, canBuyUpgrade };
+export default { EVENTS, SCAMS, FAIRS, UPGRADES, BALANCE_TUNED, makeEconomy, pickEvent, canBuyUpgrade };

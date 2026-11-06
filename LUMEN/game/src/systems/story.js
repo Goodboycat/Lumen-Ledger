@@ -41,13 +41,18 @@ export const SCAM_TIP = 'Spot the tells: hurry · secrecy · "guaranteed" · an 
 export function pickLedgerVariant(stars) { return stars >= 3 ? 'high' : stars <= 1 ? 'low' : 'default'; }
 
 /** Pure lookup helpers over the story.json shape (return [] when missing — never throw on content gaps). */
+/** T4: a deal delivered by a stranger is spoken by the Stranger, never by a 'collector' / 'baron'; a line may carry `stranger: "…"` as its stranger-only text. Pure. */
+export function strangerVoice(lines, offer) {
+  if (!offer || offer.by !== 'stranger' || !Array.isArray(lines)) return lines;
+  return lines.map((l) => (l && (l.speaker === 'collector' || l.speaker === 'baron')) ? { ...l, speaker: 'stranger', text: l.stranger || l.text } : l);
+}
 export function linesFor(data, kind, key, variant) {
   if (!data) return [];
   switch (kind) {
     case 'opening': case 'mid': { const S = data.seasons?.[key - 1]; return S?.[kind] || []; }
     case 'ledger': { const S = data.seasons?.[key - 1]; return S?.ledger?.[variant] || S?.ledger?.default || []; }
     case 'event': return data.events?.[key] || [];
-    case 'scam': return data.scams?.[key]?.[variant || 'pitch'] || [];
+    case 'scam': return (data.scams?.[key] || data.fairs?.[key])?.[variant || 'pitch'] || [];   // T4: fair stranger deals share the scam tree machinery
     case 'ending': return data.ending?.[key] || [];
     default: return [];
   }
@@ -120,14 +125,14 @@ export class StorySystem {
   }
   onScam(offer) {
     if (!offer || !offer.id) return false;
-    this.pendingOffer = offer; this.state.scamsSeen.push(offer.id);
-    let lines = linesFor(this.data, 'scam', offer.id, 'pitch');
+    this.pendingOffer = offer; if (offer.isFair) (this.state.fairsSeen ||= []).push(offer.id); else this.state.scamsSeen.push(offer.id);
+    let lines = strangerVoice(linesFor(this.data, 'scam', offer.id, 'pitch'), offer);
     if (!lines.length) { // no script → synthesize a 2-line pitch from the 4B offer so the choice still happens
       lines = [{ speaker: 'collector', text: offer.text || offer.title || 'A wonderful offer!', mood: 'happy' }, { speaker: 'collector', text: 'Well?', choices: [{ id: 'accept', text: 'Accept' }, { id: 'refuse', text: 'Refuse' }] }];
     }
     // BUGFIX: Scout Fox (helper_scoutFox, effect.revealScams) promised "shows the tell" but nothing consumed the flag. Owned → the tell is
     // whispered by Owl right BEFORE the choice line, so the player can refuse for the right reason. Not owned → the tell only comes after.
-    const tell = this.data?.scams?.[offer.id]?.tell || offer.tell;
+    const tell = offer.isFair ? null : (this.data?.scams?.[offer.id]?.tell || offer.tell);
     if (tell && this.economy?.mod?.('revealScams', false) === true) {
       const i = Math.max(0, lines.findIndex((l) => l && l.choices)); const fox = { speaker: 'owl', text: 'Scout Fox sniffs the air. "Smell that? ' + tell + '"', mood: 'angry', fox: true };
       lines = i > 0 ? [...lines.slice(0, i), fox, ...lines.slice(i)] : [fox, ...lines];
@@ -144,7 +149,7 @@ export class StorySystem {
     // 48G: the choice id names an array on the CURRENT scam node. If that array ends in choices again it is an INNER branch (look / ask / stall
     // = the next decision): it replaces the running lines (same group 'scam', pendingOffer kept) so the box stays open, no outcome yet.
     // Otherwise it is a LEAF: accept + sign = economy.acceptOffer, everything else (refuse / walk / unknown) = refuseOffer, leaf lines follow.
-    const arr = this.current?.group === 'scam' && offer ? linesFor(this.data, 'scam', offer.id, choice.id) : [];
+    const arr = this.current?.group === 'scam' && offer ? strangerVoice(linesFor(this.data, 'scam', offer.id, choice.id), offer) : [];
     if (arr.length && arr[arr.length - 1].choices) {
       this.current.lines = arr; this.current.i = 0; result.branch = choice.id;
       this._show(arr[0]); this.bus.emit('story:choice', result); return result;
@@ -153,8 +158,9 @@ export class StorySystem {
       const accept = choice.id === 'accept' || choice.id === 'sign';
       this.pendingOffer = null;
       result.outcome = accept ? (this.economy?.acceptOffer?.(offer) ?? { accepted: true }) : (this.economy?.refuseOffer?.(offer) ?? { accepted: false, refused: true });
-      const after = arr.length ? arr : linesFor(this.data, 'scam', offer.id, accept ? 'accept' : 'refuse');   // 48G: sign / walk have their own leaf lines
-      const tell = this.data?.scams?.[offer.id]?.tell || offer.tell;
+      const after = arr.length ? arr : strangerVoice(linesFor(this.data, 'scam', offer.id, accept ? 'accept' : 'refuse'), offer);   // 48G: sign / walk have their own leaf lines
+      const tell = offer.isFair ? null : (this.data?.scams?.[offer.id]?.tell || offer.tell);
+      if (offer.isFair) this.bus.emit('story:lesson', { id: 'scams', title: 'A Fair Deal', lesson: this.data?.fairs?.[offer.id]?.tell || offer.terms || 'Written, small, checkable.', tip: 'Terms you can check = a fair deal.', fair: offer.id, accepted: accept });
       // queue the outcome lines FIRST (front), then finish the pitch: story:end is only emitted when nothing follows, so 7B's dialogue
       // box stays open and simply shows the next line (its choose() → ui:choice → here → story:line happens inside one tick).
       if (tell) this.bus.emit('story:lesson', { id: offer.lesson || 'scams', title: SCAM_LESSON_TITLE, lesson: tell, tip: SCAM_TIP, scam: offer.id, accepted: accept });
@@ -255,6 +261,7 @@ export class StorySystem {
     on('ui:continue', (p) => { if (p?.outcome === 'season' && this.economy && !this.state.finale) this.onSeasonStart(this.economy.state.season); });
     on('eco:event', (p) => { this.onEvent(p?.id || p?.event?.id); });
     on('eco:scam', (offer) => { this.onScam(offer); });
+    on('eco:fair', (offer) => { this.onScam(offer); });                                    // T4: a fair stranger deal runs through the same dialogue tree
     on('novelty:start', (p) => this.onNovelty(p));                                        // 43D: first time per id → hud:new (NEW chip 4 s)
     on('eco:win', () => this.onWin());
     on('eco:lose', (p) => this.onLose(p?.reason));

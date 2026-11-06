@@ -157,19 +157,21 @@ export async function run({ resolve, pathToFileURL }) {
     destroySandbox(sb);
     A = mk(); ({ sb, ev, run } = A); const N3 = sb.scamNpc; sb.hero.root.position.set(0, 0, 12); toMark(sb); run(SCAM.walkSec + 0.2);
     sb.hero.root.position.set(N3.g.position.x + 1, 0, N3.g.position.z); sb.interact(); const refused0 = sb.eco.ledger.scamsRefused;
-    const tg = (sb.hero.deps?.targets ? sb.hero.deps.targets() : []) || []; const mine = tg.find((t) => t.enemy?.scam); if (!mine) throw new Error('scam NPC not in hero targets');
-    mine.hit(new THREE.Vector3(1, 0, 0), 1); mine.hit(new THREE.Vector3(1, 0, 0), 1);
-    if (N3.state !== 'flee' || sb.eco.pendingOffer || sb.eco.ledger.scamsRefused !== refused0 + 1 || ev['scam:refused'].length !== 1 || ev['scam:refused'][0].why !== 'hit') throw new Error(`hit → ${N3.state} refused ${sb.eco.ledger.scamsRefused - refused0} ev ${ev['scam:refused'].length}`);
-    run(SCAM.fleeSec + 0.2); let meshes = 0; A.scene.traverse((o) => { if (o.userData?.scam) meshes++; }); if (N3.active || meshes) throw new Error('flee did not remove the mesh');
+    // T4.2 (S57): a stranger is NOT an enemy — they are not a sword target, and 10 swing-misses beside them whiff (dodge + owl line) without resolving anything
+    const tg = (sb.hero.deps?.targets ? sb.hero.deps.targets() : []) || []; if (tg.some((t) => t.enemy?.scam || t.root === N3.g)) throw new Error('T4.2 stranger is a sword target');
+    const rawStep = () => { A.game.time += 1 / 30; A.game.sequences.update(1 / 30); A.game.tweens.update(1 / 30); for (const s of A.game.systems) s.update?.(1 / 30); };   // the harness step() auto-refuses a pending deal every tick; this one does not
+    for (let i = 0; i < 10; i++) { sb.game.bus.emit('combat:miss', { combo: i }); for (let k = 0; k < 2; k++) rawStep(); }
+    if (N3.state === 'flee' || N3.state === 'leave' || sb.eco.ledger.scamsRefused !== refused0 || ev['scam:refused'].length !== 0 || !sb.eco.pendingOffer) throw new Error(`T4.2 10 swings resolved the stranger: ${N3.state} refused ${sb.eco.ledger.scamsRefused - refused0}`);
+    if (N3.stats.whiffs !== 10) throw new Error('T4.2 whiffs ' + N3.stats.whiffs);
     destroySandbox(sb);
     // c) 25 s unanswered → refuse once (why timeout), leaves; season end with an NPC still out → removed + refused once
-    A = mk(); ({ sb, ev, run } = A); const N4 = sb.scamNpc; sb.hero.root.position.set(0, 0, 12); toMark(sb); sb.holdClock('gate', true); run(SCAM.walkSec + SCAM.timeout + 0.3);   // the 20 s test season would end first → hold the eco clock (as the pier does)
+    A = mk(); ({ sb, ev, run } = A); const N4 = sb.scamNpc; sb.hero.root.position.set(0, 0, 12); toMark(sb); sb.holdClock('gate', true); run(SCAM.walkSec + N4.stay + 0.3);   // T4: the stay is 25–40 s per stranger (T4.4)   // the 20 s test season would end first → hold the eco clock (as the pier does)
     if (ev['scam:refused'].length !== 1 || ev['scam:refused'][0].why !== 'timeout' || N4.state !== 'leave') throw new Error(`timeout → ${N4.state} refused ${ev['scam:refused'].length}`);
     run(SCAM.leaveSec + 0.2); if (N4.active) throw new Error('timeout: did not leave'); sb.holdClock('gate', false);
     const sp0 = N4.stats.spawned; sb.eco.state.season = 3; sb.sched.season = 0; sb.eco.state.day01 = 0.71; sb.updateScheduler(); if (N4.stats.spawned !== sp0 + 1) throw new Error('S3 mark did not spawn');
     sb.eco.state.day01 = 1; sb.eco.tick(0.05); if (N4.active || ev['scam:refused'].length !== 2) throw new Error('season end did not clear the NPC');
     destroySandbox(sb); let leak = 0; A.scene.traverse((o) => { if (o.userData?.scam) leak++; }); if (leak) throw new Error('leaked scam meshes ' + leak);
-    console.log(`  6. scam NPC: mark → scam:npc (no eco:scam) · walk ${SCAM.walkSec} s → pitch · talk ≤ ${SCAM.near} u → eco:scam · dialogue refuse → leaves · flash ≤ ${SCAM.flashNear} u → scam:tell "${tell.slice(0, 40)}…" · sword hit → refused once + flee · ${SCAM.timeout} s → timeout refuse · season end clears  OK`);
+    console.log(`  6. scam NPC: mark → scam:npc (no eco:scam) · walk ${SCAM.walkSec} s → pitch · talk ≤ ${SCAM.near} u → eco:scam · dialogue refuse → leaves · flash ≤ ${SCAM.flashNear} u → scam:tell "${tell.slice(0, 40)}…" · 10 sword swings → whiff only (T4.2) · ${SCAM.stay[0]}–${SCAM.stay[1]} s stay → quiet exit · season end clears  OK`);
   } catch (e) { bad++; console.log('FAIL pier 6 (scam NPC): ' + (e.stack || e)); }
   return bad;
 }

@@ -28,7 +28,7 @@ import { bakeStatic, bakeShells, disposeBatch } from './assets/props/bake.js';
 import { BlobShadows, CreatureLOD } from './systems/perf.js';   // 11A (S40: PixelRatioGovernor no longer wired — quality is locked to the Settings preset)
 import { G } from './assets/geo.js';
 import { PALETTE as P, flatMat } from './core/Toon.js';
-import { makeGlimmerAny, CreatureAnimator, HelperAnimator, makeHelper, HELPER_TYPES, registerVariants, makeFogCollector, makeBaronGilt, VillainAnimator, FogPuffPool } from './assets/creatures/index.js';
+import { makeGlimmerAny, CreatureAnimator, HelperAnimator, makeHelper, HELPER_TYPES, registerVariants, makeFogCollector, makeBaronGilt, makeStranger, VillainAnimator, FogPuffPool } from './assets/creatures/index.js';
 import { EnemySystem, ENEMY_RULES } from './systems/enemies.js';   // S16
 import { StormWeather, STORM } from './vfx/storm.js';   // S17 (+ S21 holdSeconds)
 import { CinematicDirector } from './vfx/cinematics.js';   // S18
@@ -365,6 +365,8 @@ function installScheduler(sb) {
           break; }
         // 42D: NPC first (opts.scamNpcs), else the old direct offer. 43C: scamKind 'baron' → the Baron himself (novelty baronVisit) — no NPC, no direct offer here.
         case 'scam': S.scam = true; if (!eco.pendingOffer && m.payload?.scamKind !== 'baron') { if (!(sb.scamNpcs && sb.scamNpc?.spawn())) eco.offerScam(); } break;
+        // T4: a friendly stranger walks in from the pier (kind 'fair' = a genuinely good deal, 'scam' = the next scam not met yet). Waits for a free table + no modal; headless gates without opts.scamNpcs skip it.
+        case 'stranger': if (!sb.scamNpcs || !sb.scamNpc) break; if (eco.pendingOffer || modal || sb.scamNpc.active) { ok = false; break; } sb.scamNpc.spawn(m.payload?.kind === 'fair' ? 'fair' : undefined); break;
         // P62: the wave waits while the Baron's deal (or any dialogue) is on screen. 41C: S1 wave at 0.55 (one Collector hp 1), S ≥ 2 after the offer.
         case 'wave': if (sb.enemies?.enabled === false) break; if (eco.pendingOffer || modal) { ok = false; break; } S.wave = true; { const w = sb.enemies.spawnWave(s.season); if (w.length) sb.log.push(`S${s.season} wave ${w.length} (${w.map((e) => e.kind).join(',')})`); } break;
         case 'novelty': if (sb.novelty?.id === m.payload?.id) break; /* 43D: resumed mid-season save already re-started it (applySnapshot) */ bus.emit('season:novelty', { season: s.season, id: m.payload.id, at: m.at }); sb.log.push(`S${s.season} novelty ${m.payload.id}`); break;
@@ -474,7 +476,7 @@ function installJarsWorld(sb) {
 function installScamNpc(sb) {
   const { eco, hero } = sb, bus = sb.game.bus;
   const S = createScamNpc({ bus, eco, hero, world: sb.world, game: sb.game, scene: sb.headless ? null : sb.game.scene, rng: sb.rng || Math.random,
-    creatures: sb.headless ? {} : { makeFogCollector, VillainAnimator }, canStand: (x, z) => sb.island.isLand(x, z) && !sb.build?.occupied?.(x, z) });
+    creatures: sb.headless ? {} : { makeStranger, VillainAnimator }, canStand: (x, z) => sb.island.isLand(x, z) && !sb.build?.occupied?.(x, z) });   // T4: the friendly Stranger species (not a Collector)
   sb.scamNpc = S;
   sb._offs.push(() => { S.destroy(); sb.scamNpc = null; });
 }
@@ -1334,14 +1336,16 @@ function installDebugHooks(lg) {
     day(f = 0) { const sb = lg.sb; if (!sb) return noSb(); f = Math.min(0.99, Math.max(0, num(f, 0))); sb.eco.state.day01 = f; sb.updateScheduler?.(0); return { ok: true, day01: f }; },
     /** Time scale 1/2/3 (4 only with opts.debugKeys). */
     speed(n = 1) { const r = lg.setSpeed(n); return { ok: r === +n, speed: r }; },
-    /** Spawn a stranger (scam id, or random). 'fair' = n/a until T4. false when one is already active or an offer is pending. */
+    /** Spawn a stranger: a scam id · a fair id · 'fair' (an unmet fair deal) · nothing (the next unmet scam). false when one is already out or an offer is pending. */
     stranger(id) {
-      if (id === 'fair') return { na: 'T4' }; const sb = lg.sb; if (!sb) return noSb();   // T0-B: n/a answered before the sandbox guard so the panel can probe it on the title screen
-      const ids = Object.keys(sb.eco.scams || {}); if (id && !ids.includes(id)) return { ok: false, why: 'unknown scam id', ids };
+      const sb = lg.sb; if (!sb) return noSb();
+      const scamIds = Object.keys(sb.eco.scams || {}), fairIds = Object.keys(sb.eco.fairs || {}), ids = [...scamIds, ...fairIds];
+      if (id && id !== 'fair' && !ids.includes(id)) return { ok: false, why: 'unknown scam id', ids };
       if (sb.eco.pendingOffer) return { ok: false, why: 'offer already pending' };
       let how = 'npc'; let ok = !!(sb.scamNpc?.spawn?.(id));
-      if (!ok) { how = 'direct'; ok = !!sb.eco.offerScam(id); }
-      return { ok, how, id: sb.eco.pendingOffer?.id || id || null, ids };
+      if (!ok && sb.scamNpc?.active) return { ok: false, why: 'stranger already active', ids };
+      if (!ok) { how = 'direct'; ok = !!(id === 'fair' || fairIds.includes(id) ? sb.eco.offerFair(id === 'fair' ? undefined : id) : sb.eco.offerScam(id)); }
+      return { ok, how, id: sb.scamNpc?.id || sb.eco.pendingOffer?.id || id || null, kind: sb.scamNpc?.kind || null, ids };
     },
     /** Spawn this season's Collector wave now (bypasses the one-per-season guard). */
     wave() { const sb = lg.sb; if (!sb) return noSb(); if (!sb.enemies) return { ok: false, why: 'no enemies system' }; sb.enemies.enabled = true; sb.enemies.waveSeason = 0; const w = sb.enemies.spawnWave(sb.eco.state.season) || []; return { ok: w.length > 0, count: w.length, ids: Object.keys(sb.eco.events || {}) }; },

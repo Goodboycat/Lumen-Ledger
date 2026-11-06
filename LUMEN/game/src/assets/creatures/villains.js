@@ -45,8 +45,9 @@ import { Easing } from '../../anim/Easing.js';
 import { CreatureAnimator } from './animator.js';
 import { measureCreature } from './glimmers.js';
 
-export const VILLAIN_ANIMS = ['strut', 'taunt', 'offerDeal', 'flee', 'slipOnCoin', 'fogPuff'];
+export const VILLAIN_ANIMS = ['strut', 'taunt', 'offerDeal', 'flee', 'slipOnCoin', 'fogPuff', 'wave', 'leanIn', 'fleeLaugh', 'dodge'];
 export const FOG_COLLECTOR_VARIANTS = ['fat', 'tall', 'tiny'];
+export const STRANGER_VARIANTS = ['coral', 'butter', 'rose'];   // T4 (S57): the friendly strangers — NOT Collector-shaped (round, warm, smiling, sun hat)
 
 /** Story / economy facing data (4B scams, 8A story, 7B dialogue read these). */
 export const VILLAIN_INFO = {
@@ -54,6 +55,9 @@ export const VILLAIN_INFO = {
   collector0: { name: 'Ledgerworth',  title: 'Fog Collector (Senior)', color: 0x9575CD, loanRate: 0.20, blurb: 'Wide, slow, carries the biggest sack. Slips on coins.' },
   collector1: { name: 'Quillsby',     title: 'Fog Collector (Clerk)',  color: 0x9575CD, loanRate: 0.20, blurb: 'Tall and twitchy. Waves the clipboard. Flees from Haggle Shouts.' },
   collector2: { name: 'Pennywhistle', title: 'Fog Collector (Junior)', color: 0x9575CD, loanRate: 0.20, blurb: 'Tiny, eager, always first to run.' },
+  stranger0:  { name: 'Marigold',  title: 'Friendly Stranger', color: 0xFFAB91, loanRate: 0, blurb: 'Warm, chatty, always smiling. Has a deal for you.' },
+  stranger1:  { name: 'Butterbur', title: 'Friendly Stranger', color: 0xFFE082, loanRate: 0, blurb: 'Round and cheerful. Hums while he walks.' },
+  stranger2:  { name: 'Rosalind',  title: 'Friendly Stranger', color: 0xF48FB1, loanRate: 0, blurb: 'Tall, graceful, waves with the whole arm.' },
 };
 
 // ───────────────────────────── small kit (same helpers as 2B, local copy — 2C owns only this file) ─────────────────────────────
@@ -249,6 +253,51 @@ export function makeFogCollector(variant = 0, opts = {}) {
   }, opts);
 }
 
+/**
+ * T4 (S57) Friendly Stranger — variant 0 coral · 1 butter · 2 rose (or 'coral'|'butter'|'rose'). Round warm blob, big smile, pink cheeks, wide straw sun hat,
+ * teal scarf, travel satchel, a rolled paper in the waving hand. Deliberately the opposite of a Collector (no visor, no clipboard, no sack, no grey/lilac):
+ * the player must be able to LIKE them — that is the point of a scam. Same rig + same animator (VillainAnimator: wave · leanIn · offerDeal · fleeLaugh · dodge).
+ */
+export function makeStranger(variant = 0, opts = {}) {
+  const vi = typeof variant === 'string' ? Math.max(0, STRANGER_VARIANTS.indexOf(variant)) : (((variant | 0) % 3) + 3) % 3;
+  const V = [
+    { bw: 0.34, bh: 0.95, headR: 0.27, headY: 0.8,  shadow: 0.42, height: 1.5 },
+    { bw: 0.42, bh: 0.82, headR: 0.28, headY: 0.68, shadow: 0.48, height: 1.35 },
+    { bw: 0.28, bh: 1.12, headR: 0.24, headY: 0.94, shadow: 0.38, height: 1.62 },
+  ][vi];
+  const skin = [0xFFAB91, 0xFFE082, 0xF48FB1][vi], scarfC = [0x26A69A, 0xEF6C00, 0x7E57C2][vi], strawC = [0xFFE082, 0xFFCC80, 0xFFF59D][vi];
+  return assemble('stranger' + vi, (c) => {
+    const body0 = vary(skin, 0.04, c.r), dark = 0x8D6E63, t = c.torsoRaw;
+    const body = mesh(G.sphere(0.5, 9, 7), body0, 0, V.bh * 0.5, 0); body.scale.set(V.bw * 2, V.bh, V.bw * 1.8); t.add(body);
+    const scarf = mesh(G.torus(V.bw * 0.7, 0.07, 6, 12), scarfC, 0, V.bh * 0.86, 0); scarf.rotation.x = Math.PI / 2; t.add(scarf);
+    const tail = mesh(G.box(0.09, V.bh * 0.3, 0.05), scarfC, V.bw * 0.35, V.bh * 0.68, V.bw * 0.9); tail.rotation.z = 0.15; t.add(tail);
+    // satchel across the chest (tan strap + pouch + gold buckle) — a travelling seller, not a clerk
+    const pouch = mesh(G.box(0.2, 0.17, 0.09), 0xBCAAA4, -V.bw * 0.72, V.bh * 0.36, V.bw * 0.55); pouch.rotation.y = 0.5; t.add(pouch);
+    t.add(mesh(G.sphere(0.035, 5, 4), GOLD, -V.bw * 0.62, V.bh * 0.4, V.bw * 0.78));
+    for (const sx of [-1, 1]) { const f = mesh(G.sphere(0.12, 8, 5), dark, sx * V.bw * 0.45, 0.05, 0.08); f.scale.set(1, 0.4, 1.4); t.add(f); }
+    const armL = mesh(G.capsule(0.07, 0.22, 3, 7), body0, -V.bw * 0.95, V.bh * 0.58, 0.05); armL.rotation.z = 0.7; t.add(armL);
+    c.headY = V.headY; c.height = V.height; c.shadowR = V.shadow;
+    const h = c.headRaw;
+    h.add(mesh(G.sphere(V.headR, 9, 7), body0, 0, V.headR * 0.5, 0));
+    for (const sx of [-1, 1]) { const ch = mesh(G.sphere(V.headR * 0.2, 6, 4), 0xF06292, sx * V.headR * 0.62, V.headR * 0.34, V.headR * 0.72); ch.scale.set(1, 0.7, 0.4); h.add(ch); }   // blush
+    const smile = mesh(new THREE.TorusGeometry(V.headR * 0.3, 0.02, 5, 10, Math.PI), 0x5D4037, 0, V.headR * 0.4, V.headR * 0.93); smile.rotation.z = Math.PI; h.add(smile);   // big warm smile
+    h.add(mesh(G.sphere(0.06, 5, 4), body0, 0, V.headR * 1.02, V.headR * 0.2));   // a curl of hair under the hat
+    c.face = { y: V.headR * 0.66, z: V.headR * 0.85, gap: V.headR * 0.4, r: V.headR * 0.23, pupil: V.headR * 0.13 };
+    c.sweat = { y: V.headR * 0.95, x: V.headR * 1.0 };
+    // wide straw sun hat with a ribbon
+    c.hatY = V.headR * 1.0; const ht = c.hatRaw;
+    ht.add(mesh(G.cyl(V.headR * 1.55, V.headR * 1.55, 0.03, 16), strawC, 0, 0.0, 0));
+    ht.add(mesh(G.cyl(V.headR * 0.78, V.headR * 0.84, V.headR * 0.55, 12), strawC, 0, V.headR * 0.28, 0));
+    const rib = mesh(G.cyl(V.headR * 0.86, V.headR * 0.86, 0.07, 12), scarfC, 0, V.headR * 0.08, 0); ht.add(rib);
+    // tool = the waving hand with a rolled paper (the deal, still rolled up)
+    c.toolPos.set(V.bw * 0.95, V.bh * 0.62, 0.1); const o = c.toolRaw;
+    const armR = mesh(G.capsule(0.07, 0.22, 3, 7), body0, 0, 0.02, 0); armR.rotation.z = -0.7; o.add(armR);
+    const roll = mesh(G.cyl(0.04, 0.04, 0.3, 8), 0xFFF8E1, 0.08, 0.06, 0.12); roll.rotation.z = 0.5; o.add(roll);
+    o.add(mesh(G.torus(0.045, 0.012, 5, 8), P.red, 0.08, 0.06, 0.12));
+    c.caneTip = new THREE.Vector3(0.08, 0.18, 0.15); c.scrollPos.set(0.08, -0.06, 0.2);
+  }, opts);
+}
+
 export { measureCreature as measureVillain };
 
 // ═══════════════════════════════════════════ FogPuffPool ═══════════════════════════════════════════
@@ -352,6 +401,7 @@ export class VillainAnimator extends CreatureAnimator {
     const p = this.p, t = this.t;
     // continuous tics: Baron sways his cane + cape breathes; collectors glance about nervously
     if (this.type === 'baron') { hp.trz += Math.sin(t * 1.2 * Math.PI * 2) * 0.04; hp.cape += Math.sin(t * 1.6) * 0.04; }
+    else if (String(this.type).startsWith('stranger')) { hp.tilt += Math.sin(t * 1.7) * 0.04; hp.hatRz += Math.sin(t * 1.3) * 0.03; }   // T4: relaxed sway, no nervous glancing
     else { hp.yaw += Math.sin(t * 0.9 * Math.PI * 2) * 0.1; hp.tilt += Math.sin(t * 2.3) * 0.03; }
     if (p.head) p.head.rotation.set(hp.nod, hp.yaw, hp.tilt);
     if (p.hat) { p.hat.position.y = (p.hat.userData.y0 ?? (p.hat.userData.y0 = p.hat.position.y)) + hp.hatY; p.hat.rotation.set(hp.hatRx, 0, hp.hatRz); }
@@ -400,6 +450,25 @@ function buildVillainClips(a) {
       .phase('fall', 180, Easing.inQuad, (e) => { pose.lean = lerp(-0.9, -1.35, e); pose.y = lerp(0.32, 0, e); pose.squash = lerp(1.12, 0.72, e); hp.hatY = lerp(0.35, 0.05, e); hp.hatRz = lerp(0.6, 0.9, e); hp.trx = 0.8; hp.nod = -0.4; hp.cape = 0.5; }, { onExit: () => { a.spring.kick(-1.5); a.slipImpact(); } })
       .phase('dazed', 250, Easing.linear, (e, c, t) => { pose.lean = -1.35; pose.y = 0; pose.squash = 0.72 + Math.sin(t * Math.PI * 2) * 0.02; pose.jitter = Math.sin(t * Math.PI * 10) * 0.03; hp.hatY = 0.05; hp.hatRz = 0.9 + Math.sin(t * Math.PI * 6) * 0.08; hp.nod = Math.sin(t * Math.PI * 6) * 0.2; hp.trx = 0.8; hp.cape = 0.5; hp.sweat = true; })
       .phase('up', 200, Easing.outBack, (e) => { pose.lean = lerp(-1.35, 0, e); pose.squash = lerp(0.72, 1, e); hp.hatY = lerp(0.05, 0, e); hp.hatRz = lerp(0.9, 0, e); hp.trx = lerp(0.8, 0, e); hp.cape = lerp(0.5, 0, e); hp.nod = lerp(0.2, 0, e); }, { onEnter: () => a.dust(3, 0.3) }),
+
+    // ---- T4 stranger clips ----
+    // wave: loop 1000 — a big friendly arm wave with a little bounce (the "come over here" idle of a stranger who wants to talk)
+    wave: () => new Sequence('wave')
+      .phase('wave', 1000, Easing.linear, (e, c, t) => { const w = Math.sin(t * Math.PI * 6); hp.trx = -2.3; hp.trz = w * 0.45; hp.nod = -0.06; pose.lean = -0.04; pose.tilt = 0.05 * w; pose.y = Math.max(0, Math.sin(t * Math.PI * 2)) * 0.035; hp.hatRz = w * 0.04; })
+      .setLoop(true),
+    // leanIn: 600 — leans toward the player, hat tip, conspiratorial smile (plays when Pip walks up)
+    leanIn: () => new Sequence('leanIn')
+      .phase('lean', 250, Easing.outCubic, (e) => { pose.lean = e * 0.3; hp.nod = e * 0.22; hp.hatY = e * 0.08; hp.hatRz = e * -0.2; hp.trx = e * -0.5; pose.squash = lerp(1, 0.97, e); })
+      .phase('hold', 350, Easing.linear, (e, c, t) => { pose.lean = 0.3; hp.nod = 0.22 + Math.sin(t * Math.PI * 4) * 0.03; hp.hatY = 0.08; hp.hatRz = -0.2; hp.trx = -0.5; pose.squash = 0.97; }),
+    // fleeLaugh: loop 360 — skips away shaking with laughter, coin-bag happy (a scam that WORKED); no sweat drops, nothing frightened about it
+    fleeLaugh: () => new Sequence('fleeLaugh')
+      .phase('hopL', 180, Easing.linear, (e, c, t) => { const h = Math.sin(t * Math.PI); pose.y = h * 0.12; pose.lean = 0.2; pose.tilt = 0.14 * h; pose.squash = 1 + Math.sin(t * Math.PI * 2) * 0.05; hp.hatY = h * 0.1; hp.hatRz = 0.2 * h; hp.trx = -1.2 - h * 0.4; hp.nod = -0.15; })
+      .phase('hopR', 180, Easing.linear, (e, c, t) => { const h = Math.sin(t * Math.PI); pose.y = h * 0.12; pose.lean = 0.2; pose.tilt = -0.14 * h; pose.squash = 1 + Math.sin(t * Math.PI * 2) * 0.05; hp.hatY = h * 0.1; hp.hatRz = -0.2 * h; hp.trx = -1.2 - h * 0.4; hp.nod = -0.15; })
+      .setLoop(true),
+    // dodge: 520 — a sword swing meets thin air: hop back, hat flies up, giggle (the swing whiffs; the stranger is NOT a target)
+    dodge: () => new Sequence('dodge')
+      .phase('hop', 160, Easing.outQuad, (e) => { pose.y = Math.sin(e * Math.PI) * 0.2; pose.lean = -0.5 * e; hp.hatY = e * 0.22; hp.hatRz = e * 0.4; hp.trx = -1.6 * e; hp.nod = -0.2 * e; pose.squash = lerp(1, 1.08, e); })
+      .phase('giggle', 360, Easing.linear, (e, c, t) => { pose.lean = lerp(-0.5, 0, t); pose.squash = 1 + Math.sin(t * Math.PI * 10) * 0.035 * (1 - t); hp.hatY = lerp(0.22, 0, t); hp.hatRz = lerp(0.4, 0, t); hp.trx = lerp(-1.6, -0.8, t); hp.nod = -0.2 * (1 - t); }),
 
     // fogPuff: wind 150 → thrust 100 [puff ×6] → settle 250 (= 500)
     fogPuff: () => new Sequence('fogPuff')

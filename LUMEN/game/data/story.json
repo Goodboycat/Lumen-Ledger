@@ -35,6 +35,10 @@
     "narrator": {
       "name": "",
       "role": "season title cards only"
+    },
+    "stranger": {
+      "name": "Stranger",
+      "role": "T4 friendly stranger: warm, chatty, believable. Carries either a Too-Good Deal or a genuinely fair one; the player cannot tell from the voice."
     }
   },
   "lessons": {
@@ -1255,7 +1259,8 @@
         {
           "speaker": "baron",
           "text": "Splendid! The printer sends his regards and about thirty Spark. Markets, eh?",
-          "mood": "happy"
+          "mood": "happy",
+          "stranger": "Splendid! My printer friend sends his regards and about thirty Spark. Markets, eh?"
         },
         {
           "speaker": "owl",
@@ -1266,7 +1271,8 @@
         {
           "speaker": "baron",
           "text": "A STRANGER? I am a Baron!",
-          "mood": "angry"
+          "mood": "angry",
+          "stranger": "A tip from a STRANGER? I'm hurt! Well. Hm."
         },
         {
           "speaker": "owl",
@@ -1522,9 +1528,18 @@
       }
     ],
     "demand": [
-      { "speaker": "owl", "text": "New season. {hot} sells itself; {cold} needs a kinder price." },
-      { "speaker": "owl", "text": "Everyone wants {hot}. Nobody is thinking about {cold}." },
-      { "speaker": "owl", "text": "{hot} is hot, {cold} is cold. Fair moved; did your price?" }
+      {
+        "speaker": "owl",
+        "text": "New season. {hot} sells itself; {cold} needs a kinder price."
+      },
+      {
+        "speaker": "owl",
+        "text": "Everyone wants {hot}. Nobody is thinking about {cold}."
+      },
+      {
+        "speaker": "owl",
+        "text": "{hot} is hot, {cold} is cold. Fair moved; did your price?"
+      }
     ],
     "wantsWho": {
       "saver": "Savers",
@@ -1541,9 +1556,17 @@
       "regular": "Regulars"
     },
     "walkIn": [
-        {"speaker": "owl", "text": "I kept your grandmother's books, Pip.", "at": 0.6},
-        {"speaker": "owl", "text": "Not if we sell first. Walk on.", "at": 7.0}
-      ],
+      {
+        "speaker": "owl",
+        "text": "I kept your grandmother's books, Pip.",
+        "at": 0.6
+      },
+      {
+        "speaker": "owl",
+        "text": "Not if we sell first. Walk on.",
+        "at": 7.0
+      }
+    ],
     "firstCoin": [
       {
         "speaker": "pip",
@@ -1926,5 +1949,232 @@
         "tell": "the asterisk"
       }
     ]
+  },
+  "fairs": {
+    "coopCrate": {
+      "id": "coopCrate",
+      "lesson": "scams",
+      "season": 1,
+      "pitch": [
+        {
+          "speaker": "stranger",
+          "text": "Hello, friend! I run the market co-op. Supply crates, 30 Spark each, and I can prove it.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "stranger",
+          "text": "The Baker buys each crate for 50. Want to see the receipt first? Looking is free.",
+          "choices": [
+            {
+              "id": "look",
+              "text": "Show me the receipt"
+            },
+            {
+              "id": "walk",
+              "text": "Not today"
+            }
+          ]
+        }
+      ],
+      "walk": [
+        {
+          "speaker": "stranger",
+          "text": "No trouble at all. I'm around till dusk if you change your mind."
+        }
+      ],
+      "look": [
+        {
+          "speaker": "stranger",
+          "text": "Here. 30 in, 50 back, signed by the Baker. Go and ask him yourself if you like.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "stranger",
+          "text": "No deadline, no secret, nothing to sign twice. Take your time.",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "Buy a crate (30 ✦)"
+            },
+            {
+              "id": "refuse",
+              "text": "I'll pass"
+            }
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "speaker": "stranger",
+          "text": "Thank you, friend! Show the Baker the receipt. Enjoy.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Written terms, a number you can check, no rush: that is what a fair deal looks like. Good eye."
+        }
+      ],
+      "refuse": [
+        {
+          "speaker": "stranger",
+          "text": "Fair enough. The crate keeps, and so does my smile."
+        },
+        {
+          "speaker": "owl",
+          "text": "Not every stranger is a trap. This one passed every check. Saying no is fine; knowing why is better."
+        }
+      ],
+      "tell": "Written receipt, a price you can verify with the Baker, no hurry. Fair."
+    },
+    "honestSwap": {
+      "id": "honestSwap",
+      "lesson": "scams",
+      "season": 3,
+      "pitch": [
+        {
+          "speaker": "stranger",
+          "text": "What a lovely island! I'm clearing out lanterns: 20 Spark for lanterns worth 34 at any stall.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "stranger",
+          "text": "Weigh them first, price them at a stall, then decide. Fair?",
+          "choices": [
+            {
+              "id": "look",
+              "text": "Let me check them"
+            },
+            {
+              "id": "walk",
+              "text": "Not today"
+            }
+          ]
+        }
+      ],
+      "walk": [
+        {
+          "speaker": "stranger",
+          "text": "Sure thing. They'll still be lanterns tomorrow."
+        }
+      ],
+      "look": [
+        {
+          "speaker": "stranger",
+          "text": "Check away. Ask any stallholder: 34 each, I'm just short of storage.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "stranger",
+          "text": "No deadline. If it doesn't add up for you, walk on, no hard feelings.",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "Swap 20 for 34"
+            },
+            {
+              "id": "refuse",
+              "text": "I'll pass"
+            }
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "speaker": "stranger",
+          "text": "Wonderful! Enjoy the glow, friend.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "You inspected first and the numbers held up. Checking before paying is the whole trick."
+        }
+      ],
+      "refuse": [
+        {
+          "speaker": "stranger",
+          "text": "No worries at all. Safe travels."
+        },
+        {
+          "speaker": "owl",
+          "text": "A fair offer politely declined. Nothing lost; you only pay for what you can verify."
+        }
+      ],
+      "tell": "You inspect first, the numbers are small and checkable, no deadline. Fair."
+    },
+    "neighborGift": {
+      "id": "neighborGift",
+      "lesson": "scams",
+      "season": 5,
+      "pitch": [
+        {
+          "speaker": "stranger",
+          "text": "New stallholder? Welcome! A sample basket from the neighbours. Free. Truly.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "stranger",
+          "text": "No catch, no paper to sign. Just a hello. Take a look?",
+          "choices": [
+            {
+              "id": "look",
+              "text": "What's in it?"
+            },
+            {
+              "id": "walk",
+              "text": "No thanks"
+            }
+          ]
+        }
+      ],
+      "walk": [
+        {
+          "speaker": "stranger",
+          "text": "Of course! The offer stays open, and so does the welcome."
+        }
+      ],
+      "look": [
+        {
+          "speaker": "stranger",
+          "text": "Fruit, bread, a candle. Worth about 12 Spark. That's all. Nothing to sign.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "stranger",
+          "text": "If you ever want to give back, buy from the market. That's the only hope I have.",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "Take the basket"
+            },
+            {
+              "id": "refuse",
+              "text": "I'm fine, thanks"
+            }
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "speaker": "stranger",
+          "text": "Welcome to the island, friend!",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Free, with nothing to sign and nothing to hurry. Real gifts do not come with hooks."
+        }
+      ],
+      "refuse": [
+        {
+          "speaker": "stranger",
+          "text": "That's alright. Take care now."
+        },
+        {
+          "speaker": "owl",
+          "text": "You can say no to a real gift too. Just make sure you can tell the difference."
+        }
+      ],
+      "tell": "Free, nothing to sign, no hurry, and leaving is fine. A real gift."
+    }
   }
 }

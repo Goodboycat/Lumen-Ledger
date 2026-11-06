@@ -9,7 +9,8 @@
 //   MASTER_PLAN_V6 §6: "nothing in a season is at the same day01 mark two seasons in a row".
 export const SEASONS_VERSION = 1;
 export const MARK_MIN_GAP = 0.02;
-export const MARK_KINDS = ['trickle', 'warn', 'event', 'scam', 'wave', 'novelty'];
+export const MARK_KINDS = ['trickle', 'warn', 'event', 'scam', 'wave', 'novelty', 'stranger'];
+export const STRANGER_KINDS = ['fair', 'scam'];   // T4
 /** Mirrors Game.js SCHEDULER_MARKS (S37/41C) so a game without data/seasons.json behaves exactly as before 43A. */
 export const LEGACY_MARKS = { trickle: [0.34, 0.67], warn: 0.30, event: 0.45, scam: 0.70, wave: (season) => (season === 1 ? 0.55 : 0.70) };
 export const LEGACY_CURVE = [70, 90, 110, 130, 150];
@@ -40,6 +41,7 @@ export function createSeasonScript(data = null) {
       const r = seasons[k]; const s = Math.max(1, season | 0);
       return { len: r.len ?? 150, trickle: (r.trickle || []).slice(), warn: r.warn ?? null, event: r.event ?? null, forceEvent: r.forceEvent ?? null,
         scam: r.scam ?? null, scamKind: r.scam == null ? null : (r.scamKind || 'npc'), wave: r.wave ?? null, novelty: r.novelty ? { id: r.novelty.id, at: r.novelty.at } : null,
+        strangers: (r.strangers || []).map((x) => ({ at: x.at, kind: x.kind || 'scam' })),   // T4: friendly strangers (legacy rows: none)
         key: k, rotated: k !== String(s) };
     },
     len(season) { return SS.for(season).len; },
@@ -53,6 +55,7 @@ export function createSeasonScript(data = null) {
       if (r.scam != null) out.push({ kind: 'scam', at: r.scam, payload: { scamKind: r.scamKind } });
       if (r.wave != null) out.push({ kind: 'wave', at: r.wave });
       if (r.novelty) out.push({ kind: 'novelty', at: r.novelty.at, payload: { id: r.novelty.id } });
+      (r.strangers || []).forEach((x, i) => out.push({ kind: 'stranger', at: x.at, payload: { kind: x.kind || 'scam', index: i } }));   // T4
       return out.sort((a, b) => a.at - b.at);
     },
     validate() {
@@ -66,10 +69,12 @@ export function createSeasonScript(data = null) {
         r.trickle.forEach((v, i) => { if (!in01(v)) errs.push(`${tag}: trickle[${i}] ${v} not in (0,1)`); if (i && v <= r.trickle[i - 1]) errs.push(`${tag}: trickle not ascending`); });
         for (const k of ['warn', 'event', 'scam', 'wave']) if (r[k] != null && !in01(r[k])) errs.push(`${tag}: ${k} ${r[k]} not in (0,1)`);
         if (r.novelty && (!r.novelty.id || !in01(r.novelty.at))) errs.push(`${tag}: novelty needs id + at in (0,1)`);
+        (r.strangers || []).forEach((x, i) => { if (!in01(x.at)) errs.push(`${tag}: strangers[${i}].at ${x.at} not in (0,1)`); if (!STRANGER_KINDS.includes(x.kind)) errs.push(`${tag}: strangers[${i}].kind must be fair|scam`); if (i && x.at <= r.strangers[i - 1].at) errs.push(`${tag}: strangers not ascending`); });
         if (r.scam != null && !['npc', 'baron'].includes(r.scamKind)) errs.push(`${tag}: scamKind must be npc|baron`);
         // consecutive-season rule (PLAN §6)
         const cur = { warn: r.warn, event: r.event, scam: r.scam, wave: r.wave, novelty: r.novelty?.at ?? null };
         r.trickle.forEach((v, i) => { cur['trickle' + i] = v; });
+        (r.strangers || []).forEach((x, i) => { cur['stranger' + i] = x.at; });
         if (prevOf.season === s - 1) for (const k of Object.keys(cur)) { const a = cur[k], b = prevOf.m[k]; if (a != null && b != null && Math.abs(a - b) < MARK_MIN_GAP) errs.push(`${tag}: ${k} ${a} equals S${s - 1}'s ${b} (gap < ${MARK_MIN_GAP})`); }
         prevOf.season = s; prevOf.m = cur;
       }

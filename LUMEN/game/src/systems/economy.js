@@ -151,6 +151,8 @@ export class Economy {
     this.demandFn = typeof opts.demandFn === 'function' ? opts.demandFn : null;   // 44C: (kind, season) → mult; stallInfo().fair × mult (Game.js wires sb.seasons.demandFor)
     this.events = opts.events || EVENTS;
     this.scams = opts.scams || SCAMS;
+    this.fairs = opts.fairs || {};          // T4: genuinely fair stranger deals (economyData FAIRS); {} in bare Economy instances
+    this.fairStats = { accepted: 0, refused: 0 };
     this.upgrades = opts.upgrades || UPGRADES;
     this.pierPays = opts.pierPays === true;   // 42D: interest is collected by the Baron at the pier (held in state.interestOwed until settleInterest()); default false = old auto path
     const c = this.config;
@@ -442,20 +444,39 @@ export class Economy {
     return out;
   }
   /** Pick a random "Too-Good Deal" (or by id). Returns the offer object (also stored in pendingOffer) and emits 'eco:scam'. */
-  offerScam(id) {
+  offerScam(id, { by = null } = {}) {
     const ids = Object.keys(this.scams); if (!ids.length) return null;
     const scam = this.scams[id] || this.scams[ids[Math.floor(this.rng() * ids.length)]];
-    const offer = { ...scam, offeredAt: this.state.season, isScam: true };
+    const offer = { ...scam, offeredAt: this.state.season, isScam: true, by };
     this.pendingOffer = offer;
     this.bus.emit('eco:scam', offer);
     return offer;
   }
+  /** T4: a genuinely fair stranger deal (this.fairs). Emits 'eco:fair' (NOT 'eco:scam' — no scam counters, no scam audio). Same pendingOffer slot as a scam. */
+  offerFair(id, { by = 'stranger' } = {}) {
+    const ids = Object.keys(this.fairs || {}); if (!ids.length) return null;
+    const fair = this.fairs[id] || this.fairs[ids[Math.floor(this.rng() * ids.length)]];
+    const offer = { ...fair, offeredAt: this.state.season, isFair: true, by };
+    this.pendingOffer = offer;
+    this.bus.emit('eco:fair', offer);
+    return offer;
+  }
+  _acceptFair(offer) {
+    let lostSpark = 0;
+    if (offer.cost) { const paid = Math.min(this.state.spark, round(offer.cost)); if (paid) this._addSpark(-paid, 'fair:' + offer.id); this.ledger.expenses += paid; lostSpark = paid; }
+    if (offer.payout) this.earn(offer.payout, 'fair:payout');
+    this.fairStats.accepted++; this.pendingOffer = null;
+    const out = { accepted: true, fair: true, id: offer.id, lostSpark, gained: round(offer.payout || 0), net: round((offer.payout || 0) - lostSpark), terms: offer.terms };
+    this.bus.emit('eco:fairResult', out); return out;
+  }
+  _refuseFair(offer) { this.fairStats.refused++; this.pendingOffer = null; const out = { accepted: false, refused: true, fair: true, id: offer.id, terms: offer.terms }; this.bus.emit('eco:fairResult', out); return out; }
   /**
    * Accept an offer. Scams hurt: `cost` is lost (Protect does NOT cover scams — lesson), `amount` loans come in at `trueRate`
    * (stored as debt + scamRate for the next endSeason). Returns { accepted:true, lostSpark, debtAdded } .
    */
   acceptOffer(offer = this.pendingOffer) {
     if (!offer) return { accepted: false };
+    if (offer.isFair) return this._acceptFair(offer);
     let lostSpark = 0, debtAdded = 0;
     if (offer.cost) { const paid = Math.min(this.state.spark, round(offer.cost)); if (paid) this._addSpark(-paid, 'scam:' + offer.id); this.ledger.expenses += paid; lostSpark = paid; if (offer.payout) this.earn(offer.payout, 'scam:payout'); }
     if (offer.amount) { this.state.debt += round(offer.amount); debtAdded = round(offer.amount); this._addSpark(offer.amount, 'scam:loan'); this.state.scamRate = Math.max(this.state.scamRate || 0, offer.trueRate || this.config.loanRate); this.bus.emit('eco:loan', { debt: this.state.debt, delta: debtAdded, kind: 'scam' }); }
@@ -469,6 +490,7 @@ export class Economy {
   /** Refuse the pending offer (Ledger Flash / player taps "No thanks") → small reputation + fog relief. */
   refuseOffer(offer = this.pendingOffer) {
     if (!offer) return { accepted: false };
+    if (offer.isFair) return this._refuseFair(offer);
     this.ledger.scamsRefused++;
     this._setFog(this.state.fog01 - 0.02, 'scam refused');
     this.pendingOffer = null;

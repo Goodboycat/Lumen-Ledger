@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "_doc": "43A season scripts. day01 marks. trickle = extra customer waves (first wave is always at day 0). scamKind: npc | baron | null. forceEvent overrides pickEvent. novelty.at is also a mark (season:novelty). Rule: no mark kind equals the previous season's same mark (|d| >= 0.02). endless rotates rows 6..10 (43D: the wrap S10→S11=row 6 also obeys the gap rule; raidDouble novelty ARMS the S6 wave 0.04 day before it lands). See LUMEN_extras/game/docs/HANDOFF_43Z.md. 44C demand: { stallKind: mult } on S2–S10 (S1 none). Exactly one mult ≥ 1.3 = HOT, one ≤ 0.7 = COLD; 0.3 ≤ mult ≤ 2; hot/cold differ from the previous season (incl. the S10→S11 rotate wrap). fair price × mult (economy.stallInfo) and PREFS weight × mult (customers) at read time.",
+  "_doc": "43A season scripts. day01 marks. trickle = extra customer waves (first wave is always at day 0). scamKind: npc | baron | null. forceEvent overrides pickEvent. novelty.at is also a mark (season:novelty). Rule: no mark kind equals the previous season's same mark (|d| >= 0.02). endless rotates rows 6..10 (43D: the wrap S10→S11=row 6 also obeys the gap rule; raidDouble novelty ARMS the S6 wave 0.04 day before it lands). See LUMEN_extras/game/docs/HANDOFF_43Z.md. 44C demand: { stallKind: mult } on S2–S10 (S1 none). Exactly one mult ≥ 1.3 = HOT, one ≤ 0.7 = COLD; 0.3 ≤ mult ≤ 2; hot/cold differ from the previous season (incl. the S10→S11 rotate wrap). fair price × mult (economy.stallInfo) and PREFS weight × mult (customers) at read time. T4 (S57) strangers: [{at, kind: 'fair'|'scam'}] = friendly strangers that walk in from the pier (scamNpc.js). 'scam' = the next scam the player has not met yet (all six, then a remix); 'fair' = a genuinely good deal. One in three or more is fair so refusing everything is not optimal. The older `scam`/`scamKind` marks stay (npc → also a stranger scam; baron → the Baron's own visit).",
   "seasons": {
     "1": {
       "len": 70,
@@ -14,7 +14,13 @@
       "scam": null,
       "scamKind": null,
       "wave": 0.55,
-      "novelty": null
+      "novelty": null,
+      "strangers": [
+        {
+          "at": 0.3,
+          "kind": "fair"
+        }
+      ]
     },
     "2": {
       "len": 90,
@@ -35,7 +41,13 @@
       "demand": {
         "lantern": 1.5,
         "flower": 0.6
-      }
+      },
+      "strangers": [
+        {
+          "at": 0.36,
+          "kind": "scam"
+        }
+      ]
     },
     "3": {
       "len": 110,
@@ -57,7 +69,13 @@
       "demand": {
         "tea": 1.5,
         "tool": 0.6
-      }
+      },
+      "strangers": [
+        {
+          "at": 0.3,
+          "kind": "fair"
+        }
+      ]
     },
     "4": {
       "len": 130,
@@ -78,7 +96,13 @@
       "demand": {
         "cloth": 1.4,
         "fruit": 0.7
-      }
+      },
+      "strangers": [
+        {
+          "at": 0.36,
+          "kind": "scam"
+        }
+      ]
     },
     "5": {
       "len": 150,
@@ -100,7 +124,13 @@
       "demand": {
         "pottery": 1.4,
         "toy": 0.6
-      }
+      },
+      "strangers": [
+        {
+          "at": 0.4,
+          "kind": "fair"
+        }
+      ]
     },
     "6": {
       "len": 150,
@@ -121,7 +151,17 @@
       "demand": {
         "tool": 1.5,
         "tea": 0.6
-      }
+      },
+      "strangers": [
+        {
+          "at": 0.28,
+          "kind": "scam"
+        },
+        {
+          "at": 0.8,
+          "kind": "fair"
+        }
+      ]
     },
     "7": {
       "len": 150,
@@ -143,7 +183,13 @@
       "demand": {
         "lantern": 1.4,
         "bread": 0.7
-      }
+      },
+      "strangers": [
+        {
+          "at": 0.34,
+          "kind": "fair"
+        }
+      ]
     },
     "8": {
       "len": 150,
@@ -164,7 +210,13 @@
       "demand": {
         "bread": 1.5,
         "fish": 0.6
-      }
+      },
+      "strangers": [
+        {
+          "at": 0.3,
+          "kind": "scam"
+        }
+      ]
     },
     "9": {
       "len": 150,
@@ -186,7 +238,13 @@
       "demand": {
         "book": 1.4,
         "cloth": 0.6
-      }
+      },
+      "strangers": [
+        {
+          "at": 0.38,
+          "kind": "fair"
+        }
+      ]
     },
     "10": {
       "len": 150,
@@ -207,7 +265,13 @@
       "demand": {
         "toy": 1.5,
         "lantern": 0.6
-      }
+      },
+      "strangers": [
+        {
+          "at": 0.33,
+          "kind": "scam"
+        }
+      ]
     },
     "endless": {
       "rotate": [
