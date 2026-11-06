@@ -224,11 +224,13 @@ export function installCrew(sb) {
     for (const t of ['tallyOwl', 'packMole']) if (helper(t)) acc[t] = Math.max(0, Math.min(acc[t] + Math.max(0, r[t]) * dt / len, r[t] - C.sum[t]));
   }
   const stallPos = (h) => (h.jobStall ? { x: h.jobStall.group.position.x, z: h.jobStall.group.position.z } : null);
-  /** Owl / Mole work bout: pop what accrued since the last bout (1 decimal below 10 ✦). Nothing accrued yet → a grey "+0": it shows what the crew is waiting for. */
+  /** Owl / Mole work bout: pop what accrued since the last bout (1 decimal below 10 ✦). S57: NEVER a "+0" — with nothing accrued the keeper just works
+   *  silently (the amount keeps accruing and pops later as one real number). Tiny crumbs (< POP_MIN_V) wait so a pop is always worth reading. */
+  const POP_MIN_V = 0.1;
   function boutPop(h) {
     const t = h.type; if (t !== 'tallyOwl' && t !== 'packMole') return; const sign = t === 'tallyOwl' ? '+' : '−', v = acc[t];
-    if (v >= 0.1) { const shown = v >= 10 ? Math.floor(v) : Math.floor(v * 10) / 10; acc[t] -= shown; payoff(h, shown, sign + fmt(shown), t === 'packMole' ? stallPos(h) : null, false); }
-    else { C.cnt[t]++; popAt(h.g.position.x, h.g.position.z, sign + '0', '#CFD8DC'); bus.emit('crew:payoff', { type: t, value: 0, text: sign + '0' }); }
+    if (v < POP_MIN_V) return;
+    const shown = v >= 10 ? Math.floor(v) : Math.floor(v * 10) / 10; acc[t] -= shown; payoff(h, shown, sign + fmt(shown), t === 'packMole' ? stallPos(h) : null, false);
   }
   const onSale = (out) => {
     if (!out || !(out.paid > 0)) return; const k = String(out.stallId || '').replace(/^stall_/, ''); C.sales.set(k, (C.sales.get(k) || 0) + 1);

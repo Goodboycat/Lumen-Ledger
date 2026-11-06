@@ -92,6 +92,8 @@ export async function run({ resolve, pathToFileURL }) {
     const sid = ['stall_fruit', 'stall_bread', 'stall_tea', 'stall_flower'].find((id) => !sb.build.placeBlocker(id) && sb.build.entry(id)); if (!sid) throw new Error('no free stall type');
     { const hp = sb.hero.root.position; const cells = sb.island.gridCells().filter((c) => Math.hypot(c.x - hp.x, c.z - hp.z) >= 2.5); const c = cells.find((c) => sb.build.canPlace(sid, c.x, c.z, 0)); if (!c || !sb.build.place(sid, c.x, c.z, 0, { animate: false })) throw new Error('could not place ' + sid); }
     eco.allocate({ save: 400, protect: 300 }); sb.till?.refresh?.(); runS(2);
+    // S57: the gate's season is 3000 s, so Owl / Mole accrue ~0.1 ✦ in 80 s and (correctly) pop nothing — never a "+0". Show them at a real season length (150 s) for this window.
+    { const real = eco.seasonSecondsFor?.bind(eco); eco.seasonSecondsFor = () => 150; cleanups.push(() => { if (real) eco.seasonSecondsFor = real; }); }
     const stranger = A.lg.debug.stranger(); void stranger;
     for (let w = 0; w < 4; w++) { sb.cust.spawnWave(eco.state.season, 6); runS(10); }   // customers → sales → Bee pops
     A.lg.debug.event('festival'); eco.applyLoss(120, 'test:shock'); for (let w = 0; w < 4; w++) { sb.cust.spawnWave(eco.state.season, 6); runS(10); }

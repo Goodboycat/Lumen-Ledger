@@ -160,6 +160,7 @@ export class SlashTrail {
     this.geo.setDrawRange(0, Math.max(0, (v / 2 - 1) * 6));
   }
 }
+export const POP_NEAR = 1.25, POP_SLOT = 0.62, POP_STACK_MAX = 3;   // pop anti-overlap: radius (u), vertical slot (u), max lift slots
 export const POP_SLOW = 2.2, POP_MIN = 1.6;   // floating text: duration multiplier + minimum seconds (mobile readability)
 
 // ---------- Hit spark: star burst (instanced flat tris) ----------
@@ -234,7 +235,20 @@ export class PopTextPool {
     });
     c.restore();
     it.tex.needsUpdate = true;
-    it.sp.position.copy(pos); it.sp.position.y += 1.6; it.base = it.sp.position.y;
+    it.sp.position.copy(pos); it.sp.position.y += 1.6;
+    // S57 anti-overlap: a pop that would land on a live pop (same spot, same height band) is lifted one slot above it (max 3 slots, then nudged sideways)
+    for (let k = 0; k < POP_STACK_MAX; k++) {
+      let hit = null;
+      for (const o of this.items) {
+        if (o === it || o.life <= 0 || !o.sp.visible) continue;
+        const dx = o.sp.position.x - it.sp.position.x, dz = o.sp.position.z - it.sp.position.z;
+        if (dx * dx + dz * dz < POP_NEAR * POP_NEAR && Math.abs(o.sp.position.y - it.sp.position.y) < POP_SLOT * 0.95 && (!hit || o.sp.position.y > hit.sp.position.y)) hit = o;
+      }
+      if (!hit) break;
+      it.sp.position.y = hit.sp.position.y + POP_SLOT;
+      if (k === POP_STACK_MAX - 1) it.sp.position.x += (it.sp.position.x >= hit.sp.position.x ? 1 : -1) * 0.7;
+    }
+    it.base = it.sp.position.y;
     it.sp.visible = true; it.life = it.dur = dur; it.size = size; it.sp.material.opacity = 1;
   }
   update(dt) {
