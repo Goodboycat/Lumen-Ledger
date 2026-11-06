@@ -10,6 +10,8 @@
 
 /* banner: slides down under the HUD at every new season */
 .ll-season-banner { position: absolute; left: 50%; top: calc(max(10px, env(safe-area-inset-top)) + 70px); transform: translate(-50%, -30px); z-index: 32; width: min(440px, calc(100vw - 32px)); background: var(--paper); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 5px 0 var(--ink); padding: 8px 14px 10px; text-align: center; opacity: 0; pointer-events: none; transition: opacity .25s, transform .35s cubic-bezier(.34,1.56,.64,1); }
+/* phones: the HUD stacks the Season pill under the Spark panel (≈ 62–92 px) — keep the banner clear of it (S56 fix, found by screenshot) */
+@media (max-width: 600px) { .ll-season-banner { top: calc(max(10px, env(safe-area-inset-top)) + 96px); } }
 .ll-season-banner.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
 .ll-sb-top { font-size: 11px; font-weight: 900; letter-spacing: .5px; text-transform: uppercase; color: #7a4a00; }
 .ll-sb-title { font-size: 17px; font-weight: 800; line-height: 1.2; margin: 2px 0; }
