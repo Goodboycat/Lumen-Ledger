@@ -26,6 +26,8 @@ export class Input {
     //   drag (then onDrag(world, ev) every move and onDragEnd(world, ev, cancelled) on release); a tap is never reported as a drag.
     this.onDragStart = null; this.onDrag = null; this.onDragEnd = null;
     this.dragging = false; this._dragId = -1; this._down = { x: 0, y: 0 };
+    // T2: press-and-HOLD ≥ holdMs without moving (not the joystick, not a drag) → onHold(world, ev) once. A hold never becomes a tap (taps are < 300 ms).
+    this.onHold = null; this.holdMs = 350; this._holdT = 0;
     this._bind();
   }
 
@@ -58,6 +60,8 @@ export class Input {
           return;
         }
       }
+      clearTimeout(this._holdT);
+      if (this.onHold) { const id = e.pointerId, cx = e.clientX, cy = e.clientY; this._holdT = setTimeout(() => { if (!this.pointerDown || this._dragId !== id || this.dragging || !this.onHold) return; const w = this.worldAt(cx, cy); if (w) this.onHold(w, e); }, this.holdMs); }
     });
     d.addEventListener('pointermove', (e) => {
       if (this.joystick.active && e.pointerId === this.joystick.id) {
@@ -71,6 +75,7 @@ export class Input {
       pos(e);
       // S36: drag detection — once the pointer that went down travels > 10 px, offer the drag to onDragStart (world point UNDER THE DOWN spot)
       if (this.pointerDown && e.pointerId === this._dragId) {
+        if (this._holdT && Math.hypot(e.clientX - downX, e.clientY - downY) > 10) { clearTimeout(this._holdT); this._holdT = 0; }   // T2: moved → not a hold
         if (!this.dragging && this.onDragStart && Math.hypot(e.clientX - downX, e.clientY - downY) > 10) {
           const w = this.worldAt(downX, downY); pos(e);
           if (w && this.onDragStart(w, e) === true) { this.dragging = true; if (e.pointerType === 'touch') this.pointerDrag = -1; }
@@ -85,6 +90,7 @@ export class Input {
         if (this.onJoystick) this.onJoystick(false);
         return;
       }
+      clearTimeout(this._holdT); this._holdT = 0;
       this.pointerDown = false; if (e.pointerId === this.pointerDrag) this.pointerDrag = -1;
       if (this.dragging && e.pointerId === this._dragId) {   // S36: a claimed drag ends here and never counts as a tap
         this.dragging = false; this._dragId = -1; pos(e); this._project();

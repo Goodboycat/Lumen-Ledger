@@ -1097,6 +1097,13 @@ function installRunWires(lg) {
   //   · tap EMPTY LAND with the tray closed → bus 'ui:tap:land' {x,z} + the tray opens; the next build.enter(id) starts its ghost on that
   //     cell (lg.tapCell, consumed once, forgotten after 20 s or when the tray closes). Tray already open + land tap = placement confirm (unchanged).
   lg.tapCell = null;
+  // T2 hold-to-ask: press-and-hold ≥ 350 ms on a guideable thing = its card, NO game action (the tap that acts never fires: taps are < 300 ms)
+  const prevHold = lg.game.input?.onHold;
+  if (lg.game.input) lg.game.input.onHold = (world, ev) => {
+    if (!lg.sb || lg.game.paused || ui?.isModal?.() || build.mode === 'place' || build.mode === 'drag' || lg.demolishMode) { prevHold?.(world, ev); return; }
+    if (!lg.curiosity?.tap(world, { hold: true })) prevHold?.(world, ev);
+  };
+  offs.push(() => { if (lg.game.input) lg.game.input.onHold = prevHold || null; });
   lg.guideTap = (world) => {
     const C = lg.curiosity; if (!C || !world || !lg.sb || lg.game.paused || ui?.isModal?.() || build.mode === 'place' || build.mode === 'drag' || lg.demolishMode) return false;
     const hint = C.tap(world); if (!hint) return false;
