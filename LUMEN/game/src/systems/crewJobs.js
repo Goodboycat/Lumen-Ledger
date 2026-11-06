@@ -31,7 +31,7 @@ const fresh = () => ({ tallyOwl: 0, packMole: 0, sparkBee: 0, guardTortoise: 0, 
 const fmt = (v) => (v >= 10 ? String(Math.round(v)) : String(Math.round(v * 10) / 10));   // pops stay <= 4 chars: "+0.3" "-12" "+10%"
 
 export function installCrew(sb) {
-  const { eco } = sb, bus = sb.game.bus, offs = sb._offs || (sb._offs = []);
+  const { eco } = sb, bus = sb.game.bus, offs = [];   // own list: installCrew runs BEFORE createSandbox reassigns sb._offs, so dispose() (destroySandbox) unsubscribes these itself
   const C = { on: true, sum: fresh(), cnt: fresh(), beeAcc: 0, beePopT: -9, sales: new Map(), t: 0, retargetT: 0, foxSeen: 0, flowers: null, flowerCount: 0, lastSeason: 0 };
 
   // ------------------------------------------------------------------ anchors
@@ -287,7 +287,7 @@ export function installCrew(sb) {
       C.retargetT += dt; if (C.retargetT >= RETARGET_S) { C.retargetT = 0; C.sales.forEach((v, k) => C.sales.set(k, v * 0.97)); for (const h of sb.helpers) if (h.job && h.job.state !== 'arrive') retarget(h); }
       for (const h of sb.helpers) { if (h.job && h.job.born == null) h.job.born = C.t; updateOne(h, dt); }
     },
-    dispose() { if (C.flowers) { sb.game.scene.remove(C.flowers); C.flowers.geometry.dispose(); C.flowers.material.dispose(); C.flowers = null; } eco.applyLoss = baseLoss; },
+    dispose() { for (const f of offs.splice(0)) { try { f(); } catch { /* ok */ } } if (C.flowers) { sb.game.scene.remove(C.flowers); C.flowers.geometry.dispose(); C.flowers.material.dispose(); C.flowers = null; } eco.applyLoss = baseLoss; },
   });
   return C;
 }

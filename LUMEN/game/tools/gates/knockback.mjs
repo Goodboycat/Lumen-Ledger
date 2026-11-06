@@ -126,8 +126,8 @@ export async function run({ resolve, pathToFileURL }) {
     const sb = createSandbox(game, { headless: true, seasonSeconds: 300, seed: 3 });
     const dt = 1 / 30; const step = () => { game.time += dt; game.sequences.update(dt); game.tweens.update(dt); for (const s of game.systems) s.update?.(dt); };
     sb.eco.state.spark = 999; const h = sb.keys.hire(); if (!h || !h.seat || !h.anim.canStand) throw new Error('hire / seat / canStand');
-    for (let i = 0; i < 30; i++) step();
-    if (h.anim.current !== 'work' && h.stall) throw new Error('helper not working: ' + h.anim.current);
+    for (let i = 0; i < 30 * 6; i++) step();   // T3: a hired helper first walks in from the pier to its post (≤ 3 s), then idles / works
+    if (!h.job || !['work', 'idle'].includes(h.anim.current)) throw new Error('helper not at its post: ' + h.anim.current + ' job ' + h.job?.state);
     // helpers are in the hero's target list
     const targets = sb.hero.deps.targets(); const tgt = targets.find((t) => t.helper === h); if (!tgt) throw new Error('helper missing from sword targets');
     // Glimmer targets exclude pooled/despawning
@@ -139,7 +139,7 @@ export async function run({ resolve, pathToFileURL }) {
     if (!(far > 0.25)) throw new Error(`helper barely slid ${far.toFixed(2)}`);
     let walked = false, back = false; for (let i = 0; i < 6 * 30; i++) { step(); if (h.anim.current === 'walk') walked = true; if (!h.returning) { back = true; break; } }
     const dSeat = Math.hypot(h.g.position.x - seat.x, h.g.position.z - seat.z);
-    if (!walked || !back || dSeat > 0.05 || h.anim.current !== (h.stall ? 'work' : 'idle')) throw new Error(`walk back: walked ${walked} back ${back} d ${dSeat.toFixed(2)} anim ${h.anim.current}`);
+    if (!walked || !back || dSeat > 0.05 || !['work', 'idle'].includes(h.anim.current)) throw new Error(`walk back: walked ${walked} back ${back} d ${dSeat.toFixed(2)} anim ${h.anim.current}`);
     // 3 hits → 2 ouch pops max rule is cosmetic; just check the counter and no spark cost
     // own-stall cell allowed (seat sits inside it), other stalls + water blocked
     if (!h.anim.canStand(seat.x, seat.z) || h.anim.canStand(99, 99)) throw new Error('canStand: seat must be standable, open sea not');
