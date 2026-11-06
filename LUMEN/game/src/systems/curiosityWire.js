@@ -51,7 +51,7 @@ export function installCuriosity(lg) {
     const stalls = sb.build?.stalls?.() || [];
     for (const s of stalls) {
       const p = s.group?.position; if (!p) continue;
-      add('stall:' + s.id, p.x, p.z, 'stall:any', 2.4, 1.6, false, true, 'stall:upgrade');
+      add('stall:' + s.id, p.x, p.z, 'stall:any', 2.4, 1.6, false, true, () => ((sb.eco?.state?.season || 1) >= 2 && (s.level || 1) < 3 ? 'stall:upgrade' : null));   // linger → the upgrade card only from Season 2 and while an upgrade exists (S1: nothing to upgrade with yet)
       const sg = s.slots?.sign; if (sg && worldXZ(sg, _xz)) add('sign:' + s.id, _xz.x, _xz.z, 'sign:price', 1.6, 1.0, false, false);
     }
     // tills with coins
