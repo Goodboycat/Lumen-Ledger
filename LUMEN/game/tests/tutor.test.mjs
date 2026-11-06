@@ -17,10 +17,10 @@ function mount(seen = []) {
   return { bus, log, root, tutor, shown: () => log.filter((e) => e[0] === 'tutor:shown').map((e) => e[1].id) };
 }
 
-test('data/tutor.json: ≤ 16 cards, ids unique, text ≤ 60 chars, one sentence-ish, D2 card set present', () => {
-  assert.ok(Array.isArray(data.cards) && data.cards.length <= 16, 'card count');
+test('data/tutor.json: ids unique, text ≤ 60 chars, every card has an icon + group, D2 card set present (T2: 47 cards)', () => {
+  assert.ok(Array.isArray(data.cards) && data.cards.length >= 16, 'card count');
   const ids = new Set();
-  for (const c of data.cards) { assert.ok(c.id && !ids.has(c.id), 'id ' + c.id); ids.add(c.id); assert.ok(String(c.text || '').length <= 60, c.id + ' > 60 chars'); assert.ok(c.icon, c.id + ' icon'); }
+  for (const c of data.cards) { assert.ok(c.id && !ids.has(c.id), 'id ' + c.id); ids.add(c.id); assert.ok(String(c.text || '').length <= 60, c.id + ' > 60 chars'); assert.ok(c.icon, c.id + ' icon'); assert.ok(c.group, c.id + ' group'); }
   for (const must of ['onBuildOpen', 'onDemolish', 'onDecorTab', 'onFirstStall', 'onFirstCoin', 'onJarsTab', 'onFirstDeposit', 'onWave', 'onSeason2', 'onLocked', 'onCuriosityLull', 'verb:move', 'verb:coin', 'verb:bonk', 'verb:stall', 'verb:deposit']) assert.ok(ids.has(must), 'missing ' + must);
 });
 

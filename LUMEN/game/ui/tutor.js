@@ -102,7 +102,7 @@ export function mountTutor(root, opts = {}) {
   }
   function retire(id) {
     const c = cards.get(id); if (!c) return false;
-    counts[id] = RETIRED; if (!seen.includes(id)) seen.push(id);
+    counts[id] = RETIRED;                                                    // learned by doing: never offered again, but NOT 'seen' (nothing was shown)
     const qi = st.queue.findIndex((q) => q.c.id === id); if (qi >= 0) st.queue.splice(qi, 1);
     if (st.cur && st.cur.id === id && st.mode !== 'ask') api.dismiss('done');
     return true;
@@ -134,6 +134,10 @@ export function mountTutor(root, opts = {}) {
       display(c, 'ask', world); return true;
     },
     retire,
+    /** Restore persisted progress (save slot / CONTINUE): counts {id:n} and/or the old seen list (each id = 1). Never lowers a count. */
+    merge(o = {}) { if (Array.isArray(o.seen)) for (const id of o.seen) if (typeof id === 'string') { counts[id] = Math.max(counts[id] || 0, 1); if (!seen.includes(id)) seen.push(id); } putCounts(o.counts); return api; },
+    /** Debug / reset: forget every card (counts, seen, queue, cool-downs). */
+    clear() { for (const k of Object.keys(counts)) delete counts[k]; seen.length = 0; st.queue.length = 0; st.last = {}; st.lullDone = false; st.lull = 0; return api; },
     has(id) { return cards.has(id); },
     cardIds() { return [...cards.keys()]; },
     card(id) { return cards.get(id) || null; },
