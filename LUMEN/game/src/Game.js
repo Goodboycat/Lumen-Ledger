@@ -120,7 +120,7 @@ export function createSandbox(game, opts = {}) {
   // BUGFIX B08: world fog / fog towers / vignette follow the economy immediately (start, resume), not only after the next eco:fog
   sb.syncWorld = () => { const f = sb.eco.state.fog01; sb.vfx.fog?.setCoverage?.(f, { immediate: true }); sb.world.towers.forEach((t) => t.userData.setActive?.(f > 0.3)); };
   sb.helpers = [];                                               // P3: hired helpers { g, anim, type, stall }
-  installCrew(sb);                                               // T3: sb.crew — arrival from the pier, posts, work loop, payoff pops (presentation only; h.stall still drives the till)
+  sb.crew = installCrew(sb);                                               // T3: sb.crew — arrival from the pier, posts, work loop, payoff pops (presentation only; h.stall still drives the till)
   sb.pick = 0;                                                   // current stall pick index (keys 1–9)
   wireEconomy(sb);
   wireAbilities(sb);

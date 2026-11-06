@@ -83,17 +83,54 @@ export function installCrew(sb) {
   const helper = (type) => sb.helpers.find((h) => h.type === type) || null;
 
   // ------------------------------------------------------------------ hire + movement
-  function speedFor(d) { return Math.max(WALK.min, Math.min(WALK.max, d / ARRIVE_S)); }
-  const TURNS = [0, 0.6, -0.6, 1.2, -1.2, 1.9, -1.9];
+  /** Shortest walkable route from (sx,sz) to (tx,tz): BFS on the integer land grid (8 neighbours, no corner cutting). Runs once per hire / retarget,
+   *  never per frame. Returns [{x,z}…] ending exactly on the target, or null when the target is unreachable (caller snaps instead of wandering). */
+  function findPath(h, sx, sz, tx, tz) {
+    const ok = h.anim.canStand || isLand, K = (x, z) => x * 4096 + z, R = Math.round;
+    const s0 = { x: R(sx), z: R(sz) }, t0 = { x: R(tx), z: R(tz) };
+    if (s0.x === t0.x && s0.z === t0.z) return [{ x: tx, z: tz }];
+    const prev = new Map([[K(s0.x, s0.z), null]]); let q = [s0], qi = 0, found = false;
+    const walkable = (x, z) => (x === t0.x && z === t0.z) || (x === s0.x && z === s0.z) || ok(x, z);
+    while (qi < q.length && q.length < 2500 && !found) {
+      const c = q[qi++];
+      for (let d = 0; d < 8; d++) {
+        const dx = DIRS[d][0], dz = DIRS[d][1], nx = c.x + dx, nz = c.z + dz, k = K(nx, nz);
+        if (prev.has(k) || !walkable(nx, nz)) continue;
+        if (dx && dz && (!walkable(c.x + dx, c.z) || !walkable(c.x, c.z + dz))) continue;   // no cutting a water / stall corner
+        prev.set(k, c); const n = { x: nx, z: nz }; q.push(n); if (nx === t0.x && nz === t0.z) { found = true; break; }
+      }
+    }
+    if (!found) return null;
+    const out = []; for (let c = t0; c; c = prev.get(K(c.x, c.z))) out.push({ x: c.x, z: c.z }); out.reverse(); out.shift();   // drop the start cell
+    if (out.length) out[out.length - 1] = { x: tx, z: tz }; else out.push({ x: tx, z: tz });
+    return out;
+  }
+  const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+  const pathLen = (sx, sz, pts) => { let l = 0, x = sx, z = sz; for (const p of pts) { l += Math.hypot(p.x - x, p.z - z); x = p.x; z = p.z; } return l; };
+  /** Start walking h to its post. speed from the route length so the walk always takes ≤ ARRIVE_S (hire) — returns seconds. */
+  function goPost(h, speed) {
+    const p = h.g.position, post = h.post, path = findPath(h, p.x, p.z, post.x, post.z);
+    if (!path) { p.x = post.x; p.z = post.z; h.job.path = null; return 0; }   // unreachable (an island cut in two by the player's builds) → snap, never stuck
+    h.job.path = path; h.job.pi = 0; h.job.stuck = 0; const len = pathLen(p.x, p.z, path);
+    h.job.speed = speed || Math.max(2.2, Math.min(WALK.max, len / ARRIVE_S)); return len / h.job.speed;
+  }
+  /** Follow h.job.path; true when the last point is reached. */
+  function followPath(h, dt) {
+    const j = h.job, p = h.g.position, path = j.path; if (!path) return true;
+    let budget = j.speed * dt;
+    while (j.pi < path.length && budget > 0) {
+      const w = path[j.pi], dx = w.x - p.x, dz = w.z - p.z, d = Math.hypot(dx, dz);
+      if (d <= budget) { p.x = w.x; p.z = w.z; budget -= d; j.pi++; continue; }
+      p.x += (dx / d) * budget; p.z += (dz / d) * budget; budget = 0; _a.set(w.x, 0, w.z); h.anim.faceTo(_a);
+    }
+    return j.pi >= path.length;
+  }
+  /** Short free hop (snail wander, ≤ 4 u on open ground): straight line, gives up quietly. */
   function stepToward(h, tx, tz, speed, dt) {
     const p = h.g.position, dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz); if (d < 0.06) { p.x = tx; p.z = tz; return true; }
-    const s = Math.min(d, speed * dt), ok = h.anim.canStand || isLand, base = Math.atan2(dx, dz); let moved = false;
-    for (let i = 0; i < TURNS.length && !moved; i++) {   // blocked (a stall, the sea)? steer round it instead of stopping dead
-      const a = base + TURNS[i], nx = p.x + Math.sin(a) * s, nz = p.z + Math.cos(a) * s;
-      if (ok(nx, nz)) { p.x = nx; p.z = nz; moved = true; h.job.stuck = 0; _a.set(p.x + Math.sin(a), 0, p.z + Math.cos(a)); h.anim.faceTo(_a); }
-    }
-    if (!moved) { h.job.stuck = (h.job.stuck || 0) + dt; if (h.job.stuck > 1.2) { p.x = tx; p.z = tz; return true; } }
-    return false;
+    const s = Math.min(d, speed * dt), ok = h.anim.canStand || isLand, nx = p.x + (dx / d) * s, nz = p.z + (dz / d) * s;
+    if (ok(nx, nz)) { p.x = nx; p.z = nz; _a.set(tx, 0, tz); h.anim.faceTo(_a); h.job.stuck = 0; return false; }
+    h.job.stuck = (h.job.stuck || 0) + dt; return h.job.stuck > 0.6;   // blocked → the wander ends here
   }
   function setPost(h, post) {
     h.post = post; h.seat = { x: post.x, z: post.z, fx: post.fx, fz: post.fz };
@@ -107,9 +144,9 @@ export function installCrew(sb) {
     const post = h.post;
     if (restore || sb.game.noCrewArrival) { h.g.position.set(post.x, 0, post.z); _a.set(post.fx, 0, post.fz); h.anim.faceToNow(_a); h.anim.play('idle'); return h; }
     const from = pier(); h.g.position.set(from.x, 0, from.z); h.job.state = 'arrive'; h.job.t = 0; h.anim.play('walk');
-    const d = Math.hypot(post.x - from.x, post.z - from.z); h.job.speed = speedFor(d);
+    const secs = goPost(h);
     popAt(from.x, from.z, HELLO[h.type] || 'Hi!', COLOR[h.type], 0.6);
-    bus.emit('crew:arrive', { type: h.type, x: from.x, z: from.z, seconds: +(d / h.job.speed).toFixed(2) });
+    bus.emit('crew:arrive', { type: h.type, x: from.x, z: from.z, seconds: +secs.toFixed(2) });
     return h;
   }
   /** seatHelper / build:moved / build:removed route here: re-read the post now, walk there if it moved. */
@@ -118,7 +155,7 @@ export function installCrew(sb) {
     const next = postOf(h), old = h.post;
     if (!old || Math.hypot(next.x - old.x, next.z - old.z) > 0.6 || h.type === 'sparkBee') {
       setPost(h, next);
-      if (h.job.state !== 'arrive' && h.type !== 'sparkBee' && h.type !== 'gardenerSnail') { h.job.state = 'move'; h.job.speed = 2.6; h.job.stuck = 0; h.anim.play('walk'); }
+      if (h.job.state !== 'arrive' && h.type !== 'sparkBee' && h.type !== 'gardenerSnail') { h.job.state = 'move'; goPost(h, 2.8); h.anim.play('walk'); }
     }
   }
 
@@ -140,7 +177,7 @@ export function installCrew(sb) {
     j.t += dt; const p = h.g.position, post = h.post;
     if (j.state === 'arrive' || j.state === 'move') {
       if (h.type === 'sparkBee' && j.state === 'move') { j.state = 'idle'; return; }
-      if (stepToward(h, post.x, post.z, j.speed || 3, dt)) {
+      if (followPath(h, dt)) {
         const first = j.state === 'arrive'; j.state = 'idle'; j.t = 0; h.anim.play('idle'); _a.set(post.fx, 0, post.fz); h.anim.faceTo(_a);
         if (first) bus.emit('crew:posted', { type: h.type, seconds: +(C.t - (j.born ?? C.t)).toFixed(2) });
       } else if (h.anim.current !== 'walk') h.anim.play('walk');
@@ -206,7 +243,7 @@ export function installCrew(sb) {
     const pb = eco.state.jars.protect, r = baseLoss(amount, reason, o); const h = C.on ? helper('guardTortoise') : null;
     if (h && r && o.useProtect !== false && r.absorbed > 0) {
       const base = Math.min(pb, Math.round(Math.max(0, +amount || 0)), Math.round(amount * eco.config.protectAbsorb)), extra = Math.max(0, r.absorbed - base);
-      if (extra > 0) payoff(h, extra, '🛡 ' + fmt(extra)); else { popAt(h.g.position.x, h.g.position.z, '🛡', COLOR.guardTortoise); work(h, 2); }
+      if (extra > 0) payoff(h, extra, '🛡 ' + fmt(extra)); else payoff(h, 0, '🛡');   // Protect already covered 100 % → the shell still flashes (value 0: nothing extra to credit)
     }
     return r;
   };
