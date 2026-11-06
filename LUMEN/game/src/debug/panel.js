@@ -121,9 +121,13 @@ function buildSections(ctx) {
   row(crisisNa ? naBtn('trigger crisis', crisisNa) : btn('trigger crisis', () => call('crisis', evSel.value)));
 
   h4('jars & crew');
-  const jarSel = sel(['spend', 'save', 'invest', 'protect']);
+  const JAR_KEYS = ['spend', 'save', 'protect', 'invest'];
+  const jarSel = sel(JAR_KEYS);
   const jarNa = naOf('unlockJar', 'save');
   row(jarSel, jarNa ? naBtn('unlock jar', jarNa) : btn('unlock jar', () => call('unlockJar', jarSel.value)));
+  // T2 fix: the jars state (state().jars.unlocked / placed) is shown here and in the select (✓ unlocked · ▣ placed), refreshed with the panel
+  const jarInfo = el('div', 'lld-res', 'jars: —'); body.appendChild(jarInfo);
+  const jarsState = () => { try { const j = D.state()?.jars; return { unlocked: j?.unlocked || [], placed: j?.placed || [] }; } catch { return { unlocked: [], placed: [] }; } };
   const crewSel = sel([], { label: 'next unowned', value: '' });
   row(crewSel, btn('hire crew', () => call('hire', crewSel.value || undefined)));
 
@@ -137,6 +141,16 @@ function buildSections(ctx) {
     [...s.children].forEach((c) => c.remove()); if (first) s.appendChild(first); list.forEach((id) => s.appendChild(opt(id, id)));
     if ([...s.children].some((o) => o.value === cur)) s.value = cur;
   };
-  ctx.refill = () => { fill(scamSel, ids.scams(), true); fill(evSel, ids.events(), false); fill(crewSel, ids.crew(), true); };
+  const refillJars = () => {
+    const { unlocked, placed } = jarsState();
+    for (const o of [...jarSel.children]) { const k = o.value, u = unlocked.includes(k), pl = placed.includes('jar_' + k) || placed.includes(k); o.textContent = `${k}${u ? ' ✓' : ' 🔒'}${pl ? ' ▣' : ''}`; }
+    jarInfo.textContent = `jars unlocked: ${unlocked.length ? unlocked.join(', ') : 'none'} · placed: ${placed.length ? placed.join(', ') : 'none'}`;
+    jarInfo.classList.toggle('bad', false);
+    // the unlock button is pointless for a jar that is already unlocked → label it, never disable (a debug tap must always answer)
+    if (jarBtn) jarBtn.textContent = unlocked.includes(jarSel.value) ? 'unlock jar (done)' : 'unlock jar';
+  };
+  const jarBtn = jarSel.parentElement?.querySelector?.('button') || null;
+  jarSel.addEventListener('change', refillJars);
+  ctx.refill = () => { fill(scamSel, ids.scams(), true); fill(evSel, ids.events(), false); fill(crewSel, ids.crew(), true); refillJars(); };
   ctx.refill();
 }
