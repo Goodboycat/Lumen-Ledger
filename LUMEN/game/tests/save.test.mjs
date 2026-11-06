@@ -4,7 +4,7 @@
 //   snapJarsToLand(build, isLand) → every jar not on land moves +1 z (≤ 6 tries) so no legacy save shows a floating jar
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseSnapshot, synthesizeLegacyJars, snapJarsToLand, SAVE_VERSION, SAVE_VERSIONS_OK, LEGACY_JAR_ROW, JAR_SNAP_TRIES } from '../src/systems/save.js';
+import { parseSnapshot, migrateJarsUnlocked, synthesizeLegacyJars, snapJarsToLand, SAVE_VERSION, SAVE_VERSIONS_OK, LEGACY_JAR_ROW, JAR_SNAP_TRIES } from '../src/systems/save.js';
 
 const v3 = (extra = {}) => ({
   v: 3, at: 1, version: 'S48', mode: 'story', state: 'playing', seasonsToWin: 10,
@@ -89,4 +89,30 @@ test('48F tutorSeen: v3 save → [], v4 list kept, non-string list → [], garba
   assert.deepEqual(parseSnapshot(JSON.stringify(v3({ v: 4, tutorSeen: ['onBuildOpen', 'verb:move'] }))).tutorSeen, ['onBuildOpen', 'verb:move']);
   assert.deepEqual(parseSnapshot(JSON.stringify(v3({ v: 4, tutorSeen: ['ok', 7] }))).tutorSeen, []);
   const d = parseSnapshot(JSON.stringify(v3({ v: 4, tutorSeen: 'nope' }))); assert.ok(d, 'still a valid slot'); assert.deepEqual(d.tutorSeen, []);
+});
+
+// ---- T1-C (FUN_PASS §4 T1.5): jarsUnlocked is an additive v4 field; legacy saves count every jar they already use as unlocked.
+test('T1.5 v4 save carrying jarsUnlocked keeps exactly that list (+ spend), unknown keys dropped', () => {
+  const d = parseSnapshot(JSON.stringify({ ...v3(), v: 4, jarsUnlocked: ['save', 'bogus'] }));
+  assert.ok(d); assert.deepEqual(d.jarsUnlocked, ['spend', 'save']);
+  assert.equal(SAVE_VERSION, 4, 'additive field: no version bump');
+});
+test('T1.5 legacy v3 save (4 implicit jars, season 1) → all four unlocked via the synthesized jar_* entries', () => {
+  const d = parseSnapshot(JSON.stringify(v3()));
+  assert.ok(d); assert.deepEqual(d.jarsUnlocked, ['spend', 'save', 'invest', 'protect']);
+});
+test('T1.5 v4 save WITHOUT the field: placed jars + progress + funded jars count as unlocked', () => {
+  const base = { ...v3(), v: 4 };
+  const mk = (build, season, jars) => { const e = JSON.parse(base.eco); e.state.season = season; e.state.jars = jars; return { ...base, build, eco: JSON.stringify(e) }; };
+  const z = { spend: 0, save: 0, invest: 0, protect: 0 };
+  assert.deepEqual(parseSnapshot(JSON.stringify(mk([{ id: 'stall_fruit', cx: 1, cz: 1 }], 1, z))).jarsUnlocked, ['spend'], 'fresh season-1 profile: only Spend');
+  assert.deepEqual(parseSnapshot(JSON.stringify(mk([{ id: 'jar_save', cx: 1, cz: 1 }], 1, z))).jarsUnlocked, ['spend', 'save'], 'a placed Save jar counts');
+  assert.deepEqual(parseSnapshot(JSON.stringify(mk([{ id: 'stall_fruit', cx: 1, cz: 1 }], 2, z))).jarsUnlocked, ['spend', 'save', 'protect'], 'season 2 → Save + Protect already earned');
+  assert.deepEqual(parseSnapshot(JSON.stringify(mk([{ id: 'stall_fruit', cx: 1, cz: 1 }], 3, z))).jarsUnlocked, ['spend', 'save', 'invest', 'protect'], 'season 3 → all four');
+  assert.deepEqual(parseSnapshot(JSON.stringify(mk([{ id: 'stall_fruit', cx: 1, cz: 1 }], 1, { ...z, invest: 5 }))).jarsUnlocked, ['spend', 'invest'], 'a funded jar was usable');
+});
+test('T1.5 migrateJarsUnlocked tolerates garbage (non-array / non-string entries) without throwing', () => {
+  assert.deepEqual(migrateJarsUnlocked({ jarsUnlocked: 'save' }), ['spend']);
+  assert.deepEqual(migrateJarsUnlocked({ jarsUnlocked: ['save', 3] }), ['spend']);
+  assert.deepEqual(migrateJarsUnlocked(null), ['spend']);
 });

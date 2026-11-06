@@ -13,6 +13,7 @@ export function installVerbChain(lg) {
   const on = (n, f) => offs.push(bus.on(n, f));
   const V = lg.verbs = { steps: VERB_STEPS, step: -1, t: 0, total: 0, flags: {}, autoBarks: 0 };
   const hints = Object.assign({}, HINTS, ...(lg.story?.data?.verbs || []).map((x) => ({ [x.id]: x.hint })));
+  const hintOf = (id) => (id === 'deposit' && V.flags.needJar ? (hints.depositBuild || HINTS.depositBuild) : hints[id]);   // T1-C: no Save jar yet → 'Build the Save jar: B → Jars'
   const hero = () => lg.sb?.hero?.root?.position;
   const ahead = (d) => { const r = lg.sb.hero.root, a = r.rotation?.y || 0, p = r.position; return { x: p.x + Math.sin(a) * d, z: p.z + Math.cos(a) * d }; };
   const persist = () => { if (lg.story?.state) lg.story.state.verbStep = V.step; };
@@ -33,7 +34,7 @@ export function installVerbChain(lg) {
     //   pre-placed jars) the hint becomes "build it" and the step is also done by build:placed jar_save — no silent 25 s wait (T1.7).
     deposit: () => { V.flags.applied = false; const sb = lg.sb; try { sb?.jarUnlocks?.unlockNow?.('save', 'verb'); } catch { /* ok */ }
       const jar = sb?.jarsWorld?.get?.('save') || null;
-      if (!jar) { V.flags.needJar = true; ui(hints.depositBuild || HINTS.depositBuild, 'B', false); return; }
+      if (!jar) { V.flags.needJar = true; return; }   // enter() emits the 'build it' hint (hintOf)
       V.flags.needJar = false; const jp = jar.position;
       let best = null, bd = Infinity; for (const l of sb.world.lanterns || []) { const d = Math.hypot(l.position.x - jp.x, l.position.z - jp.z); if (d < bd) { bd = d; best = l; } }
       best?.userData?.setLit?.(true); V.flags.litLantern = best;
@@ -55,7 +56,7 @@ export function installVerbChain(lg) {
   function enter(i) {
     V.step = i; V.t = 0; persist();
     if (i < 0 || i >= VERB_STEPS.length) return finish(false);
-    const id = VERB_STEPS[i]; SETUP[id]?.(); ui(hints[id], KEYS[id], false);
+    const id = VERB_STEPS[i]; SETUP[id]?.(); ui(hintOf(id), id === 'deposit' && V.flags.needJar ? 'B' : KEYS[id], false);
     bus.emit('tut:step', { id, index: i });
   }
   function finish(skipped) {
@@ -82,7 +83,7 @@ export function installVerbChain(lg) {
     V.t += dt; V.total += dt; const id = VERB_STEPS[V.step];
     if (DONE[id]()) return enter(V.step + 1);
     if (V.t >= AUTO_S) { V.autoBarks++; /* 48A: silent auto-advance, toast deleted */ return enter(V.step + 1); }
-    if (V.t >= PULSE_S && !V.flags.pulsed) { V.flags.pulsed = true; ui(hints[id], KEYS[id], true); }
+    if (V.t >= PULSE_S && !V.flags.pulsed) { V.flags.pulsed = true; ui(hintOf(id), id === 'deposit' && V.flags.needJar ? 'B' : KEYS[id], true); }
   };
   // once bonk completes, pay the sword's first job: 3 coins
   on('tut:step', (p) => { if (p.id === 'stall' && lg.sb?.dropTip) { const a = ahead(1.2); for (let k = 0; k < 3; k++) lg.sb.dropTip(a.x + (k - 1) * 0.5, a.z, 1); } V.flags.pulsed = false; });

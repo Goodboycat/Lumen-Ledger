@@ -139,9 +139,10 @@ export function migrateJarsUnlocked(d) {
   if (Array.isArray(d?.jarsUnlocked) && d.jarsUnlocked.every((k) => typeof k === 'string')) { for (const k of d.jarsUnlocked) if (JAR_KEYS_ALL.includes(k)) set.add(k); }
   else {
     for (const e of Array.isArray(d?.build) ? d.build : []) { const id = String(e?.id || ''); if (id.startsWith('jar_') && JAR_KEYS_ALL.includes(id.slice(4))) set.add(id.slice(4)); }
-    const season = Math.floor(+(d?.eco?.state?.season ?? (typeof d?.eco === 'string' ? 1 : 1))) || 1;
+    let eco = d?.eco; if (typeof eco === 'string') { try { eco = JSON.parse(eco); } catch { eco = null; } }   // parseSnapshot leaves d.eco as the stored string
+    const season = Math.floor(+(eco?.state?.season ?? 1)) || 1;
     if (season >= 2) { set.add('save'); set.add('protect'); } if (season >= 3) set.add('invest');
-    for (const k of JAR_KEYS_ALL) if (+(d?.eco?.state?.jars?.[k]) > 0) set.add(k);   // a jar that holds Spark was obviously usable
+    for (const k of JAR_KEYS_ALL) if (+(eco?.state?.jars?.[k]) > 0) set.add(k);   // a jar that holds Spark was obviously usable
   }
   return JAR_KEYS_ALL.filter((k) => set.has(k));
 }

@@ -66,3 +66,18 @@ test('46A: chain waits for the opening dialogue (PLAY_BUGS 45B-1) and does not c
   dlg.isOpen = false; for (let i = 0; i < 252; i++) frame(); assert.equal(steps(log).at(-1), 'coin', 'auto-advance resumes once the box closes');
   bus.emit('game:title', {}); assert.equal(lg.verbs.pending, null);
 });
+
+// ---- T1-C (FUN_PASS §4 T1.7 / §7.C): the deposit step never waits 25 s silently when no Save jar exists.
+test('T1.7 deposit step with no Save jar: unlocks Save, hints "Build the Save jar", completes on jars:deposit (no 25 s wait)', () => {
+  const { lg, bus, sb, log, frame } = makeLg();
+  const hints = []; bus.on('tutor:hint', (p) => hints.push(p));
+  const unlocked = []; sb.jarUnlocks = { unlockNow: (k, how) => unlocked.push([k, how]) }; sb.jarsWorld = { get: () => null };
+  installVerbChain(lg); bus.emit('game:start', {});
+  sb.hero.root.position.x = 3.2; frame(); sb.coins.length = 0; frame(); bus.emit('combat:miss', {}); frame(); bus.emit('build:placed', { id: 'stall_fruit' }); frame();
+  assert.equal(steps(log).at(-1), 'deposit');
+  assert.deepEqual(unlocked, [['save', 'verb']], 'the tutorial unlocks Save itself');
+  assert.match(hints.at(-1).text, /Build the Save jar/); assert.equal(hints.at(-1).id, 'deposit');
+  bus.emit('build:placed', { id: 'jar_save' }); assert.match(hints.at(-1).text, /tap the jar/i, 'built → next hint');
+  bus.emit('jars:deposit', { jar: 'save', amount: 10 }); frame();
+  const done = log.find((e) => e[0] === 'tut:done'); assert.ok(done && !done[1].skipped); assert.ok(done[1].seconds < 20, 'finished by the deposit, not the 25 s auto-advance: ' + done[1].seconds);
+});
