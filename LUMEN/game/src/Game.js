@@ -1402,6 +1402,7 @@ function applySnapshot(lg, sb, snap) {
   if (snap.autoApply != null) { lg.autoApply = !!snap.autoApply; lg.ui?.jars?.setAuto?.(lg.autoApply, 'restore'); }   // S03
   if (snap.cust && sb.cust?.load) sb.cust.load(snap.cust);                               // BUGFIX B16: per-stall prices (+ sale totals) survive CONTINUE
   sb.unlocks?.restore?.(snap);                                                           // 41D: v2 abilities/starsTotal (v1 → starters)
+  if (Array.isArray(snap.jarsUnlocked) && sb.jarUnlocks) { sb.jarUnlocks.restore(snap.jarsUnlocked); lg.ui?.build?.setHidden?.(sb.jarUnlocks.hiddenIds()); sb.game.bus.emit('jars:unlocked', { jar: null, how: 'restore', unlocked: sb.jarUnlocks.unlocked() }); }   // T1-C: silent restore (how 'restore' → no NEW tag / pulse)
   if (Array.isArray(snap.tutorSeen)) { lg.tutorSeen = [...snap.tutorSeen]; const seen = lg.ui?.tutor?.seen; if (Array.isArray(seen)) for (const id of snap.tutorSeen) if (!seen.includes(id)) seen.push(id); }   // 48F: cards already shown on this profile stay shown
   lg.ui?.hud?.sync?.(eco.state); lg.ui?.jars?.setBalances?.(eco.state.jars); lg.ui?.jars?.setDebt?.(eco.state.debt, eco.state.spark); lg.ui?.build?.setSpark?.(eco.state.spark);
   // 42D: a save taken while the Baron waited at the pier resumes AT the pier (interestOwed survives in eco.state); the ledger it leads to is the last report

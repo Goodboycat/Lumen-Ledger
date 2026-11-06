@@ -4,7 +4,7 @@
 // State persisted in lg.story.state.verbStep (-1 = done) so resume restarts at the current step.
 // Simplification vs. the original prompt: 'bonk' completes on any sword swing (combat:hit|combat:miss) and pays 3 coins — no crate prop.
 export const VERB_STEPS = ['move', 'coin', 'bonk', 'stall', 'deposit'];
-const HINTS = { move: 'Move Pip with WASD / tap', coin: 'Grab the coin ahead', bonk: 'Swing your sword: Space', stall: 'Press B, place a stall', deposit: 'Carry it to the Save jar by the cottage, press E' };   // 42B: jars are places
+const HINTS = { move: 'Move Pip with WASD / tap', coin: 'Grab the coin ahead', bonk: 'Swing your sword: Space', stall: 'Press B, place a stall', deposit: 'Carry it to the Save jar by the cottage, press E', depositBuild: 'Build the Save jar: B → Jars' };   // 42B: jars are places
 const KEYS = { move: 'WASD', coin: 'WASD', bonk: 'Space', stall: 'B', deposit: 'E' };   // 42B: E at the jar
 const PULSE_S = 10, AUTO_S = 25;
 
@@ -28,8 +28,13 @@ export function installVerbChain(lg) {
     coin: () => { const a = ahead(2); V.flags.coin = lg.sb.dropTip?.(a.x, a.z, 3); },
     bonk: () => { V.flags.swung = false; },
     stall: () => { V.flags.placed = false; },
-    // 42B: light the lantern nearest the Save jar (W.jars[1]) and bark the way; done = jars:deposit (any jar — the walk is the lesson)
-    deposit: () => { V.flags.applied = false; const sb = lg.sb, jar = sb?.jarsWorld?.get?.('save') || null; if (!jar) return;   // 48E: Save jar only if the player built one const jp = jar.position;
+    // 42B: light the lantern nearest the Save jar and bark the way; done = jars:deposit (any jar — the walk is the lesson).
+    // T1-C: the tutorial IS the first lesson → Save is unlocked here (the first-till-sweep rule may not have fired yet). With no Save jar built (S51 deleted the
+    //   pre-placed jars) the hint becomes "build it" and the step is also done by build:placed jar_save — no silent 25 s wait (T1.7).
+    deposit: () => { V.flags.applied = false; const sb = lg.sb; try { sb?.jarUnlocks?.unlockNow?.('save', 'verb'); } catch { /* ok */ }
+      const jar = sb?.jarsWorld?.get?.('save') || null;
+      if (!jar) { V.flags.needJar = true; ui(hints.depositBuild || HINTS.depositBuild, 'B', false); return; }
+      V.flags.needJar = false; const jp = jar.position;
       let best = null, bd = Infinity; for (const l of sb.world.lanterns || []) { const d = Math.hypot(l.position.x - jp.x, l.position.z - jp.z); if (d < bd) { bd = d; best = l; } }
       best?.userData?.setLit?.(true); V.flags.litLantern = best;
       bus.emit('story:bark', { speaker: 'owl', text: 'Carry it to the Save jar — by the cottage, the blue one.', anchor: { x: jp.x, y: 1.3, z: jp.z }, ttl: 3.6 }); },
@@ -45,6 +50,7 @@ export function installVerbChain(lg) {
   on('build:placed', (p) => { if (!p?.silent && String(p?.id).startsWith('stall_')) V.flags.placed = true; });
   on('ui:jar:apply', () => { V.flags.applied = true; });   // legacy ?sliders=1 path still completes the step
   on('jars:deposit', () => { V.flags.applied = true; });   // 42B: the real path — Pip walked the Spark to a jar
+  on('build:placed', (p) => { if (!p?.silent && p?.id === 'jar_save' && VERB_STEPS[V.step] === 'deposit' && V.flags.needJar) { V.flags.needJar = false; V.t = 0; V.flags.pulsed = false; ui('Now tap the jar and Pip puts 10 ✦ in', 'tap', false); } });   // T1-C: built → next hint (the deposit itself finishes the step)
 
   function enter(i) {
     V.step = i; V.t = 0; persist();

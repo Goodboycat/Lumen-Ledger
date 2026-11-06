@@ -18,7 +18,7 @@
     { "id": "onFirstDeposit","on": "jars:deposit",                              "icon": "shield",     "text": "Saved Spark earns. Pouch Spark gets spilled." },
     { "id": "onWave",        "on": "enemy:wave",                                "icon": "swords",     "text": "Collectors chase coins. Hit them or outrun." },
     { "id": "onSeason2",     "on": "eco:season", "match": { "season": 2 },     "icon": "calendar",   "text": "Each season: one HOT and one COLD good." },
-    { "id": "onLocked",      "on": "jars:locked",                               "icon": "lock",       "text": "Invest unlocks at the Ledger." },
+    { "id": "onLocked",      "on": "jars:locked",                               "icon": "lock",       "text": "Invest is locked until the Ledger." },
     { "id": "onCuriosityLull", "on": null,                                      "icon": "point",      "text": "Tap empty ground to build." }
   ]
 }

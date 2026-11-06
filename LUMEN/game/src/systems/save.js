@@ -84,6 +84,7 @@ export function snapshot(lg) {
     sched: sb.sched ? { event: !!sb.sched.event, scam: !!sb.sched.scam } : null,
     novelty: sb.novelty?.id || null,                                                   // 43D (v3): active novelty → applySnapshot calls novelties.start(id, season) again when midSeason
     noveltiesSeen: lg.story?.state?.noveltiesSeen ? [...lg.story.state.noveltiesSeen] : [],   // 43D (v3): mirror of story.state (also inside `story`), kept top-level for describe()/tools
+    jarsUnlocked: sb.jarUnlocks ? sb.jarUnlocks.serialize() : undefined,                 // T1-C (additive v4 field): jar keys revealed so far (data/jars.json rules)
     tutorSeen: Array.isArray(lg.ui?.tutor?.seen) ? [...lg.ui.tutor.seen] : (Array.isArray(lg.tutorSeen) ? [...lg.tutorSeen] : []),   // 48F (v4 field): curiosity-card ids shown once per profile (ui/tutor.js)
   };
 }
@@ -125,8 +126,24 @@ export function parseSnapshot(raw) {
   if (Math.floor(+d.v) < 3) { d.novelty = null; d.noveltiesSeen = []; }   // 43D migrate v1/v2 → no active novelty, nothing seen (story.state falls back to [])
   if (d.tutorSeen != null && (!Array.isArray(d.tutorSeen) || d.tutorSeen.some((a) => typeof a !== 'string'))) d.tutorSeen = [];   // 48F: tolerant — a bad list means "show the cards again", never a dropped slot
   if (!Array.isArray(d.tutorSeen)) d.tutorSeen = [];                        // 48F migrate: saves before the field → nothing seen
-  if (Math.floor(+d.v) < 4) synthesizeLegacyJars(d);                       // 48E migrate v1–v3 → 4 jar_* build entries (land-snap happens in applySnapshot)
+  if (Math.floor(+d.v) < 4) synthesizeLegacyJars(d);
+  // T1-C: jarsUnlocked is an additive v4 field (no version bump). Missing / malformed → legacy migration: Spend + every jar the player already owns (build[] jar_*,\n  //   incl. the 4 synthesized by synthesizeLegacyJars) + progress (season ≥ 2 → Save + Protect, ≥ 3 → Invest) so a mid-run profile never loses a jar it was using\n  //   and never waits for a one-shot rule that already fired in the past.\n
+  d.jarsUnlocked = migrateJarsUnlocked(d);                       // 48E migrate v1–v3 → 4 jar_* build entries (land-snap happens in applySnapshot)
   return d;
+}
+
+/** T1-C: the jar keys a snapshot counts as unlocked. Valid `jarsUnlocked` array → filtered to known keys (+ 'spend'); otherwise legacy derivation (see parseSnapshot). */
+export const JAR_KEYS_ALL = ['spend', 'save', 'invest', 'protect'];
+export function migrateJarsUnlocked(d) {
+  const set = new Set(['spend']);
+  if (Array.isArray(d?.jarsUnlocked) && d.jarsUnlocked.every((k) => typeof k === 'string')) { for (const k of d.jarsUnlocked) if (JAR_KEYS_ALL.includes(k)) set.add(k); }
+  else {
+    for (const e of Array.isArray(d?.build) ? d.build : []) { const id = String(e?.id || ''); if (id.startsWith('jar_') && JAR_KEYS_ALL.includes(id.slice(4))) set.add(id.slice(4)); }
+    const season = Math.floor(+(d?.eco?.state?.season ?? (typeof d?.eco === 'string' ? 1 : 1))) || 1;
+    if (season >= 2) { set.add('save'); set.add('protect'); } if (season >= 3) set.add('invest');
+    for (const k of JAR_KEYS_ALL) if (+(d?.eco?.state?.jars?.[k]) > 0) set.add(k);   // a jar that holds Spark was obviously usable
+  }
+  return JAR_KEYS_ALL.filter((k) => set.has(k));
 }
 
 export function hasSave(storage) { return load(storage) != null; }
