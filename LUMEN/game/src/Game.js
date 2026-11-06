@@ -138,6 +138,7 @@ export function createSandbox(game, opts = {}) {
   sb.update = (dt, _g, dtReal) => {
     sb.island.update(dt);
     if (!headless) { const tw = game.realTime ?? game.time; swayAll(tw); swayDecor(tw); updateLandmarks(dt); }   // S18: wind keeps blowing on the (paused) title backdrop
+    sb.autoWalkTick?.(dt);                                          // T1-B: tap a far jar → Pip walks over and deposits (steers hero.inputOverride)
     sb.hero.update(dt);
     sb.enemies.update(dt);
     sb.pier?.update(dt);                                            // 42D
@@ -417,6 +418,34 @@ function installJarsWorld(sb) {
     if (sb.signNear?.()) { sb._signHold = { id: sb.signNear(), t0: sb.game.time, fired: false }; return 'sign'; }   // 44A: E at a stall sign → price +1 on release (< 0.5 s) / −1 on hold ≥ 0.5 s
     return null;
   };
+  // T1-B: tap a jar from afar → Pip walks there on his own and puts 10 ✦ in (touch has no E key). Steers hero.inputOverride (the S18 cinematic hook, same
+  //   screen-relative space as the stick) straight at the jar — HeroController slides along props, there is no pathing. One walk at a time; ends on: arrival
+  //   (J.near() === jar → J.press() once + J.release(), jars:autowalk {jar, done:true}) · real stick input · pause / modal / build mode · 6 s timeout · jar removed.
+  //   Never takes the override from a cinematic (hero.inputOverride already set by someone else → refuse).
+  const AW_TIMEOUT = 6, AW_STICK = 0.2;
+  sb.autoWalk = null;
+  const awEnd = (why, extra = {}) => { const a = sb.autoWalk; if (!a) return; sb.autoWalk = null; if (hero.inputOverride === a.ov) hero.inputOverride = null; bus.emit('jars:autowalk', { jar: a.jar, done: why === 'arrived', why, ...extra }); };
+  sb.startAutoWalk = (jar) => {
+    const m = J.get(jar); if (!m || !hero?.root) return false;
+    if (J.near() === jar) return false;                                  // already there — caller deposits
+    if (sb.autoWalk) awEnd('retarget'); else if (hero.inputOverride) return false;   // a cinematic owns Pip
+    const ov = { move: { x: 0, y: 0 } }; hero.inputOverride = ov; sb.autoWalk = { jar, ov, t: 0 };
+    bus.emit('jars:autowalk', { jar, done: false, why: 'start' }); return true;
+  };
+  sb.cancelAutoWalk = (why = 'cancel') => awEnd(why);
+  sb.autoWalkTick = (dt) => {
+    const a = sb.autoWalk; if (!a) return;
+    const inp = sb.game.input?.move;
+    if (hero.inputOverride !== a.ov) { sb.autoWalk = null; return; }      // someone else took over
+    if (!J.get(a.jar)) return awEnd('removed');
+    if (sb.game.paused || sb.build?.mode !== 'idle') return awEnd('blocked');   // modals: lg.update cancels (it owns ui)
+    if (inp && inp.x * inp.x + inp.y * inp.y > AW_STICK * AW_STICK) return awEnd('input');   // the player grabbed the stick
+    a.t += dt; if (a.t > AW_TIMEOUT) return awEnd('timeout');
+    if (J.near() === a.jar) { a.ov.move.x = 0; a.ov.move.y = 0; const r = J.press(); J.release(); return awEnd('arrived', { result: r }); }
+    const h = hero.root.position, p = J.get(a.jar).position; let dx = p.x - h.x, dz = p.z - h.z; const d = Math.hypot(dx, dz) || 1;
+    a.ov.move.x = dx / d; a.ov.move.y = -dz / d;                          // screen up = −z world
+  };
+  sb._offs.push(() => { awEnd('destroy'); });
   // 44A: the hanging sign is a place too — nearest stall whose sign hangs ≤ 1.6 u from the hero (world xz). Same ui:price handler as the build panel.
   sb.signNear = () => { const h = hero?.root?.position; if (!h) return null; let best = null, bd = 1.6 * 1.6; for (const st of sb.build?.stalls?.() || []) { const sg = st.slots?.sign; if (!sg) continue; sg.getWorldPosition?.(_signV) || _signV.copy(st.group.position); const dx = _signV.x - h.x, dz = _signV.z - h.z; if (dx * dx + dz * dz < bd) { bd = dx * dx + dz * dz; best = st.id; } } return best; };
   sb._signHold = null;
@@ -740,6 +769,7 @@ export function createLumenGame(game, opts = {}) {
   lg.update = (dt, _g, dtReal) => {
     ui?.update?.(dtReal ?? dt);                                                       // UI animates even while the game is paused
     lg.cine?.update(dtReal ?? dt);                                                    // S18: cinematics run on the real clock (title is paused)
+    if (lg.sb?.autoWalk && ui?.isModal?.()) lg.sb.cancelAutoWalk('blocked');           // T1-B: a modal (dialogue / ledger) ends the auto-walk
     if (lg.sb && !game.paused) { lg.story?.update?.(dt); emitTick(lg); lg.tut?.update?.(dt); lg.verbs?.update?.(dt); lg.proxTick?.(dt); }   // 48D: proximity interact
   };
   game.add({ update: (dt, g, dtReal) => lg.update(dt, g, dtReal) });
@@ -1063,7 +1093,7 @@ function installRunWires(lg) {
   lg.landTap = (world) => {
     if (!lg.sb || lg.game.paused || ui?.isModal?.() || build.mode === 'place' || build.mode === 'drag' || lg.demolishMode || !world) return false;
     const J = lg.sb.jarsWorld; const ids = J?.ids?.() || [];
-    for (const id of ids) { const m = J.meshOf?.(id); const p = m?.position || m; if (p && Math.hypot(p.x - world.x, p.z - world.z) <= 1.2) { lg.interact(); return true; } }
+    for (const id of ids) { const m = J.meshOf?.(id); const p = m?.position || m; if (p && Math.hypot(p.x - world.x, p.z - world.z) <= 1.2) { if (J.near() !== id && lg.sb.startAutoWalk?.(id)) return true; lg.interact(); return true; } }   // T1-B: far jar → auto-walk, then deposit
     if ((lg.sb.pier?.near?.() || lg.sb.scamNpc?.near?.() || lg.sb.novelty?.near?.()) && hero?.root && Math.hypot(hero.root.position.x - world.x, hero.root.position.z - world.z) <= 2.5) { lg.interact(); return true; }
     if (ui?.build?.isOpen) return false;                                                   // open tray: a land tap is handled by the tray / placement
     if (lg.sb.island?.isLand && !lg.sb.island.isLand(world.x, world.z)) return false;     // water: nothing to build on
