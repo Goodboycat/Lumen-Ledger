@@ -17,6 +17,7 @@ import { installCombat } from './combat/Combat.js';
 import { attachMoves } from './anim/heroAnims.js';
 import { attachAbilities, ABILITY_NAMES, FINLIT } from './anim/heroAbilities.js';
 import { installVerbChain } from './systems/verbChain.js';
+import { installCrew } from './systems/crewJobs.js';   // T3: crew do visible jobs (arrival, post, idle/work loop, payoff pops, Ledger crew line)
 import { installCuriosity } from './systems/curiosityWire.js';   // T2: curiosity guide — registry sources (jars, stalls, signs, tills, Collectors, Baron, stranger, crew)
 import { WHEN as POWER_WHEN, lockedLine } from './systems/powerAnswers.js';   // T2b: every power press answers in ≤ 8 words
 import { installUnlocks, starsFor } from './systems/unlocks.js';                          // 41D: 2 starters + 4 earned by ledger stars
@@ -119,6 +120,7 @@ export function createSandbox(game, opts = {}) {
   // BUGFIX B08: world fog / fog towers / vignette follow the economy immediately (start, resume), not only after the next eco:fog
   sb.syncWorld = () => { const f = sb.eco.state.fog01; sb.vfx.fog?.setCoverage?.(f, { immediate: true }); sb.world.towers.forEach((t) => t.userData.setActive?.(f > 0.3)); };
   sb.helpers = [];                                               // P3: hired helpers { g, anim, type, stall }
+  installCrew(sb);                                               // T3: sb.crew — arrival from the pier, posts, work loop, payoff pops (presentation only; h.stall still drives the till)
   sb.pick = 0;                                                   // current stall pick index (keys 1–9)
   wireEconomy(sb);
   wireAbilities(sb);
@@ -151,6 +153,7 @@ export function createSandbox(game, opts = {}) {
     sb.cust.update(dt);
     if (!sb.clockHold.size) { sb.eco.tick(dt); sb.updateScheduler?.(); sb.novelties?.update(dt); }   // 43B: novelties run on the game clock (pause with holdClock)   // 42D: the season clock (and its marks) wait while the Baron collects at the pier
 
+    sb.crew?.update(dt);                                            // T3: job loop (before the animators so the clip it picks plays this frame)
     for (const h of sb.helpers) { h.anim.update(dt); updateHelperKnock(sb, h, dt); }
     updateCoins(sb, dt);
     sb.till?.tickHelpers?.(dt, sb.helpers);                         // 42A P2: seated helpers empty their till every 12 s
@@ -662,6 +665,7 @@ function hireHelper(sb, wantType = null, { free = false } = {}) {
   const anim = new HelperAnimator(g, type, { vfx: sb.vfx });
   const h = { g, anim, type, stall: null, upgrade: u }; sb.helpers.push(h);
   seatHelper(sb, h, stall);
+  sb.crew?.hire(h, { restore: free && !!sb.game.crewRestoring });   // T3: walks in from the pier to its post (a CONTINUE restore places it instantly)
   sb.game.bus.emit('sandbox:hired', { type, stall: stall?.id || null, cost: u.cost });
   return h;
 }
@@ -676,7 +680,9 @@ function seatHelper(sb, h, stall) {
     for (let k = 0; k < 8; k++) { const a = ((n + k) / 8) * Math.PI * 2 + Math.PI; const x = at.x + Math.sin(a) * 0.9, z = at.z + Math.cos(a) * 0.9; if (sb.island.isLand(x, z) && !sb.build.occupied(x, z)) { sx = x; sz = z; break; } }
     if (!sb.island.isLand(sx, sz)) { sx = at.x; sz = at.z; }
   }
-  h.g.position.set(sx, 0, sz); h.stall = stall || null;
+  h.stall = stall || null;   // the till assignment (HELPER_EVERY auto-collect) — unchanged by T3
+  if (h.job) { sb.crew?.retarget(h); return; }   // T3: a crew member with a job walks to its post, it is never teleported to the stall
+  h.g.position.set(sx, 0, sz);
   h.seat = { x: sx, z: sz, fx: at.x - back.x * 3, fz: at.z - back.z * 3 };   // S32: remembered so a knocked helper can walk back
   h.anim.knock?.set?.(0, 0, 0); h.anim.knockT = 0;   // S34 / P68: a mid-slide reseat must not keep sliding away from the new seat
   // S32: the seat is INSIDE its own stall's footprint cell (0.9 u behind a 2-wide counter), so the clamp must allow the helper's
@@ -951,6 +957,7 @@ export function destroySandbox(sb) {
   for (const p of Object.values(sb.hero?.props || {})) if (p?.parent === game.scene) game.scene.remove(p);   // 3A coin + 3B magnetCoins/rings/arc live in world space
   sb.till?.destroy?.(); if (sb.cust) sb.cust.till = null;                            // 42A
   if (sb.coinMesh) { game.scene.remove(sb.coinMesh); sb.coinMesh.geometry?.dispose?.(); }
+  sb.crew?.dispose?.();                                                              // T3: flower mesh + applyLoss wrap
   for (const h of sb.helpers || []) { h.anim?.dispose?.(); freeMerged(h.g); game.scene.remove(h.g); }
   for (const v of (sb.villains || []).slice()) { const g = v.g || v.root || v; freeMerged(g); g.removeFromParent?.(); }
   sb.enemies?.dispose?.();                                                            // S16: fog puff pool + list
@@ -1454,7 +1461,9 @@ function applySnapshot(lg, sb, snap) {
   for (const id of eco.state.owned || []) { const u = eco.upgrades?.[id]; if (u?.kind === 'zone' && Number.isInteger(u.effect?.zone)) { if (sb.island.unlockInstant?.(u.effect.zone)) lg.stats.zonesRestored = (lg.stats.zonesRestored || 0) + 1; } }
   if (lg.stats.zonesRestored) sb.cust?.reroute?.();
   if (Array.isArray(snap.build) && snap.build.length) { Save.snapJarsToLand(snap.build, (x, z) => sb.island.isLand(x, z) && !build.occupied(x, z)); build.load(snap.build); sb.syncStalls?.(); sb.cust?.reroute?.(); }   // 48E: legacy (< v4) jars synthesized at (-8+i,3) snap onto free land — no floating jar   // BUGFIX: syncStalls is authoritative (skips decor/nature, adds L2/L3 upkeep)
+  sb.game.crewRestoring = true;   // T3: a CONTINUE places each crew member at its post at once (no pier walk-in replay)
   for (const id of snap.helpers || []) { const type = String(id).replace(/^helper_/, ''); if (HELPER_TYPES.includes(type) && !sb.helpers.some((h) => h.type === type)) hireHelper(sb, type, { free: true }); }
+  sb.game.crewRestoring = false;
   // BUGFIX P18: a restored position on water (old save, zone that is no longer unlocked) is pulled back to the nearest land cell (or the plaza)
   if (snap.hero && sb.hero?.root) { sb.hero.root.position.set(snap.hero.x, 0, snap.hero.z); if (!sb.island.isLand(snap.hero.x, snap.hero.z) && !sb.hero.recoverToLand?.()) sb.hero.root.position.set(0, 0, 1); lg.game.camera?.snapTo?.(sb.hero.root.position); }
   if (snap.jars) { lg.jarPct = { ...snap.jars }; lg.ui?.jars?.setPct?.(snap.jars); }

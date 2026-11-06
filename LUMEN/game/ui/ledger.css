@@ -81,3 +81,13 @@
 .ll-unlock-body { margin: 0; font: 600 12px/1.35 'Nunito', system-ui, sans-serif; color: #ffeec2; opacity: .9; }
 
 .ll-ledger-row.hidden-zero { display: none; }   /* 42A */
+
+/* T3 — Crew line: what the helpers did this season (info only, already inside the rows above) */
+.ll-ledger-crew { display: flex; gap: 6px; align-items: center; justify-content: center; flex-wrap: wrap; margin: 2px 0 8px; opacity: 0; transition: opacity .3s; }
+.ll-ledger-crew[hidden] { display: none; }
+.ll-ledger-crew.in { opacity: 1; }
+.ll-crew-head { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; color: #7A5A00; }
+.ll-crew-rows { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.ll-crew-chip { font-size: 11px; font-weight: 900; padding: 2px 9px; border: 2px solid var(--ink); border-radius: 999px; background: #FFF8E7; box-shadow: 0 2px 0 var(--ink); white-space: nowrap; }
+.ll-crew-chip.tallyOwl { background: #FFF3C4; } .ll-crew-chip.packMole { background: #DCEBFA; } .ll-crew-chip.sparkBee { background: #FFF9C4; }
+.ll-crew-chip.guardTortoise { background: #DDF3DE; } .ll-crew-chip.scoutFox { background: #FFE3D5; } .ll-crew-chip.gardenerSnail { background: #F8DCE8; }

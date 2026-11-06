@@ -75,6 +75,9 @@ export function mountLedger(root, opts = {}) {
   const chips = el('div', 'll-ledger-chips');
   const chipFog = el('span', 'll-chip fog', 'Fog 35 %'); const chipDebt = el('span', 'll-chip debt', 'Debt 0'); const chipWorth = el('span', 'll-chip worth', 'Net worth 0');
   chips.append(chipFog, chipDebt, chipWorth);
+  // T3: the Crew line — what the crew did this season (informational: these ✦ are already inside the rows above, never added to Net)
+  const crewBox = el('div', 'll-ledger-crew'); crewBox.hidden = true; crewBox.id = 'll-ledger-crew';
+  const crewHead = el('span', 'll-crew-head', 'Crew'); const crewRows = el('span', 'll-crew-rows'); crewBox.append(crewHead, crewRows);
   const stars = el('div', 'll-ledger-stars'); const starEls = [];
   for (let i = 0; i < 3; i++) { const s = el('i', null, '★'); stars.append(s); starEls.push(s); }
   const starTxt = el('p', 'll-ledger-startxt', '');
@@ -93,7 +96,7 @@ export function mountLedger(root, opts = {}) {
   const foot = el('footer', 'll-ledger-foot');
   const btn = el('button', 'll-btn ll-ledger-continue', 'CONTINUE ▸');
   foot.append(btn);
-  sheet.append(head, table, chips, stars, starTxt, unlockCard, lesson, foot);
+  sheet.append(head, table, chips, crewBox, stars, starTxt, unlockCard, lesson, foot);
   wrap.append(backdrop, sheet);
   root.appendChild(wrap);
 
@@ -148,6 +151,10 @@ export function mountLedger(root, opts = {}) {
       chipDebt.textContent = `Debt ${fmt(report.debt || 0)}`; chipDebt.classList.toggle('bad', (report.debt || 0) > 0);
       chipWorth.textContent = `Net worth ${fmt(report.netWorth ?? ((report.spark || 0) + Object.values(report.jars || {}).reduce((a, b) => a + b, 0) - (report.debt || 0)))}`;
       chips.classList.remove('in'); later(rowsEnd() - 200, () => chips.classList.add('in'));
+      // T3: Crew line — one chip per hired helper with its real number ("Owl +3 ✦ interest"), total in the head; hidden with no crew
+      { const cr = report.crew, rws = cr && Array.isArray(cr.rows) ? cr.rows : []; crewRows.innerHTML = ''; crewBox.hidden = !rws.length; crewBox.classList.remove('in');
+        if (rws.length) { for (const w of rws) { const c = el('span', 'll-crew-chip ' + w.type, w.label || (w.name + ' ' + w.value)); c.dataset.crew = w.type; c.dataset.value = String(w.value); crewRows.append(c); }
+          crewHead.textContent = cr.total > 0 ? `Crew  ${Math.round(cr.total * 10) / 10 >= 10 ? Math.round(cr.total) : Math.round(cr.total * 10) / 10} ✦` : 'Crew'; crewBox.dataset.total = String(cr.total || 0); later(rowsEnd() - 100, () => crewBox.classList.add('in')); } }
       // stars
       starEls.forEach((s) => s.classList.remove('on', 'pop'));
       for (let i = 0; i < 3; i++) later(rowsEnd() + STAR_GAP * i, () => { if (i < starsN) { starEls[i].classList.add('on'); retrigger(starEls[i], 'pop'); } else starEls[i].classList.add('pop'); });
