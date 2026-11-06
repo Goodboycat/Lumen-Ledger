@@ -27,6 +27,8 @@
 <link rel="stylesheet" href="ui/abilityChips.css">
 <link rel="stylesheet" href="ui/title.css">
 <link rel="stylesheet" href="ui/pause.css">
+<link rel="stylesheet" href="ui/guideCodex.css">
+<link rel="stylesheet" href="ui/tutor.css">   <!-- 48F card was never linked here (unstyled in the real page) — found by T2 -->
 <link rel="stylesheet" href="ui/touch.css">
 <link rel="stylesheet" href="ui/seasons.css">
 <link rel="stylesheet" href="ui/cinematics.css">
@@ -91,7 +93,7 @@ try {
     onOutline: setOutlineThickness, touch: true, storyData,
     jarsSummary: true,                                                                   // 42B: jars are places — read-only summary. 46C: the ?sliders=1 legacy panel flag is gone (mountJars({summary:false}) remains for tests only)
     version: `${GAME_VERSION} · jam build`,
-    tutorData, tutorSeen: Save.load()?.tutorSeen || [],                                   // 48F: blue once-per-profile cards; seen ids come back from the save slot (Game.js applySnapshot also merges on CONTINUE)
+    tutorData, tutorSeen: Save.load()?.tutorSeen || [], tutorCounts: Save.load()?.tutorCounts || {},                                   // 48F: blue once-per-profile cards; seen ids come back from the save slot (Game.js applySnapshot also merges on CONTINUE)
   });
   const lg = createLumenGame(game, { ui, storyData, jarsData, seasons, seasonSeconds, seed: +params.get('seed') || undefined, debugKeys: params.has('debug'), cinematics: !params.has('nocine'), verbs: !(params.has('autoplay') || params.has('notutorial')),   // 46B: ?oldtutorial gone
     telemetryEndpoint: params.get('telemetry') || null });   // S18: ?nocine = no title orbit / arrival / victory shots · 40A: ?telemetry=<url> opts in to a POST per session (default OFF)

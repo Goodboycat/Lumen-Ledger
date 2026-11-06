@@ -1,0 +1,24 @@
+/* LUMEN LEDGER — T2 guide codex (pause → GUIDE). Same paper/ink sheet as the pause menu; rows >= 44 px. z-index above .ll-pause (50). */
+.ll-codex { position: absolute; inset: 0; z-index: 52; display: none; align-items: center; justify-content: center; pointer-events: auto; }
+.ll-codex.open { display: flex; }
+.ll-codex-back { position: absolute; inset: 0; background: rgba(38,50,56,.55); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
+.ll-codex-sheet { position: relative; width: min(420px, 94vw); max-height: min(86vh, 640px); display: flex; flex-direction: column; background: var(--paper); border: 4px solid var(--ink); border-radius: 22px; box-shadow: 0 8px 0 var(--ink); padding: 14px 14px 10px; animation: ll-pause-drop .3s cubic-bezier(.34,1.56,.64,1) both; }
+.ll-codex-head { display: flex; align-items: center; gap: 10px; }
+.ll-codex-title { margin: 0; flex: none; font-size: 28px; font-weight: 900; letter-spacing: 3px; color: var(--gold); -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 0 3px 0 var(--ink); }
+.ll-codex-count { flex: 1; text-align: right; font-weight: 900; font-size: 14px; }
+.ll-codex-x { flex: none; width: 44px; height: 44px; border: 3px solid var(--ink); border-radius: 12px; background: var(--orange); color: var(--ink); font: 900 18px/1 var(--font); box-shadow: 0 3px 0 var(--ink); cursor: pointer; touch-action: manipulation; }
+.ll-codex-x:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.ll-codex-sub { margin: 4px 2px 8px; font-size: 12px; font-weight: 700; opacity: .65; }
+.ll-codex-list { overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 6px; padding: 2px 2px 6px; }
+.ll-codex-group { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding: 2px 8px; font-size: 12px; font-weight: 900; letter-spacing: 2px; background: var(--ink); color: var(--paper); border-radius: 8px; }
+.ll-codex-gn { letter-spacing: 0; opacity: .8; }
+.ll-codex-row { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 5px 10px; border: 3px solid var(--ink); border-radius: 12px; background: #fff; font-weight: 800; font-size: 14px; line-height: 1.2; }
+.ll-codex-row.met { background: #e9f7ff; border-color: #1c4878; }
+.ll-codex-row.unmet { background: #eceae3; border-color: rgba(38,50,56,.35); color: rgba(38,50,56,.5); font-weight: 700; }
+.ll-codex-ico { flex: none; width: 28px; height: 28px; display: grid; place-items: center; line-height: 0; }
+.ll-codex-ico .ll-ico { width: 26px; height: 26px; display: block; }
+.ll-codex-q { font: 900 20px/1 var(--font); opacity: .6; }
+.ll-codex-txt { flex: 1; min-width: 0; }
+.ll-codex-n { flex: none; font-size: 11px; font-weight: 900; opacity: .55; }
+.ll-pause-btn.guide { background: var(--grass); }
+@media (prefers-reduced-motion: reduce) { .ll-codex-sheet { animation: none; } }

@@ -14,7 +14,8 @@ import { mountLedger } from './ledger.js';
 import { mountDialogue } from './dialogue.js';
 import { mountWave } from './wave.js';     // S41/15D: Collector wave banner + edge arrows pointing at off-screen enemies
 import { mountNudge } from './nudge.js';   // S42/16B: 'Touch here!' hand on the ⏩ button when nothing is happening
-import { mountTutor } from './tutor.js';   // 48F: curiosity tutorial — blue glass card, once per profile, reactive (data/tutor.json)
+import { mountTutor } from './tutor.js';
+import { mountGuideCodex } from './guideCodex.js';   // T2: pause → GUIDE sheet (every card met / grey for unmet)   // 48F: curiosity tutorial — blue glass card, once per profile, reactive (data/tutor.json)
 import { mountBarks } from './bark.js';
 import { mountAbilityChips } from './abilityChips.js';   // 41D: six ability chips, locked = dim + ★ cost    // 41A: speech bubbles projected from hero/owl/baron (story:bark) — never modal
 import { mountTitle } from './title.js';
@@ -23,7 +24,7 @@ import { mountTouch } from './touch.js';
 import { mountSeasonInfo } from './seasons.js';
 
 export const UI_VERSION = 'S53';
-export const UI_CSS = ['ui/base.css', 'ui/hud.css', 'ui/jars.css', 'ui/build.css', 'ui/ledger.css', 'ui/dialogue.css', 'ui/wave.css', 'ui/bark.css', 'ui/title.css', 'ui/pause.css', 'ui/touch.css', 'ui/seasons.css', 'ui/tutor.css'];   // 46B: ui/tutorial.css deleted (old overlay tutorial gone)
+export const UI_CSS = ['ui/base.css', 'ui/hud.css', 'ui/jars.css', 'ui/build.css', 'ui/ledger.css', 'ui/dialogue.css', 'ui/wave.css', 'ui/bark.css', 'ui/title.css', 'ui/pause.css', 'ui/guideCodex.css', 'ui/touch.css', 'ui/seasons.css', 'ui/tutor.css'];   // 46B: ui/tutorial.css deleted (old overlay tutorial gone)
 
 /**
  * @param {HTMLElement} root  overlay root (#game-root). Panels append themselves; the canvas stays underneath.
@@ -46,7 +47,7 @@ export function mountUI(root, opts = {}) {
   add('wave', mountWave(root, { bus }));   // S41/15D — index.html binds camera/enemies via ui.wave.bind({...}) once the sandbox exists
   if (opts.nudge !== false) add('nudge', mountNudge(root, { bus }));   // S42/16B — Game.js binds the bored() predicate via ui.nudge.bind({...})
   if (opts.barks !== false) add('barks', mountBarks(root, { bus }));
-  if (opts.tutor !== false && opts.tutorData) add('tutor', mountTutor(root, { bus, data: opts.tutorData, seen: opts.tutorSeen || [] }));   // 48F — Game.js binds touched() + persists ui.tutor.seen (save v4 tutorSeen)
+  if (opts.tutor !== false && opts.tutorData) add('tutor', mountTutor(root, { bus, data: opts.tutorData, seen: opts.tutorSeen || [], counts: opts.tutorCounts || {} }));   // 48F — Game.js binds touched() + persists ui.tutor.seen (save v4 tutorSeen)
   if (opts.abilityChips !== false) add('abilityChips', mountAbilityChips(root, { bus }));   // 41D — Game.js emits ui:abilities on start/resume   // 41A — index.html binds camera/hero/owl/baron via ui.barks.bind({...})
   // S11: ONE Escape dispatcher. Panels no longer listen for Escape themselves (hotkey:false / noEsc) — a single capture-phase window
   // listener walks a priority stack and the FIRST layer that owns the screen consumes the press:
@@ -55,6 +56,7 @@ export function mountUI(root, opts = {}) {
   // P34/P35 regressions (Esc opened the pause menu on top of the season card / dialogue) cannot come back: pause is the last layer.
   ui.escStack = () => [
     { id: 'seasons', open: () => !!ui.seasons?.isOpen, act: () => ui.seasons.close() },
+    { id: 'codex', open: () => !!ui.guideCodex?.isOpen, act: () => ui.guideCodex.close() },
     { id: 'dialogue', open: () => !!ui.dialogue?.isOpen, act: () => {} },
     { id: 'build', open: () => !!(ui.build?.isOpen || ui.build?.state?.placing || ui.build?.state?.demolish), act: () => { const st = ui.build.state; if (st.placing || st.demolish) ui.build.cancel(); else ui.build.close(); } },
     { id: 'pause', open: () => !(ui.title?.isOpen || ui.ledger?.isOpen), act: () => ui.pause.toggle() },
@@ -70,6 +72,7 @@ export function mountUI(root, opts = {}) {
     };
     window.addEventListener('keydown', onEscCapture, true); ui._offEsc = () => window.removeEventListener('keydown', onEscCapture, true);
   }
+  if (ui.tutor) add('guideCodex', mountGuideCodex(root, { bus, tutor: ui.tutor }));   // T2: before pause so the sheet stacks above it (z-index 52)
   add('pause', mountPause(root, { bus, onOutline: opts.onOutline, hotkey: false, canOpen: () => !(ui.title?.isOpen) && !(ui.ledger?.isOpen) && !(ui.dialogue?.isOpen) && !(ui.seasons?.isOpen), storageKey: opts.storageKey }));
   // mobile bugfix: season info (HUD lesson tag + tap-the-pill card + new-season banner) — explains what a season is and what it teaches
   add('seasons', mountSeasonInfo(root, { bus, seasonsToWin, noEsc: true, lessons: opts.storyData?.lessons, seasons: opts.storyData?.seasons, isModal: () => !!(ui.title?.isOpen || ui.ledger?.isOpen || ui.dialogue?.isOpen || ui.pause?.isOpen) }));

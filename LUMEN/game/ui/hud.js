@@ -33,8 +33,8 @@ export function mountHUD(root, opts = {}) {
   const sparkCol = el('div', 'll-spark-col');
   const sparkVal = el('span', 'll-spark-val', '0');
   const sparkSub = el('span', 'll-spark-sub', 'SPARK');
-  sparkCol.append(sparkVal, sparkSub);
-  const debtChip = el('span', 'll-spark-debt', 'debt 0');
+  sparkCol.append(sparkVal, sparkSub); sparkCol.dataset.guide = 'hud:pouch';   // T2: tap the number → 'Pouch: your cash…'
+  const debtChip = el('span', 'll-spark-debt', 'debt 0'); debtChip.dataset.guide = 'hud:debt';   // T2: tap → guide card (ui/tutor.js)
   // S05: quick PAY button inside the debt chip — repaying the Baron is the win path, and the jars panel (with PAY BARON) is collapsed
   //   on phones during dialogue. Emits the same 'ui:repay' {amount} the jars button does (Game.js caps it by the pouch).
   const tillChip = el('span', 'll-spark-till', 'on counters 0'); tillChip.title = 'Spark your customers paid that is still sitting on the counters — walk over a stall (or dash) to pocket it';   // 42A
@@ -55,7 +55,7 @@ export function mountHUD(root, opts = {}) {
   //   Emits 'ui:speed' {cycle:true}; Game.js owns game.timeScale and answers with 'game:speed' {speed} which relabels the button.
   const speedBtn = el('button', 'll-speed', '⏩'); speedBtn.type = 'button'; speedBtn.title = 'Time speed (T): 1× → 2× → 3×'; speedBtn.setAttribute('aria-label', 'Time speed');
   speedBtn.addEventListener('click', (e) => { e.stopPropagation && e.stopPropagation(); bus.emit('ui:speed', { cycle: true, source: 'hud' }); });
-  season.append(seasonTxt, day, lenChip, speedBtn);
+  season.append(seasonTxt, day, lenChip, speedBtn); seasonTxt.dataset.guide = 'hud:season'; day.dataset.guide = 'hud:season';   // T2: tap the label / day bar (the ⏩ button keeps its own job)
   // S42/16B: the Debt-Fog BAR is no longer shown (the purple fog on the island IS the indicator). The element stays mounted (hidden by
   //   hud.css `.ll-fog { display:none }`) so hud.setFog / the eco:fog wiring / the --ui gate keep working; nothing else reads it.
   const fog = el('div', 'll-fog'); fog.setAttribute('aria-hidden', 'true');
@@ -66,7 +66,7 @@ export function mountHUD(root, opts = {}) {
 
   const right = el('div', 'll-right');
   const stats = el('div', 'll-stats', 'fps — · calls —');
-  const rep = el('div', 'll-rep');
+  const rep = el('div', 'll-rep'); rep.dataset.guide = 'hud:rep';
   const repStars = []; for (let i = 0; i < 5; i++) { const s = el('i', null, '★'); rep.append(s); repStars.push(s); }
   right.append(stats, rep);
   if (!statsFn) stats.style.display = 'none';
