@@ -11,7 +11,7 @@
 //   • T1.7  verb chain without a Save jar (tests/verbs.test.mjs, run by --verbs): unlocks Save, hints "Build the Save jar", done on deposit, no 25 s wait.
 // Exports run({ resolve, pathToFileURL }) → number of failures (check.mjs adds it to `bad`).
 export async function run({ resolve, pathToFileURL }) {
-  let bad = 0; let n = 0;
+  let bad = 0; let n = 0; let cleanup = null; let lg = null, ui = null;
   const imp = (p) => import(pathToFileURL(resolve(p)).href);
   const ok = (label) => { n++; console.log(`  ${label}  OK`); };
   console.log('\nT1 JARS:');
@@ -29,10 +29,10 @@ export async function run({ resolve, pathToFileURL }) {
     const bus = new EventBus(); const ev = {}; for (const nm of ['jars:unlocked', 'jars:deposit', 'jars:autowalk', 'jars:removed', 'jars:locked', 'ui:tap:land']) bus.on(nm, (p) => { (ev[nm] ??= []).push(p); });
     const scene = new THREE.Scene();
     const game = { scene, bus, sequences: new SequencePlayer(), tweens, hitStop: new HitStop(), input: { pointerWorld: new THREE.Vector3(), hasPointerWorld: false, move: new THREE.Vector2(), joystick: new THREE.Vector2(), actions: {}, pressed: () => false, press() {} }, camera: { zoom: 1, shake() {} }, time: 0, timeScale: 1, paused: false, followTarget: null, systems: [], stats: { fps: 60, drawCalls: 0 }, add(s) { this.systems.push(s); return s; }, hitstop() {} };
-    const root = document.body;
-    const ui = mountUI(root, { bus, stats: () => game.stats, input: game.input, catalog: PROP_CATALOG, seasonsToWin: 10, touch: false, version: 'check' });
+    const root = document.body; cleanup = () => { try { lg?.destroy?.(); } catch { /* ok */ } try { ui?.destroy?.(); } catch { /* ok */ } for (const el of [...root.children]) el.remove?.(); };   // gates share one domshim document: leave it empty for the next gate (--debug reads the FIRST .ll-spark-val)
+    ui = mountUI(root, { bus, stats: () => game.stats, input: game.input, catalog: PROP_CATALOG, seasonsToWin: 10, touch: false, version: 'check' });
     const storage = (() => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k), key: (i) => [...m.keys()][i] ?? null, get length() { return m.size; } }; })();
-    const lg = createLumenGame(game, { ui, storyData, headless: true, seasonSeconds: 150, seed: 3, debugKeys: true, storage });
+    lg = createLumenGame(game, { ui, storyData, headless: true, seasonSeconds: 150, seed: 3, debugKeys: true, storage });
     const dt = 1 / 30;
     const step = () => { game.time += dt; game.sequences.update(dt); game.tweens.update(dt); for (const s of game.systems) s.update?.(game.paused ? 0 : dt, game, dt); };
     const runS = (sec) => { for (let i = 0; i < Math.round(sec * 30); i++) step(); };
@@ -146,5 +146,6 @@ export async function run({ resolve, pathToFileURL }) {
   } catch (err) {
     bad++; console.log(`  T1 JARS FAIL (after ${n} OK) → ${err?.stack?.split('\n').slice(0, 3).join(' | ') || err}`);
   }
+  finally { cleanup?.(); }
   return bad;
 }
