@@ -17,6 +17,7 @@ import { installCombat } from './combat/Combat.js';
 import { attachMoves } from './anim/heroAnims.js';
 import { attachAbilities, ABILITY_NAMES, FINLIT } from './anim/heroAbilities.js';
 import { installVerbChain } from './systems/verbChain.js';
+import { installCuriosity } from './systems/curiosityWire.js';   // T2: curiosity guide — registry sources (jars, stalls, signs, tills, Collectors, Baron, stranger, crew)
 import { installUnlocks } from './systems/unlocks.js';                          // 41D: 2 starters + 4 earned by ledger stars
 import { createJarsWorld } from './systems/jarsWorld.js';                       // 42B: jars are places — walk to a jar, E deposits 10 ✦, hold E withdraws
 import { createJarUnlocks } from './systems/jarUnlocks.js';                     // T1-A: jars unlock one by one (data/jars.json rules) → tray hides locked jar cards
@@ -752,7 +753,7 @@ export function createLumenGame(game, opts = {}) {
     return true;
   };
   ui?.nudge?.bind?.({ bored: lg.isBored });
-  ui?.tutor?.bind?.({ touched: () => !!(ui?.build?.isOpen || (lg.sb?.build?.serialize?.() || []).some((e) => !e.scenery && String(e.id).startsWith('stall_')) || (lg.sb?.eco?.state?.jars && Object.values(lg.sb.eco.state.jars).some((v) => v > 0))) });   // 48F onCuriosityLull: tray opened / a stall built / any jar holds Spark → the player found it
+  ui?.tutor?.bind?.({ blocked: () => !!lg.guideBlocked?.(), project: (p) => { const cam = game.camera?.three || game.camera; const el = game.renderer?.domElement; if (!cam?.projectionMatrix || !el) return null; const v = new THREE.Vector3(p.x, p.y, p.z).project(cam); return { x: (v.x + 1) / 2 * el.clientWidth, y: (1 - v.y) / 2 * el.clientHeight, behind: v.z > 1 }; }, touched: () => !!(ui?.build?.isOpen || (lg.sb?.build?.serialize?.() || []).some((e) => !e.scenery && String(e.id).startsWith('stall_')) || (lg.sb?.eco?.state?.jars && Object.values(lg.sb.eco.state.jars).some((v) => v > 0))) });   // 48F onCuriosityLull: tray opened / a stall built / any jar holds Spark → the player found it
   for (const ev of ['eco:season', 'eco:win', 'eco:lose', 'game:title', 'game:state']) lg._offs.push(bus.on(ev, () => { if (lg.speed !== 1) lg.setSpeed(1, { silent: true }); }));
   if (typeof window !== 'undefined') { const onKey = (e) => { if (e.code !== 'KeyT' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return; const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return; if (!lg.sb || game.paused || ui?.isModal?.()) return; bus.emit('ui:speed', { cycle: true, source: 'key' }); }; window.addEventListener('keydown', onKey); lg._offs.push(() => window.removeEventListener('keydown', onKey)); }
   on('ui:pause', (p) => lg.pause(p?.by || 'menu', !!p?.on));
@@ -774,7 +775,7 @@ export function createLumenGame(game, opts = {}) {
     ui?.update?.(dtReal ?? dt);                                                       // UI animates even while the game is paused
     lg.cine?.update(dtReal ?? dt);                                                    // S18: cinematics run on the real clock (title is paused)
     if (lg.sb?.autoWalk && ui?.isModal?.()) lg.sb.cancelAutoWalk('blocked');           // T1-B: a modal (dialogue / ledger) ends the auto-walk
-    if (lg.sb && !game.paused) { lg.story?.update?.(dt); emitTick(lg); lg.tut?.update?.(dt); lg.verbs?.update?.(dt); lg.proxTick?.(dt); }   // 48D: proximity interact
+    if (lg.sb && !game.paused) { lg.story?.update?.(dt); emitTick(lg); lg.tut?.update?.(dt); lg.verbs?.update?.(dt); lg.proxTick?.(dt); lg.curiosity?.update?.(dt); }   // 48D: proximity interact · T2: 5 Hz curiosity check
   };
   game.add({ update: (dt, g, dtReal) => lg.update(dt, g, dtReal) });
   lg.destroy = () => { for (const f of offs) f(); offs.length = 0; lg.teardown?.(); lg.cine?.dispose?.(); lg.cine = null; };
@@ -953,6 +954,7 @@ function installRunWires(lg) {
   const { bus, ui, sb } = lg, offs = lg._runOffs = [], on = (n, f) => offs.push(bus.on(n, f));
   const { build, eco, hero } = sb;
   lg.demolishMode = false;
+  installCuriosity(lg);   // T2: fresh registry per run (destroyed with _runOffs); lg.guideBlocked() = the same 'no card now' rule the tutor uses
   applyReduceMotion(lg, !!(lg.reduceMotion ?? ui?.pause?.settings?.reduceMotion));   // BUGFIX B23: every new run inherits the setting
   on('ui:build', (p) => {
     const a = p?.action;
@@ -1085,6 +1087,7 @@ function installRunWires(lg) {
     if (build.mode === 'place') { if (ui?.isModal?.()) return; build.moveTo(world.x, world.z); if (ev?.pointerType === 'mouse') build.confirm(); return; }
     // BUGFIX P17: prefer the prop under the cursor in 3D (roof / sign / awning) — the ground-plane point sits ~1.9 u behind a 2.2 u tall stall
     if (lg.demolishMode) { const e = build.pick(lg.game.input?._ray?.ray) || build.nearest(world.x, world.z, 1.2); if (e && !e.scenery) build.demolish(e); else if (e && e.scenery) return; }   // P23: explain instead of silent refusal
+    if (lg.guideTap?.(world, ev)) return;   // T2: tap a guideable thing → its card (any distance, every tap); a tap that has no game action is consumed here
     if (lg.selectTap?.(world, ev)) return;
     if (lg.landTap?.(world, ev)) return;   // 48D: tap a jar → use it · tap empty ground → the build tray opens on that cell
     prevTap?.(world, ev);
@@ -1094,6 +1097,11 @@ function installRunWires(lg) {
   //   · tap EMPTY LAND with the tray closed → bus 'ui:tap:land' {x,z} + the tray opens; the next build.enter(id) starts its ghost on that
   //     cell (lg.tapCell, consumed once, forgotten after 20 s or when the tray closes). Tray already open + land tap = placement confirm (unchanged).
   lg.tapCell = null;
+  lg.guideTap = (world) => {
+    const C = lg.curiosity; if (!C || !world || !lg.sb || lg.game.paused || ui?.isModal?.() || build.mode === 'place' || build.mode === 'drag' || lg.demolishMode) return false;
+    const hint = C.tap(world); if (!hint) return false;
+    return !C.lastTap?.act;                                                              // tools with a game action (jar, stall) go on to act; the rest are answered, not turned into a build tap
+  };
   lg.landTap = (world) => {
     if (!lg.sb || lg.game.paused || ui?.isModal?.() || build.mode === 'place' || build.mode === 'drag' || lg.demolishMode || !world) return false;
     const J = lg.sb.jarsWorld; const ids = J?.ids?.() || [];
@@ -1295,7 +1303,7 @@ function installDebugHooks(lg) {
     /** Hire a crew member for free (type = HELPER_TYPES entry, or the next unowned). */
     hire(type) { const sb = lg.sb; if (!sb) return noSb(); if (type && !HELPER_TYPES.includes(type)) return { ok: false, why: 'unknown crew type', types: HELPER_TYPES }; const h = hireHelper(sb, type || null, { free: true }); return { ok: !!h, type: h?.type || null, crew: sb.helpers.map((x) => x.type), types: HELPER_TYPES }; },
     /** Forget every guide card seen (tutor + save). */
-    clearTutor() { const seen = ui?.tutor?.seen; if (Array.isArray(seen)) seen.length = 0; lg.tutorSeen = []; if (lg.sb) lg.save?.write?.(); return { ok: true, hintsSeen: Array.isArray(seen) ? seen.length : 0 }; },
+    clearTutor() { const seen = ui?.tutor?.seen; if (ui?.tutor?.clear) ui.tutor.clear(); else if (Array.isArray(seen)) seen.length = 0; lg.tutorSeen = []; if (lg.sb) lg.save?.write?.(); return { ok: true, hintsSeen: Array.isArray(seen) ? seen.length : 0 }; },
     /** Delete the save slot (the running game is untouched). */
     resetSave() { const ok = !!lg.save?.clear?.(); return { ok, hasSave: !!lg.save?.has?.() }; },
     /** Plain JSON mirror of the HUD truth. Never NaN (every number is finite-guarded). */
@@ -1407,7 +1415,7 @@ function applySnapshot(lg, sb, snap) {
   if (snap.cust && sb.cust?.load) sb.cust.load(snap.cust);                               // BUGFIX B16: per-stall prices (+ sale totals) survive CONTINUE
   sb.unlocks?.restore?.(snap);                                                           // 41D: v2 abilities/starsTotal (v1 → starters)
   if (Array.isArray(snap.jarsUnlocked) && sb.jarUnlocks) { sb.jarUnlocks.restore(snap.jarsUnlocked); lg.ui?.build?.setHidden?.(sb.jarUnlocks.hiddenIds()); sb.game.bus.emit('jars:unlocked', { jar: null, how: 'restore', unlocked: sb.jarUnlocks.unlocked() }); }   // T1-C: silent restore (how 'restore' → no NEW tag / pulse)
-  if (Array.isArray(snap.tutorSeen)) { lg.tutorSeen = [...snap.tutorSeen]; const seen = lg.ui?.tutor?.seen; if (Array.isArray(seen)) for (const id of snap.tutorSeen) if (!seen.includes(id)) seen.push(id); }   // 48F: cards already shown on this profile stay shown
+  if (Array.isArray(snap.tutorSeen)) { lg.tutorSeen = [...snap.tutorSeen]; const seen = lg.ui?.tutor?.seen; if (lg.ui?.tutor?.merge) lg.ui.tutor.merge({ seen: snap.tutorSeen, counts: snap.tutorCounts }); else if (Array.isArray(seen)) for (const id of snap.tutorSeen) if (!seen.includes(id)) seen.push(id); }   // T2: counts {id:n} (maxShows) merge on top of the seen list   // 48F: cards already shown on this profile stay shown
   lg.ui?.hud?.sync?.(eco.state); lg.ui?.jars?.setBalances?.(eco.state.jars); lg.ui?.jars?.setDebt?.(eco.state.debt, eco.state.spark); lg.ui?.build?.setSpark?.(eco.state.spark);
   // 42D: a save taken while the Baron waited at the pier resumes AT the pier (interestOwed survives in eco.state); the ledger it leads to is the last report
   if (snap.state === 'pier' && lg.enterPier?.()) { lg.lastReport = eco.history?.at?.(-1) || null; return; }

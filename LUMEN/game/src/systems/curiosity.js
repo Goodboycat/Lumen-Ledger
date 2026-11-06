@@ -5,7 +5,7 @@
 //   C.register({ id, getPos: () => ({x,z}) | null, radius, hint, lingerHint?, tapR?, ping?, act? }) → unregister()   one thing (null pos = not in the world right now)
 //   C.source((add) => { add(id, x, z, hint, radius, tapR, ping, act, lingerHint); … })  → off()             a LIST of things, rebuilt every check (stalls, tills, enemies…)
 //   C.update(dt)                       game clock; runs a check every `interval` s (0.2 = 5 Hz)
-//   C.tap(world, { hold }) → hint | null      a tap / hold at a world point → nearest thing within its tapR → bus 'curious' {why:'tap'|'hold'}
+//   C.tap(world, { hold }) → hint | null  (C.lastTap = { id, hint, act } of the last answered tap)      a tap / hold at a world point → nearest thing within its tapR → bus 'curious' {why:'tap'|'hold'}
 //   C.things() · C.hints() · C.size · C.destroy()
 //
 // `lingerHint` (optional, string | fn) = what a LINGER answers instead of `hint` (a jar answers 'jar:withdraw' once it holds ✦); a falsy answer = no linger card.
@@ -76,11 +76,12 @@ export function createCuriosity(opts = {}) {
     /** Force one check now (tests / the first frame after a run starts so the existing world is registered without pings). */
     prime() { check(); return C; },
     tap(world, o = {}) {
+      C.lastTap = null;
       if (!world || (opts.blocked && opts.blocked())) return null;
       let best = null, bd = Infinity;
       for (const t of things.values()) { const d = Math.hypot(t.x - world.x, t.z - world.z); if (d <= t.tapR && d < bd) { best = t; bd = d; } }
       if (!best) return null;
-      const hint = hintOf(best);
+      const hint = hintOf(best); C.lastTap = { id: best.id, hint, act: !!best.act };
       emit('curious', { id: best.id, hint, why: o.hold ? 'hold' : 'tap', x: best.x, z: best.z, act: best.act });
       return hint;
     },
