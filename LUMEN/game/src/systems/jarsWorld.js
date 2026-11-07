@@ -105,7 +105,7 @@ export function createJarsWorld(opts = {}) {
     const el = labels.ownerDocument.createElement('div'); el.className = 'll-jar-tag ' + id; el.setAttribute('aria-hidden', 'true'); labels.appendChild(el); J.tags.set(id, el); return el;
   }
   function placeTags() {
-    const cam = camOf(); const W = labels.clientWidth || 360, H = labels.clientHeight || 640; const near = J.near();
+    const cam = camOf(); const W = labels.clientWidth || 360, H = labels.clientHeight || 640; const near = J.near(); const touch = !!labels.ownerDocument?.body?.classList?.contains?.('is-touch');
     for (const [id, m] of jars) {
       const el = ensureTag(id); if (!el) continue; const d = dist(m);
       if (d > LABEL_R || !cam?.projectionMatrix) { el.style.display = 'none'; continue; }
@@ -114,7 +114,7 @@ export function createJarsWorld(opts = {}) {
       v.project(cam); if (v.z > 1) { el.style.display = 'none'; continue; }
       el.style.display = ''; el.style.left = Math.round((v.x * 0.5 + 0.5) * W) + 'px'; el.style.top = Math.round((-v.y * 0.5 + 0.5) * H) + 'px';
       const amt = Math.round(eco.state.jars[id] || 0);
-      const txt = `${JAR_NAMES[id] || id} · ${amt} ✦` + (near === id ? (J.holding && J.withdrew ? '  (take 10)' : `  E · put ${Math.min(DEPOSIT_STEP, Math.max(0, Math.floor(eco.state.spark)))} in`) : '');
+      const txt = `${JAR_NAMES[id] || id} · ${amt} ✦` + (near === id ? (J.holding && J.withdrew ? '  (take 10)' : `  ${touch ? 'tap' : 'E'} · put ${Math.min(DEPOSIT_STEP, Math.max(0, Math.floor(eco.state.spark)))} in`) : '');   // S63-A: no keyboard letter on a phone
       if (el.textContent !== txt) el.textContent = txt; el.classList.toggle('near', near === id);
     }
   }

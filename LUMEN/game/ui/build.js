@@ -67,7 +67,7 @@ export function mountBuildMenu(root, opts = {}) {
   const sparkEl = el('span', 'll-build-spark', '✦ 0');
   const grid = el('div', 'll-build-grid');
   const foot = el('div', 'll-build-foot');
-  const footTxt = el('span', null, 'pick a card → B / tap to place · R rotate');
+  const footTxt = el('span', null, 'pick a card → B / tap to place · R rotate'); footTxt.className = 'll-build-hint';   // S63-D: class so phones can enlarge it
   const demolishBtn = el('button', 'll-btn warn', '💥 demolish');
   demolishPill.dataset.role = 'demolish-pill';
   const upgradeBtn = el('button', 'll-btn', '⬆ upgrade');
@@ -252,7 +252,7 @@ export function mountBuildMenu(root, opts = {}) {
     upgradeSelected(id = st.selected) { if (!id) return api; bus.emit('ui:build', { action: 'upgrade', id }); return api; },
     /** P12: sell one placed prop of type `id` (integrator picks the lowest-level one, nearest Pip on ties; refund 50 %). */
     sellSelected(id = st.selected) { if (!id || !countOf(id)) return api; bus.emit('ui:build', { action: 'sell', id }); return api; },
-    deselect() { st.selected = null; refreshCards(); footTxt.textContent = 'pick a card'; return api; },
+    deselect() { st.selected = null; refreshCards(); footTxt.textContent = (document.body?.classList?.contains('is-touch') ? 'pick a card, then tap Deploy' : 'pick a card'); return api; },
     upgradeCost: opts.upgradeCost || null,   // (level) => cost   · set by the integrator (Game.js)
     offers: opts.offers || null,             // () => [{ id, name, icon, cost, upkeep, text, kind, owned, blocker }] · B24 crew tab (helpers + zones)
     priceOf: opts.priceOf || null,           // (id) => { price, fair } · B24 price control in the stall detail bar

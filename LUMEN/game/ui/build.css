@@ -116,3 +116,6 @@ body.ll-dlg-open .ll-build { display: none !important; }
 /* S62-D: keyboard letters (B / R) mean nothing on a phone — the drawn icon says it; desktop keeps them */
 body.is-touch .ll-keyhint, body.is-touch .ll-build-toggle .ll-key { display: none; }
 
+
+/* S63-D: the hint under the tray cards was 10 px - too small on phones. Touch: 12 px, darker, and the keyboard letters are replaced by touch wording in build.js */
+body.is-touch .ll-build-hint { font-size: 12px; color: #333; font-weight: 800; }
