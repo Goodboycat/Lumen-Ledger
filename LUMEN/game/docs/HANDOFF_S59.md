@@ -1,3 +1,14 @@
+# HANDOFF S60 (user report 2026-11-07) — IDs for you and the next chats
+Grep the ID in code comments (`S60-x`). Keep the game's drawn-icon art style (no font emoji in the game; emoji only in code comments).
+| ID | Ask (user, verbatim intent) | Status |
+|---|---|---|
+| S60-A | The FIRST cloud hand (Move step) pointed at Pip to say "you can move with WASD". Better: on mobile the hand must POINT AT and DRAG a SIMULATED JOYSTICK (base ring + knob, drawn) so the player learns there IS a joystick. Desktop: hand points far ahead (~6 u, reads as "go there") + WASD keycaps. | in progress |
+| S60-B | The cloud hand sometimes points at an INVISIBLE Stranger (a spot where the stranger no longer is / never was). Fix: moving targets are located LIVE every frame, never from the stale x,z snapshot; the hand hides and the card closes when the thing is gone / not visible. | in progress |
+| S60-C | (from S59 open list) Owl opening bubble is 3 lines on a phone -> split into shorter bubbles. | pending |
+| S60-D | Final beginner-friendly screenshot review, phone landscape (844x390) first, desktop second. | pending |
+| S60-E | Real-device check of touch-hold + notch safe areas (human step, cannot be done in the sandbox). | open |
+Rig restart: `cd LUMEN/game && setsid -f python3 -m http.server 3000`, then `node tools/play_s59e.mjs` / `play_s59f.mjs` (in play_s59f the opening dialogue opens ~10 s after PLAY: wait for ui.dialogue.isOpen before pressing Enter). Browser: `bash tools/setup_browser.sh` once.
+
 # HANDOFF S59 — cloud tutor, persistent cards, cloud hand, drawn SKIP (+ S59 user report 2026-11-07, IDs S59-A … S59-J)
 
 ## IDs (new this chat; anyone continuing: grep the ID in code comments, `S59-x`)
