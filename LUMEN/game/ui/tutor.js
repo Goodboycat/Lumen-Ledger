@@ -23,7 +23,7 @@
 //   • Cards born from the world (mode 'curious') ignore key presses (WASD would kill them) and the first 1.5 s of pointer gestures (the joystick).
 //   • bind({ touched, blocked, project }) — blocked() true = no card at all (dialogue / modal / deal); project({x,y,z}) → {x,y,behind} puts the hand on a world thing.
 import { bus as defaultBus } from '../src/core/EventBus.js';
-import { icon } from './icons.js';
+import { icon, iconizeText, cloudHandArt } from './icons.js';
 
 // S59 (user report "the tutorial texts disappear when I move the character"): a card is PERSISTENT.
 //   • moving / tapping the ground / pressing keys NEVER dismisses it (the old tap-anywhere / any-key / 1.5 s guard is gone)
@@ -72,7 +72,7 @@ export function mountTutor(root, opts = {}) {
     xbtn = document.createElement('button'); xbtn.type = 'button'; xbtn.className = 'll-tutor-x'; xbtn.setAttribute('aria-label', 'Got it'); xbtn.innerHTML = icon('check');
     xbtn.addEventListener?.('click', (e) => { e.stopPropagation?.(); api.dismiss('tap'); });
     bub.append(ico, txt, xbtn); wrap.append(av, bub);
-    hand = document.createElement('div'); hand.className = 'll-tutor-hand'; hand.innerHTML = icon('cloudhand');
+    hand = document.createElement('div'); hand.className = 'll-tutor-hand'; hand.innerHTML = cloudHandArt();   // S59-C: two frames (finger up / finger pressed) cross-fade in tutor.css = a tapping hand
     (root || document.body).append(wrap, hand);
   }
 
@@ -92,8 +92,8 @@ export function mountTutor(root, opts = {}) {
     const specs = c ? specsOf(c, world) : []; if (!specs.length) return;
     const host = root || document, vw = () => (typeof window !== 'undefined' && window.innerWidth) || 800, vh = () => (typeof window !== 'undefined' && window.innerHeight) || 450;
     const size = () => hand.offsetWidth || 56;
-    const put = (x, topBelow, topAbove) => {                                                   // under the target, finger up — or above it, finger down, when the bottom edge is too close
-      const flip = topBelow + size() > vh() - 4 && topAbove >= 4; hand.classList.add('show'); hand.classList.toggle('flip', flip);
+    const put = (x, topBelow, topAbove, above) => {                                            // under the target, finger up — or above it, finger down, when the bottom edge is too close (or `above`: tabs, so the glove never covers the cards under them)
+      const flip = above ? topAbove >= 4 : (topBelow + size() > vh() - 4 && topAbove >= 4); hand.classList.add('show'); hand.classList.toggle('flip', flip);
       hand.style.left = `${Math.round(Math.max(size() / 2 + 4, Math.min(vw() - size() / 2 - 4, x)))}px`; hand.style.top = `${Math.round(flip ? topAbove : topBelow)}px`;
     };
     const tick = () => {
@@ -108,9 +108,11 @@ export function mountTutor(root, opts = {}) {
           if (!q || q.behind || !Number.isFinite(q.x) || !Number.isFinite(q.y) || q.x < -8 || q.x > vw() + 8 || q.y < -8 || q.y > vh() + 8) continue;
           put(q.x, q.y + 8, q.y - 8 - size()); found = true; break;
         }
-        const el = host.querySelector ? host.querySelector(sp) : null; const b = el && el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+        const above = sp.charAt(0) === '^', sel = above ? sp.slice(1) : sp;
+        let el = null; try { el = host.querySelector ? host.querySelector(sel) : null; } catch (_) { el = null; }
+        const b = el && el.getBoundingClientRect ? el.getBoundingClientRect() : null;
         if (!b || (!b.width && !b.height)) continue;
-        put(b.left + b.width / 2 - hb.left, b.bottom - hb.top + 2, b.top - hb.top - 2 - size()); found = true; break;
+        put(b.left + b.width / 2 - hb.left, b.bottom - hb.top + 2, b.top - hb.top - 2 - size(), above); found = true; break;
       }
       if (!found) hand.classList.remove('show');
       if (typeof requestAnimationFrame === 'function') st.raf = requestAnimationFrame(tick);
@@ -120,16 +122,17 @@ export function mountTutor(root, opts = {}) {
 
   const blockedNow = () => { try { return !!(st.deps && typeof st.deps.blocked === 'function' && st.deps.blocked()); } catch (_) { return false; } };
   /** Put card `c` on screen (counts it). mode 'event' (48F) | 'curious' (approach/linger/ping) | 'ask' (tap / HUD tap). */
-  function display(c, mode, world) {
+  function display(c, mode, world, text) {
     counts[c.id] = Math.min(RETIRED - 1, (counts[c.id] || 0) + 1); if (!seen.includes(c.id)) seen.push(c.id);
     st.cur = c; st.mode = mode; st.world = world || null; st.t = 0; st.age = 0; st.at = now(); st.last[c.id] = st.clock;
-    if (wrap) { ico.innerHTML = c.icon ? icon(c.icon) : ''; txt.textContent = String(c.text || '').slice(0, 60); wrap.classList.add('show'); pointAt(c, world); }
+    // S59-D: the words wear DRAWN icons (✦ → spark, ★ → star …), never a font emoji. `text` = a one-off line from the caller (jar reminders name the missing jars).
+    if (wrap) { ico.innerHTML = c.icon ? icon(c.icon) : ''; txt.innerHTML = iconizeText(String(text || c.text || '').slice(0, 60)); wrap.classList.add('show'); pointAt(c, world); }
     bus.emit('tutor:shown', { id: c.id, mode });
   }
   const queued = (id) => st.queue.some((q) => q.c.id === id);
-  function enqueue(c, world) {
+  function enqueue(c, world, text) {
     if (queued(c.id)) return false;
-    st.queue.push({ c, world: world || null }); st.queue.sort((a, b) => (b.c.priority | 0) - (a.c.priority | 0));
+    st.queue.push({ c, world: world || null, text: text || null }); st.queue.sort((a, b) => (b.c.priority | 0) - (a.c.priority | 0));
     while (st.queue.length > cfg.queueMax) st.queue.pop();
     return true;
   }
@@ -156,17 +159,17 @@ export function mountTutor(root, opts = {}) {
     show(id) {
       const c = cards.get(id); if (!c || !st.active) return false;
       if (retired(c)) return false;
-      if (isVerb(c) && blockedNow()) { st.pendingVerb = id; return false; }                 // S59: the step's card waits for the cinematic / dialogue, then appears (was lost for good)
+      if (blockedNow()) { if (isVerb(c)) st.pendingVerb = id; else enqueue(c); return false; }   // S59-A: NOTHING shows during a cinematic / dialogue; a verb step waits, an event card queues, both appear after it ends (was: event cards ignored the block)
       if (st.cur && isVerb(st.cur) && isVerb(c) && st.cur.id !== c.id) api.dismiss('followed');   // S59: next verb step = the last one was followed
       if (st.cur) return false;
       display(c, 'event'); return true;
     },
     /** T2 approach / linger / ping: like show(), but repeats (≤ maxShows, ≥ repeatGap s apart) and QUEUES behind the card on screen. */
-    offer(id, world) {
+    offer(id, world, text) {
       const c = cards.get(id); if (!c || !st.active || retired(c) || blockedNow()) return false;
       if (st.last[id] != null && st.clock - st.last[id] < cfg.repeatGap) return false;
-      if (st.cur) { if (st.cur.id === id) return false; return enqueue(c, world); }
-      display(c, 'curious', world); return true;
+      if (st.cur) { if (st.cur.id === id) return false; return enqueue(c, world, text); }
+      display(c, 'curious', world, text); return true;
     },
     /** T2 tap-to-ask: always answers (replaces the card on screen), no count limit, no cooldown. */
     ask(id, world) {
@@ -212,7 +215,7 @@ export function mountTutor(root, opts = {}) {
       if (st.queue.length && st.active) {                                   // T2.3: two triggers close together → both shown in order, none dropped
         st.gap -= dt; if (st.gap > 0) return;
         if (blockedNow()) return;
-        const n = st.queue.shift(); if (n && !retired(n.c)) { display(n.c, 'curious', n.world); return; }
+        const n = st.queue.shift(); if (n && !retired(n.c)) { display(n.c, 'curious', n.world, n.text); return; }
       }
       if (st.lullDone || !st.active) return;
       const touched = st.deps && typeof st.deps.touched === 'function' ? !!st.deps.touched() : true;
@@ -230,9 +233,9 @@ export function mountTutor(root, opts = {}) {
   st.offs.push(bus.on('curious', (p) => {
     if (!p || !p.hint || !cards.has(p.hint)) return; const w = Number.isFinite(p.x) && Number.isFinite(p.z) ? { x: p.x, z: p.z } : null;
     if (p.why === 'tap' || p.why === 'hold') { const c = cards.get(p.hint); if (p.act && p.why === 'tap' && retired(c)) return; api.ask(p.hint, w); }   // a tap that also acts: card only until maxShows
-    else api.offer(p.hint, w);
+    else api.offer(p.hint, w, typeof p.text === 'string' ? p.text : null);
   }));
-  st.offs.push(bus.on('curious:ping', (p) => { if (p && p.hint && cards.has(p.hint)) api.offer(p.hint, Number.isFinite(p.x) ? { x: p.x, z: p.z } : null); }));
+  st.offs.push(bus.on('curious:ping', (p) => { if (p && p.hint && cards.has(p.hint)) api.offer(p.hint, Number.isFinite(p.x) ? { x: p.x, z: p.z } : null, typeof p.text === 'string' ? p.text : null); }));   // S59-H: p.text = one-off line (jar reminders)
   const byDone = new Map();
   for (const c of cards.values()) { if (!c.doneOn) continue; if (!byDone.has(c.doneOn)) byDone.set(c.doneOn, []); byDone.get(c.doneOn).push(c); }
   for (const [ev, list] of byDone) st.offs.push(bus.on(ev, (p) => { for (const c of list) if (matches(c.doneMatch, p)) retire(c.id); }));
@@ -254,7 +257,7 @@ export function mountTutor(root, opts = {}) {
   st.offs.push(bus.on('game:title', () => { api.dismiss('title'); st.pendingVerb = null; st.active = false; }));
   st.offs.push(bus.on('game:start', () => { st.active = true; st.lull = 0; }));
   st.offs.push(bus.on('game:resumed', () => { st.active = true; st.lull = 0; }));
-  for (const n of ['ui:ledger:open', 'ui:dialogue:open', 'ui:seasons:open', 'ui:title:open', 'eco:win', 'eco:lose']) st.offs.push(bus.on(n, () => api.dismiss('modal')));
+  for (const n of ['ui:ledger:open', 'ui:dialogue:open', 'ui:seasons:open', 'ui:title:open', 'eco:win', 'eco:lose', 'cine:begin'])   // S59-A: a cinematic starting closes the card too st.offs.push(bus.on(n, () => api.dismiss('modal')));
   return api;
 }
 

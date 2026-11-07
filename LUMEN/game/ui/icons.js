@@ -235,6 +235,8 @@ const handGlove = (t) => {
 };
 def('cloudhand', () => handGlove(0));
 def('cloudhand2', () => handGlove(5));
+/** S59-C: the animated cloud hand = two frames stacked (finger up / finger pressed). CSS (.ll-hand-a / .ll-hand-b in tutor.css + nudge.css) cross-fades them. */
+export const cloudHandArt = () => `<span class="ll-hand-a">${icon('cloudhand')}</span><span class="ll-hand-b">${icon('cloudhand2')}</span>`;
 def('stormmark', () => shadow(32, 60, 16)
   + P('M6 10Q6 6 11 6H53Q58 6 58 10Q58 13 56 16L35 54Q32 59 29 54L8 16Q6 13 6 10Z', C.purple)       // reverse (point-down) triangle
   + Pn('M13 12H51L45 22H19Z', '#fff" opacity=".28') + P('M32 14L22 31H30L27 44L42 25H33L37 14Z', C.gold) + hi(40, 12, 8, 2.2, 0.35));

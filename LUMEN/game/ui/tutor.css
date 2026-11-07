@@ -1,7 +1,7 @@
 /* LUMEN LEDGER — tutor card (S59: the baby-cloud tutor). Blue glass bubble + a cloud avatar on its left + a "got it" check on the right.
    One card, bottom-centre on phones / bottom-left on desktop. The card is PERSISTENT: moving never closes it (ui/tutor.js); only the ✓ button
    takes pointer events — a tap anywhere else goes straight through to the game. */
-:root { --tut-bg: rgba(28,72,120,.9); --tut-ink: #E6F4FF; --tut-edge: #7FD3FF; }
+:root { --tut-bg: #2A6CB0; --tut-ink: #FFFFFF; --tut-edge: #7FD3FF; }   /* S59-E: opaque blue (was 90 % glass) so the black border reads on the busy island */
 
 .ll-tutor { position: absolute; z-index: 33; left: 50%; bottom: calc(max(10px, env(safe-area-inset-bottom)) + 84px); transform: translateX(-50%) translateY(10px);
   display: flex; align-items: flex-end; gap: 6px; max-width: min(88vw, 400px);
@@ -10,9 +10,10 @@
 .ll-tutor.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .ll-tutor-av { flex: none; width: 46px; height: 46px; line-height: 0; margin-bottom: -4px; animation: ll-tutor-float 2.2s ease-in-out infinite alternate; filter: drop-shadow(0 2px 0 rgba(0,0,0,.25)); }
 .ll-tutor-av .ll-ico { width: 46px; height: 46px; display: block; }
-.ll-tutor-bub { position: relative; display: flex; align-items: center; gap: 9px; padding: 9px 12px 9px 10px; border-radius: 16px 16px 16px 4px; min-width: 0; flex: 1 1 auto;
-  background: var(--tut-bg); color: var(--tut-ink); border: 1px solid var(--tut-edge);
-  box-shadow: 0 0 0 1px rgba(127,211,255,.25), 0 0 14px rgba(127,211,255,.35), 0 6px 18px rgba(0,0,0,.25); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.ll-tutor-bub { position: relative; display: flex; align-items: center; gap: 9px; padding: 8px 12px 8px 10px; border-radius: 16px 16px 16px 6px; min-width: 0; flex: 1 1 auto;
+  /* S59-E: same chunky look as every other panel: 3 px ink border + hard 0 4px ink shadow; the blue stays as the fill, a light inner rim keeps it glassy */
+  background: var(--tut-bg); color: var(--tut-ink); border: 3px solid var(--ink, #263238);
+  box-shadow: var(--shadow, 0 4px 0 #263238), inset 0 0 0 2px rgba(127,211,255,.35); }
 .ll-tutor-ico { flex: none; width: 26px; height: 26px; line-height: 0; filter: drop-shadow(0 0 4px rgba(127,211,255,.5)); }
 .ll-tutor-ico .ll-ico { width: 26px; height: 26px; display: block; }
 .ll-tutor-ico:empty { display: none; }
@@ -23,15 +24,22 @@
 .ll-tutor.show .ll-tutor-x { pointer-events: auto; }
 .ll-tutor-x:active { transform: scale(.88); }
 
-/* the cloud hand (S59: bigger, drawn, the same cloud as the avatar). Bobs toward its target; .flip = finger points DOWN (target sits near the bottom edge). */
+/* the cloud hand (S59-C: redrawn glove, centred, fully inside its box so the black outline is never cut). Bobs toward its target and TAPS:
+   two stacked frames (.ll-hand-a finger up, .ll-hand-b finger pressed) cross-fade on the same beat as the bob. .flip = the finger points DOWN (target above / near the bottom edge). */
 .ll-tutor-hand { position: absolute; z-index: 34; left: 0; top: 0; width: 64px; height: 64px; line-height: 0; display: none; pointer-events: none; transform: translateX(-50%);
-  filter: drop-shadow(0 0 7px var(--tut-edge)) drop-shadow(0 3px 0 rgba(0,0,0,.3)); animation: ll-tutor-bob .62s ease-in-out infinite alternate; transform-origin: 50% 100%; }
+  filter: drop-shadow(0 0 6px var(--tut-edge)); animation: ll-tutor-bob .7s ease-in-out infinite; transform-origin: 50% 100%; }
 .ll-tutor-hand.show { display: block; }
+.ll-tutor-hand .ll-hand-a, .ll-tutor-hand .ll-hand-b { position: absolute; inset: 0; display: block; }
 .ll-tutor-hand .ll-ico { width: 64px; height: 64px; display: block; }
+.ll-tutor-hand .ll-hand-b { animation: ll-hand-b .7s ease-in-out infinite; opacity: 0; }
+.ll-tutor-hand .ll-hand-a { animation: ll-hand-a .7s ease-in-out infinite; }
 .ll-tutor-hand.flip { animation-name: ll-tutor-bob-flip; transform-origin: 50% 0; }
-.ll-tutor-hand.flip .ll-ico { transform: rotate(180deg); }
-@keyframes ll-tutor-bob { from { transform: translateX(-50%) translateY(-6px) rotate(-5deg); } to { transform: translateX(-50%) translateY(5px) rotate(5deg); } }
-@keyframes ll-tutor-bob-flip { from { transform: translateX(-50%) translateY(6px) rotate(5deg); } to { transform: translateX(-50%) translateY(-5px) rotate(-5deg); } }
+.ll-tutor-hand.flip .ll-hand-a, .ll-tutor-hand.flip .ll-hand-b { transform: rotate(180deg); }
+.ll-tutor-hand.show { animation-play-state: running; }
+@keyframes ll-tutor-bob { 0%, 100% { transform: translateX(-50%) translateY(-7px) rotate(-4deg); } 55% { transform: translateX(-50%) translateY(3px) rotate(3deg) scale(.96, 1.04); } 70% { transform: translateX(-50%) translateY(5px) rotate(2deg) scale(1.04, .94); } }
+@keyframes ll-tutor-bob-flip { 0%, 100% { transform: translateX(-50%) translateY(7px) rotate(4deg); } 55% { transform: translateX(-50%) translateY(-3px) rotate(-3deg) scale(.96, 1.04); } 70% { transform: translateX(-50%) translateY(-5px) rotate(-2deg) scale(1.04, .94); } }
+@keyframes ll-hand-a { 0%, 45% { opacity: 1; } 55%, 80% { opacity: 0; } 92%, 100% { opacity: 1; } }
+@keyframes ll-hand-b { 0%, 45% { opacity: 0; } 55%, 80% { opacity: 1; } 92%, 100% { opacity: 0; } }
 @keyframes ll-tutor-float { from { transform: translateY(0); } to { transform: translateY(-4px); } }
 
 @media (max-height: 460px) { .ll-tutor { left: 50%; transform: translateX(-50%) translateY(10px); bottom: calc(max(8px, env(safe-area-inset-bottom)) + 12px); font-size: 13px; max-width: min(56vw, 400px); }
@@ -41,4 +49,4 @@
   .ll-tutor { left: 16px; transform: translateX(0) translateY(10px); bottom: calc(max(12px, env(safe-area-inset-bottom)) + 64px); }
   .ll-tutor.show { transform: translateX(0) translateY(0); }
 }
-@media (prefers-reduced-motion: reduce) { .ll-tutor { transition: opacity .15s; } .ll-tutor-hand, .ll-tutor-av { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .ll-tutor { transition: opacity .15s; } .ll-tutor-hand, .ll-tutor-av, .ll-tutor-hand .ll-hand-a, .ll-tutor-hand .ll-hand-b { animation: none; } .ll-tutor-hand .ll-hand-b { opacity: 0; } }

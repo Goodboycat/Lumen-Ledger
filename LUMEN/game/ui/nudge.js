@@ -16,7 +16,7 @@
 // Events emitted : ui:nudge { on: true|false, why }
 
 import { bus as defaultBus } from '../src/core/EventBus.js';
-import { icon } from './icons.js';   // 48C: drawn icons (ui/icons/*.png via tools/icons_png.mjs), no emoji glyphs
+import { icon, cloudHandArt } from './icons.js';   // 48C: drawn icons (ui/icons/*.png via tools/icons_png.mjs), no emoji glyphs
 
 export const NUDGE_DEFAULTS = { idleS: 7, cooldownS: 45, maxShows: 3 };
 
@@ -34,7 +34,7 @@ export function mountNudge(root, opts = {}) {
   if (hasDoc) {
     wrap = el('div', 'll-nudge'); wrap.setAttribute('aria-hidden', 'true');
     // 48F (HANDOFF_48Z D2): the bubble is gone — the bobbing hand beside ⏩ IS the card. Tapping the hand = tapping ⏩.
-    hand = el('button', 'll-nudge-hand'); hand.type = 'button'; hand.innerHTML = icon('cloudhand');   // S59: the baby cloud's pointing glove (same hand the tutor cards use)
+    hand = el('button', 'll-nudge-hand'); hand.type = 'button'; hand.innerHTML = cloudHandArt();   // S59: the baby cloud's pointing glove (same hand the tutor cards use)
     hand.addEventListener('click', (e) => { e.stopPropagation?.(); bus.emit('ui:speed', { cycle: true, source: 'nudge' }); api.hide('tap'); });
     wrap.append(hand);
     (root || document.body).appendChild(wrap);
