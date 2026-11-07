@@ -868,7 +868,7 @@
       "pitch": [
         {
           "speaker": "collector",
-          "text": "Pip! You have {spark} Spark, I see. Here, a free 5 Spark sample, no strings. Now: hand me 80 and I hand you 160 next season. Guaranteed.",
+          "text": "Pip! {spark} Spark, I see. Free 5 Spark sample, no strings. Now hand me 80, get 160 next season. Guaranteed.",
           "mood": "happy"
         },
         {
@@ -1008,7 +1008,7 @@
       "pitch": [
         {
           "speaker": "collector",
-          "text": "Lucky Lantern Raffle! 40 Spark a ticket, prize in the box. Pip, {spark} Spark in that pouch and a lucky face? Drawn tonight.",
+          "text": "Lucky Lantern Raffle! 40 Spark a ticket, prize in the box. {spark} Spark and a lucky face? Drawn tonight.",
           "mood": "happy"
         },
         {
@@ -1155,7 +1155,7 @@
       "pitch": [
         {
           "speaker": "collector",
-          "text": "Pip! {spark} Spark in the pouch, {protect} in your Protect jar. Fog-Proof Insurance: 60 Spark, covers everything!",
+          "text": "Pip! {spark} Spark in the pouch, {protect} in Protect. Fog-Proof Insurance: 60 Spark, covers everything!",
           "mood": "happy"
         },
         {
@@ -1417,7 +1417,7 @@
       "pitch": [
         {
           "speaker": "baron",
-          "text": "Pip, between us: {spark} Spark in your pouch could be triple by dusk. Quick-Flip Spark Notes. I personally know the printer.",
+          "text": "Between us: {spark} Spark could be triple by dusk. Quick-Flip Spark Notes. I know the printer personally.",
           "mood": "happy",
           "stranger": "Pip, between us: {spark} Spark in your pouch could be triple by dusk. Quick-Flip Spark Notes. My friend runs the printer."
         },
