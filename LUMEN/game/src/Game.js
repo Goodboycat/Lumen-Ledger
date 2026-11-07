@@ -1100,9 +1100,9 @@ function installRunWires(lg) {
   // BUGFIX B13: closing the tray never leaves a live ghost. BUGFIX P13: demolish mode SURVIVES closing the tray (the player closes it to see the
   // island and tap a stall) — the tray's own close() keeps st.demolish, the HUD toast says how to leave it, and Esc / re-open ✕ / a pick ends it.
   on('ui:build:close', () => { if (build.mode === 'place') build.exit(); });   // 48H: demolish toast deleted. BUGFIX P28: touch has a tappable Stop
-  // BUGFIX B13: a placed STALL ends placement in both layers (no accidental second purchase on the next click); cheap decor/nature stay
-  // armed for quick fences/paths and Esc / ✕ cancel them. build.exit() emits build:exit → the tray leaves placing.
-  on('build:placed', (p) => { if (!p?.silent && build.mode === 'place' && String(p?.id).startsWith('stall_')) build.exit(); });
+  // BUGFIX B13 + S62-A: ANY item the player places (stall, jar, decor, nature, fence …) ends placement in both layers — no accidental second
+  // purchase, and a unique jar no longer leaves a red 'you can place another' ghost behind. build.exit() emits build:exit → the tray leaves placing.
+  on('build:placed', (p) => { if (!p?.silent && build.mode === 'place') build.exit(); });
   if (ui?.build) { ui.build.reset?.(); ui.build.costOf = (id) => build.cost(id); ui.build.demandOf = (id) => sb.eco?.demandOf?.(id) ?? 1; ui.build.upgradeCost = (lvl) => build.upgradeCost(lvl); ui.build.placedInfo = (id) => [...build.placed.values()].filter((x) => x.id === id).map((x) => ({ level: x.level, cost: x.cost, salvage: x.salvage || 0, busy: build.busy.has(x.group) || !!x.group.userData.swapping }));   /* S34 / P80: tray greys ⬆/💰 mid-animation */ /* BUGFIX P24: cost → real refund label */ ui.build.refresh?.(); }
   offs.push(() => { if (ui?.build) { ui.build.upgradeCost = null; ui.build.placedInfo = null; ui.build.costOf = null; ui.build.demandOf = null; ui.build.reset?.(); } });
   // jars APPLY {pct}: move the whole pouch into the 4 jars by pct (spend stays as pouch → its share is the amount NOT moved)

@@ -1,3 +1,10 @@
+# HANDOFF S62 (user report 2026-11-07) — IDs for you and the next chats
+Grep the ID in code comments (`S62-x`). Keep the game's drawn-icon art style (no font emoji in the game; emoji only in code comments). Phone LANDSCAPE first, desktop second.
+| ID | Ask (user, verbatim intent) | Status |
+|---|---|---|
+| S62-A | "When I place a jar, it keeps appearing that I can place another one without letting me. Make that when the player places an item, it cancels the placing mechanic." Root cause: Game.js only called `build.exit()` after a `stall_*` placement; jars (unique, so the 2nd ghost is permanently red) and decor stayed armed. | IN PROGRESS: Game.js `build:placed` handler now exits placing for ANY item (stall, jar, decor, nature). Regression gate + browser check below |
+| S62-B | Final beginner-friendly screenshot review (phone landscape 844x390 first, desktop second), analyse the screenshot. | open |
+
 # HANDOFF S61 (continuation of S60, 2026-11-07) — read this first
 | ID | Ask | Status |
 |---|---|---|
