@@ -848,7 +848,9 @@ if (doStory) {
       if (!lastSets.every((ch) => ch.some((c) => OUT.has(c.id)) || ch.some((c) => !OUT.has(c.id)))) throw new Error(id + ' dead choice set');
       if (sc.lesson === 'scams') { if (sets < 3) throw new Error(id + ' (lesson scams) needs ≥ 3 choice sets, has ' + sets); if (!st.walk) throw new Error(id + ' needs a walk leaf (D1)');
         if (!lastSets.filter((ch) => d3(ch) === 2 && ch.every((c) => c.id === 'accept' || c.id === 'refuse')).length) throw new Error(id + ' needs a D3 accept/refuse set'); }
-      else { const ch = st.pitch[st.pitch.length - 1].choices; if (ch.length !== 2 || ch[0].id !== 'accept' || ch[1].id !== 'refuse') throw new Error(id + ' pitch must end with accept/refuse choices'); }
+      else { const ch = st.pitch[st.pitch.length - 1].choices;   // S59: non-'scams' lessons (insurance, loans…) may be flat accept/refuse OR the same look/walk tree; either way a reachable accept/refuse decision must exist
+        const flat = ch.length === 2 && ch[0].id === 'accept' && ch[1].id === 'refuse';
+        if (!flat && !(sets >= 2 && lastSets.some((c2) => c2.some((c) => c.id === 'accept') && c2.some((c) => c.id === 'refuse')))) throw new Error(id + ' pitch must end with accept/refuse choices (flat) or lead to an accept/refuse decision (tree)'); }
       scamSets += sets; }
     for (const id of Object.keys(EVENTS)) walk(story.events[id], 'event ' + id);
     walk(story.ending.win, 'ending.win'); walk(story.ending.lose, 'ending.lose'); walk(story.ending.endlessUnlock, 'ending.endlessUnlock');

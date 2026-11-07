@@ -1181,7 +1181,7 @@
         },
         {
           "speaker": "owl",
-          "text": "No written terms, no claims process. Real insurance says exactly what it covers and how to claim, like the Protect jar does."
+          "text": "No written terms, no claims process. Real insurance names what it covers and how to claim, like Protect."
         }
       ],
       "refuse": [
@@ -1283,7 +1283,7 @@
       "pitch": [
         {
           "speaker": "collector",
-          "text": "Pip! {spark} Spark and a growing market. Premium Stall Kit: normally 300, today just 120! The Tool Smith would NEVER match that.",
+          "text": "Pip! {spark} Spark and a growing market. Premium Stall Kit: was 300, now 120! The Tool Smith can't match it.",
           "mood": "happy"
         },
         {
@@ -1309,7 +1309,7 @@
         },
         {
           "speaker": "owl",
-          "text": "A fake 'normal' price makes a bad price look like a gift. For the record, the Tool Smith's level-2 upgrade costs 90."
+          "text": "A fake 'normal' price makes a bad deal look like a gift. The Tool Smith's level-2 upgrade costs 90."
         }
       ],
       "refuse": [
