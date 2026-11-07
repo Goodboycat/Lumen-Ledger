@@ -11,7 +11,7 @@
 // Headless-safe (scene null → invisible group). Season end auto-refuse in Game.js stays as the safety net; S.clear() removes the stranger.
 import * as THREE from '../../vendor/three.module.js';
 
-export const SCAM = { walkSec: 2.5, stay: [25, 40], timeout: 25, lureEvery: 5.4, near: 3, flashNear: 3, whiffNear: 2.6, whiffBark: 3.2, leaveSec: 2.2, fleeSec: 1.9, strollSpeed: 1.0, pauseSec: 1.6, hearR: 9,
+export const SCAM = { walkSec: 2.5, stay: [25, 40], timeout: 25, lureEvery: 5.4, near: 3.4, flashNear: 3, whiffNear: 2.6, whiffBark: 3.2, leaveSec: 2.2, fleeSec: 1.9, strollSpeed: 1.0, pauseSec: 1.6, hearR: 9,
   spots: [{ x: 3.6, z: -5.4 }, { x: -3.6, z: -5.4 }, { x: 4.2, z: -1.8 }, { x: -4.2, z: -1.8 }, { x: 0, z: -3.2 }, { x: 0, z: 2.6 }] };
 // the SAME warm pool for scams and fair deals: a bark must never give the kind away (the guide says "a stranger wants to talk", nothing more)
 const HELLO = ['Hello, friend! Got a minute?', 'What a lovely island! A word?', 'Ah, a stallholder! May I show you something?', 'You look like a clever one, friend.'];

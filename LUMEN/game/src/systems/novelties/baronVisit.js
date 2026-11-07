@@ -6,7 +6,7 @@
 // Headless-safe: no creatures → invisible THREE.Group (gate asserts the group leaves the scene).
 import * as THREE from '../../../vendor/three.module.js';
 
-export const BARON = { walkSec: 2.5, timeout: 25, tauntEvery: 4.2, near: 3, flashNear: 3, fleeSec: 2.0, leaveSec: 2.2, scam: 'zeroInterestLoan', spot: { x: 0, z: -3.2 } };
+export const BARON = { walkSec: 2.5, timeout: 25, tauntEvery: 4.2, near: 3.4, flashNear: 3, fleeSec: 2.0, leaveSec: 2.2, scam: 'zeroInterestLoan', spot: { x: 0, z: -3.2 } };
 const PITCH = ['A zero-interest* loan, keeper. 150 Spark. Today only; the Baker already took one.', 'Just initial that you looked. Most pay 20 %; for you, zero*.'];   // 48G tactic vocabulary: urgency · social proof · foot-in-the-door · anchoring
 
 export function createBaronVisit() {

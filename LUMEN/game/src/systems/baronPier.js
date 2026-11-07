@@ -10,7 +10,7 @@
 //   B.active            true while the Baron is at the pier (Game.js: state 'pier', eco clock does not tick)
 //   B.phase             'off' | 'arrive' | 'wait' | 'repay' | 'leave'
 //   B.due()             { interest, minimum, debt }   (minimum = interest the pouch can cover right now)
-//   B.near(r = 2.6)     hero within r of the Baron (and he is waiting / repaying)
+//   B.near(r = 3.4)     hero within r of the Baron (and he is waiting / repaying)
 //   B.interact()        'paid' | 'short' | 'repaid' | 'done' | null      B.release() ends a repay hold
 //   B.update(dt)        walk + animator + timers (call from sb.update)      B.begin() force a visit (demo / tests / resume)
 //   B.settle(why)       settle now (timeout / teardown) → pier:paid|short, then done
@@ -21,7 +21,7 @@
 import * as THREE from '../../vendor/three.module.js';
 import { DEPOSIT_STEP } from './jarsWorld.js';
 
-export const PIER = { walkSec: 2.5, waitCap: 20, repayIdle: 10, tauntEvery: 3.4, standIn: 1.1, near: 2.6, leaveSec: 2.2 };
+export const PIER = { walkSec: 2.5, waitCap: 20, repayIdle: 10, tauntEvery: 3.4, standIn: 1.1, near: 3.4, leaveSec: 2.2 };
 
 const FALLBACK = {
   paid:  { t1: ['Interest, on time. How… dull of you.', 'Every coin counted. The fog will have to wait.'],

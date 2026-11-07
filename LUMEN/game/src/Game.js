@@ -426,6 +426,16 @@ function installJarsWorld(sb) {
   // T1-C (found by --jars1 T1.5): build.load() places SILENTLY (no build:placed) → after CONTINUE the saved jars were never registered with jarsWorld (pre-existing 48E gap:
   //   a resumed run had jars on the ground that could not be used). build:loaded fires once per load → register them then.
   sb._offs.push(bus.on('build:loaded', registerPlacedJars));
+  // S63-B: talk() = the NPC half of interact() (Baron at the pier, Baron's visit, the stranger, a seeking Collector). It NEVER touches a jar, so walking up to a
+  //   Stranger that stands next to a jar can no longer start a jar press (that press had no release -> the jar kept withdrawing: S63-A).
+  sb.talk = (r) => {
+    if (sb.pier?.near?.(r)) return sb.pier.interact() || 'pier';
+    if (sb.novelty?.near?.(r)) return sb.novelty.interact() || 'scam';
+    if (sb.scamNpc?.near?.(r)) return sb.scamNpc.interact() || 'scam';
+    return null;
+  };
+  // S63-A: a TAP on a jar is ONE deposit: press + release in the same call. Only a real held key (E down) or a held pointer keeps `holding` alive.
+  sb.tapJar = () => { if (!J.near()) return null; const r = J.press(); J.release(); return r || 'jar'; };
   sb.interact = () => {
     if (J.near()) return J.press() || 'jar';
     if (sb.pier?.near?.()) return sb.pier.interact() || 'pier';                     // 42D: the Baron waits at the pier → pay interest / repay
@@ -1153,10 +1163,10 @@ function installRunWires(lg) {
   on('eco:season', disarm); on('eco:win', disarm); on('eco:lose', disarm); on('game:title', disarm);
   // BUGFIX P33: ✋ Interact (touch pad) finally DOES something, context-sensitive — placing a ghost → rotate it · next to an upgradable
   //   stall (≤ 2.5 u) → upgrade it (same as U / tray ⬆) · otherwise → open the Build Tray. Desktop E/F stay FinLit abilities (ABILITY_KEYS).
-  lg.interact = () => {
+  lg.interact = (opts) => {
     if (!lg.sb || lg.game.paused || ui?.isModal?.()) return 'blocked';
     if (build.mode === 'place') { build.rotate(); return 'rotate'; }
-    if (build.mode !== 'drag') { const r = lg.sb.interact?.(); if (r) return r; }   // 42B: standing at a jar → deposit (one dispatcher, jar first)
+    if (build.mode !== 'drag') { const r = opts?.tap && lg.sb.jarsWorld?.near?.() ? lg.sb.tapJar?.() : lg.sb.interact?.(); if (r) return r; }   // S63-A: a tap never starts a hold   // 42B: standing at a jar → deposit (one dispatcher, jar first)
     if (build.mode === 'drag') { build.dragRotate(); return 'rotate'; }   // S36: ✋ rotates the prop being dragged
     // BUGFIX P37/P38: prefer the nearest stall that can still be upgraded; a decor pot or a maxed L3 stall between Pip and it no longer blocks U / ✋
     const e = build.nearestUpgradable(hero.root.position.x, hero.root.position.z, 2.5);
@@ -1206,10 +1216,10 @@ function installRunWires(lg) {
   lg.landTap = (world) => {
     if (!lg.sb || lg.game.paused || ui?.isModal?.() || build.mode === 'place' || build.mode === 'drag' || lg.demolishMode || !world) return false;
     const J = lg.sb.jarsWorld; const ids = J?.ids?.() || [];
-    for (const id of ids) { const m = J.meshOf?.(id); const p = m?.position || m; if (p && Math.hypot(p.x - world.x, p.z - world.z) <= 1.2) { if (J.near() !== id && lg.sb.startAutoWalk?.(id)) return true; lg.interact(); return true; } }   // T1-B: far jar → auto-walk, then deposit
+    for (const id of ids) { const m = J.meshOf?.(id); const p = m?.position || m; if (p && Math.hypot(p.x - world.x, p.z - world.z) <= 1.2) { if (J.near() !== id && lg.sb.startAutoWalk?.(id)) return true; lg.interact({ tap: true }); return true; } }   // T1-B: far jar → auto-walk, then deposit · S63-A: a tap = ONE deposit, never a hold
     { const N = lg.sb.scamNpc; const gp = N?.active && (N.state === 'pitch' || N.state === 'arrive') ? N.g?.position : null;   // S58: tap on the stranger → walk there + talk
       if (gp && Math.hypot(gp.x - world.x, gp.z - world.z) <= 2.2 && lg.sb.startWalkToStranger?.()) return true; }
-    if ((lg.sb.pier?.near?.() || lg.sb.scamNpc?.near?.() || lg.sb.novelty?.near?.()) && hero?.root && Math.hypot(hero.root.position.x - world.x, hero.root.position.z - world.z) <= 2.5) { lg.interact(); return true; }
+    if ((lg.sb.pier?.near?.() || lg.sb.scamNpc?.near?.() || lg.sb.novelty?.near?.()) && hero?.root && Math.hypot(hero.root.position.x - world.x, hero.root.position.z - world.z) <= 4.5) { if (lg.sb.talk?.()) return true; }   // S63-B: tap near them talks at once (NPC only; a tap never touches a jar)
     if (ui?.build?.isOpen) return false;                                                   // open tray: a land tap is handled by the tray / placement
     if (lg.sb.island?.isLand && !lg.sb.island.isLand(world.x, world.z)) return false;     // water: nothing to build on
     lg.tapCell = { x: world.x, z: world.z, at: lg.game.time };
@@ -1221,14 +1231,20 @@ function installRunWires(lg) {
   offs.push(bus.on('build:enter', () => { const c = lg.tapCell; lg.tapCell = null; if (c && lg.game.time - c.at < 20 && build.mode === 'place') build.moveTo(c.x, c.z); }));
   // 48D proximity interact (replaces ✋ for the Baron pier / scam NPC): hero ≤ 1.3 u of them and standing still 0.6 s → sb.interact() once;
   //   re-armed when the hero leaves the radius. Jars keep E / tap (a deposit must be a choice); the panel just un-collapses nearby (jars:near).
+  // S63-B (user: "I need to get real close and stay still a few seconds"): range 1.3 -> TALK_R (3.4 u, ~ the width of a stall), stand-still 0.6 s -> 0.25 s, and
+  //   "still" now means hero SPEED < 0.8 u/s (vel is damped, never exactly 0, so the old test could keep resetting). The Baron's visit novelty is included (it was
+  //   not in proxTick at all). Talk goes through sb.talk(), which never touches a jar.
   lg._prox = { still: 0, fired: false };
+  const TALK_R = 3.4, TALK_STILL = 0.25, TALK_SLOW = 0.8;
+  lg.TALK_R = TALK_R;
   lg.proxTick = (dt) => {
     const sb = lg.sb; if (!sb || lg.game.paused || ui?.isModal?.() || build.mode !== 'idle') return;
-    const near = sb.pier?.near?.(1.3) || sb.scamNpc?.near?.(1.3) || false;
+    const near = sb.pier?.near?.(TALK_R) || sb.scamNpc?.near?.(TALK_R) || sb.novelty?.near?.(TALK_R) || false;
     if (!near) { lg._prox.still = 0; lg._prox.fired = false; return; }
-    const h = hero; const moving = h?.moving || (h?.vel && h.vel.lengthSq() > 1e-4);
+    const v = hero?.vel; const speed = v ? Math.hypot(v.x, v.z) : 0; const stick = lg.game.input?.move; const pushing = stick && (stick.x * stick.x + stick.y * stick.y) > 0.04;
+    const moving = (speed > TALK_SLOW && pushing) || (speed > TALK_SLOW * 2);
     lg._prox.still = moving ? 0 : lg._prox.still + dt;
-    if (!lg._prox.fired && lg._prox.still >= 0.6) { lg._prox.fired = true; sb.interact?.(); }
+    if (!lg._prox.fired && lg._prox.still >= TALK_STILL) { const r = sb.talk?.(TALK_R); lg._prox.fired = !!r || lg._prox.fired; if (!r) lg._prox.still = 0; }
   };
   let _nearT = null;
   offs.push(bus.on('jars:near', (p) => { if (_nearT) { clearTimeout(_nearT); _nearT = null; } if (p?.jar) { ui?.jars?.setCollapsed?.(false); ui?.jars?.focus?.(p.jar); } else _nearT = setTimeout(() => { _nearT = null; ui?.jars?.setCollapsed?.(true); }, 1500); }));
