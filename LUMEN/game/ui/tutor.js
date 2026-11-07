@@ -76,7 +76,7 @@ export function mountTutor(root, opts = {}) {
     (root || document.body).append(wrap, hand);
   }
 
-  const st = { cur: null, mode: 'event', world: null, queue: [], gap: 0, clock: 0, last: {}, t: 0, age: 0, moving: false, hp: null, at: 0, lull: 0, lullDone: seen.includes('onCuriosityLull'), active: true, deps: null, offs: [], raf: 0 };
+  const st = { cur: null, mode: 'event', world: null, queue: [], gap: 0, clock: 0, last: {}, t: 0, age: 0, moving: false, hp: null, pendingVerb: null, at: 0, lull: 0, lullDone: seen.includes('onCuriosityLull'), active: true, deps: null, offs: [], raf: 0 };
 
   // ---- the cloud hand: where does card `c` point? (S59) -------------------------------------------------------------------
   const specsOf = (c, world) => {
@@ -156,6 +156,7 @@ export function mountTutor(root, opts = {}) {
     show(id) {
       const c = cards.get(id); if (!c || !st.active) return false;
       if (retired(c)) return false;
+      if (isVerb(c) && blockedNow()) { st.pendingVerb = id; return false; }                 // S59: the step's card waits for the cinematic / dialogue, then appears (was lost for good)
       if (st.cur && isVerb(st.cur) && isVerb(c) && st.cur.id !== c.id) api.dismiss('followed');   // S59: next verb step = the last one was followed
       if (st.cur) return false;
       display(c, 'event'); return true;
@@ -190,6 +191,8 @@ export function mountTutor(root, opts = {}) {
       const c = st.cur; if (!c) return api;
       st.cur = null; st.moving = false; st.hp = null; const ms = Math.round(now() - st.at); st.gap = cfg.gap;
       if (wrap) { wrap.classList.remove('show'); pointAt(null); }
+      if ((why === 'modal' || why === 'title') && (counts[c.id] || 0) > 0 && (counts[c.id] || 0) < RETIRED) counts[c.id]--;   // S59: shut by a modal, not read → still unseen
+      if (why === 'modal' && isVerb(c)) st.pendingVerb = c.id;                                  // …and a verb card comes back when the modal closes
       bus.emit('tutor:dismissed', { id: c.id, ms, why });
       if (why === 'title' || why === 'destroy') st.queue.length = 0;
       return api;
@@ -205,6 +208,7 @@ export function mountTutor(root, opts = {}) {
         else if (st.queue.length && st.age >= cfg.queueAge && !isVerb(c)) api.dismiss('next');   // somebody else is waiting
         return;
       }
+      if (st.pendingVerb && st.active) { st.gap -= dt; if (st.gap <= 0 && !blockedNow()) { const id = st.pendingVerb; st.pendingVerb = null; const c = cards.get(id); if (c && !retired(c)) { display(c, 'event'); return; } } }
       if (st.queue.length && st.active) {                                   // T2.3: two triggers close together → both shown in order, none dropped
         st.gap -= dt; if (st.gap > 0) return;
         if (blockedNow()) return;
@@ -237,8 +241,8 @@ export function mountTutor(root, opts = {}) {
   const byFollow = new Map();
   for (const c of cards.values()) for (const f of Array.isArray(c.follow) ? c.follow : []) { if (!f || !f.on) continue; if (!byFollow.has(f.on)) byFollow.set(f.on, []); byFollow.get(f.on).push({ id: c.id, match: f.match }); }
   for (const [ev, list] of byFollow) st.offs.push(bus.on(ev, (p) => { if (!st.cur || (p && p.silent)) return; for (const f of list) if (f.id === st.cur.id && matches(f.match, p)) { api.dismiss('followed'); return; } }));
-  st.offs.push(bus.on('tut:step', (p) => { if (st.cur && isVerb(st.cur) && p && st.cur.id !== 'verb:' + p.id) api.dismiss('followed'); }));
-  for (const n of ['tut:done', 'tut:skip']) st.offs.push(bus.on(n, () => { if (st.cur && isVerb(st.cur)) api.dismiss('followed'); }));
+  st.offs.push(bus.on('tut:step', (p) => { if (p && st.pendingVerb && st.pendingVerb !== 'verb:' + p.id) st.pendingVerb = null; if (st.cur && isVerb(st.cur) && p && st.cur.id !== 'verb:' + p.id) api.dismiss('followed'); }));
+  for (const n of ['tut:done', 'tut:skip']) st.offs.push(bus.on(n, () => { st.pendingVerb = null; if (st.cur && isVerb(st.cur)) api.dismiss('followed'); }));
   // tap any [data-guide] HUD thing → its card (T2.6); the tap itself still works. Every OTHER gesture is ignored on purpose.
   const guideOf = (e) => { let n = e && e.target; for (let i = 0; n && i < 8; i++, n = n.parentNode) { const g = n.dataset && n.dataset.guide; if (g) return g; if (n.getAttribute && n.getAttribute('data-guide')) return n.getAttribute('data-guide'); } return null; };
   const gesture = (e) => { if (e && e.type === 'pointerdown') { const g = guideOf(e); if (g && cards.has(g)) api.ask(g); } };
@@ -247,7 +251,7 @@ export function mountTutor(root, opts = {}) {
     window.addEventListener('pointerdown', gesture, true);
     offDom = () => { window.removeEventListener('pointerdown', gesture, true); };
   }
-  st.offs.push(bus.on('game:title', () => { api.dismiss('title'); st.active = false; }));
+  st.offs.push(bus.on('game:title', () => { api.dismiss('title'); st.pendingVerb = null; st.active = false; }));
   st.offs.push(bus.on('game:start', () => { st.active = true; st.lull = 0; }));
   st.offs.push(bus.on('game:resumed', () => { st.active = true; st.lull = 0; }));
   for (const n of ['ui:ledger:open', 'ui:dialogue:open', 'ui:seasons:open', 'ui:title:open', 'eco:win', 'eco:lose']) st.offs.push(bus.on(n, () => api.dismiss('modal')));

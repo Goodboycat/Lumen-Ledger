@@ -820,6 +820,7 @@ export function createLumenGame(game, opts = {}) {
     const sb = lg.sb; if (!sb) return null; const hp = sb.hero?.root?.position; const xz = (o) => { const q = o && (o.position || o.root?.position || o.g?.position || o.group?.position); return q && Number.isFinite(q.x) && Number.isFinite(q.z) ? { x: q.x, z: q.z } : null; };
     const near = (arr, pick) => { let best = null, bd = Infinity; for (const o of arr || []) { const q = pick ? pick(o) : xz(o); if (!q) continue; const d = hp ? Math.hypot(q.x - hp.x, q.z - hp.z) : 0; if (d < bd) { bd = d; best = q; } } return best; };
     if (kind === 'hero') return hp ? { x: hp.x, z: hp.z } : null;
+    if (kind === 'ahead') { if (!hp) return null; const ry = sb.hero?.root?.rotation?.y || 0; return { x: hp.x + Math.sin(ry) * 3.2, z: hp.z + Math.cos(ry) * 3.2, y: 0.2 }; }   // 'go there' marker for the Move step
     if (kind === 'coin') return near(sb.coins);
     if (kind.startsWith('jar:')) { const m = sb.jarsWorld?.get?.(kind.slice(4)); const q = xz(m); return q ? { ...q, y: 1.4 } : null; }
     if (kind === 'jar') { const J = sb.jarsWorld; return near((J?.ids?.() || []).map((id) => J.get(id))); }
