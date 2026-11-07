@@ -19,6 +19,7 @@ import { attachAbilities, ABILITY_NAMES, FINLIT } from './anim/heroAbilities.js'
 import { installVerbChain } from './systems/verbChain.js';
 import { installCrew } from './systems/crewJobs.js';   // T3: crew do visible jobs (arrival, post, idle/work loop, payoff pops, Ledger crew line)
 import { createScamJournal } from './systems/scamJournal.js';   // T5: sticker book of every deal met (spotted / fell for it)
+import { createJarRemind } from './systems/jarRemind.js';           // S59-H: tell the player to place the other jars; again next season if ignored
 import { installCuriosity } from './systems/curiosityWire.js';   // T2: curiosity guide — registry sources (jars, stalls, signs, tills, Collectors, Baron, stranger, crew)
 import { WHEN as POWER_WHEN, lockedLine } from './systems/powerAnswers.js';   // T2b: every power press answers in ≤ 8 words
 import { installUnlocks, starsFor } from './systems/unlocks.js';                          // 41D: 2 starters + 4 earned by ledger stars
@@ -852,7 +853,7 @@ export function createLumenGame(game, opts = {}) {
     ui?.update?.(dtReal ?? dt);                                                       // UI animates even while the game is paused
     lg.cine?.update(dtReal ?? dt);                                                    // S18: cinematics run on the real clock (title is paused)
     if (lg.sb?.autoWalk && ui?.isModal?.()) lg.sb.cancelAutoWalk('blocked');           // T1-B: a modal (dialogue / ledger) ends the auto-walk
-    if (lg.sb && !game.paused) { lg.story?.update?.(dt); emitTick(lg); lg.tut?.update?.(dt); lg.verbs?.update?.(dt); lg.proxTick?.(dt); lg.curiosity?.update?.(dt); }   // 48D: proximity interact · T2: 5 Hz curiosity check
+    if (lg.sb && !game.paused) { lg.story?.update?.(dt); emitTick(lg); lg.tut?.update?.(dt); lg.verbs?.update?.(dt); lg.proxTick?.(dt); lg.curiosity?.update?.(dt); lg.jarRemind?.update?.(dt); }   // 48D: proximity interact · T2: 5 Hz curiosity check
   };
   game.add({ update: (dt, g, dtReal) => lg.update(dt, g, dtReal) });
   lg.destroy = () => { for (const f of offs) f(); offs.length = 0; lg.teardown?.(); lg.cine?.dispose?.(); lg.cine = null; };
@@ -1032,6 +1033,10 @@ function installRunWires(lg) {
   const { bus, ui, sb } = lg, offs = lg._runOffs = [], on = (n, f) => offs.push(bus.on(n, f));
   const { build, eco, hero } = sb;
   lg.demolishMode = false;
+  lg.jarRemind = createJarRemind({ bus, season: () => eco.state.season, unlocked: () => sb.jarUnlocks?.unlocked?.() || [],
+    placed: () => { const out = []; for (const p of build.placed?.values?.() || []) { const id = String(p?.id || ''); if (id.startsWith('jar_') && !p.scenery) out.push(id.slice(4)); } return out; },
+    blocked: () => !!lg.guideBlocked?.(), quiet: () => !!(lg.verbs && lg.verbs.step >= 0) });   // S59-H (see systems/jarRemind.js)
+  offs.push(() => { lg.jarRemind?.destroy?.(); lg.jarRemind = null; });
   installCuriosity(lg);   // T2: fresh registry per run (destroyed with _runOffs); lg.guideBlocked() = the same 'no card now' rule the tutor uses
   applyReduceMotion(lg, !!(lg.reduceMotion ?? ui?.pause?.settings?.reduceMotion));   // BUGFIX B23: every new run inherits the setting
   on('ui:build', (p) => {
