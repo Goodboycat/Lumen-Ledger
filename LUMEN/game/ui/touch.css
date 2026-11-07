@@ -91,3 +91,6 @@ body.is-touch .help { display: none; }
 .ll-touch-ab.fx .ll-touch-ab-fx { opacity: 1; }
 .ll-touch-ab.pop { animation: ll-touch-ab-pop .5s cubic-bezier(.34,1.56,.64,1); }
 @keyframes ll-touch-ab-pop { 0% { transform: scale(.4); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+
+/* S59: phone landscape — the Cloud avatar + tutor card live at the bottom centre, so the joystick label rides higher (it used to hide behind them). */
+@media (max-height: 460px) { .ll-joy-hint { bottom: max(104px, calc(env(safe-area-inset-bottom) + 104px)); left: 42%; font-size: 12px; opacity: .8; color: #fff; text-shadow: 0 0 3px #263238, 0 1px 2px #263238, 0 0 6px rgba(38,50,56,.7); } }
