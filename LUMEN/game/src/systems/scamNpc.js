@@ -67,7 +67,7 @@ export function createScamNpc(deps = {}) {
     look(S.to.x, S.to.z); play('walk');
     S.active = true; S.state = 'arrive'; S.id = sid; S.kind = kind; S.tell = kind === 'scam' ? (eco.scams[sid]?.tell || null) : null;
     S.t = 0; S.stayT = 0; S.stay = SCAM.stay[0] + rng() * (SCAM.stay[1] - SCAM.stay[0]); S.lureT = 1.2; S.offered = false; S.answered = false; S.wp = null; S.pauseT = 0; S.heard = 0;
-    S.stats.spawned++; if (kind === 'fair') S.stats.fair++;
+    S.stats.spawned++; if (kind === 'fair') { S.stats.fair++; S.metFair.add(sid); } else { S.met.add(sid); S.lastScam = sid; }   // a stranger the player skipped still counts: the NEXT one is always a different deal
     bus.emit('scam:npc', { id: sid, kind, pos: { ...S.to }, season: eco.state?.season || 0, stay: +S.stay.toFixed(1), model: g.userData.type });
     return true;
   };

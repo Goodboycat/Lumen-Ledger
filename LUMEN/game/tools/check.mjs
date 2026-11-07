@@ -45,6 +45,7 @@ const doJars1 = args.includes('--jars1');           // T1 tools/gates/jars1.mjs:
 const doCrew = args.includes('--crew');           // T3 tools/gates/crew.mjs: 6 crew arrive from the pier ≤ 3 s with 0 stalls, work + payoff pop in 80 s, Ledger Crew line = Σ pops, season totals = baseline ±2 %, +≤1 object, CONTINUE instant
 const doPowers = args.includes('--powers');       // T2b tools/gates/powers.mjs: hold = guide card (touch + desktop), every press answers ≤ 8 words, cooldown/busy/blocked lines, 6 touch chips (4 locked), Shield/Stomp drain bar, 0 meshes
 const doCuriosity = args.includes('--curiosity');   // T2 tools/gates/curiosity.mjs: tests/curiosity.test.mjs + real game on domshim — registry sees stall/sign, approach card ≤ 1.5 s, far Collector tap, counts persist, HUD data-guide taps, pause → GUIDE codex, coverage (T2.1/4/5/6/7/8)
+const doStrangers = args.includes('--strangers');   // T4 tools/gates/strangers.mjs: first stranger in S1 (fair, not a Collector) · 10 swings whiff · every deal id spawns with a bell/edge-arrow marker from 10 u · timeout leaves with no penalty/reward · 10-season run ≥ 10 strangers, ≥ 3 fair, ≥ 5 scam ids
 const doDebug = args.includes('--debug');          // T0 tools/gates/debug.mjs: lg.debug hooks + src/debug/panel.js on domshim — no global before mount, 0 scene.add, HUD spark/season === state(), every live button returns a plain object, 3 n/a buttons
 const doJarsWorld = args.includes('--jarsworld');  // 42B tools/gates/jarsworld.mjs: jars are places — near(), E deposit 10/5 + empty, hold-E withdraw (Invest locked), spillPouch cap 8, +0 meshes, panel summary default + legacy APPLY
 const doNovelties = args.includes('--novelties');  // 43B tools/gates/novelties.mjs: S2 stormWarning (warn ×1, bark, darken, restore) · S3 nightMarket (light ≤0.4, spill ×2, spend ×1.3, chip) · 1 active · 0 leaks
@@ -2672,6 +2673,10 @@ if (doPricing) {
 if (doWants) {
   try { const { run } = await import(pathToFileURL(resolve('tools/gates/wants.mjs')).href); bad += await run({ resolve, pathToFileURL }); }
   catch (err) { bad++; console.log('  wants gate FAIL →', err.message.split('\n')[0]); }
+}
+if (doStrangers) {
+  try { const { run } = await import(pathToFileURL(resolve('tools/gates/strangers.mjs')).href); bad += await run({ resolve, pathToFileURL }); }
+  catch (err) { bad++; console.log('  strangers gate FAIL →', (err.stack || err.message).split('\n').slice(0, 3).join(' | ')); }
 }
 if (doPier) {
   try { const { run } = await import(pathToFileURL(resolve('tools/gates/pier.mjs')).href); bad += await run({ resolve, pathToFileURL }); }
