@@ -2,10 +2,10 @@
 Grep the ID in code comments (`S60-x`). Keep the game's drawn-icon art style (no font emoji in the game; emoji only in code comments).
 | ID | Ask (user, verbatim intent) | Status |
 |---|---|---|
-| S60-A | The FIRST cloud hand (Move step) pointed at Pip to say "you can move with WASD". Better: on mobile the hand must POINT AT and DRAG a SIMULATED JOYSTICK (base ring + knob, drawn) so the player learns there IS a joystick. Desktop: hand points far ahead (~6 u, reads as "go there") + WASD keycaps. | in progress |
-| S60-B | The cloud hand sometimes points at an INVISIBLE Stranger (a spot where the stranger no longer is / never was). Fix: moving targets are located LIVE every frame, never from the stale x,z snapshot; the hand hides and the card closes when the thing is gone / not visible. | in progress |
-| S60-C | (from S59 open list) Owl opening bubble is 3 lines on a phone -> split into shorter bubbles. | pending |
-| S60-D | Final beginner-friendly screenshot review, phone landscape (844x390) first, desktop second. | pending |
+| S60-A | The FIRST cloud hand (Move step) pointed at Pip to say "you can move with WASD". Better: on mobile the hand must POINT AT and DRAG a SIMULATED JOYSTICK (base ring + knob, drawn) so the player learns there IS a joystick. Desktop: hand points far ahead (~6 u, reads as "go there") + WASD keycaps. | DONE (S60 chat): touch = drawn joystick demo (ui/tutor.js `demo:'move'`, tutor.css `.ll-tutor-joy`), desktop = WASD keycaps + hand at `locate('ahead')` 6 u, drawn `joystick` icon, card text `textTouch`. Verified 844x390 + 1280x720 (tools/play_s60.mjs) |
+| S60-B | The cloud hand sometimes points at an INVISIBLE Stranger (a spot where the stranger no longer is / never was). Fix: moving targets are located LIVE every frame, never from the stale x,z snapshot; the hand hides and the card closes when the thing is gone / not visible. | DONE: `isLive()` cards ignore the snapshot, `locate('stranger')` = null unless arrive/pitch + in scene, card closes after 1.2 s gone. Unit test + browser rig (dx <= 2 px over 4 s, hand hides when the stranger is cleared). Root cause: `curious` events carried an x,z snapshot that `specsOf` tried FIRST |
+| S60-C | (from S59 open list) Owl opening bubble is 3 lines on a phone -> split into shorter bubbles. | DONE: opening = 4 lines (Owl, Owl, Pip, Cloud); story.test + barks gate updated 3->4; bubbles 2 lines / 1 line on 844x390 |
+| S60-D | Final beginner-friendly screenshot review, phone landscape (844x390) first, desktop second. | DONE (shots tools/shots/s60d_*, s60_phone_*, s60_desk_*). Notes below |
 | S60-E | Real-device check of touch-hold + notch safe areas (human step, cannot be done in the sandbox). | open |
 Rig restart: `cd LUMEN/game && setsid -f python3 -m http.server 3000`, then `node tools/play_s59e.mjs` / `play_s59f.mjs` (in play_s59f the opening dialogue opens ~10 s after PLAY: wait for ui.dialogue.isOpen before pressing Enter). Browser: `bash tools/setup_browser.sh` once.
 
@@ -50,3 +50,10 @@ Tests: tests/tutor.test.mjs + curiosity.test.mjs (9/9 each). Rigs: tools/play_s5
 - The Move-step hand sits on top of Pip's legs ('world:ahead' is only ~3 u from Pip): could point farther (6 u) so it reads as 'go there', not 'this is you'.
 - The Owl opening text is 3 lines on phone; consider splitting it into two shorter bubbles (beginner reading load).
 - Real-device phone check (touch hold, safe-area notch) is still a human step.
+
+
+## S60 closing notes (next chat start here)
+- Version `S60`, README row, zip rebuilt (9.3 MB, 376 files). Full `node tools/check.mjs` ALL OK; 12 test files green (tutor 11, story 63 asserts).
+- Beginner read (844x390): title = one PLAY; first play frame = pouch + debt + season pill, ONE blue card "Drag the stick to move Pip." with the Cloud, a drawn stick whose knob the cloud hand drags. Desktop: WASD keycaps + hand 6 u ahead.
+- Gotchas learned: never `pkill -f "node --test"` in the sandbox shell (it matches the shell's own command line and kills the call); use `timeout N node --test file > log`. `ui.touch.simulateJoystick` now survives a fake pointer id (setPointerCapture try/catch).
+- Open / ideas: (1) the joystick demo sits over the cottage roof on 844x390 - fine, but if the Build button moves, re-check `.ll-tutor-joy` offsets in tutor.css (max-height 460 block). (2) On very small phones (<= 360 px tall) the demo (88 px) + card could touch: not tested. (3) Real-device touch-hold + notch safe areas = human step (S60-E). (4) `locate('ahead')` prefers -z (toward the stalls); if the camera is ever rotated the direction may not be screen-up. (5) The Owl second bubble could get a drawn lantern icon.
