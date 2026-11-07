@@ -122,3 +122,9 @@ body.is-touch .ll-build-hint { font-size: 12px; color: #333; font-weight: 800; }
 
 /* S63-D2: an owned card already says "yours" in its cost chip; the green count badge sat on top of it and cut the word ("yours" -> "yours✓"). Hide the badge when the count is 1 (one-per-type cards). */
 .ll-card.owned .ll-card-count { display: none; }
+
+/* S65-B: very short phones (360x240): the tray was taller than the screen (top = -65 px). The card grid scrolls inside a shorter box instead. */
+@media (max-height: 300px) { .ll-build-grid { max-height: 88px; } .ll-build-tray { padding: 6px; } .ll-build-tabs { margin-bottom: 4px; } }
+
+/* S65-B: <= 260 px tall (360x240): tabs scroll sideways instead of wrapping to a 2nd line, the hint line is dropped (the cards say it), card grid is shorter. */
+@media (max-height: 260px) { .ll-build-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } .ll-build-tabs::-webkit-scrollbar { display: none; } .ll-build-tab { flex: none; } .ll-build-hint { display: none; } .ll-build-grid { max-height: 62px; } .ll-card-name { min-height: 0; } }

@@ -48,6 +48,8 @@
 /* S65-B (S64-F): short phones, Build tray open: the card's top edge overlapped the tray panel's bottom border (8 px at 568x320). The Build button sits to the card's
    left, so the card only has to drop to the bottom edge, below the panel. */
 @media (max-height: 460px) { body.ll-tray-open:not(.ll-placing) .ll-tutor { bottom: max(4px, env(safe-area-inset-bottom)); } }
+/* S65-B: <= 300 px tall (480x270, 360x240): the card sits RIGHT of the Build button (never over it) and leaves the Attack / Dash pad free. */
+@media (max-height: 300px) { body.ll-tray-open:not(.ll-placing) .ll-tutor, body.ll-tray-open:not(.ll-placing) .ll-tutor.show { left: 124px; transform: none; max-width: calc(100vw - 124px - 92px); } }
 @media (min-width: 701px) and (min-height: 461px) {
   .ll-tutor { left: 16px; transform: translateX(0) translateY(10px); bottom: calc(max(12px, env(safe-area-inset-bottom)) + 64px); }
   .ll-tutor.show { transform: translateX(0) translateY(0); }
@@ -105,3 +107,8 @@ body.tj-on .ll-joy-hint { opacity: 0 !important; }   /* S60-A: the drawn stick d
 /* S62-C: while an item is being placed the build bar (✓ place · R · ✕ cancel) owns the bottom-left; the card + Cloud lift above it (phone landscape) */
 @media (max-height: 460px) { body.ll-placing .ll-tutor { bottom: calc(max(8px, env(safe-area-inset-bottom)) + 62px); } }
 @media (max-height: 300px) { body.ll-placing .ll-tutor { bottom: calc(max(6px, env(safe-area-inset-bottom)) + 52px); } }
+
+/* S65-B: <= 260 px tall: the cloud avatar steps out (the hand + text carry it) and the card is one tight line pair. */
+@media (max-height: 260px) { .ll-tutor { font-size: 12px; } .ll-tutor-av { display: none; } .ll-tutor-bub { padding: 5px 8px; } body.ll-tray-open:not(.ll-placing) .ll-tutor, body.ll-tray-open:not(.ll-placing) .ll-tutor.show { left: 124px; max-width: calc(100vw - 124px - 88px); } }
+/* S65-B: <= 260 px tall: no icon / check inside the card (the hand and the text carry it) -> 2 text lines instead of 4, so it clears the open tray panel. */
+@media (max-height: 260px) { .ll-tutor-ico, .ll-tutor-x { display: none; } .ll-tutor-bub { gap: 0; padding: 4px 8px; border-radius: 12px; } }
