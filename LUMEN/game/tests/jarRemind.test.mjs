@@ -90,10 +90,12 @@ test('S59-I: hud:chip {icon:"stormmark", alert} draws the storm marker chip and 
   const bus = new EventBus(); const root = document.createElement('div'); document.body.append(root);
   const hud = mountHUD(root, { bus, seasonsToWin: 10, selfDrive: false });
   bus.emit('hud:chip', { id: 'storm', icon: 'stormmark', text: 'STORM COMING: fill Protect', on: true, alert: true });
-  const c = root.querySelector('[data-id="storm"]'); assert.ok(c, 'chip exists');
+  const box = root.querySelectorAll('.ll-chips')[0];   // (the DOM shim's attribute selector reads _attrs, not dataset → walk the chips box)
+  const find = () => box.children.find((n) => n.dataset?.id === 'storm') || null;
+  const c = find(); assert.ok(c, 'chip exists');
   assert.ok(/ll-ico-stormmark/.test(c.innerHTML), 'drawn stormmark icon inside');
   assert.ok(c.classList.contains('ll-chip-alert'), 'alert pulse class');
   assert.ok(!/⚡|⛈|🌩/.test(c.textContent), 'no glyph emoji');
-  bus.emit('hud:chip', { id: 'storm', on: false }); assert.equal(root.querySelector('[data-id="storm"]'), null);
+  bus.emit('hud:chip', { id: 'storm', on: false }); assert.equal(find(), null);
   hud.destroy();
 });
