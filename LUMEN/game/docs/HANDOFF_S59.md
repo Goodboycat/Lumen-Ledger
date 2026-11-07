@@ -9,10 +9,10 @@
 | S59-D | Tutorial text used glyph emojis (✦ ★) -> drawn icons (`iconizeText`). | in progress |
 | S59-E | Tutor blue card needs the same black border + hard shadow as the other UIs. | in progress |
 | S59-F | After the Pip/Owl opening the Cloud says hello and that it will help (dialogue speaker `cloud`, drawn `face_cloud`). | DONE (opening = 3 lines; story.test + tools/checks/barks.mjs x3 updated 2->3; browser-verified on 844x390) |
-| S59-G | The cloud hand must point at every part of the tab containers (tabs, cards, Deploy, toggle) correctly. | PARTIAL: toggle + Jars tab verified within 2 px (card point `^` prefix = hand above the tab). NOT yet checked: tray cards, Deploy button, stall tab |
+| S59-G | The cloud hand must point at every part of the tab containers (tabs, cards, Deploy, toggle) correctly. | DONE (S59 closing chat, tools/play_s59e.mjs): toggle, Jars tab, Stalls tab, tray card, Deploy, placing OK all within 2 px dx on 844x390. FIX: verb:stall now targets `.ll-card:not(.owned)` and `.deploy:not(:disabled)` (it used to point at the disabled 'Deployed' button and cover Sell, because the 3 starter stalls are owned from the start) |
 | S59-H | Tell the player to add the other jars; if ignored, tell again at the next season (`remind`). | DONE (src/systems/jarRemind.js, card `jar:add`, tests/jarRemind.test.mjs; 20 s after unlock, again 3 s after next-season CONTINUE, waits while dialogue/chain) |
 | S59-I | `stormmark` icon wired to the storm warning marker (not only the tutor card). | DONE (hud:chip {icon, alert} from novelties/stormWarning.js; ui/hud.css chip rules scoped to .ll-chips because ledger.css has a global white .ll-chip) |
-| S59-J | Phone-landscape check of later cards (jar, till, stall upgrade, Collector, stranger). | PARTIAL: jar reminder, storm chip, Cloud dialogue checked. todo: till, stall upgrade, Collector, stranger |
+| S59-J | Phone-landscape check of later cards (jar, till, stall upgrade, Collector, stranger). | DONE (play_s59e.mjs, shots tools/shots/s59e_j1..j5): hand on-screen, no overlap with the card, on the right thing for stall, upgrade, till, Collector, stranger. Also: 'drag to move' joystick label moved above the Cloud avatar on phone landscape (ui/touch.css, white + dark outline) |
 Also from the previous chat (all closed unless marked): story gate green (`premiumStallKit` <=110, `foggyInsurance` rule = flat accept/refuse OR look/walk tree) · GAME_VERSION S59 + README row + zip (RULE Z).
 
 ## Previous chat (kept)
@@ -27,3 +27,15 @@ Tests: tests/tutor.test.mjs + curiosity.test.mjs (9/9 each). Rigs: tools/play_s5
 - node --test hangs if a mountTutor is not destroy()ed (hand rAF loop).
 - Known: the debug overlay text bottom-left only shows with ?debug=1. The `drag to move` hint is faint behind the card (opacity .35), harmless.
 - Open: S59-G remainder, S59-J remainder, GAME_VERSION still 'S57' in Game.js (bump to S59 + README row + zip, RULE Z), full `node tools/check.mjs` not re-run after the last CSS change.
+
+
+## S59 closing chat (2026-11-07) — what changed
+- GAME_VERSION = 'S59' (Game.js), README row 'Cloud tutor (S59)', web zip rebuilt (RULE Z).
+- Full `node tools/check.mjs` = ALL OK after the last CSS change; all 14 tests/*.test.mjs pass (run them ONE FILE AT A TIME: `for f in tests/*.test.mjs; do node --test $f; done`. `node --test tests/` as a directory exits 1 in 100 ms — invocation quirk, not a test failure).
+- Debug text (#debug-stats) is display:none without ?debug (verified computed style before and after PLAY).
+- New rigs: tools/play_s59e.mjs (G/J remainder, debug text) and tools/play_s59f.mjs (title -> opening -> first play frame beginner shots s59f_*). In play_s59f the cinematic dialogue opens ~10 s after PLAY: wait for ui.dialogue.isOpen before pressing Enter.
+- Beginner read of the final frames (844x390): title = one PLAY button; first frame = Spark pouch + debt + Season pill, one blue card 'Move Pip: WASD or tap the ground.' with the Cloud beside it, hand points ahead of Pip.
+## Open for the next chat
+- The Move-step hand sits on top of Pip's legs ('world:ahead' is only ~3 u from Pip): could point farther (6 u) so it reads as 'go there', not 'this is you'.
+- The Owl opening text is 3 lines on phone; consider splitting it into two shorter bubbles (beginner reading load).
+- Real-device phone check (touch hold, safe-area notch) is still a human step.
