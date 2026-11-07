@@ -47,7 +47,7 @@ test('done → never: tutor offers ≤ maxShows, doneOn retires; leave/return ag
   const bus = new EventBus(); const root = document.createElement('div'); document.body.append(root);
   const tutor = mountTutor(root, { bus, data, seen: [] }); const shown = []; bus.on('tutor:shown', (p) => shown.push(p.id));
   const tick = (s) => { for (let i = 0; i < s * 10; i++) tutor.update(0.1); };
-  const visit = () => { bus.emit('curious', { id: 'jar:save', hint: 'jar:save', why: 'approach', x: 1, z: 1 }); tick(13); };   // 8 s ttl + 12 s repeatGap
+  const visit = () => { bus.emit('curious', { id: 'jar:save', hint: 'jar:save', why: 'approach', x: 1, z: 1 }); tutor.dismiss('walked-away'); tick(13); };   // S59: a followable card persists until followed → the test walks away (dismiss); 12 s repeatGap
   visit(); visit(); assert.deepEqual(shown, ['jar:save', 'jar:save'], 'shows again on return');
   visit(); visit(); assert.equal(shown.length, 3, 'max 3');
   const t2 = mountTutor(document.createElement('div'), { bus: new EventBus(), data, seen: [] }); const b2 = t2; void b2;

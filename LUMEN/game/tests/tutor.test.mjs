@@ -43,16 +43,43 @@ test('one at a time: a trigger while a card is up is DROPPED (not queued, not ma
   tutor.destroy();
 });
 
-test('dismiss: tap / key (capture, next gesture only) / 8 s ttl → tutor:dismissed {id, ms, why}', () => {
+test('S59 persistent cards: moving / taps / keys NEVER dismiss; followed → closes; info cards fade after 8 s STANDING STILL; ✕ closes; hard cap', () => {
+  const { bus, tutor, log, root } = mount();
+  const hero = { x: 0, z: 0 }; tutor.bind({ locate: (k) => (k === 'hero' ? { x: hero.x, z: hero.z } : null) });
+  const why = () => log.filter((e) => e[0] === 'tutor:dismissed').map((e) => e[1].why);
+  const sleep = (ms) => { const t0 = Date.now(); while (Date.now() - t0 < ms); };
+  // 1. a followable card (onBuildOpen has follow: ui:build:tab …) survives taps, keys and 20 s of standing
+  bus.emit('ui:build:open', {}); sleep(130);
+  window.dispatchEvent(new PointerEvent('pointerdown')); window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' })); window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
+  assert.equal(tutor.visible, true, 'tap / keys do not close it');
+  for (let i = 0; i < 200; i++) tutor.update(0.1); assert.equal(tutor.visible, true, 'a followable card does not time out at 8 s');
+  bus.emit('ui:build:tab', { cat: 'stalls' }); assert.equal(tutor.visible, false, 'FOLLOWED (opened a tab) → closes');
+  assert.deepEqual(why(), ['followed']);
+  // 2. an info card (no follow / doneOn) — the clock only runs while Pip stands still
+  bus.emit('onFirstDepositForce', {}); tutor.dismiss('x'); log.length = 0;
+  bus.emit('jars:deposit', { jar: 'save', amount: 10 }); assert.equal(tutor.current, 'onFirstDeposit');
+  for (let i = 0; i < 200; i++) { hero.x += 0.05; tutor.update(0.1); }     // Pip walks for 20 s (0.5 u/s > moveSpeed; info-card hard cap is 30 s)
+  assert.equal(tutor.visible, true, 'walking pauses the reading clock — the text is still there when he stops');
+  for (let i = 0; i < 90; i++) tutor.update(0.1);                          // …stands still for 9 s
+  assert.equal(tutor.visible, false, 'standing still 8 s → it fades'); assert.equal(why().at(-1), 'ttl');
+  // 3. the ✕ / check button closes it
+  log.length = 0; bus.emit('enemy:wave', { n: 1 }); assert.equal(tutor.current, 'onWave');
+  const xb = root.querySelector('.ll-tutor-x'); assert.ok(xb, 'got-it button exists'); xb.click ? xb.click() : xb.dispatchEvent(new Event('click'));
+  assert.equal(tutor.visible, false, '✓ closes'); assert.equal(why().at(-1), 'tap');
+  // 4. hard cap: a followable card nobody follows still leaves (45 s of play)
+  log.length = 0; bus.emit('ui:build:open', {}); tutor.dismiss('x'); log.length = 0; tutor.ask('verb:move'); assert.equal(tutor.current, 'verb:move');
+  for (let i = 0; i < 700; i++) tutor.update(0.1); assert.equal(tutor.visible, false, 'cap'); assert.equal(why().at(-1), 'cap');
+  tutor.destroy();
+});
+
+test('S59 verb cards: the next verb step (tut:step) / tut:done / tut:skip FOLLOWS the card; a HUD tap does not knock a verb card off', () => {
   const { bus, tutor, log } = mount();
-  bus.emit('ui:build:open', {});
-  window.dispatchEvent(new PointerEvent('pointerdown')); assert.equal(tutor.visible, true, 'same-tick gesture ignored (the tap that opened the tray)');
-  for (let i = 0; i < 90; i++) tutor.update(0.1); assert.equal(tutor.visible, false, 'ttl 8 s');
-  let d = log.find((e) => e[0] === 'tutor:dismissed')[1]; assert.equal(d.id, 'onBuildOpen'); assert.equal(d.why, 'ttl'); assert.ok(Number.isFinite(d.ms) && d.ms >= 0);
-  bus.emit('enemy:wave', { n: 1 }); assert.equal(tutor.current, 'onWave');
-  const t0 = Date.now(); while (Date.now() - t0 < 130);   // past the 120 ms same-gesture guard
-  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' })); assert.equal(tutor.visible, false, 'any key dismisses');
-  d = log.filter((e) => e[0] === 'tutor:dismissed').at(-1)[1]; assert.equal(d.why, 'key'); assert.ok(d.ms >= 100);
+  bus.emit('tutor:hint', { id: 'move' }); assert.equal(tutor.current, 'verb:move', 'tutor:hint {id:move} → the verb:move card');
+  assert.equal(tutor.ask('hud:pouch'), false, 'a HUD tap waits while a verb card is up'); assert.equal(tutor.current, 'verb:move');
+  bus.emit('tut:step', { id: 'coin', index: 1 }); assert.equal(tutor.visible, false, 'step 2 started → step 1 card followed');
+  tutor.show('verb:coin'); tutor.show('verb:bonk'); assert.equal(tutor.current, 'verb:bonk', 'verb replaces the previous verb card');
+  bus.emit('tut:skip', {}); assert.equal(tutor.visible, false);
+  assert.ok(log.filter((e) => e[0] === 'tutor:dismissed').every((e) => e[1].why === 'followed'));
   tutor.destroy();
 });
 

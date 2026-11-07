@@ -815,6 +815,21 @@ export function createLumenGame(game, opts = {}) {
   };
   ui?.nudge?.bind?.({ bored: lg.isBored });
   ui?.tutor?.bind?.({ blocked: () => !!lg.guideBlocked?.(), project: (p) => { const cam = game.camera?.three || game.camera; const el = game.renderer?.domElement; if (!cam?.projectionMatrix || !el) return null; const v = new THREE.Vector3(p.x, p.y, p.z).project(cam); return { x: (v.x + 1) / 2 * el.clientWidth, y: (1 - v.y) / 2 * el.clientHeight, behind: v.z > 1 }; }, touched: () => !!(ui?.build?.isOpen || (lg.sb?.build?.serialize?.() || []).some((e) => !e.scenery && String(e.id).startsWith('stall_')) || (lg.sb?.eco?.state?.jars && Object.values(lg.sb.eco.state.jars).some((v) => v > 0))) });   // 48F onCuriosityLull: tray opened / a stall built / any jar holds Spark → the player found it
+  // S59: the cloud hand asks the world where a thing is. locate('hero' | 'coin' | 'jar:<id>' | 'stall' | 'till' | 'enemy' | 'stranger' | 'pier') → {x, z, y?} | null (nearest to Pip where it matters).
+  ui?.tutor?.bind?.({ locate: (kind) => {
+    const sb = lg.sb; if (!sb) return null; const hp = sb.hero?.root?.position; const xz = (o) => { const q = o && (o.position || o.root?.position || o.g?.position || o.group?.position); return q && Number.isFinite(q.x) && Number.isFinite(q.z) ? { x: q.x, z: q.z } : null; };
+    const near = (arr, pick) => { let best = null, bd = Infinity; for (const o of arr || []) { const q = pick ? pick(o) : xz(o); if (!q) continue; const d = hp ? Math.hypot(q.x - hp.x, q.z - hp.z) : 0; if (d < bd) { bd = d; best = q; } } return best; };
+    if (kind === 'hero') return hp ? { x: hp.x, z: hp.z } : null;
+    if (kind === 'coin') return near(sb.coins);
+    if (kind.startsWith('jar:')) { const m = sb.jarsWorld?.get?.(kind.slice(4)); const q = xz(m); return q ? { ...q, y: 1.4 } : null; }
+    if (kind === 'jar') { const J = sb.jarsWorld; return near((J?.ids?.() || []).map((id) => J.get(id))); }
+    if (kind === 'stall') return near(sb.build?.stalls?.() || [], (s) => xz(s.group));
+    if (kind === 'till') return near(sb.till?.all?.()?.filter?.((t) => t.amount > 0) || [], (t) => (t.pos ? { x: t.pos.x, z: t.pos.z } : null));
+    if (kind === 'enemy') return near((sb.enemies?.list || []).filter((e) => e && e.state !== 'flee' && e.state !== 'dead'), (e) => xz(e.g || e.root));
+    if (kind === 'stranger') { const S = sb.scamNpc; return S?.active && S.g ? xz(S.g) : null; }
+    if (kind === 'pier') { const B = sb.pier; return B?.active && B.g ? xz(B.g) : null; }
+    return null;
+  } });
   for (const ev of ['eco:season', 'eco:win', 'eco:lose', 'game:title', 'game:state']) lg._offs.push(bus.on(ev, () => { if (lg.speed !== 1) lg.setSpeed(1, { silent: true }); }));
   if (typeof window !== 'undefined') { const onKey = (e) => { if (e.code !== 'KeyT' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return; const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return; if (!lg.sb || game.paused || ui?.isModal?.()) return; bus.emit('ui:speed', { cycle: true, source: 'key' }); }; window.addEventListener('keydown', onKey); lg._offs.push(() => window.removeEventListener('keydown', onKey)); }
   on('ui:pause', (p) => lg.pause(p?.by || 'menu', !!p?.on));

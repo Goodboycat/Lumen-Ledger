@@ -1,27 +1,43 @@
-/* LUMEN LEDGER — 48F curiosity tutorial card (HANDOFF_48Z D2). Blue glass, NOT the paper/ink dialogue (.ll-dlg-*) look.
-   One card, bottom-centre on phones / bottom-left on desktop. Never blocks: pointer-events none (a tap anywhere dismisses it). */
-:root { --tut-bg: rgba(28,72,120,.88); --tut-ink: #E6F4FF; --tut-edge: #7FD3FF; }
+/* LUMEN LEDGER — tutor card (S59: the baby-cloud tutor). Blue glass bubble + a cloud avatar on its left + a "got it" check on the right.
+   One card, bottom-centre on phones / bottom-left on desktop. The card is PERSISTENT: moving never closes it (ui/tutor.js); only the ✓ button
+   takes pointer events — a tap anywhere else goes straight through to the game. */
+:root { --tut-bg: rgba(28,72,120,.9); --tut-ink: #E6F4FF; --tut-edge: #7FD3FF; }
 
-.ll-tutor { position: absolute; z-index: 33; left: 50%; bottom: calc(max(12px, env(safe-area-inset-bottom)) + 92px); transform: translateX(-50%) translateY(10px);
-  display: flex; align-items: center; gap: 10px; max-width: min(86vw, 360px); padding: 9px 14px 9px 10px; border-radius: 14px;
-  background: var(--tut-bg); color: var(--tut-ink); border: 1px solid var(--tut-edge); box-shadow: 0 0 0 1px rgba(127,211,255,.25), 0 0 14px rgba(127,211,255,.35), 0 6px 18px rgba(0,0,0,.25);
-  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
-  font: 600 14px/1.25 system-ui, -apple-system, 'Segoe UI', sans-serif; letter-spacing: .1px; text-align: left;
-  opacity: 0; pointer-events: none; transition: opacity .22s ease, transform .32s cubic-bezier(.34,1.56,.64,1); }
+.ll-tutor { position: absolute; z-index: 33; left: 50%; bottom: calc(max(10px, env(safe-area-inset-bottom)) + 84px); transform: translateX(-50%) translateY(10px);
+  display: flex; align-items: flex-end; gap: 6px; max-width: min(88vw, 400px);
+  opacity: 0; pointer-events: none; transition: opacity .22s ease, transform .32s cubic-bezier(.34,1.56,.64,1);
+  font: 600 14px/1.25 system-ui, -apple-system, 'Segoe UI', sans-serif; letter-spacing: .1px; text-align: left; }
 .ll-tutor.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.ll-tutor-av { flex: none; width: 46px; height: 46px; line-height: 0; margin-bottom: -4px; animation: ll-tutor-float 2.2s ease-in-out infinite alternate; filter: drop-shadow(0 2px 0 rgba(0,0,0,.25)); }
+.ll-tutor-av .ll-ico { width: 46px; height: 46px; display: block; }
+.ll-tutor-bub { position: relative; display: flex; align-items: center; gap: 9px; padding: 9px 12px 9px 10px; border-radius: 16px 16px 16px 4px; min-width: 0; flex: 1 1 auto;
+  background: var(--tut-bg); color: var(--tut-ink); border: 1px solid var(--tut-edge);
+  box-shadow: 0 0 0 1px rgba(127,211,255,.25), 0 0 14px rgba(127,211,255,.35), 0 6px 18px rgba(0,0,0,.25); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .ll-tutor-ico { flex: none; width: 26px; height: 26px; line-height: 0; filter: drop-shadow(0 0 4px rgba(127,211,255,.5)); }
 .ll-tutor-ico .ll-ico { width: 26px; height: 26px; display: block; }
+.ll-tutor-ico:empty { display: none; }
 .ll-tutor-txt { flex: 1 1 auto; min-width: 0; }
+/* "Got it" check: 44 px tap target, the ONLY clickable part of the card */
+.ll-tutor-x { flex: none; pointer-events: none; width: 44px; height: 44px; margin: 0 0 -2px -2px; padding: 0; border: 0; background: none; line-height: 0; cursor: pointer; border-radius: 50%; -webkit-tap-highlight-color: transparent; }
+.ll-tutor-x .ll-ico { width: 28px; height: 28px; display: block; margin: auto; filter: drop-shadow(0 2px 0 rgba(0,0,0,.3)); }
+.ll-tutor.show .ll-tutor-x { pointer-events: auto; }
+.ll-tutor-x:active { transform: scale(.88); }
 
-/* pointing hand beside the card's `point` selector (P3) — bobs, never catches input */
-.ll-tutor-hand { position: absolute; z-index: 34; left: 0; top: 0; width: 30px; height: 30px; line-height: 0; display: none; pointer-events: none; transform: translateX(-50%);
-  filter: drop-shadow(0 0 5px var(--tut-edge)) drop-shadow(0 2px 0 rgba(0,0,0,.35)); animation: ll-tutor-bob .7s ease-in-out infinite alternate; transform-origin: 50% 100%; }
+/* the cloud hand (S59: bigger, drawn, the same cloud as the avatar). Bobs toward its target; .flip = finger points DOWN (target sits near the bottom edge). */
+.ll-tutor-hand { position: absolute; z-index: 34; left: 0; top: 0; width: 64px; height: 64px; line-height: 0; display: none; pointer-events: none; transform: translateX(-50%);
+  filter: drop-shadow(0 0 7px var(--tut-edge)) drop-shadow(0 3px 0 rgba(0,0,0,.3)); animation: ll-tutor-bob .62s ease-in-out infinite alternate; transform-origin: 50% 100%; }
 .ll-tutor-hand.show { display: block; }
-.ll-tutor-hand .ll-ico { width: 30px; height: 30px; display: block; }
-@keyframes ll-tutor-bob { from { transform: translateX(-50%) translateY(-4px) rotate(-6deg); } to { transform: translateX(-50%) translateY(3px) rotate(6deg); } }
+.ll-tutor-hand .ll-ico { width: 64px; height: 64px; display: block; }
+.ll-tutor-hand.flip { animation-name: ll-tutor-bob-flip; transform-origin: 50% 0; }
+.ll-tutor-hand.flip .ll-ico { transform: rotate(180deg); }
+@keyframes ll-tutor-bob { from { transform: translateX(-50%) translateY(-6px) rotate(-5deg); } to { transform: translateX(-50%) translateY(5px) rotate(5deg); } }
+@keyframes ll-tutor-bob-flip { from { transform: translateX(-50%) translateY(6px) rotate(5deg); } to { transform: translateX(-50%) translateY(-5px) rotate(-5deg); } }
+@keyframes ll-tutor-float { from { transform: translateY(0); } to { transform: translateY(-4px); } }
 
+@media (max-height: 460px) { .ll-tutor { bottom: calc(max(8px, env(safe-area-inset-bottom)) + 70px); font-size: 13px; }
+  .ll-tutor-av, .ll-tutor-av .ll-ico { width: 38px; height: 38px; } .ll-tutor-hand, .ll-tutor-hand .ll-ico { width: 58px; height: 58px; } }
 @media (min-width: 701px) {
   .ll-tutor { left: 16px; transform: translateX(0) translateY(10px); bottom: calc(max(12px, env(safe-area-inset-bottom)) + 64px); }
   .ll-tutor.show { transform: translateX(0) translateY(0); }
 }
-@media (prefers-reduced-motion: reduce) { .ll-tutor { transition: opacity .15s; } .ll-tutor-hand { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .ll-tutor { transition: opacity .15s; } .ll-tutor-hand, .ll-tutor-av { animation: none; } }
