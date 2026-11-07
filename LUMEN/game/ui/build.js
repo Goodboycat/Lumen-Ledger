@@ -267,6 +267,7 @@ export function mountBuildMenu(root, opts = {}) {
     get demolishPillVisible() { return wrap.classList.contains('demolishing'); },
     setPlacing(id) {
       const was = st.placing; st.placing = id; wrap.classList.toggle('placing', !!id);
+      document.body?.classList?.toggle('ll-placing', !!id);   // S62-C: the tutor card lifts above the placing bar (ui/tutor.css) so it never hides ✓ place / ✕ cancel
       // BUGFIX P40: while placing, the open tray is only hidden by CSS — so it popped back up over the island the moment the stall was
       // placed. When placing ends the tray now closes for real (build.mode is already idle, so the ui:build:close → build.exit() is a no-op).
       if (!id && was && st.open) { wrap.classList.remove('has-detail'); api.close(); }

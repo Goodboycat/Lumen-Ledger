@@ -96,3 +96,7 @@ body.tj-on .ll-joy-hint { opacity: 0 !important; }   /* S60-A: the drawn stick d
    perched on the card's top-left corner instead, so the card is narrower-by-nothing and never reaches the Build button. */
 @media (max-height: 300px) { .ll-tutor-av { position: absolute; left: -12px; top: -22px; margin: 0; z-index: 2; }
   .ll-tutor-av, .ll-tutor-av .ll-ico { width: 30px; height: 30px; } }
+
+/* S62-C: while an item is being placed the build bar (✓ place · R · ✕ cancel) owns the bottom-left; the card + Cloud lift above it (phone landscape) */
+@media (max-height: 460px) { body.ll-placing .ll-tutor { bottom: calc(max(8px, env(safe-area-inset-bottom)) + 62px); } }
+@media (max-height: 300px) { body.ll-placing .ll-tutor { bottom: calc(max(6px, env(safe-area-inset-bottom)) + 52px); } }
