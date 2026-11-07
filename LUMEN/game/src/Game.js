@@ -461,7 +461,7 @@ function installJarsWorld(sb) {
   };
   sb.cancelAutoWalk = (why = 'cancel') => awEnd(why);
   // S58 (open item 2): tap the stranger's bell / the stranger → Pip walks over and the talk opens (same override, same cancel rules as a jar walk).
-  const AW_STRANGER_STOP = 1.7, AW_STRANGER_TIMEOUT = 12;
+  const AW_STRANGER_STOP = 2.8, AW_STRANGER_TIMEOUT = 12;
   sb.startWalkToStranger = () => {
     const N = sb.scamNpc; if (!N?.active || !(N.state === 'pitch' || N.state === 'arrive') || !N.g || !hero?.root) return false;
     if (N.near?.(AW_STRANGER_STOP + 0.4)) { sb.interact(); return true; }                   // already beside them → just talk
