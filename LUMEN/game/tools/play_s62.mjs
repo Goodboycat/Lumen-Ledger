@@ -19,7 +19,7 @@ async function placeOne(id, label) {
   await p.evaluate(() => ui.build.open()); await p.waitForTimeout(500);
   await p.evaluate((id) => { ui.build.select?.(id); ui.build.deploy(id); }, id); await p.waitForTimeout(500);
   out[label + '_armed'] = await st(); await shot(label + '_armed');
-  const r = await p.evaluate(() => { const g = lg.sb.build.ghost; const e = lg.sb.build.confirm(); return { placed: !!e, id: e?.id, spark: lg.sb.eco.state.spark }; });
+  const r = await p.evaluate(() => { const b = lg.sb.build, hp = lg.sb.hero.root.position; for (const [dx, dz] of [[0,0],[3,0],[-3,0],[0,3],[0,-3],[4,4],[-4,4],[4,-4],[-4,-4],[6,0],[-6,0]]) { if (b.moveTo(hp.x + dx, hp.z + dz)) break; } const e = b.confirm(); return { placed: !!e, id: e?.id, spark: lg.sb.eco.state.spark }; });
   out[label + '_confirm'] = r; await p.waitForTimeout(700);
   out[label + '_after'] = await st(); await shot(label + '_after');
   // a second confirm must NOT do anything now (nothing armed)

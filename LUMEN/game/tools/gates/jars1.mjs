@@ -128,6 +128,17 @@ export async function run({ resolve, pathToFileURL }) {
       const tutorJson = JSON.parse(readFileSync(resolve('data/tutor.json'), 'utf8')); const lockCard = tutorJson.cards.find((c) => c.id === 'onLocked'); if (!lockCard || !/locked until the Ledger/i.test(lockCard.text) || lockCard.text.length > 60) throw new Error('onLocked text: ' + lockCard?.text);
       ok(`T1.6 Invest withdraw mid-season → 0 moved, jars:locked ×1, balance stays ${inv} · onLocked card "${lockCard.text}"`); }
 
+    // ---- T1.8 (S62-A) placing ANY item ends the placing mode (a jar used to leave a permanently red 'place another' ghost behind)
+    { const B = sb.build; eco._addSpark(300 - eco.state.spark, 'test'); const armed = (id) => { if (!B.enter(id) || B.mode !== 'place' || !B.ghost) throw new Error('T1.8 enter ' + id); };
+      const cellFor = (id) => { const c = sb.island.gridCells().find((c) => Math.hypot(c.x - hp.x, c.z - hp.z) >= 2 && B.canPlace(id, c.x, c.z, 0)); if (!c) throw new Error('T1.8 no cell for ' + id); return c; };
+      const jarId = ['jar_spend', 'jar_save', 'jar_protect', 'jar_invest'].find((id) => !B.owned(id)); if (!jarId) throw new Error('T1.8 every jar already placed');
+      armed(jarId); let c = cellFor(jarId); B.moveTo(c.x, c.z); if (!B.confirm()) throw new Error('T1.8 jar confirm');
+      eq([B.mode, !!B.ghost, ui.build.st?.placing ?? null], ['idle', false, null], 'T1.8 after placing a jar');
+      const n0 = B.placed.size; if (B.confirm() !== null || B.placed.size !== n0) throw new Error('T1.8 a 2nd confirm after the jar must do nothing');
+      const tree = Object.keys(PROP_CATALOG).find((id) => /^tree_/.test(id) && !B.owned(id)); armed(tree); c = cellFor(tree); B.moveTo(c.x, c.z); if (!B.confirm()) throw new Error('T1.8 decor confirm');
+      eq([B.mode, !!B.ghost], ['idle', false], 'T1.8 after placing decor');
+      ok(`T1.8 (S62-A) placing a jar (${jarId}) or decor (${tree}) ends placing at once: mode idle, no ghost, a 2nd confirm places nothing`); }
+
     // ---- T1.5 reload keeps unlocks + placed jars (real snapshot → JSON → resume)
     { const Save = await imp('src/systems/save.js'); const unl = sb.jarUnlocks.serialize(); const placed = J.ids().slice().sort();
       const snap = lg.save.snapshot(); eq(snap.jarsUnlocked, unl, 'T1.5 snapshot.jarsUnlocked'); eq(snap.v, 4, 'T1.5 SAVE_VERSION stays 4');
