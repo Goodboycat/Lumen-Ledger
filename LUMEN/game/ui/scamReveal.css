@@ -1,0 +1,25 @@
+/* LUMEN LEDGER — T5.2 Scam Reveal card. Compact, top-centre under the HUD, never modal, ~4 s. Phone landscape: one row, <= 62 px tall + one tell line. */
+.ll-reveal { position: absolute; z-index: 34; left: 50%; top: calc(max(10px, env(safe-area-inset-top)) + 58px); transform: translateX(-50%); width: min(440px, calc(100vw - 28px)); box-sizing: border-box; padding: 8px 12px 9px; background: var(--paper); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 5px 0 var(--ink); font-family: var(--font); color: var(--ink); cursor: pointer; display: grid; gap: 5px; pointer-events: auto; touch-action: manipulation; }
+.ll-reveal[hidden] { display: none; }
+.ll-reveal.go { animation: ll-reveal-in .34s cubic-bezier(.34,1.56,.64,1) both; }
+.ll-reveal.fell { border-color: #C62828; } .ll-reveal.spotted, .ll-reveal.took { border-color: #2E7D32; }
+.ll-reveal-top { display: flex; align-items: center; gap: 10px; min-height: 48px; }
+.ll-reveal-pic { position: relative; flex: none; width: 84px; height: 48px; } .ll-reveal-pic .ll-ico { width: 46px; height: 46px; display: block; }
+.ll-reveal-mask, .ll-reveal-bag, .ll-reveal-star { position: absolute; top: 0; line-height: 0; }
+.ll-reveal-mask { left: 0; } .ll-reveal-bag { right: 0; opacity: 0; } .ll-reveal-star { left: 14px; }
+.ll-reveal.go.fell .ll-reveal-mask { animation: ll-mask-drop 1.1s .15s cubic-bezier(.5,0,.9,.5) both; }
+.ll-reveal.go.fell .ll-reveal-bag { animation: ll-bag-in .5s 1.0s cubic-bezier(.34,1.56,.64,1) both; }
+.ll-reveal.go.spotted .ll-reveal-star, .ll-reveal.go.took .ll-reveal-star { animation: ll-star-pop .6s .1s cubic-bezier(.34,1.8,.64,1) both; }
+.ll-reveal-num { display: flex; align-items: center; gap: 4px; font-size: 30px; font-weight: 900; line-height: 1; } .ll-reveal-num .ll-ico { width: 28px; height: 28px; }
+.ll-reveal.fell .ll-reveal-num { color: #C62828; } .ll-reveal.spotted .ll-reveal-num, .ll-reveal.took .ll-reveal-num { color: #2E7D32; }
+.ll-reveal.go .ll-reveal-num { animation: ll-num-in .4s .9s ease-out both; }
+.ll-reveal-owl { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; } .ll-reveal-owl .ll-ico { width: 30px; height: 30px; flex: none; }
+.ll-reveal-tell { font-size: 12.5px; font-weight: 800; line-height: 1.25; padding: 4px 8px; border-radius: 8px; background: #FFF3C4; border: 2px solid #F9A825; }
+.ll-reveal-tell i { font-style: normal; font-weight: 900; letter-spacing: .6px; text-transform: uppercase; font-size: 10.5px; background: var(--ink); color: var(--paper); padding: 1px 5px; border-radius: 6px; margin-right: 3px; }
+@keyframes ll-reveal-in { from { opacity: 0; transform: translate(-50%, -16px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes ll-mask-drop { 0% { transform: translateY(0) rotate(0); opacity: 1; } 55% { transform: translateY(4px) rotate(-8deg); opacity: 1; } 100% { transform: translateY(34px) rotate(-32deg); opacity: 0; } }
+@keyframes ll-bag-in { from { opacity: 0; transform: translateX(14px) scale(.6); } to { opacity: 1; transform: none; } }
+@keyframes ll-star-pop { from { opacity: 0; transform: scale(.2) rotate(-40deg); } to { opacity: 1; transform: none; } }
+@keyframes ll-num-in { from { opacity: 0; transform: scale(.5); } to { opacity: 1; transform: none; } }
+@media (max-height: 460px) { .ll-reveal { top: calc(max(6px, env(safe-area-inset-top)) + 46px); padding: 6px 10px 7px; gap: 3px; } .ll-reveal-top { min-height: 40px; } .ll-reveal-pic { width: 70px; height: 40px; } .ll-reveal-pic .ll-ico { width: 38px; height: 38px; } .ll-reveal-num { font-size: 24px; } }
+@media (prefers-reduced-motion: reduce) { .ll-reveal.go, .ll-reveal.go * { animation: none !important; } .ll-reveal-bag { opacity: 1; } .ll-reveal-mask { opacity: .35; } }

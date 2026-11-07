@@ -1,0 +1,27 @@
+/* LUMEN LEDGER — T5 Scam Journal (pause -> JOURNAL). Same paper/ink sheet as the guide codex. z-index above .ll-pause (50). Phone landscape first: 2 columns, short sheet. */
+.ll-journal { position: absolute; inset: 0; z-index: 52; display: none; align-items: center; justify-content: center; pointer-events: auto; }
+.ll-journal.open { display: flex; }
+.ll-journal-back { position: absolute; inset: 0; background: rgba(38,50,56,.55); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
+.ll-journal-sheet { position: relative; width: min(640px, 96vw); max-height: min(88vh, 560px); display: flex; flex-direction: column; background: var(--paper); border: 4px solid var(--ink); border-radius: 22px; box-shadow: 0 8px 0 var(--ink); padding: 10px 14px 12px; }
+.ll-journal-head { display: flex; align-items: center; gap: 10px; }
+.ll-journal-ico { flex: none; width: 40px; height: 40px; line-height: 0; } .ll-journal-ico .ll-ico { width: 40px; height: 40px; display: block; }
+.ll-journal-title { margin: 0; flex: none; font-size: 26px; font-weight: 900; letter-spacing: 3px; color: var(--gold); -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 0 3px 0 var(--ink); }
+.ll-journal-count { flex: 1; text-align: right; font-weight: 900; font-size: 16px; }
+.ll-journal-x { flex: none; width: 44px; height: 44px; border: 3px solid var(--ink); border-radius: 12px; background: var(--orange); color: var(--ink); font: 900 18px/1 var(--font); box-shadow: 0 3px 0 var(--ink); cursor: pointer; touch-action: manipulation; }
+.ll-journal-x:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.ll-journal-sub { margin: 2px 2px 6px; font-size: 12px; font-weight: 700; opacity: .65; }
+.ll-journal-grid { overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 2px 2px 6px; }
+.ll-sticker { position: relative; display: flex; align-items: center; gap: 10px; min-height: 64px; padding: 6px 8px 6px 8px; border: 3px solid var(--ink); border-radius: 14px; background: #fff; font-weight: 800; font-size: 12.5px; line-height: 1.2; }
+.ll-sticker.empty { background: #eceae3; border-color: rgba(38,50,56,.35); border-style: dashed; color: rgba(38,50,56,.5); font-weight: 700; }
+.ll-sticker.spotted, .ll-sticker.took { background: #e8f8e4; } .ll-sticker.fell { background: #ffe9e4; } .ll-sticker.refused, .ll-sticker.met, .ll-sticker.passed { background: #e9f7ff; }
+.ll-sticker.fair { border-color: #2E7D32; }
+.ll-sticker-pic { flex: none; width: 40px; height: 40px; display: grid; place-items: center; line-height: 0; } .ll-sticker-pic .ll-ico { width: 38px; height: 38px; display: block; }
+.ll-sticker-q { font: 900 28px/1 var(--font); opacity: .5; }
+.ll-sticker-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; } .ll-sticker-name { font-size: 13.5px; font-weight: 900; }
+.ll-sticker-tell { font-size: 11.5px; font-weight: 700; opacity: .85; }
+.ll-sticker-stamp { position: absolute; right: 4px; top: -9px; display: flex; align-items: center; gap: 3px; padding: 1px 6px 1px 3px; background: var(--paper); border: 2px solid var(--ink); border-radius: 10px; transform: rotate(3deg); font-size: 10px; font-weight: 900; letter-spacing: .5px; box-shadow: 0 2px 0 var(--ink); }
+.ll-sticker-stamp .ll-ico { width: 16px; height: 16px; } .ll-sticker-stamp i { font-style: normal; }
+.ll-sticker.fell .ll-sticker-stamp { background: #ffd7cf; } .ll-sticker.spotted .ll-sticker-stamp, .ll-sticker.took .ll-sticker-stamp { background: #c8f0bf; }
+.ll-pause-btn.journal { background: var(--blue, #4FC3F7); }
+@media (max-width: 560px) { .ll-journal-grid { grid-template-columns: 1fr; } }
+@media (max-height: 460px) { .ll-journal-sheet { max-height: 92vh; padding: 8px 12px 10px; } .ll-journal-sub { display: none; } .ll-journal-title { font-size: 22px; } }

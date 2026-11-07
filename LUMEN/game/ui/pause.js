@@ -59,9 +59,10 @@ export function mountPause(root, opts = {}) {
   const buttons = {
     resume:   mk('resume', 'resume', '▶', 'RESUME', 0),
     settings: mk('settings', 'settings', '⚙', 'SETTINGS', 1),
-    guide:    mk('guide', 'guide', '?', 'GUIDE', 2),   // T2: opens ui/guideCodex.js (every card you have met)
-    restart:  mk('restart', 'restart', '⟳', 'RESTART SEASON', 3),   // 46B: 📖 TUTORIAL button removed with the overlay tutorial
-    title:    mk('title', 'title', '⌂', 'TITLE', 4),
+    guide:    mk('guide', 'guide', '?', 'GUIDE', 2),
+    journal:  mk('journal', 'journal', '📔', 'JOURNAL', 3),   // T5: opens ui/journal.js (sticker book of every stranger deal)   // T2: opens ui/guideCodex.js (every card you have met)
+    restart:  mk('restart', 'restart', '⟳', 'RESTART SEASON', 4),   // 46B: 📖 TUTORIAL button removed with the overlay tutorial
+    title:    mk('title', 'title', '⌂', 'TITLE', 5),
   };
   // ⏸ pause button in the HUD (touch players have no Esc key) — it sits in the HUD's right column, falls back to a fixed corner button
   const fab = el('button', 'll-pause-fab', '⏸'); fab.type = 'button'; fab.setAttribute('aria-label', 'Pause menu'); fab.title = 'Pause (Esc)';
@@ -122,6 +123,7 @@ export function mountPause(root, opts = {}) {
     resume: () => api.close('menu'),
     settings: () => api.toggleSettings(),
     guide: () => bus.emit('ui:guide:open', { from: 'pause' }),
+    journal: () => bus.emit('ui:journal:open', { from: 'pause' }),
     restart: () => dangerous('restart', 'ui:restart'),
     title: () => dangerous('title', 'ui:title'),
   };

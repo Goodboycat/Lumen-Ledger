@@ -254,7 +254,7 @@ export const faceIcon = (who, mood) => `face_${who}${mood && mood !== 'neutral' 
 
 // ---------- emoji → icon name (everything the game used to print) ----------
 export const EMOJI = {
-  '🦉': 'owl', '🔨': 'hammer', '🫙': 'jar', '📒': 'ledger', '⬆️': 'upgrade', '⬆': 'upgrade', '✨': 'sparkle', '🏺': 'vase', '🌫️': 'fog', '🌫': 'fog',
+  '📔': 'journal', '🎭': 'mask', '🏷': 'sticker', '🦉': 'owl', '🔨': 'hammer', '🫙': 'jar', '📒': 'ledger', '⬆️': 'upgrade', '⬆': 'upgrade', '✨': 'sparkle', '🏺': 'vase', '🌫️': 'fog', '🌫': 'fog',
   '👀': 'eyes', '⚡': 'bolt', '★': 'star', '⭐': 'star', '✦': 'spark', '✓': 'check', '✔': 'check', '✗': 'cross', '✕': 'cross', '✖': 'cross', '🔒': 'lock',
   '🚀': 'rocket', '💥': 'boom', '⟳': 'rotate', '⏸': 'pause', '▶': 'play', '⚙': 'gear', '📖': 'book', '📘': 'book', '⌂': 'home', 'ⓘ': 'info', 'ℹ': 'info',
   '⚔': 'swords', '✋': 'hand', '💨': 'dash', '👆': 'point', '👉': 'pointR', '📅': 'calendar', '💡': 'bulb', '⏱': 'clock', '💰': 'coinbag', '🗼': 'lighthouse',
