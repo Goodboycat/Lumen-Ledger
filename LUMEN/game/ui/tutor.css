@@ -91,3 +91,8 @@ body.tj-on .ll-joy-hint { opacity: 0 !important; }   /* S60-A: the drawn stick d
   .ll-tutor-joy .tj-knob { width: 34px; height: 34px; margin: -17px 0 0 -17px; }
   .ll-tutor-joy .tj-hand, .ll-tutor-joy .tj-hand .ll-ico { width: 44px; height: 44px; margin-left: -22px; margin-top: -4px; }
   .ll-tutor-joy.keys { left: 12px; bottom: 76px; } }
+
+/* S61-A2: on very short screens (<= 300 px tall: 480x270, 360x240) the Cloud avatar beside the card used to land on the BUILD button label. It becomes a small badge
+   perched on the card's top-left corner instead, so the card is narrower-by-nothing and never reaches the Build button. */
+@media (max-height: 300px) { .ll-tutor-av { position: absolute; left: -12px; top: -22px; margin: 0; z-index: 2; }
+  .ll-tutor-av, .ll-tutor-av .ll-ico { width: 30px; height: 30px; } }

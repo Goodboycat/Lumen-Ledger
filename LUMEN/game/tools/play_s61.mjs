@@ -35,11 +35,19 @@ out.cardInViewport = bx.all.card && bx.all.card.x >= 0 && bx.all.card.y >= 0 && 
 // the joy vs every other HUD element
 out.joyHits = bx.hud.filter((h) => !/ll-tutor/.test(h.n) && ov(bx.all.joy, h)).map((h) => `${h.n} [${h.x},${h.y},${h.r},${h.b}]`);
 for (const [i, ms] of [[1, 300], [2, 700], [3, 800]]) { await p.waitForTimeout(ms); await shot('move' + i); }
-// ---- rotated camera: locate('ahead') must be 'up the screen'
+// ---- rotated camera: locate('ahead') must be 'up the screen' (ground-projected camera forward), on land
 out.rot = await p.evaluate(() => {
-  const g = lg.game, cam = g.camera.three; const res = {};
-  const up = () => { const a = ui.tutor._locate ? ui.tutor._locate('ahead') : null; return a; };
-  const probe = (label) => { const loc = lg.debug?.locate ? lg.debug.locate('ahead') : (window.__locate ? window.__locate('ahead') : null); return loc; };
-  return { hasLocate: !!(ui.tutor._locate || lg.locate || window.__locate) };
+  const g = lg.game, cam = g.camera, three = cam.three, res = [], off0 = cam.offset.clone();
+  const hp = lg.sb.hero.root.position;
+  for (const deg of [0, 40, 90, 180, 270]) {
+    const a = deg * Math.PI / 180, ox = off0.x, oz = off0.z;
+    cam.offset.set(ox * Math.cos(a) + oz * Math.sin(a), off0.y, -ox * Math.sin(a) + oz * Math.cos(a));
+    cam.snapTo(hp); cam.update(hp, 0.016); three.updateMatrixWorld(true);
+    const L = lg.locate('ahead'); if (!L) { res.push({ deg, none: true }); continue; }
+    const v0 = hp.clone().setY(0.2).project(three), v1 = new three.position.constructor(L.x, 0.2, L.z).project(three);
+    res.push({ deg, to: [+(L.x - hp.x).toFixed(1), +(L.z - hp.z).toFixed(1)], screenDx: +(v1.x - v0.x).toFixed(2), screenDy: +(v1.y - v0.y).toFixed(2), land: !!lg.sb.island.isLand(L.x, L.z) });
+  }
+  cam.offset.copy(off0); cam.snapTo(hp);
+  return res;
 });
 out.errors = errs.slice(0, 6); console.log(JSON.stringify(out, null, 1)); await b.close();
