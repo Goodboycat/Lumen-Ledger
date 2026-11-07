@@ -84,3 +84,16 @@ test('tutor: curious:ping jar:add shows the card with the one-off text (≤ 60 c
   assert.equal(tutor.current, 'jar:add');
   tutor.destroy();   // the hand's rAF loop keeps node alive otherwise
 });
+
+test('S59-I: hud:chip {icon:"stormmark", alert} draws the storm marker chip and on:false removes it', async () => {
+  const { mountHUD } = await import('../ui/hud.js');
+  const bus = new EventBus(); const root = document.createElement('div'); document.body.append(root);
+  const hud = mountHUD(root, { bus, seasonsToWin: 10, selfDrive: false });
+  bus.emit('hud:chip', { id: 'storm', icon: 'stormmark', text: 'STORM COMING: fill Protect', on: true, alert: true });
+  const c = root.querySelector('[data-id="storm"]'); assert.ok(c, 'chip exists');
+  assert.ok(/ll-ico-stormmark/.test(c.innerHTML), 'drawn stormmark icon inside');
+  assert.ok(c.classList.contains('ll-chip-alert'), 'alert pulse class');
+  assert.ok(!/⚡|⛈|🌩/.test(c.textContent), 'no glyph emoji');
+  bus.emit('hud:chip', { id: 'storm', on: false }); assert.equal(root.querySelector('[data-id="storm"]'), null);
+  hud.destroy();
+});

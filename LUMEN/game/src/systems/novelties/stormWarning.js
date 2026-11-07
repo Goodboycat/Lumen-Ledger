@@ -12,13 +12,16 @@ export function createStormWarning() {
     bark(sb, pick(sb, 'stormWarning', 0) || 'Clouds on the water. Fill the Protect jar.', 3.2);
     sb.jarsWorld?.highlight?.('protect', true);
     const bus = sb.game.bus;
+    bus.emit('hud:chip', { id: 'storm', icon: 'stormmark', text: 'STORM COMING: fill Protect', on: true, alert: true }); N.chip = true;   // S59-I: the drawn stormmark marker
     N.offs.push(bus.on('eco:event', (p) => {
       if (p?.id !== 'storm') return; sb.jarsWorld?.highlight?.('protect', false);
+      chipOff(sb);
       const abs = p.effect?.absorbed || 0;
       if (abs > 0) bark(sb, pick(sb, 'stormWarning', 1) || 'Insurance paid off.', 3);
       else { const cost = Math.abs(p.effect?.spark ?? p.effect?.debt ?? 0) | 0; bark(sb, (pick(sb, 'stormWarning', 2) || 'Repairs: {cost} ✦ on the debt.').replace('{cost}', String(cost)), 3.4); }
     }));
   };
+  const chipOff = (sb) => { if (N.chip) { sb.game.bus.emit('hud:chip', { id: 'storm', on: false }); N.chip = false; } };
   N.update = (sb, dt) => {
     if (!N.base) return; N.k = Math.min(1, N.k + dt / STORM_WARNING.ramp);
     // the storm vfx owns the lights once it ramps (its own base snapshot) — only darken while the storm is still idle/warn with low intensity
@@ -26,7 +29,7 @@ export function createStormWarning() {
     const L = sb.game.lights, d = 1 - STORM_WARNING.darken * N.k;
     if (L?.key) L.key.intensity = N.base.key * d; if (L?.hemi) L.hemi.intensity = N.base.hemi * d;
   };
-  N.end = (sb) => { const L = sb.game.lights; if (N.base && sb.storm?.phase !== 'storm') { if (L?.key) L.key.intensity = N.base.key; if (L?.hemi) L.hemi.intensity = N.base.hemi; } sb.jarsWorld?.highlight?.('protect', false); };
+  N.end = (sb) => { const L = sb.game.lights; if (N.base && sb.storm?.phase !== 'storm') { if (L?.key) L.key.intensity = N.base.key; if (L?.hemi) L.hemi.intensity = N.base.hemi; } sb.jarsWorld?.highlight?.('protect', false); chipOff(sb); };
   N.dispose = () => { for (const f of N.offs) f(); N.offs = []; N.base = null; };
   return N;
 }

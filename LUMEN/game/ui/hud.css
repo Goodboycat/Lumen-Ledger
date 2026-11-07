@@ -112,5 +112,11 @@
 /* 43D: NEW chip — gold on ink, pops in, fades out after 4 s (hud.newChip) */
 .ll-chip-new { background: #ffcd3c; color: #2b1d14; border-color: #2b1d14; animation: ll-new-pop .32s cubic-bezier(.2,1.4,.4,1) both; transition: opacity .3s, transform .3s; }
 .ll-chip-new.out { opacity: 0; transform: translateX(-12px); }
+.ll-chip { display: flex; align-items: center; gap: 6px; }
+.ll-chip .ll-chip-ico { width: 26px; height: 26px; flex: none; filter: drop-shadow(0 2px 0 var(--ink, #2b1d14)); }
+.ll-chip-alert { background: #4a2a7a; animation: ll-chip-alert 1.1s ease-in-out infinite alternate; }   /* S59-I: storm warning pulses */
+@keyframes ll-chip-alert { from { transform: none; box-shadow: 0 3px 0 rgba(0,0,0,.25); } to { transform: translateY(-2px); box-shadow: 0 5px 0 rgba(0,0,0,.25), 0 0 12px rgba(255,213,79,.7); } }
+@media (max-height: 460px) { .ll-chip .ll-chip-ico { width: 20px; height: 20px; } }
+@media (prefers-reduced-motion: reduce) { .ll-chip-alert { animation: none; } }
 @keyframes ll-new-pop { from { opacity: 0; transform: scale(.7) translateX(-10px); } to { opacity: 1; transform: none; } }
 @media (max-width: 640px) { .ll-chips { top: 112px; } .ll-chip { font-size: 12px; padding: 4px 9px; } }
