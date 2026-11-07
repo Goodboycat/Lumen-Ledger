@@ -20,6 +20,13 @@ await p.evaluate(() => { lg.bus.emit('tut:skip', {}); ui.tutor.dismiss('followed
 const bb = await p.evaluate(() => { const b = document.querySelector('.ll-touch-btn.attack').getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; });
 await p.touchscreen.tap(bb.x, bb.y); await p.waitForTimeout(1200);
 await shot('2_after_attack');
-out.boxes = await p.evaluate(() => { const r = (s) => [...document.querySelectorAll(s)].map((e) => { const b = e.getBoundingClientRect(); const cs = getComputedStyle(e); return { s, cls: e.className.toString().slice(0, 60), txt: (e.textContent || '').trim().slice(0, 14), x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height), vis: cs.display !== 'none' && cs.visibility !== 'hidden' && +cs.opacity > 0.05 }; }); return [...r('.ll-touch-btn'), ...r('.ll-touch-ab'), ...r('.ll-abil-chip')]; });
+// S65-A: tap the green Dash like a finger -> the Magnet power must fire (ability event + cooldown sweep on the SAME button, no white chip)
+await p.evaluate(() => { window.__ev = []; for (const n of ['sandbox:ability:start', 'sandbox:denied', 'ability:answer', 'sandbox:ability']) lg.bus.on(n, (e) => window.__ev.push(n + ':' + JSON.stringify(e).slice(0, 80))); });
+const db = await p.evaluate(() => { const b = document.querySelector('.ll-touch-btn.dash').getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; });
+await p.touchscreen.tap(db.x, db.y); await p.waitForTimeout(500);
+out.dash = await p.evaluate(() => ({ ev: window.__ev.slice(), cooling: document.querySelector('.ll-touch-btn.dash').classList.contains('cooling'), left: document.querySelector('.ll-touch-btn.dash').getAttribute('data-left'), whiteMagnet: !!document.querySelector('.ll-touch-ab[data-ability=coinMagnetDash]'), chips: [...document.querySelectorAll('.ll-touch-ab')].map((e) => e.dataset.ability) }));
+out.overlapChips = await p.evaluate(() => { const t = document.querySelector('.ll-tutor'); if (!t || !t.classList.contains('show')) return 'no card'; const a = t.getBoundingClientRect(); return [...document.querySelectorAll('.ll-touch-ab,.ll-touch-btn')].map((e) => { const b = e.getBoundingClientRect(); const o = a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top; return o ? (e.dataset.ability || e.dataset.action) : null; }).filter(Boolean); });
+await shot('3_dash_cooling'); await p.waitForTimeout(1200); await shot('4_dash_later');
+out.boxes = await p.evaluate(() => [...document.querySelectorAll('.ll-touch-btn,.ll-touch-ab')].map((e) => { const b = e.getBoundingClientRect(); return [e.dataset.ability || e.dataset.action, Math.round(b.x), Math.round(b.y), Math.round(b.width), Math.round(b.height)].join(' '); }));
 console.log(JSON.stringify(out, null, 1)); console.log('errs', errs.slice(0, 5));
 await b.close();

@@ -112,3 +112,12 @@ body.tj-on .ll-joy-hint { opacity: 0 !important; }   /* S60-A: the drawn stick d
 @media (max-height: 260px) { .ll-tutor { font-size: 12px; } .ll-tutor-av { display: none; } .ll-tutor-bub { padding: 5px 8px; } body.ll-tray-open:not(.ll-placing) .ll-tutor, body.ll-tray-open:not(.ll-placing) .ll-tutor.show { left: 124px; max-width: calc(100vw - 124px - 88px); } }
 /* S65-B: <= 260 px tall: no icon / check inside the card (the hand and the text carry it) -> 2 text lines instead of 4, so it clears the open tray panel. */
 @media (max-height: 260px) { .ll-tutor-ico, .ll-tutor-x { display: none; } .ll-tutor-bub { gap: 0; padding: 4px 8px; border-radius: 12px; } }
+
+/* S65-C: phones, landscape: once the powers are revealed the chip row (bottom, left of the Dash button) sat UNDER the blue tutor card, so a beginner never saw
+   the chips. While the strip is on screen (revealed, tray closed, not placing) the card rides one chip-row higher, left-aligned between the Build button
+   (ends x=117) and the Dash column (starts 144 px from the right edge) so it covers neither. Narrower than 460 px wide there is no room: card stays low. */
+@media (max-height: 460px) and (orientation: landscape) and (min-width: 460px) {
+  body.is-touch:not(.ll-tray-open):not(.ll-placing):has(.ll-touch-abilities:not(.ll-staged):not(.hidden):not(.tray):not(.placing)) .ll-tutor,
+  body.is-touch:not(.ll-tray-open):not(.ll-placing):has(.ll-touch-abilities:not(.ll-staged):not(.hidden):not(.tray):not(.placing)) .ll-tutor.show {
+    left: 122px; transform: none; bottom: calc(max(8px, env(safe-area-inset-bottom)) + 62px); max-width: max(190px, calc(100vw - 122px - 156px)); }
+}
