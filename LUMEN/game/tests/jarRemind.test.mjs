@@ -82,4 +82,5 @@ test('tutor: curious:ping jar:add shows the card with the one-off text (≤ 60 c
   tutor.update(0.1); for (let i = 0; i < 130; i++) tutor.update(0.1);
   bus.emit('curious:ping', { id: 'jar:add', hint: 'jar:add', text: 'Add your Invest jar: Build, Jars tab.' });
   assert.equal(tutor.current, 'jar:add');
+  tutor.destroy();   // the hand's rAF loop keeps node alive otherwise
 });
