@@ -8,6 +8,18 @@ You are one of ~40 Genspark chats building ONE browser game, **Lumen Ledger**, f
 jam (theme "Make FinLit Fun", deadline Nov 15 2026). You have **100 credits** and ONE deliverable.
 Your chat ID is in the user's message. Your task file is `docs/prompts/<ID>_*.md`.
 
+## RULE Z — FINAL ZIP DELIVERY (user order 2026-11-07, overrides "DELIVERY POLICY" below)
+**When ALL IDs of the current task are finished** (or the chat is ending after the last ID it worked on), build the web zip and hand the
+user a **download link** so they can playtest it on their own phone:
+```bash
+cd /home/user/webapp/LUMEN/game && bash tools/itch_zip.sh          # -> /tmp/lumen-ledger-web.zip  (index.html at zip root)
+cp /tmp/lumen-ledger-web.zip /home/user/webapp/lumen-ledger-web.zip # name MUST be exactly lumen-ledger-web.zip
+# then UploadFileWrapper(sandbox_file_path=/tmp/lumen-ledger-web.zip, filename=lumen-ledger-web.zip) -> paste the URL in the final message
+```
+- The file name is always **`lumen-ledger-web.zip`** (no version suffix). The final chat message MUST contain the link.
+- Run the zip AFTER the last gate/commit so the zip matches origin/main. Mention size + file count + sha256.
+- Mid-task (IDs still open) nobody zips; this rule fires once, at the end.
+
 ## RULE -1 — 41B IS STOPPED (user order 2026-11-02)
 41B (verb-chain tutorial) killed two chats purely on reading cost. Never open `prompts/41B_*.md`, never read Game.js tutorial gates for it. `next.sh` skips it (⛔ row). General corollary: if `next.sh` points at an ID whose TRAIL shows ≥ 2 chats with no code commit, write a ⛔ row and move on — do not become the third.
 
@@ -26,7 +38,7 @@ cd /home/user/webapp && git add -A && git commit -qm "WIP <ID>: <what>" ; git pu
 - Commit after EVERY file (rule 8). A chat that wrote 400 lines and got axed before its first commit delivered nothing; one that
   committed + pushed after every file delivered 400 lines.
 
-## DELIVERY POLICY (changed 2026-10-17 — zips and upload links are GONE)
+## DELIVERY POLICY (changed 2026-10-17 — zips and upload links are GONE — EXCEPT the one final zip of RULE Z above)
 Zipping + uploading cost 3–6 credits each and killed several chats before they could write a final message.
 **Nobody zips. Nobody uploads. Nobody asks for a download link.**
 
