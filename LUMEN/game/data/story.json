@@ -723,7 +723,7 @@
       "pitch": [
         {
           "speaker": "collector",
-          "text": "Good evening, Pip. {spark} Spark and {debtPhrase}? A Zero-Interest* Loan, 150 Spark, for established stallholders only. That is you.",
+          "text": "Evening, Pip. {spark} Spark in hand, {debtPhrase}? A Zero-Interest* Loan of 150 Spark, just for you.",
           "mood": "happy"
         },
         {
@@ -1155,7 +1155,7 @@
       "pitch": [
         {
           "speaker": "collector",
-          "text": "Pip! {spark} Spark in your pouch and a whole island to protect. Fog-Proof Insurance: 60 Spark, covers everything!",
+          "text": "Pip! {spark} Spark in the pouch, {protect} in your Protect jar. Fog-Proof Insurance: 60 Spark, covers everything!",
           "mood": "happy"
         },
         {

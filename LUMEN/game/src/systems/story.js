@@ -46,6 +46,13 @@ export function strangerVoice(lines, offer) {
   if (!offer || offer.by !== 'stranger' || !Array.isArray(lines)) return lines;
   return lines.map((l) => (l && (l.speaker === 'collector' || l.speaker === 'baron')) ? { ...l, speaker: 'stranger', text: l.stranger || l.text } : l);
 }
+/** T5.3: fill {spark} {debt} {debtPhrase} {save} {invest} {protect} {spend} from the REAL economy state so a pitch talks about THIS player. Pure; unknown keys stay. */
+export function fillLines(lines, state) {
+  if (!Array.isArray(lines) || !state) return lines;
+  const j = state.jars || {}, debt = Math.round(state.debt || 0);
+  const v = { spark: Math.round(state.spark || 0), debt, debtPhrase: debt > 0 ? `${debt} owed to the Baron` : 'no debts', save: Math.round(j.save || 0), invest: Math.round(j.invest || 0), protect: Math.round(j.protect || 0), spend: Math.round(j.spend || 0) };
+  return lines.map((l) => (l && typeof l.text === 'string' && l.text.includes('{')) ? { ...l, text: l.text.replace(/\{(\w+)\}/g, (m, k) => (k in v ? String(v[k]) : m)) } : l);
+}
 export function linesFor(data, kind, key, variant) {
   if (!data) return [];
   switch (kind) {
@@ -126,7 +133,8 @@ export class StorySystem {
   onScam(offer) {
     if (!offer || !offer.id) return false;
     this.pendingOffer = offer; if (offer.isFair) (this.state.fairsSeen ||= []).push(offer.id); else this.state.scamsSeen.push(offer.id);
-    let lines = strangerVoice(linesFor(this.data, 'scam', offer.id, 'pitch'), offer);
+    this._looked = false;   // T5: set when the player takes a look / ask branch (the tell gets exposed) -> spotted star if they then refuse
+    let lines = fillLines(strangerVoice(linesFor(this.data, 'scam', offer.id, 'pitch'), offer), this.economy?.state);
     if (!lines.length) { // no script → synthesize a 2-line pitch from the 4B offer so the choice still happens
       lines = [{ speaker: 'collector', text: offer.text || offer.title || 'A wonderful offer!', mood: 'happy' }, { speaker: 'collector', text: 'Well?', choices: [{ id: 'accept', text: 'Accept' }, { id: 'refuse', text: 'Refuse' }] }];
     }
@@ -149,21 +157,25 @@ export class StorySystem {
     // 48G: the choice id names an array on the CURRENT scam node. If that array ends in choices again it is an INNER branch (look / ask / stall
     // = the next decision): it replaces the running lines (same group 'scam', pendingOffer kept) so the box stays open, no outcome yet.
     // Otherwise it is a LEAF: accept + sign = economy.acceptOffer, everything else (refuse / walk / unknown) = refuseOffer, leaf lines follow.
-    const arr = this.current?.group === 'scam' && offer ? strangerVoice(linesFor(this.data, 'scam', offer.id, choice.id), offer) : [];
+    const arr = this.current?.group === 'scam' && offer ? fillLines(strangerVoice(linesFor(this.data, 'scam', offer.id, choice.id), offer), this.economy?.state) : [];
     if (arr.length && arr[arr.length - 1].choices) {
-      this.current.lines = arr; this.current.i = 0; result.branch = choice.id;
+      this.current.lines = arr; this.current.i = 0; result.branch = choice.id; if (choice.id === 'look' || choice.id === 'ask') this._looked = true;
       this._show(arr[0]); this.bus.emit('story:choice', result); return result;
     }
     if (this.current?.group === 'scam' && offer) {
       const accept = choice.id === 'accept' || choice.id === 'sign';
       this.pendingOffer = null;
       result.outcome = accept ? (this.economy?.acceptOffer?.(offer) ?? { accepted: true }) : (this.economy?.refuseOffer?.(offer) ?? { accepted: false, refused: true });
-      const after = arr.length ? arr : strangerVoice(linesFor(this.data, 'scam', offer.id, accept ? 'accept' : 'refuse'), offer);   // 48G: sign / walk have their own leaf lines
+      const after = arr.length ? arr : fillLines(strangerVoice(linesFor(this.data, 'scam', offer.id, accept ? 'accept' : 'refuse'), offer), this.economy?.state);   // 48G: sign / walk have their own leaf lines
       const tell = offer.isFair ? null : (this.data?.scams?.[offer.id]?.tell || offer.tell);
       if (offer.isFair) this.bus.emit('story:lesson', { id: 'scams', title: 'A Fair Deal', lesson: this.data?.fairs?.[offer.id]?.tell || offer.terms || 'Written, small, checkable.', tip: 'Terms you can check = a fair deal.', fair: offer.id, accepted: accept });
       // queue the outcome lines FIRST (front), then finish the pitch: story:end is only emitted when nothing follows, so 7B's dialogue
       // box stays open and simply shows the next line (its choose() → ui:choice → here → story:line happens inside one tick).
       if (tell) this.bus.emit('story:lesson', { id: offer.lesson || 'scams', title: SCAM_LESSON_TITLE, lesson: tell, tip: SCAM_TIP, scam: offer.id, accepted: accept });
+      if (choice.id === 'ask') this._looked = true;   // an 'ask' that is itself a leaf (refuse after asking) still counts as having checked
+      const looked = !!this._looked; result.looked = looked;
+      // T5.2/T5.3: ONE event per conversation: the Journal and the Reveal card listen to it. Emitted BEFORE the result lines so the HUD number is already true.
+      this.bus.emit('story:scamEnd', { id: offer.id, fair: !!offer.isFair, accepted: accept, looked, outcome: result.outcome, tell: offer.isFair ? (this.data?.fairs?.[offer.id]?.tell || offer.terms || null) : (tell || null), by: offer.by || null });
       if (after.length) this.queue.unshift({ group: 'scamResult', lines: after, i: 0, meta: { id: offer.id, accepted: accept }, onDone: null });
       this._finishCurrent(); this._startNext();
     } else { this._finishCurrent(); this._startNext(); }

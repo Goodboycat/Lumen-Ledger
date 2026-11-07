@@ -90,7 +90,7 @@ ok(linesFor(null, 'opening', 1).length === 0 && linesFor(data, 'ledger', 99, 'lo
   // 48G: look → D2 (sign / ask / stall) swaps the branch in, same group, no outcome yet, box stays open
   bus.emit('ui:choice', { index: 0 });
   ok(story.current.group === 'scam' && story.pendingOffer && story.line.text === data.scams.zeroInterestLoan.look[0].text && last(ev['story:choice']).branch === 'look' && last(ev['story:choice']).outcome === null && eco.pendingOffer, '48G look → D2 branch lines, group scam, no outcome, pendingOffer kept');
-  bus.emit('ui:advance', {});
+  for (let n = 0; n < 6 && !story.line?.choices; n++) bus.emit('ui:advance', {});   // S58/T5: the look branch now has an Owl tell line before the decision
   ok(story.line.choices?.map((c) => c.id).join() === 'sign,ask,stall', '48G D2 = sign/ask/stall');
   const debt0 = eco.state.debt, spark0 = eco.state.spark;
   bus.emit('ui:choice', { index: 0 }); // sign = accept outcome
