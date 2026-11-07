@@ -476,7 +476,7 @@ function installJarsWorld(sb) {
 function installScamNpc(sb) {
   const { eco, hero } = sb, bus = sb.game.bus;
   const S = createScamNpc({ bus, eco, hero, world: sb.world, game: sb.game, scene: sb.headless ? null : sb.game.scene, rng: sb.rng || Math.random,
-    creatures: sb.headless ? {} : { makeStranger, VillainAnimator }, canStand: (x, z) => sb.island.isLand(x, z) && !sb.build?.occupied?.(x, z) });   // T4: the friendly Stranger species (not a Collector)
+    creatures: sb.headless ? {} : { makeStranger: (v, o) => makeStranger(v, { ...o, outline: false }), VillainAnimator }, canStand: (x, z) => sb.island.isLand(x, z) && !sb.build?.occupied?.(x, z) });   // T4: the friendly Stranger species (not a Collector); no ink-outline shells on it (-5 draw calls, the scene sits near 180 in S1)
   sb.scamNpc = S;
   sb._offs.push(() => { S.destroy(); sb.scamNpc = null; });
 }
