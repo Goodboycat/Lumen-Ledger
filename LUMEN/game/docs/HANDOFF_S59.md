@@ -1,3 +1,11 @@
+# HANDOFF S61 (continuation of S60, 2026-11-07) — read this first
+| ID | Ask | Status |
+|---|---|---|
+| S61-A | Joystick demo + card must not touch on very small phones (<= 360 px tall) | DONE: `@media (max-height: 360px)` in ui/tutor.css (72 px stick, left margin, travel via `--tj-dx/--tj-dy`), `@media (max-height: 300px)` Cloud avatar -> corner badge. Rig `node tools/play_s61.mjs W H` prints boxes/overlap: 360x240, 480x270, 568x320, 640x360 all `joyOverlapsCard:false`, shots tools/shots/s61_* |
+| S61-B | `locate('ahead')` may not be screen-up if the camera is rotated | DONE: src/systems/aheadPoint.js (pure) uses camera lookAt - position projected on the ground; Game.js `locateFn` (also exposed as `lg.locate`); tests/tutor.test.mjs now 12/12 (yaw 0/90/180/270, water, building, degenerate camera); browser probe rotates the camera 0/40/90/180/270 and `screenDy > 0` every time, on land |
+| S61-E | Real-device touch-hold + notch safe areas | PARTIAL: CSS now uses `env(safe-area-inset-left/right)` for the stick demo + card max-width. Still needs a human on a real notched phone |
+| env | Sandbox gotcha | /tmp is a 493 MB tmpfs: `mv`/clone of the template through /tmp filled it. Clone straight into /home/user/webapp. The Hono template was parked in /home/user/webapp_template_bak (delete it, it is not part of the game) |
+
 # HANDOFF S60 (user report 2026-11-07) — IDs for you and the next chats
 Grep the ID in code comments (`S60-x`). Keep the game's drawn-icon art style (no font emoji in the game; emoji only in code comments).
 | ID | Ask (user, verbatim intent) | Status |
