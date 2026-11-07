@@ -9,7 +9,7 @@ const p = await ctx.newPage(); const errs = [];
 p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
 const shot = (n) => p.screenshot({ path: `tools/shots/s62b_${W}x${H}_${n}.png` }); const out = { viewport: [W, H] };
 await p.goto('http://localhost:3000/index.html?touch=1&nocine&debug=1', { waitUntil: 'load' });
-await p.waitForFunction(() => window.lg && window.ui, null, { timeout: 60000 });
+await p.waitForFunction(() => window.lg && window.ui, null, { timeout: 150000 }).catch((e) => { console.log('LOAD FAIL', JSON.stringify(errs.slice(0, 5))); process.exit(1); });
 await p.evaluate(() => ui.title.buttons.story.click()); await p.waitForTimeout(3500);
 for (let i = 0; i < 14; i++) { if (!(await p.evaluate(() => ui.dialogue.isOpen))) break; await p.keyboard.press('Enter'); await p.waitForTimeout(400); }
 await p.evaluate(() => { lg.bus.emit('tut:skip', {}); ui.tutor.dismiss?.('followed'); lg.debug?.grant?.(500); lg.debug?.unlockJar?.('save'); });
