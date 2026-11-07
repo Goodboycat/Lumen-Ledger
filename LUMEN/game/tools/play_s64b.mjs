@@ -24,14 +24,15 @@ await p.evaluate(() => ui.build.open()); await p.waitForTimeout(900); out.openTr
 await p.evaluate(() => ui.build.close()); await p.waitForTimeout(400);
 await p.evaluate(() => { ui.tutor.dismiss('followed'); ui.tutor.counts && delete ui.tutor.counts['onFirstCoin']; lg.bus.emit('eco:spark', { reason: 'tip', spark: 5, delta: 1 }); }); await p.waitForTimeout(800);
 out.firstCoin = await hand('onFirstCoin no jar yet', '.ll-build-toggle'); await shot('3_first_coin');
-// 3. place a jar, put coins in it, then the withdraw arrow
-await p.evaluate(() => { ui.tutor.dismiss('followed'); ui.build.open(); ui.build.setCategory('jar'); ui.build.select('jar_save'); ui.build.deploy('jar_save'); }); await p.waitForTimeout(700);
-out.placing = await p.evaluate(() => ({ mode: lg.sb.build.mode })); await p.evaluate(() => { ui.build.confirm?.(); }); await p.waitForTimeout(700);
+// 3. place a jar like play_s62 (moveTo near Pip + confirm), put coins in it, then the withdraw arrow
+await p.evaluate(() => { ui.tutor.dismiss('followed'); lg.debug?.grant?.(500); ui.build.open(); ui.build.setCategory('jar'); ui.build.select('jar_save'); ui.build.deploy('jar_save'); }); await p.waitForTimeout(600);
+out.placed = await p.evaluate(() => { const b = lg.sb.build, hp = lg.sb.hero.root.position; for (const [dx, dz] of [[3,0],[-3,0],[0,3],[0,-3],[4,4],[-4,4],[4,-4],[-4,-4],[6,0],[-6,0]]) { if (b.moveTo(hp.x + dx, hp.z + dz)) break; } const e = b.confirm(); return { placed: !!e, id: e?.id }; }); await p.waitForTimeout(900);
 out.jars = await p.evaluate(() => lg.sb.jarsWorld.ids());
-await p.evaluate(() => { lg.sb.eco.state.spark += 60; lg.sb.eco.deposit?.('save', 30); lg.bus.emit('eco:jar', { jars: { ...lg.sb.eco.state.jars } }); }); await p.waitForTimeout(500);
-out.save = await p.evaluate(() => ({ jars: lg.sb.eco.state.jars, rowsShown: ui.jars.shown(), panelCollapsed: ui.jars.el.classList.contains('collapsed') }));
-await p.evaluate(() => { ui.jars.setCollapsed(false); ui.tutor.dismiss('followed'); lg.bus.emit('curious:ping', { id: 'jar:withdraw', hint: 'jar:withdraw' }); }); await p.waitForTimeout(800);
-out.withdraw = await hand('jar:withdraw -> arrow', '.ll-jar-wd'); await shot('4_withdraw');
+await p.evaluate(() => { const hp = lg.sb.hero.root.position, m = lg.sb.jarsWorld.get('save'); if (m) { hp.set(m.position.x + 3, 0, m.position.z); } lg.sb.eco.state.spark += 60; lg.sb.eco.state.jars.save = 30; lg.bus.emit('eco:jar', { jars: { ...lg.sb.eco.state.jars } }); }); await p.waitForTimeout(600);
+out.save = await p.evaluate(() => ({ jars: lg.sb.eco.state.jars, rowsShown: ui.jars.shown(), panelCollapsed: ui.jars.el.classList.contains('collapsed'), hasBal: [...document.querySelectorAll('.ll-jar.has-bal')].length }));
+await p.evaluate(() => { ui.jars.setCollapsed(true); ui.tutor.dismiss('followed'); lg.bus.emit('curious:ping', { id: 'jar:withdraw', hint: 'jar:withdraw' }); }); await p.waitForTimeout(900);
+out.wdDebug = await p.evaluate(() => { const P = ui.jars.el, r = document.querySelector('.ll-jar.has-bal'), w = r && r.querySelector('.ll-jar-wd'); const cs = (e) => e ? { display: getComputedStyle(e).display, vis: getComputedStyle(e).visibility, w: Math.round(e.getBoundingClientRect().width), h: Math.round(e.getBoundingClientRect().height), x: Math.round(e.getBoundingClientRect().x), y: Math.round(e.getBoundingClientRect().y) } : null; return { panelClass: P.className, panel: cs(P), row: cs(r), wd: cs(w), cur: ui.tutor.current, locked: r && r.className }; });
+out.withdraw = await hand('jar:withdraw -> arrow', '.ll-jar.has-bal .ll-jar-wd'); await shot('4_withdraw');
 // 4. a jar in the world
 await p.evaluate(() => { ui.tutor.dismiss('followed'); lg.bus.emit('curious:ping', { id: 'jar:save', hint: 'jar:save' }); }); await p.waitForTimeout(800);
 out.jarWorld = await hand('jar:save -> world jar', null); out.jarWorld.locate = await p.evaluate(() => lg.locate('jar:save')); await shot('5_jar_world');

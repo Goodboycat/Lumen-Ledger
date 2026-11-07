@@ -1262,6 +1262,10 @@ function installRunWires(lg) {
   let _nearT = null;
   offs.push(bus.on('jars:near', (p) => { if (_nearT) { clearTimeout(_nearT); _nearT = null; } if (p?.jar) { ui?.jars?.setCollapsed?.(false); ui?.jars?.focus?.(p.jar); } else _nearT = setTimeout(() => { _nearT = null; ui?.jars?.setCollapsed?.(true); }, 1500); }));
   offs.push(() => { if (_nearT) clearTimeout(_nearT); });
+  // S64-B: cards whose cloud hand points INTO the jars panel (take-back arrow, first deposit) open the panel first and keep it open while the card is up
+  //   (the 1.5 s 'walked away -> collapse' timer above used to fold it under the hand, so the arrow was not there to point at).
+  const PANEL_CARDS = ['jar:withdraw', 'onFirstDeposit'];
+  offs.push(bus.on('tutor:shown', (p) => { if (p && PANEL_CARDS.includes(p.id)) { if (_nearT) { clearTimeout(_nearT); _nearT = null; } ui?.jars?.setCollapsed?.(false); ui?.jars?.el?.classList?.remove('ll-staged'); } }));   // also lift reveal.js staging (the panel is display:none until the first sale)
   // S06: tap / click a stall (or any prop YOU built) on the island → inspect it: the Build Tray opens on its tab with its card selected,
   //   so 🚀 Deploy another · ⬆ Upgrade · 💰 Sell · price −/+ are one tap away. The 3D pick (roof / sign) comes first, then the ground cell.
   //   Scenery is "part of the island" (P23) and only gets a toast. Returns true when a prop was selected (the tap is consumed).
