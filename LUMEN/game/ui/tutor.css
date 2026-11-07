@@ -45,6 +45,9 @@
 @media (max-height: 460px) { .ll-tutor { left: 50%; transform: translateX(-50%) translateY(10px); bottom: calc(max(8px, env(safe-area-inset-bottom)) + 12px); font-size: 13px; max-width: min(56vw, 400px); }
   .ll-tutor.show { transform: translateX(-50%) translateY(0); }
   .ll-tutor-av, .ll-tutor-av .ll-ico { width: 38px; height: 38px; } .ll-tutor-hand, .ll-tutor-hand .ll-ico { width: 58px; height: 58px; } }
+/* S65-B (S64-F): short phones, Build tray open: the card's top edge overlapped the tray panel's bottom border (8 px at 568x320). The Build button sits to the card's
+   left, so the card only has to drop to the bottom edge, below the panel. */
+@media (max-height: 460px) { body.ll-tray-open:not(.ll-placing) .ll-tutor { bottom: max(4px, env(safe-area-inset-bottom)); } }
 @media (min-width: 701px) and (min-height: 461px) {
   .ll-tutor { left: 16px; transform: translateX(0) translateY(10px); bottom: calc(max(12px, env(safe-area-inset-bottom)) + 64px); }
   .ll-tutor.show { transform: translateX(0) translateY(0); }
