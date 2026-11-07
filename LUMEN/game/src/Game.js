@@ -18,6 +18,7 @@ import { attachMoves } from './anim/heroAnims.js';
 import { attachAbilities, ABILITY_NAMES, FINLIT } from './anim/heroAbilities.js';
 import { installVerbChain } from './systems/verbChain.js';
 import { installCrew } from './systems/crewJobs.js';   // T3: crew do visible jobs (arrival, post, idle/work loop, payoff pops, Ledger crew line)
+import { createScamJournal } from './systems/scamJournal.js';   // T5: sticker book of every deal met (spotted / fell for it)
 import { installCuriosity } from './systems/curiosityWire.js';   // T2: curiosity guide — registry sources (jars, stalls, signs, tills, Collectors, Baron, stranger, crew)
 import { WHEN as POWER_WHEN, lockedLine } from './systems/powerAnswers.js';   // T2b: every power press answers in ≤ 8 words
 import { installUnlocks, starsFor } from './systems/unlocks.js';                          // 41D: 2 starters + 4 earned by ledger stars
@@ -411,6 +412,8 @@ function installJarsWorld(sb) {
   // T1-A: unlock state. Spend from the start; Save on the first till sweep; Protect at the S2 storm warning; Invest after the S2 Ledger (data/jars.json).
   //   The tray hides locked jar cards (ui/build.js setHidden); jars:unlocked → pulse the Jars tab + NEW tag (wired in createLumenGame, the UI owner).
   sb.jarUnlocks = createJarUnlocks({ bus, data: sb.jarsData });
+  sb.journal = createScamJournal({ bus, eco });                      // T5: Scam Journal (data only; ui/journal.js draws it, save v4 field scamJournal)
+  sb._offs.push(() => { sb.journal?.destroy(); sb.journal = null; });
   sb._offs.push(() => { sb.jarUnlocks?.destroy(); sb.jarUnlocks = null; });
   // 48E: jars are buildables. build:placed {id:'jar_*'} → register(key, group) + the panel row shows; build:removed → unregister (balance → pouch) + row hides.
   const jarKeyOf = (p) => { const id = String(p?.id || p?.entry?.id || ''); return id.startsWith('jar_') ? id.slice(4) : null; };
@@ -1494,6 +1497,7 @@ function applySnapshot(lg, sb, snap) {
   if (snap.autoApply != null) { lg.autoApply = !!snap.autoApply; lg.ui?.jars?.setAuto?.(lg.autoApply, 'restore'); }   // S03
   if (snap.cust && sb.cust?.load) sb.cust.load(snap.cust);                               // BUGFIX B16: per-stall prices (+ sale totals) survive CONTINUE
   sb.unlocks?.restore?.(snap);                                                           // 41D: v2 abilities/starsTotal (v1 → starters)
+  if (sb.journal) sb.journal.restore(snap.scamJournal);                                  // T5: tolerant — missing / malformed → empty journal (old saves load)
   if (Array.isArray(snap.jarsUnlocked) && sb.jarUnlocks) { sb.jarUnlocks.restore(snap.jarsUnlocked); lg.ui?.build?.setHidden?.(sb.jarUnlocks.hiddenIds()); sb.game.bus.emit('jars:unlocked', { jar: null, how: 'restore', unlocked: sb.jarUnlocks.unlocked() }); }   // T1-C: silent restore (how 'restore' → no NEW tag / pulse)
   if (Array.isArray(snap.tutorSeen)) { lg.tutorSeen = [...snap.tutorSeen]; const seen = lg.ui?.tutor?.seen; if (lg.ui?.tutor?.merge) lg.ui.tutor.merge({ seen: snap.tutorSeen, counts: snap.tutorCounts }); else if (Array.isArray(seen)) for (const id of snap.tutorSeen) if (!seen.includes(id)) seen.push(id); }   // T2: counts {id:n} (maxShows) merge on top of the seen list   // 48F: cards already shown on this profile stay shown
   lg.ui?.hud?.sync?.(eco.state); lg.ui?.jars?.setBalances?.(eco.state.jars); lg.ui?.jars?.setDebt?.(eco.state.debt, eco.state.spark); lg.ui?.build?.setSpark?.(eco.state.spark);
