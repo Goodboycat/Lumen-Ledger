@@ -821,14 +821,17 @@ export function createLumenGame(game, opts = {}) {
     const sb = lg.sb; if (!sb) return null; const hp = sb.hero?.root?.position; const xz = (o) => { const q = o && (o.position || o.root?.position || o.g?.position || o.group?.position); return q && Number.isFinite(q.x) && Number.isFinite(q.z) ? { x: q.x, z: q.z } : null; };
     const near = (arr, pick) => { let best = null, bd = Infinity; for (const o of arr || []) { const q = pick ? pick(o) : xz(o); if (!q) continue; const d = hp ? Math.hypot(q.x - hp.x, q.z - hp.z) : 0; if (d < bd) { bd = d; best = q; } } return best; };
     if (kind === 'hero') return hp ? { x: hp.x, z: hp.z } : null;
-    if (kind === 'ahead') { if (!hp) return null; const dx = -hp.x, dz = -hp.z, d = Math.hypot(dx, dz) || 1, k = Math.min(3.2, d) / d; return { x: hp.x + dx * k, z: hp.z + dz * k, y: 0.2 }; }   // 'go there' marker for the Move step: 3 u toward the plaza (island centre), never over the water
+    // S60-A: 'go there' marker for the Move step, ~6 u away (3 u landed on Pip's own legs). Tries screen-up (-z, toward the stalls), then the sides, then the plaza centre; always on LAND and clear of buildings.
+    if (kind === 'ahead') { if (!hp) return null; const isl = sb.island, occ = (x, z) => !!sb.build?.occupied?.(x, z); const D = 6;
+      for (const [dx, dz] of [[0, -1], [0.6, -0.8], [-0.6, -0.8], [1, 0], [-1, 0], [0, 1]]) { const x = hp.x + dx * D, z = hp.z + dz * D; if ((!isl?.isLand || isl.isLand(x, z)) && !occ(x, z)) return { x, z, y: 0.2 }; }
+      const d = Math.hypot(hp.x, hp.z) || 1; return { x: hp.x - hp.x / d * Math.min(D, d), z: hp.z - hp.z / d * Math.min(D, d), y: 0.2 }; }
     if (kind === 'coin') { const q = near(sb.coins); return q ? { ...q, y: 0.35 } : null; }
     if (kind.startsWith('jar:')) { const m = sb.jarsWorld?.get?.(kind.slice(4)); const q = xz(m); return q ? { ...q, y: 1.4 } : null; }
     if (kind === 'jar') { const J = sb.jarsWorld; return near((J?.ids?.() || []).map((id) => J.get(id))); }
     if (kind === 'stall') return near(sb.build?.stalls?.() || [], (s) => xz(s.group));
     if (kind === 'till') { const q = near(sb.till?.all?.()?.filter?.((t) => t.amount > 0) || [], (t) => (t.pos ? { x: t.pos.x, z: t.pos.z } : null)); return q ? { ...q, y: 1.0 } : null; }
     if (kind === 'enemy') return near((sb.enemies?.list || []).filter((e) => e && e.state !== 'flee' && e.state !== 'dead'), (e) => xz(e.g || e.root));
-    if (kind === 'stranger') { const S = sb.scamNpc; return S?.active && S.g ? xz(S.g) : null; }
+    if (kind === 'stranger') { const S = sb.scamNpc; return S?.active && S.g && S.g.visible !== false && S.g.parent && (S.state === 'arrive' || S.state === 'pitch') ? xz(S.g) : null; }   // S60-B: only while they stand in the world (not 'offered' / leaving / removed) → null = the hand hides, never points at an empty spot
     if (kind === 'pier') { const B = sb.pier; return B?.active && B.g ? xz(B.g) : null; }
     return null;
   } });

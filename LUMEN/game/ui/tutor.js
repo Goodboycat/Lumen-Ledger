@@ -62,7 +62,7 @@ export function mountTutor(root, opts = {}) {
   const now = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
 
   // ---- DOM (≤ 1 card subtree: wrap > [cloud avatar, bubble > [ico, txt], ✕] + the cloud hand)
-  let wrap = null, ico = null, txt = null, hand = null, av = null, xbtn = null;
+  let wrap = null, ico = null, txt = null, hand = null, av = null, xbtn = null, joy = null;
   if (hasDoc) {
     wrap = document.createElement('div'); wrap.className = 'll-tutor'; wrap.setAttribute('aria-live', 'polite');
     av = document.createElement('span'); av.className = 'll-tutor-av'; av.innerHTML = icon('cloudbaby');
@@ -74,22 +74,37 @@ export function mountTutor(root, opts = {}) {
     bub.append(ico, txt, xbtn); wrap.append(av, bub);
     hand = document.createElement('div'); hand.className = 'll-tutor-hand'; hand.innerHTML = cloudHandArt();   // S59-C: two frames (finger up / finger pressed) cross-fade in tutor.css = a tapping hand
     (root || document.body).append(wrap, hand);
+    // S60-A: the SIMULATED JOYSTICK. A drawn stick (base ring + knob, same look as the real one in ui/touch.css) with the cloud hand dragging it, so a phone player SEES that a stick exists
+    //   (and where). Desktop gets four WASD keycaps (W pulses) instead. Card field `demo: 'move'`; the text for touch lives in `textTouch`.
+    joy = document.createElement('div'); joy.className = 'll-tutor-joy'; joy.setAttribute('aria-hidden', 'true');
+    joy.innerHTML = '<span class="tj-base"><i class="tj-ring"></i><i class="tj-knob"></i></span><span class="tj-hand">' + cloudHandArt() + '</span>'
+      + '<span class="tj-keys"><b class="k-w">W</b><b class="k-a">A</b><b class="k-s">S</b><b class="k-d">D</b></span>';
+    (root || document.body).append(joy);
   }
 
-  const st = { cur: null, mode: 'event', world: null, queue: [], gap: 0, clock: 0, last: {}, t: 0, age: 0, moving: false, hp: null, pendingVerb: null, at: 0, lull: 0, lullDone: seen.includes('onCuriosityLull'), active: true, deps: null, offs: [], raf: 0 };
+  const st = { cur: null, mode: 'event', world: null, queue: [], gap: 0, clock: 0, last: {}, t: 0, age: 0, moving: false, hp: null, lostAt: 0, pendingVerb: null, at: 0, lull: 0, lullDone: seen.includes('onCuriosityLull'), active: true, deps: null, offs: [], raf: 0 };
 
   // ---- the cloud hand: where does card `c` point? (S59) -------------------------------------------------------------------
+  // S60-B: MOVING things (stranger / collectors / Baron / Pip) are located LIVE every frame (deps.locate) — the x,z a 'curious' event carried is a
+  //   snapshot from the moment the card opened; a strolling stranger left it behind and the hand kept pointing at an empty (invisible) spot.
+  //   The snapshot is now only the LAST fallback, and never for a card that names a moving kind.
+  const MOVING = ['world:stranger', 'world:enemy', 'world:pier', 'world:hero', 'world:ahead'];
+  const isLive = (c) => { const pt = c && c.point; return (Array.isArray(pt) ? pt : pt ? [pt] : []).some((p) => typeof p === 'string' && MOVING.includes(p)); };
   const specsOf = (c, world) => {
-    const out = []; if (world && Number.isFinite(world.x)) out.push({ world });                       // 'curious' cards carry the thing's x,z
+    const out = [];
     const pt = c && c.point; for (const p of Array.isArray(pt) ? pt : pt ? [pt] : []) if (typeof p === 'string') out.push(p);
     const id = c ? String(c.id) : '';
     if (id.startsWith('power:')) { const n = id.slice(6); out.push(`.ll-touch-ab[data-ability="${n}"]`, `.ll-abil-chip[data-id="${n}"]`); }
     if (c && (c.target || id.startsWith('hud:'))) out.push(`[data-guide="${c.target || id}"]`);
+    if (world && Number.isFinite(world.x) && !isLive(c)) out.push({ world });                      // static things only (jar, stall, till …): last resort when locate() cannot find it
     return out;
   };
   const pointAt = (c, world) => {
     if (!hand) return; hand.classList.remove('show', 'flip'); if (st.raf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(st.raf); st.raf = 0;
-    const specs = c ? specsOf(c, world) : []; if (!specs.length) return;
+    if (joy) joy.classList.remove('show', 'touch', 'keys');
+    const demo = !!(c && c.demo === 'move' && joy), touch = isTouch();                          // S60-A: touch → joystick demo (no world hand); desktop → WASD keys + the hand far ahead
+    if (demo) { joy.classList.add('show', touch ? 'touch' : 'keys'); }
+    const specs = c ? specsOf(c, world) : []; if (!specs.length && !demo) return;
     const host = root || document, vw = () => (typeof window !== 'undefined' && window.innerWidth) || 800, vh = () => (typeof window !== 'undefined' && window.innerHeight) || 450;
     const size = () => hand.offsetWidth || 56;
     const put = (x, topBelow, topAbove, above) => {                                            // under the target, finger up — or above it, finger down, when the bottom edge is too close (or `above`: tabs, so the glove never covers the cards under them)
@@ -98,11 +113,16 @@ export function mountTutor(root, opts = {}) {
     };
     const tick = () => {
       if (!st.cur) return;
-      const hb = (root && root.getBoundingClientRect) ? root.getBoundingClientRect() : { left: 0, top: 0 }; let found = false;
+      if (demo) {                                                                               // the real stick is in use → the demo steps aside; it comes back when the thumb lifts
+        const real = !!(host.querySelector && host.querySelector('.ll-joy-base.on')); joy.classList.toggle('hide', real);
+        if (touch) { hand.classList.remove('show'); if (typeof requestAnimationFrame === 'function') st.raf = requestAnimationFrame(tick); return; }
+      }
+      const hb = (root && root.getBoundingClientRect) ? root.getBoundingClientRect() : { left: 0, top: 0 }; let found = false, liveMissing = 0, liveSeen = 0;
       for (const sp of specs) {
         if (typeof sp === 'object' || sp.startsWith('world:')) {
           let w = typeof sp === 'object' ? sp.world : null;
           if (!w && st.deps && typeof st.deps.locate === 'function') { try { w = st.deps.locate(sp.slice(6)); } catch (_) { w = null; } }
+          if (typeof sp === 'string' && MOVING.includes(sp)) { liveSeen++; if (!w) liveMissing++; }
           if (!w || !st.deps || typeof st.deps.project !== 'function') continue;
           let q = null; try { q = st.deps.project({ x: w.x, y: Number.isFinite(w.y) ? w.y : 1.3, z: w.z }); } catch (_) { q = null; }
           if (!q || q.behind || !Number.isFinite(q.x) || !Number.isFinite(q.y) || q.x < -8 || q.x > vw() + 8 || q.y < -8 || q.y > vh() + 8) continue;
@@ -115,18 +135,21 @@ export function mountTutor(root, opts = {}) {
         put(b.left + b.width / 2 - hb.left, b.bottom - hb.top + 2, b.top - hb.top - 2 - size(), above); found = true; break;
       }
       if (!found) hand.classList.remove('show');
+      // S60-B: the moving thing is GONE (locate() = null: the stranger left, the Collector was beaten) → the card has nothing to say; close it after a short grace
+      if (liveSeen && liveMissing === liveSeen && !found) { if (!st.lostAt) st.lostAt = now(); else if (now() - st.lostAt > 1200 && isLive(st.cur) && st.cur.target) { api.dismiss('gone'); return; } } else st.lostAt = 0;
       if (typeof requestAnimationFrame === 'function') st.raf = requestAnimationFrame(tick);
     };
     tick();
   };
 
+  const isTouch = () => !!(hasDoc && document.body && document.body.classList && document.body.classList.contains('is-touch'));
   const blockedNow = () => { try { return !!(st.deps && typeof st.deps.blocked === 'function' && st.deps.blocked()); } catch (_) { return false; } };
   /** Put card `c` on screen (counts it). mode 'event' (48F) | 'curious' (approach/linger/ping) | 'ask' (tap / HUD tap). */
   function display(c, mode, world, text) {
     counts[c.id] = Math.min(RETIRED - 1, (counts[c.id] || 0) + 1); if (!seen.includes(c.id)) seen.push(c.id);
     st.cur = c; st.mode = mode; st.world = world || null; st.t = 0; st.age = 0; st.at = now(); st.last[c.id] = st.clock;
     // S59-D: the words wear DRAWN icons (✦ → spark, ★ → star …), never a font emoji. `text` = a one-off line from the caller (jar reminders name the missing jars).
-    if (wrap) { ico.innerHTML = c.icon ? icon(c.icon) : ''; txt.innerHTML = iconizeText(String(text || c.text || '').slice(0, 60)); wrap.classList.add('show'); pointAt(c, world); }
+    if (wrap) { ico.innerHTML = c.icon ? icon(c.icon) : ''; txt.innerHTML = iconizeText(String(text || (c.textTouch && isTouch() ? c.textTouch : c.text) || '').slice(0, 60)); wrap.classList.add('show'); pointAt(c, world); }
     bus.emit('tutor:shown', { id: c.id, mode });
   }
   const queued = (id) => st.queue.some((q) => q.c.id === id);
@@ -222,7 +245,7 @@ export function mountTutor(root, opts = {}) {
       if (touched) { st.lullDone = true; return; }           // the player found it on their own → the lull card is never needed
       st.lull += dt; if (st.lull >= cfg.lull) { st.lullDone = true; api.show('onCuriosityLull'); }
     },
-    destroy() { api.dismiss('destroy'); st.offs.forEach((f) => { try { f(); } catch (_) {} }); st.offs.length = 0; offDom(); wrap?.remove?.(); hand?.remove?.(); },
+    destroy() { api.dismiss('destroy'); st.offs.forEach((f) => { try { f(); } catch (_) {} }); st.offs.length = 0; offDom(); wrap?.remove?.(); hand?.remove?.(); joy?.remove?.(); },
   };
 
   // ---- triggers: one bus listener per distinct event name
