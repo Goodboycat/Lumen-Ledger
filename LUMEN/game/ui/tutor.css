@@ -18,8 +18,8 @@
 .ll-tutor-ico:empty { display: none; }
 .ll-tutor-txt { flex: 1 1 auto; min-width: 0; }
 /* "Got it" check: 44 px tap target, the ONLY clickable part of the card */
-.ll-tutor-x { flex: none; pointer-events: none; width: 44px; height: 44px; margin: 0 0 -2px -2px; padding: 0; border: 0; background: none; line-height: 0; cursor: pointer; border-radius: 50%; -webkit-tap-highlight-color: transparent; }
-.ll-tutor-x .ll-ico { width: 28px; height: 28px; display: block; margin: auto; filter: drop-shadow(0 2px 0 rgba(0,0,0,.3)); }
+.ll-tutor-x { flex: none; pointer-events: none; width: 44px; height: 44px; margin: -8px -8px -8px 0; padding: 0; border: 0; background: none; line-height: 0; cursor: pointer; border-radius: 50%; -webkit-tap-highlight-color: transparent; }
+.ll-tutor-x .ll-ico { width: 28px; height: 28px; display: block; margin: auto; padding: 3px; border-radius: 50%; background: rgba(255,255,255,.92); box-sizing: content-box; width: 22px; height: 22px; filter: drop-shadow(0 2px 0 rgba(0,0,0,.3)); }
 .ll-tutor.show .ll-tutor-x { pointer-events: auto; }
 .ll-tutor-x:active { transform: scale(.88); }
 
@@ -34,9 +34,10 @@
 @keyframes ll-tutor-bob-flip { from { transform: translateX(-50%) translateY(6px) rotate(5deg); } to { transform: translateX(-50%) translateY(-5px) rotate(-5deg); } }
 @keyframes ll-tutor-float { from { transform: translateY(0); } to { transform: translateY(-4px); } }
 
-@media (max-height: 460px) { .ll-tutor { bottom: calc(max(8px, env(safe-area-inset-bottom)) + 70px); font-size: 13px; }
+@media (max-height: 460px) { .ll-tutor { left: 50%; transform: translateX(-50%) translateY(10px); bottom: calc(max(8px, env(safe-area-inset-bottom)) + 12px); font-size: 13px; max-width: min(56vw, 400px); }
+  .ll-tutor.show { transform: translateX(-50%) translateY(0); }
   .ll-tutor-av, .ll-tutor-av .ll-ico { width: 38px; height: 38px; } .ll-tutor-hand, .ll-tutor-hand .ll-ico { width: 58px; height: 58px; } }
-@media (min-width: 701px) {
+@media (min-width: 701px) and (min-height: 461px) {
   .ll-tutor { left: 16px; transform: translateX(0) translateY(10px); bottom: calc(max(12px, env(safe-area-inset-bottom)) + 64px); }
   .ll-tutor.show { transform: translateX(0) translateY(0); }
 }

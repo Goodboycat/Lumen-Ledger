@@ -820,12 +820,12 @@ export function createLumenGame(game, opts = {}) {
     const sb = lg.sb; if (!sb) return null; const hp = sb.hero?.root?.position; const xz = (o) => { const q = o && (o.position || o.root?.position || o.g?.position || o.group?.position); return q && Number.isFinite(q.x) && Number.isFinite(q.z) ? { x: q.x, z: q.z } : null; };
     const near = (arr, pick) => { let best = null, bd = Infinity; for (const o of arr || []) { const q = pick ? pick(o) : xz(o); if (!q) continue; const d = hp ? Math.hypot(q.x - hp.x, q.z - hp.z) : 0; if (d < bd) { bd = d; best = q; } } return best; };
     if (kind === 'hero') return hp ? { x: hp.x, z: hp.z } : null;
-    if (kind === 'ahead') { if (!hp) return null; const ry = sb.hero?.root?.rotation?.y || 0; return { x: hp.x + Math.sin(ry) * 3.2, z: hp.z + Math.cos(ry) * 3.2, y: 0.2 }; }   // 'go there' marker for the Move step
-    if (kind === 'coin') return near(sb.coins);
+    if (kind === 'ahead') { if (!hp) return null; const dx = -hp.x, dz = -hp.z, d = Math.hypot(dx, dz) || 1, k = Math.min(3.2, d) / d; return { x: hp.x + dx * k, z: hp.z + dz * k, y: 0.2 }; }   // 'go there' marker for the Move step: 3 u toward the plaza (island centre), never over the water
+    if (kind === 'coin') { const q = near(sb.coins); return q ? { ...q, y: 0.35 } : null; }
     if (kind.startsWith('jar:')) { const m = sb.jarsWorld?.get?.(kind.slice(4)); const q = xz(m); return q ? { ...q, y: 1.4 } : null; }
     if (kind === 'jar') { const J = sb.jarsWorld; return near((J?.ids?.() || []).map((id) => J.get(id))); }
     if (kind === 'stall') return near(sb.build?.stalls?.() || [], (s) => xz(s.group));
-    if (kind === 'till') return near(sb.till?.all?.()?.filter?.((t) => t.amount > 0) || [], (t) => (t.pos ? { x: t.pos.x, z: t.pos.z } : null));
+    if (kind === 'till') { const q = near(sb.till?.all?.()?.filter?.((t) => t.amount > 0) || [], (t) => (t.pos ? { x: t.pos.x, z: t.pos.z } : null)); return q ? { ...q, y: 1.0 } : null; }
     if (kind === 'enemy') return near((sb.enemies?.list || []).filter((e) => e && e.state !== 'flee' && e.state !== 'dead'), (e) => xz(e.g || e.root));
     if (kind === 'stranger') { const S = sb.scamNpc; return S?.active && S.g ? xz(S.g) : null; }
     if (kind === 'pier') { const B = sb.pier; return B?.active && B.g ? xz(B.g) : null; }

@@ -71,7 +71,7 @@ export function mountTutor(root, opts = {}) {
     txt = document.createElement('span'); txt.className = 'll-tutor-txt';
     xbtn = document.createElement('button'); xbtn.type = 'button'; xbtn.className = 'll-tutor-x'; xbtn.setAttribute('aria-label', 'Got it'); xbtn.innerHTML = icon('check');
     xbtn.addEventListener?.('click', (e) => { e.stopPropagation?.(); api.dismiss('tap'); });
-    bub.append(ico, txt); wrap.append(av, bub, xbtn);
+    bub.append(ico, txt, xbtn); wrap.append(av, bub);
     hand = document.createElement('div'); hand.className = 'll-tutor-hand'; hand.innerHTML = icon('cloudhand');
     (root || document.body).append(wrap, hand);
   }
