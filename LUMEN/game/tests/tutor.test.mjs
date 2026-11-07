@@ -83,6 +83,43 @@ test('S59 verb cards: the next verb step (tut:step) / tut:done / tut:skip FOLLOW
   tutor.destroy();
 });
 
+test('S60-B the hand follows a MOVING thing LIVE (never the stale x,z snapshot) and the card closes when it is gone', async () => {
+  const { bus, tutor, root } = mount(); const hand = root.querySelector('.ll-tutor-hand');
+  const pos = { x: 2, z: 2 }; let gone = false;
+  tutor.bind({ project: (p) => ({ x: 100 + p.x * 50, y: 200 + p.z * 10, behind: false }), locate: (k) => (k === 'stranger' && !gone ? { x: pos.x, z: pos.z } : null) });
+  tutor.ask('npc:stranger', { x: 9, z: 9 });                                  // snapshot far away on purpose (x=9 → left 550); the stranger really stands at x=2 → left 200
+  assert.equal(tutor.current, 'npc:stranger'); assert.ok(hand.classList.contains('show'), 'hand shown at the live position');
+  assert.equal(hand.style.left, '200px', 'live x (2 → 200 px), NOT the stale snapshot (9 → 550 px)');
+  pos.x = 4; await new Promise((r) => setTimeout(r, 60)); assert.equal(hand.style.left, '300px', 'the stranger strolled → the hand moved with them');
+  gone = true; await new Promise((r) => setTimeout(r, 60)); assert.equal(hand.classList.contains('show'), false, 'stranger gone → the hand hides at once (never points at an empty spot)');
+  assert.equal(tutor.visible, true, 'card still up inside the grace window');
+  await new Promise((r) => setTimeout(r, 1400)); assert.equal(tutor.visible, false, 'gone for > 1.2 s → the card closes');
+  // a STATIC thing (jar) may still use the snapshot as its last resort
+  tutor.bind({ project: (p) => ({ x: p.x, y: p.z, behind: false }), locate: () => null }); bus.emit('curious', { hint: 'jar:save', why: 'tap', x: 40, z: 60 });
+  assert.equal(hand.style.left, '40px', 'static targets keep the snapshot fallback');
+  tutor.destroy();
+});
+
+test('S60-A Move card: touch → drawn JOYSTICK demo + "Drag the stick" text (no world hand); desktop → WASD keys + the hand far ahead', () => {
+  const card = data.cards.find((c) => c.id === 'verb:move'); assert.equal(card.demo, 'move'); assert.ok(String(card.textTouch).length <= 60 && card.textTouch.length > 0);
+  // desktop first
+  document.body.classList.remove('is-touch');
+  let m = mount(); const txtOf = (m) => m.root.querySelector('.ll-tutor-txt');
+  m.tutor.bind({ project: (p) => ({ x: 400 + p.x * 10, y: 300 + p.z * 10, behind: false }), locate: (k) => (k === 'ahead' ? { x: 0, z: -6 } : null) });
+  m.bus.emit('tutor:hint', { id: 'move' }); const joy = m.root.querySelector('.ll-tutor-joy'), hand = m.root.querySelector('.ll-tutor-hand');
+  assert.ok(joy, 'demo element exists'); assert.ok(joy.classList.contains('show') && joy.classList.contains('keys') && !joy.classList.contains('touch'), 'desktop: keycaps');
+  assert.ok(hand.classList.contains('show'), 'desktop: the hand points far ahead'); assert.match(String(txtOf(m).innerHTML), /WASD/);
+  m.tutor.dismiss('followed'); assert.equal(joy.classList.contains('show'), false, 'demo hides with the card'); m.tutor.destroy();
+  // touch
+  document.body.classList.add('is-touch');
+  m = mount(); m.tutor.bind({ project: (p) => ({ x: 400 + p.x, y: 300 + p.z, behind: false }), locate: () => ({ x: 0, z: -6 }) });
+  m.bus.emit('tutor:hint', { id: 'move' }); const j2 = m.root.querySelector('.ll-tutor-joy'), h2 = m.root.querySelector('.ll-tutor-hand');
+  assert.ok(j2.classList.contains('show') && j2.classList.contains('touch'), 'touch: drawn stick + knob + hand'); assert.equal(h2.classList.contains('show'), false, 'touch: no hand over the world (it lives on the stick)');
+  assert.match(String(txtOf(m).innerHTML), /stick/); assert.ok(document.body.classList.contains('tj-on'), 'plain "drag to move" label yields to the drawn stick');
+  m.tutor.dismiss('followed'); assert.equal(document.body.classList.contains('tj-on'), false); m.tutor.destroy();
+  document.body.classList.remove('is-touch');
+});
+
 test('match filters: eco:spark reason tip* / build:placed stall_* / ui:build:tab cat / eco:season 2 only', () => {
   const { bus, tutor, shown } = mount();
   bus.emit('eco:spark', { reason: 'sale', delta: 3 }); assert.equal(shown().length, 0, 'non-tip spark ignored');
