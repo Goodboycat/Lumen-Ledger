@@ -241,7 +241,7 @@ def('stormmark', () => shadow(32, 60, 16)
   + P('M6 10Q6 6 11 6H53Q58 6 58 10Q58 13 56 16L35 54Q32 59 29 54L8 16Q6 13 6 10Z', C.purple)       // reverse (point-down) triangle
   + Pn('M13 12H51L45 22H19Z', '#fff" opacity=".28') + P('M32 14L22 31H30L27 44L42 25H33L37 14Z', C.gold) + hi(40, 12, 8, 2.2, 0.35));
 def('joystick', () => shadow(32, 58, 18) + E(32, 46, 22, 10, C.stoneD) + E(32, 43, 22, 10, C.stone) + hi(22, 41, 6, 2.2, 0.55)     // S60-A: round base (top ring), stem, gold knob + four little direction ticks
-  + L('M32 44V30', 7, INK) + L('M32 44V30', 3.4, C.stoneD) + O(32, 22, 13, C.gold) + hi(27, 17, 5, 3.2, 0.7) + P('M32 3L28 8H36Z', C.red) + P('M53 22L48 18V26Z', C.red) + P('M11 22L16 18V26Z', C.red));
+  + L('M32 44V30', 7, INK) + L('M32 44V30', 3.4, C.stoneD) + O(32, 22, 13, C.gold) + hi(27, 17, 5, 3.2, 0.7) + Pn('M32 2L26 9H38Z', C.red) + Pn('M54 22L47 16V28Z', C.red) + Pn('M10 22L17 16V28Z', C.red));
 def('skip', () => R(48, 10, 9, 44, 4, C.gold) + P('M6 10Q6 6 10 8L30 28Q33 32 30 36L10 56Q6 58 6 54Z', C.gold) + P('M26 10Q26 6 30 8L50 28Q53 32 50 36L30 56Q26 58 26 54Z', C.goldD)
   + hi(12, 20, 2.6, 7, 0.6) + hi(32, 20, 2.6, 7, 0.45) + hi(52, 22, 2, 8, 0.6));
 
