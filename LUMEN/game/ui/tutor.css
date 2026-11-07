@@ -67,8 +67,8 @@
 .ll-tutor-joy .tj-hand .ll-hand-b { opacity: 0; animation: tj-hand-b 3s ease-in-out infinite; }
 .ll-tutor-joy .tj-hand .ll-hand-a { animation: tj-hand-a 3s ease-in-out infinite; }
 /* 0-12 % the hand lands on the stick (finger pressed) · 12-45 % drag up-right (Pip would run ahead) · 45-62 % hold · 62-80 % drag back · 80-100 % lift + rest */
-@keyframes tj-knob { 0%, 12%, 80%, 100% { transform: translate(0, 0); } 45%, 62% { transform: translate(24px, -26px); } }
-@keyframes tj-hand { 0% { transform: translate(8px, 22px) scale(1.1); opacity: 0; } 10% { transform: translate(0, 4px) scale(1); opacity: 1; } 12% { transform: translate(0, 4px) scale(.95); opacity: 1; } 45%, 62% { transform: translate(24px, -22px) scale(.95); opacity: 1; } 80% { transform: translate(0, 4px) scale(.95); opacity: 1; } 92% { transform: translate(8px, 22px) scale(1.1); opacity: 0; } 100% { transform: translate(8px, 22px) scale(1.1); opacity: 0; } }
+@keyframes tj-knob { 0%, 12%, 80%, 100% { transform: translate(0, 0); } 45%, 62% { transform: translate(var(--tj-dx, 24px), var(--tj-dy, -26px)); } }
+@keyframes tj-hand { 0% { transform: translate(8px, 22px) scale(1.1); opacity: 0; } 10% { transform: translate(0, 4px) scale(1); opacity: 1; } 12% { transform: translate(0, 4px) scale(.95); opacity: 1; } 45%, 62% { transform: translate(var(--tj-dx, 24px), calc(var(--tj-dy, -26px) + 4px)) scale(.95); opacity: 1; } 80% { transform: translate(0, 4px) scale(.95); opacity: 1; } 92% { transform: translate(8px, 22px) scale(1.1); opacity: 0; } 100% { transform: translate(8px, 22px) scale(1.1); opacity: 0; } }
 @keyframes tj-hand-a { 0%, 10% { opacity: 1; } 14%, 80% { opacity: 0; } 86%, 100% { opacity: 1; } }
 @keyframes tj-hand-b { 0%, 10% { opacity: 0; } 14%, 80% { opacity: 1; } 86%, 100% { opacity: 0; } }
 @keyframes tj-ring { 0%, 12%, 80%, 100% { opacity: 0; } 45%, 62% { opacity: .75; } }
@@ -84,3 +84,10 @@
 @media (max-height: 460px) { .ll-tutor-joy { left: 11%; bottom: 76px; width: 88px; height: 88px; } .ll-tutor-joy .tj-knob { width: 40px; height: 40px; margin: -20px 0 0 -20px; } .ll-tutor-joy .tj-hand, .ll-tutor-joy .tj-hand .ll-ico { width: 52px; height: 52px; margin-left: -26px; } .ll-tutor-joy.keys { left: 16px; bottom: 90px; } }
 @media (prefers-reduced-motion: reduce) { .ll-tutor-joy .tj-base, .ll-tutor-joy .tj-ring, .ll-tutor-joy .tj-knob, .ll-tutor-joy .tj-hand, .ll-tutor-joy .tj-hand .ll-hand-a, .ll-tutor-joy .tj-hand .ll-hand-b, .tj-keys .k-w { animation: none; } .ll-tutor-joy .tj-hand .ll-hand-b { opacity: 0; } }
 body.tj-on .ll-joy-hint { opacity: 0 !important; }   /* S60-A: the drawn stick demo replaces the text label while it plays */
+
+/* S61-A: very small phones (<= 360 px tall, e.g. 640x360 / 568x320 / 480x270). The centred card is up to 56vw wide and ~71 px tall there, so the 88 px stick demo
+   (left 11 %) used to touch it at 480x270. Smaller stick (72 px) pinned to the left margin: it ends at x = 82 px, the card starts at x >= 120 px. Travel scales with the stick. */
+@media (max-height: 360px) { .ll-tutor-joy { left: 10px; bottom: 68px; width: 72px; height: 72px; --tj-dx: 19px; --tj-dy: -21px; }
+  .ll-tutor-joy .tj-knob { width: 34px; height: 34px; margin: -17px 0 0 -17px; }
+  .ll-tutor-joy .tj-hand, .ll-tutor-joy .tj-hand .ll-ico { width: 44px; height: 44px; margin-left: -22px; margin-top: -4px; }
+  .ll-tutor-joy.keys { left: 12px; bottom: 76px; } }
