@@ -209,14 +209,32 @@ const cloudBlob = (parts, fill, shade) => {                       // parts: [['c
   const sh = shade ? parts.filter((p) => p[0] === 'c' && p[3] >= 9).map((p) => `<circle cx="${f(p[1] + p[3] * 0.18)}" cy="${f(p[2] + p[3] * 0.36)}" r="${f(p[3] * 0.5)}" fill="${shade}" opacity=".5"/>`).join('') : '';
   return ink + body + sh;
 };
-def('cloudbaby', () => shadow(32, 60, 20)
+const cloudBaby = (happy) => shadow(32, 60, 20)
   + cloudBlob([['c', 17, 40, 12], ['c', 47, 40, 12], ['c', 24, 28, 14], ['c', 41, 28, 14], ['c', 32, 40, 17], ['c', 32, 45, 12]], C.white, C.sky)
   + P('M30 12Q27 4 33 5Q38 6 34 13', 'none') + L('M30 13Q31 8 34 8', 2.6, C.sky)                     // the baby curl on top
   + hi(22, 22, 6, 3.4, 0.9) + eye(25, 38, 3.4) + eye(40, 38, 3.4)
-  + On(18.5, 46, 4, C.pink, 0.7) + On(46.5, 46, 4, C.pink, 0.7) + L('M28.5 46Q32.5 51 36.5 46', 3));
-def('cloudhand', () => shadow(32, 61, 19)
-  + cloudBlob([['l', 28, 11, 28, 32, 16], ['c', 30, 44, 17], ['c', 12, 42, 8.5], ['c', 47, 35, 8], ['c', 50, 45, 8], ['c', 46, 54, 7.5], ['c', 20, 55, 9], ['c', 33, 56, 9.5]], C.white, C.sky)
-  + hi(24, 15, 2.8, 7, 0.95) + hi(22, 38, 6, 3.4, 0.85) + On(21, 48, 3.8, C.pink, 0.7) + On(37, 48, 3.8, C.pink, 0.7));
+  + On(18.5, 46, 4, C.pink, 0.7) + On(46.5, 46, 4, C.pink, 0.7)                                       // the CLOUD keeps its blush (S59: only the HAND lost its pink)
+  + (happy ? P('M27 45Q32.5 56 38 45Z', C.redD) + Pn('M29.5 50.5Q32.5 54 35.5 50.5Q32.5 48.5 29.5 50.5Z', C.pink) : L('M28.5 46Q32.5 51 36.5 46', 3));
+def('cloudbaby', () => cloudBaby(false));
+def('face_cloud', () => cloudBaby(false));                  // dialogue portrait of the Cloud (S59: says hello after the Owl)
+def('face_cloud_happy', () => cloudBaby(true));
+// S59 cloud HAND, redrawn on the SAME silhouette as the game's 'point' icon (proven thumb + index finger + curled fingers), in white, with a puffy CLOUD cuff.
+//   · centred: the fingertip is at x = 32, so it lands exactly on what the card names · everything sits INSIDE the 64 box (the old hand hung below it → its black line was cut)
+//   · no pink / blue circles on the hand (the baby CLOUD keeps its blush) · outline = one ink union (no seams where the cuff puffs meet the palm)
+// cloudhand2 = the same glove one beat later (finger tip lower, palm squashed); tutor.css cross-fades the two while the hand bobs → a tapping hand.
+const handGlove = (t) => {
+  const u = t * 0.4;
+  const d = `M24 ${30 + t}V${10 + t}Q24 ${4 + t} 29.5 ${4 + t}Q35 ${4 + t} 35 ${10 + t}V${30 + t}L44 ${31 + t}Q52 ${32 + t} 52 ${40 + u}V50H22L17 ${47 + u}L12 ${42 + u}Q10 ${37 + u} 14 ${36 + u}Q18 ${35 + u} 22 ${40 + u}L24 ${42 + u}Z`;
+  const puffs = [[20, 52, 7], [30, 55, 7.6], [41, 54, 7.4], [50, 49, 5.6]];   // overlapping cuff scallops: they merge with the palm into ONE outline
+  const ink = `<path d="${d}" fill="${INK}" stroke="${INK}" stroke-width="${f(sw * 2)}" stroke-linejoin="round"/>` + puffs.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${f(r + sw / 2)}" fill="${INK}"/>`).join('');
+  const body = `<path d="${d}" fill="${C.white}"/>` + puffs.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${f(r - sw / 2)}" fill="${C.white}"/>`).join('');
+  return `<g transform="translate(2.5 -1)">${ink + body}`
+    + hi(29.5, 14 + t, 2, 5, 0.95) + hi(23, 41 + u, 4.6, 2.6, 0.8)
+    + L(`M35.5 ${33 + t}V${42 + u}M43.5 ${34 + t}V${42 + u}`, 2.2, C.stoneD)               // finger creases
+    + L('M17 50Q21 53 26 51M33 53Q37 55 42 52', 2, C.stoneD) + '</g>';                       // cuff scallop creases
+};
+def('cloudhand', () => handGlove(0));
+def('cloudhand2', () => handGlove(5));
 def('stormmark', () => shadow(32, 60, 16)
   + P('M6 10Q6 6 11 6H53Q58 6 58 10Q58 13 56 16L35 54Q32 59 29 54L8 16Q6 13 6 10Z', C.purple)       // reverse (point-down) triangle
   + Pn('M13 12H51L45 22H19Z', '#fff" opacity=".28') + P('M32 14L22 31H30L27 44L42 25H33L37 14Z', C.gold) + hi(40, 12, 8, 2.2, 0.35));

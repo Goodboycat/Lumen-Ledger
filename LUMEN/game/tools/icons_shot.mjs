@@ -28,3 +28,7 @@ for i, n in enumerate(names):
 print('sliced', len(names))
 `;
 console.log(execFileSync('python3', ['-c', py, sheet, JSON.stringify(names), dst]).toString().trim(), '→', dst, '· sheet', path.relative(game, sheet));
+// S59: register the sliced names in ui/icons/manifest.json so PNG mode serves them (a name missing from the manifest silently falls back to inline SVG)
+const mf = path.join(dst, 'manifest.json'); const man = JSON.parse(fs.readFileSync(mf, 'utf8')); let added = 0;
+for (const n of names) if (!man.names.includes(n)) { man.names.push(n); added++; }
+man.names.sort(); fs.writeFileSync(mf, JSON.stringify(man)); console.log('manifest: +' + added + ' name(s), total ' + man.names.length);
