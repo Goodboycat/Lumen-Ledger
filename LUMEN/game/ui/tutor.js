@@ -257,7 +257,7 @@ export function mountTutor(root, opts = {}) {
   st.offs.push(bus.on('game:title', () => { api.dismiss('title'); st.pendingVerb = null; st.active = false; }));
   st.offs.push(bus.on('game:start', () => { st.active = true; st.lull = 0; }));
   st.offs.push(bus.on('game:resumed', () => { st.active = true; st.lull = 0; }));
-  for (const n of ['ui:ledger:open', 'ui:dialogue:open', 'ui:seasons:open', 'ui:title:open', 'eco:win', 'eco:lose', 'cine:begin'])   // S59-A: a cinematic starting closes the card too st.offs.push(bus.on(n, () => api.dismiss('modal')));
+  for (const n of ['ui:ledger:open', 'ui:dialogue:open', 'ui:seasons:open', 'ui:title:open', 'eco:win', 'eco:lose', 'cine:begin']) st.offs.push(bus.on(n, () => api.dismiss('modal')));   // S59-A: 'cine:begin' = a cinematic starting closes the card too
   return api;
 }
 
