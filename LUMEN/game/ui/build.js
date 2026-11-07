@@ -51,7 +51,7 @@ export function mountBuildMenu(root, opts = {}) {
   const toggle = el('button', 'll-build-toggle', '🔨 BUILD <span class="ll-key">B</span>');
   const placing = el('div', 'll-build-placing');
   const placingTxt = el('span', null, 'Placing…');
-  const rotBtn = el('button', 'll-btn', '⟳ R'); const okBtn = el('button', 'll-btn ok', '✓ place'); const noBtn = el('button', 'll-btn no', '✕ cancel');
+  const rotBtn = el('button', 'll-btn', '⟳ <span class="ll-keyhint">R</span>'); rotBtn.setAttribute?.('aria-label', 'rotate');   // S62-D: the letter is a desktop hint only (hidden on touch, build.css) const okBtn = el('button', 'll-btn ok', '✓ place'); const noBtn = el('button', 'll-btn no', '✕ cancel');
   placing.append(placingTxt, rotBtn, okBtn, noBtn);
   // S09: demolish pill — shown INSTEAD of the 🔨 BUILD toggle while demolish mode is armed with the tray closed (the state P13 keeps).
   //   Touch players have no Esc: the ✕ Done button ends demolish mode in both layers (api.cancel → ui:build {action:'cancel'}).

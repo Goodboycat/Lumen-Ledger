@@ -112,3 +112,7 @@ body.is-touch .ll-build.has-detail .ll-build-grid { max-height: 92px; }
 
 /* S59-B: no Build button / tray / placing banner under a dialogue; they come back (closed) when the last line is passed. */
 body.ll-dlg-open .ll-build { display: none !important; }
+
+/* S62-D: keyboard letters (B / R) mean nothing on a phone — the drawn icon says it; desktop keeps them */
+body.is-touch .ll-keyhint, body.is-touch .ll-build-toggle .ll-key { display: none; }
+
