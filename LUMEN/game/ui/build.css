@@ -119,3 +119,6 @@ body.is-touch .ll-keyhint, body.is-touch .ll-build-toggle .ll-key { display: non
 
 /* S63-D: the hint under the tray cards was 10 px - too small on phones. Touch: 12 px, darker, and the keyboard letters are replaced by touch wording in build.js */
 body.is-touch .ll-build-hint { font-size: 12px; color: #333; font-weight: 800; }
+
+/* S63-D2: an owned card already says "yours" in its cost chip; the green count badge sat on top of it and cut the word ("yours" -> "yours✓"). Hide the badge when the count is 1 (one-per-type cards). */
+.ll-card.owned .ll-card-count { display: none; }
