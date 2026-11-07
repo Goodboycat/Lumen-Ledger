@@ -125,7 +125,12 @@
       "opening": [
         {
           "speaker": "owl",
-          "text": "Welcome, Channeler. Glowmarket owes Baron Gilt 260 Spark — that purple haze is his Debt Fog. Sell, save, pay him, and keep the lantern lit.",
+          "text": "Welcome, Channeler. Glowmarket owes Baron Gilt 260 Spark. That purple haze is his Debt Fog.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Sell, save, pay him back, and keep the lantern lit.",
           "mood": "happy"
         },
         {

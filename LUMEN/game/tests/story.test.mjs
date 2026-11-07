@@ -22,7 +22,7 @@ const drain = (bus, story, pick = 1, max = 200) => { let n = 0; while (story.isP
 
 // ---- pure helpers
 ok(pickLedgerVariant(0) === 'low' && pickLedgerVariant(1) === 'low' && pickLedgerVariant(2) === 'default' && pickLedgerVariant(3) === 'high', 'pickLedgerVariant 0/1 low · 2 default · 3 high');
-ok(linesFor(data, 'opening', 1).length === 3 && linesFor(data, 'opening', 2).length >= 2 && linesFor(data, 'ledger', 4, 'high')[1].speaker === 'baron' && linesFor(data, 'event', 'storm').length === 1 && linesFor(data, 'scam', 'quickFlip').length === 2 && linesFor(data, 'nope', 1).length === 0, 'linesFor opening/ledger/event/scam, unknown → []');
+ok(linesFor(data, 'opening', 1).length === 4 && linesFor(data, 'opening', 2).length >= 2 && linesFor(data, 'ledger', 4, 'high')[1].speaker === 'baron' && linesFor(data, 'event', 'storm').length === 1 && linesFor(data, 'scam', 'quickFlip').length === 2 && linesFor(data, 'nope', 1).length === 0, 'linesFor opening/ledger/event/scam, unknown → []');
 ok(linesFor(null, 'opening', 1).length === 0 && linesFor(data, 'ledger', 99, 'low').length === 0, 'linesFor never throws on missing data');
 
 // ---- season 1 opening via update() (autoplay), one line at a time, story:end once
@@ -30,11 +30,13 @@ ok(linesFor(null, 'opening', 1).length === 0 && linesFor(data, 'ledger', 99, 'lo
   const { bus, eco, ev, story } = mk();
   ok(!story.isPlaying && !ev['story:line'], 'nothing plays before update()');
   story.update(0.016);
-  ok(story.isPlaying && ev['story:line'].length === 1 && ev['story:line'][0].speaker === 'owl' && /Baron/.test(ev['story:line'][0].text) && ev['story:begin'][0].group === 'opening' && ev['story:begin'][0].season === 1, 'update() → season 1 opening (S59-F: 3 lines — Owl states the goal first, Pip, then the Cloud says hello)');
+  ok(story.isPlaying && ev['story:line'].length === 1 && ev['story:line'][0].speaker === 'owl' && /Baron/.test(ev['story:line'][0].text) && ev['story:begin'][0].group === 'opening' && ev['story:begin'][0].season === 1, 'update() → season 1 opening (S60-C: 4 lines — Owl (2 short bubbles), Pip, then the Cloud says hello)');
   story.update(1); story.update(1);
   ok(ev['story:line'].length === 1, 'no auto-advance by default (waits for ui:advance)');
   bus.emit('ui:advance', {});
-  ok(ev['story:line'].length === 2 && ev['story:line'][1].speaker === 'pip' && ev['story:line'][1].index === 1 && ev['story:line'][1].total === data.seasons[0].opening.length, 'ui:advance → line 2 (pip) with index/total');
+  ok(ev['story:line'].length === 2 && ev['story:line'][1].speaker === 'owl' && ev['story:line'][1].index === 1 && ev['story:line'][1].total === data.seasons[0].opening.length && ev['story:line'][1].text.length <= 70, 'ui:advance → line 2 (owl, short second bubble) with index/total (S60-C)');
+  bus.emit('ui:advance', {});
+  ok(ev['story:line'].length === 3 && ev['story:line'][2].speaker === 'pip' && ev['story:line'][2].index === 2, 'ui:advance → line 3 (pip)');
   const n = drain(bus, story);
   ok(!story.isPlaying && ev['story:line'].length === data.seasons[0].opening.length && ev['story:end'].length === 1 && ev['story:end'][0].group === 'opening', `drained opening in ${n} advances · story:end once`);
   ok(story.onSeasonStart(1) === false && ev['story:line'].length === data.seasons[0].opening.length, 'opening never replays for the same season');
