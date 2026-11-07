@@ -723,7 +723,7 @@
       "pitch": [
         {
           "speaker": "collector",
-          "text": "Good evening, Pip. A Zero-Interest* Loan, 150 Spark, for established stallholders only. That is you.",
+          "text": "Good evening, Pip. {spark} Spark and {debtPhrase}? A Zero-Interest* Loan, 150 Spark, for established stallholders only. That is you.",
           "mood": "happy"
         },
         {
@@ -756,6 +756,11 @@
           "speaker": "collector",
           "text": "See? Zero. Right there, in big letters. The Baker took one, and the Smith. They thanked me.",
           "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Look closer, Pip: the asterisk. Zero for one season, then 35 % per season.",
+          "tell": true
         },
         {
           "speaker": "collector",
@@ -863,7 +868,7 @@
       "pitch": [
         {
           "speaker": "collector",
-          "text": "Pip! Here, a free 5 Spark sample, no strings. Now: hand me 80 and I hand you 160 next season. Guaranteed.",
+          "text": "Pip! You have {spark} Spark, I see. Here, a free 5 Spark sample, no strings. Now: hand me 80 and I hand you 160 next season. Guaranteed.",
           "mood": "happy"
         },
         {
@@ -896,6 +901,11 @@
           "speaker": "collector",
           "text": "A seal from the Baron's own notary. Notarised doubling! The Baker is in, the Smith is in, half the pier is in.",
           "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Look closer, Pip: a free sample, then a big ask. Nobody can guarantee 160 for 80.",
+          "tell": true
         },
         {
           "speaker": "collector",
@@ -998,7 +1008,7 @@
       "pitch": [
         {
           "speaker": "collector",
-          "text": "Lucky Lantern Raffle! 40 Spark a ticket, prize in the box, drawn tonight. Pip, you look lucky to me.",
+          "text": "Lucky Lantern Raffle! 40 Spark a ticket, prize in the box. Pip, {spark} Spark in that pouch and a lucky face? Drawn tonight.",
           "mood": "happy"
         },
         {
@@ -1031,6 +1041,11 @@
           "speaker": "collector",
           "text": "Feel that? A winning ticket. The Baker bought three. The Smith bought five. The box closes in TEN seconds!",
           "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Look closer, Pip: the prize is in a box nobody opens. Who checks the draw?",
+          "tell": true
         },
         {
           "speaker": "collector",
@@ -1140,20 +1155,20 @@
       "pitch": [
         {
           "speaker": "collector",
-          "text": "Fog-Proof Insurance! 60 Spark, covers everything, no forms, no fuss, no written anything!",
+          "text": "Pip! {spark} Spark in your pouch and a whole island to protect. Fog-Proof Insurance: 60 Spark, covers everything!",
           "mood": "happy"
         },
         {
           "speaker": "collector",
-          "text": "Sign here. Well, there's no 'here'. Just nod.",
+          "text": "Here, a free fog-whistle, no strings. Now, want a look at the policy? Looking is free.",
           "choices": [
             {
-              "id": "accept",
-              "text": "Nod"
+              "id": "look",
+              "text": "Let me see the policy"
             },
             {
-              "id": "refuse",
-              "text": "What exactly does it cover?"
+              "id": "walk",
+              "text": "Not today"
             }
           ]
         }
@@ -1166,7 +1181,7 @@
         },
         {
           "speaker": "owl",
-          "text": "There were no written terms and no claims process. Real insurance names exactly what it covers and how to claim, which is exactly what the Protect jar does."
+          "text": "No written terms, no claims process. Real insurance says exactly what it covers and how to claim, like the Protect jar does."
         }
       ],
       "refuse": [
@@ -1179,7 +1194,87 @@
           "text": "A policy with no terms is just a fee wearing a hat, so that was well refused."
         }
       ],
-      "tell": "No written terms, no claims process. Real insurance names exactly what it covers and how to claim."
+      "tell": "No written terms, no claims process. Real insurance names exactly what it covers and how to claim.",
+      "walk": [
+        {
+          "speaker": "collector",
+          "text": "Not even a look? Hm. Insurance is what you buy BEFORE the fog, Pip."
+        },
+        {
+          "speaker": "owl",
+          "text": "He gave a gift first, so saying no felt rude. A free gift is not a reason to buy."
+        }
+      ],
+      "look": [
+        {
+          "speaker": "collector",
+          "text": "See? FOG-PROOF, in big letters. Covers storms, fog, bad luck, Mondays. Everything!",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Look closer, Pip: no written terms and no claims page. What exactly does it cover?",
+          "tell": true
+        },
+        {
+          "speaker": "collector",
+          "text": "Terms are for people with doubts! Three stallholders signed today. It ends at dusk.",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "Nod, 60 Spark"
+            },
+            {
+              "id": "ask",
+              "text": "What does it cover?"
+            },
+            {
+              "id": "stall",
+              "text": "I'll think about it"
+            }
+          ]
+        }
+      ],
+      "ask": [
+        {
+          "speaker": "collector",
+          "text": "What does it cover? Fog-related circumstances. Broadly. In spirit."
+        },
+        {
+          "speaker": "collector",
+          "text": "Dusk, Pip. Nod now, or the nod is gone for good.",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "Nod, 60 Spark"
+            },
+            {
+              "id": "refuse",
+              "text": "No terms, no deal"
+            }
+          ]
+        }
+      ],
+      "stall": [
+        {
+          "speaker": "collector",
+          "text": "Think? Of course. Only, the policy ink fades at dusk. And don't tell the Owl, he gets so dramatic."
+        },
+        {
+          "speaker": "collector",
+          "text": "Nod or no nod, Pip?",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "Nod, 60 Spark"
+            },
+            {
+              "id": "refuse",
+              "text": "No nod."
+            }
+          ]
+        }
+      ]
     },
     "premiumStallKit": {
       "id": "premiumStallKit",
@@ -1188,20 +1283,20 @@
       "pitch": [
         {
           "speaker": "collector",
-          "text": "Premium Stall Kit! Normally 300 Spark, today just 120! The Tool Smith would NEVER match that.",
+          "text": "Pip! {spark} Spark and a growing market. Premium Stall Kit: normally 300, today just 120! The Tool Smith would NEVER match that.",
           "mood": "happy"
         },
         {
           "speaker": "collector",
-          "text": "Shall I wrap it?",
+          "text": "Take this free ribbon, no strings. Now, want to see the kit before you decide? Looking is free.",
           "choices": [
             {
-              "id": "accept",
-              "text": "Bargain! Wrap it"
+              "id": "look",
+              "text": "Let me see the kit"
             },
             {
-              "id": "refuse",
-              "text": "What does the Tool Smith actually charge?"
+              "id": "walk",
+              "text": "Not today"
             }
           ]
         }
@@ -1220,15 +1315,100 @@
       "refuse": [
         {
           "speaker": "collector",
-          "text": "The Tool Smith? Ninety. But OURS has a ribbon."
+          "text": "No? Your loss, Pip. Don't come crying when the Baker has two stalls.",
+          "mood": "angry"
         },
         {
           "speaker": "pip",
           "text": "I'll take the 90 without the ribbon, thanks. Ribbons were how they got me last time. I've grown.",
           "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "You checked the real price first. That one question beats every fake 'normal' price."
         }
       ],
-      "tell": "A fake \"normal\" price. Compare against what the Tool Smith actually charges (L2 = 90)."
+      "tell": "A fake \"normal\" price. Compare against what the Tool Smith actually charges (L2 = 90).",
+      "walk": [
+        {
+          "speaker": "collector",
+          "text": "No look? Then you will never know how good it is, Pip."
+        },
+        {
+          "speaker": "owl",
+          "text": "A crossed-out price is a story, not a fact. Checking the real price costs nothing."
+        }
+      ],
+      "look": [
+        {
+          "speaker": "collector",
+          "text": "Gleaming, isn't it? 300 on the tag, crossed out. 120 in red. Only three kits left.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Look closer, Pip: who decided 300 is 'normal'? The Tool Smith's level-2 upgrade costs 90.",
+          "tell": true
+        },
+        {
+          "speaker": "collector",
+          "text": "A queue is forming behind you, and the others are all in. Wrap it?",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "Bargain! Wrap it"
+            },
+            {
+              "id": "ask",
+              "text": "What does the Smith charge?"
+            },
+            {
+              "id": "stall",
+              "text": "I'll think about it"
+            }
+          ]
+        }
+      ],
+      "ask": [
+        {
+          "speaker": "collector",
+          "text": "The Tool Smith? Ninety. But OURS has a ribbon."
+        },
+        {
+          "speaker": "collector",
+          "text": "Decide now, Pip. That queue is not getting shorter.",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "Wrap it, 120 Spark"
+            },
+            {
+              "id": "refuse",
+              "text": "No, thanks"
+            }
+          ]
+        }
+      ],
+      "stall": [
+        {
+          "speaker": "collector",
+          "text": "Think? Sure. Though when you come back it will be 300 again. Today only!"
+        },
+        {
+          "speaker": "collector",
+          "text": "Wrap it or walk away?",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "Wrap it, 120 Spark"
+            },
+            {
+              "id": "refuse",
+              "text": "I will walk."
+            }
+          ]
+        }
+      ]
     },
     "quickFlip": {
       "id": "quickFlip",
@@ -1237,20 +1417,21 @@
       "pitch": [
         {
           "speaker": "baron",
-          "text": "Pip, between us: Quick-Flip Spark Notes. 100 in, triple out. I personally know the printer.",
-          "mood": "happy"
+          "text": "Pip, between us: {spark} Spark in your pouch could be triple by dusk. Quick-Flip Spark Notes. I personally know the printer.",
+          "mood": "happy",
+          "stranger": "Pip, between us: {spark} Spark in your pouch could be triple by dusk. Quick-Flip Spark Notes. My friend runs the printer."
         },
         {
           "speaker": "baron",
-          "text": "A once-in-a-season chance. Hm?",
+          "text": "Take a free sample note, no strings. Want to see the numbers first? Looking is free.",
           "choices": [
             {
-              "id": "accept",
-              "text": "All in, 100 Spark"
+              "id": "look",
+              "text": "Show me the numbers"
             },
             {
-              "id": "refuse",
-              "text": "A tip from a stranger is not a plan"
+              "id": "walk",
+              "text": "Not today"
             }
           ]
         }
@@ -1279,7 +1460,91 @@
           "text": "Spreading your Spark rather than flipping it is exactly the right instinct, and that was very well said."
         }
       ],
-      "tell": "\"I personally know\" is not a plan. Insider tips from strangers are the oldest Too-Good Deal."
+      "tell": "\"I personally know\" is not a plan. Insider tips from strangers are the oldest Too-Good Deal.",
+      "walk": [
+        {
+          "speaker": "baron",
+          "text": "No look? Fortune favours the quick, Pip. Hm."
+        },
+        {
+          "speaker": "owl",
+          "text": "A free sample and 'between us' build trust fast. Trust is not the same as a plan."
+        }
+      ],
+      "look": [
+        {
+          "speaker": "baron",
+          "text": "100 in, 300 out. Three times! Everyone who bought last week doubled up, I am told.",
+          "mood": "happy",
+          "stranger": "100 in, 300 out. Three times! Everyone who bought last week doubled up, I'm told."
+        },
+        {
+          "speaker": "owl",
+          "text": "Look closer, Pip: 'I personally know' is not a plan, and nobody can promise triple. Who checks the printer?",
+          "tell": true
+        },
+        {
+          "speaker": "baron",
+          "text": "The market closes at dusk, and so does my goodwill. Are you in?",
+          "stranger": "The notes sell out at dusk, and so does my goodwill. Are you in?",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "All in, 100 Spark"
+            },
+            {
+              "id": "ask",
+              "text": "Who checks the printer?"
+            },
+            {
+              "id": "stall",
+              "text": "I'll think about it"
+            }
+          ]
+        }
+      ],
+      "ask": [
+        {
+          "speaker": "baron",
+          "text": "Who checks the printer? A gentleman never asks a gentleman such things!",
+          "mood": "angry",
+          "stranger": "Who checks? Friend, you ask a lot of questions for a lucky one!"
+        },
+        {
+          "speaker": "baron",
+          "text": "Tonight, Pip. In or out?",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "All in, 100 Spark"
+            },
+            {
+              "id": "refuse",
+              "text": "Out."
+            }
+          ]
+        }
+      ],
+      "stall": [
+        {
+          "speaker": "baron",
+          "text": "Think? Of course. Only, the notes will be gone, and so will I. Everyone else is already in."
+        },
+        {
+          "speaker": "baron",
+          "text": "Yes or no, Pip? Hm?",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "All in, 100 Spark"
+            },
+            {
+              "id": "refuse",
+              "text": "No."
+            }
+          ]
+        }
+      ]
     }
   },
   "events": {
@@ -1958,7 +2223,7 @@
       "pitch": [
         {
           "speaker": "stranger",
-          "text": "Hello, friend! I run the market co-op. Supply crates, 30 Spark each, and I can prove it.",
+          "text": "Hello, friend! I run the market co-op. With {spark} Spark you could grab a supply crate, 30 Spark each, and I can prove it.",
           "mood": "happy"
         },
         {
@@ -1987,6 +2252,11 @@
           "speaker": "stranger",
           "text": "Here. 30 in, 50 back, signed by the Baker. Go and ask him yourself if you like.",
           "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Checked, Pip: a written receipt, small numbers, and the Baker can confirm it. Fair.",
+          "tell": true
         },
         {
           "speaker": "stranger",
@@ -2033,7 +2303,7 @@
       "pitch": [
         {
           "speaker": "stranger",
-          "text": "What a lovely island! I'm clearing out lanterns: 20 Spark for lanterns worth 34 at any stall.",
+          "text": "What a lovely island! You have {spark} Spark? I'm clearing out lanterns: 20 Spark for lanterns worth 34 at any stall.",
           "mood": "happy"
         },
         {
@@ -2062,6 +2332,11 @@
           "speaker": "stranger",
           "text": "Check away. Ask any stallholder: 34 each, I'm just short of storage.",
           "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Checked, Pip: you inspect first, the numbers are small, there is no deadline. Fair.",
+          "tell": true
         },
         {
           "speaker": "stranger",
@@ -2108,7 +2383,7 @@
       "pitch": [
         {
           "speaker": "stranger",
-          "text": "New stallholder? Welcome! A sample basket from the neighbours. Free. Truly.",
+          "text": "New stallholder? Welcome! {spark} Spark in your pouch already, nice. A sample basket from the neighbours. Free. Truly.",
           "mood": "happy"
         },
         {
@@ -2137,6 +2412,11 @@
           "speaker": "stranger",
           "text": "Fruit, bread, a candle. Worth about 12 Spark. That's all. Nothing to sign.",
           "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Checked, Pip: free, nothing to sign, and leaving is fine. Fair.",
+          "tell": true
         },
         {
           "speaker": "stranger",
@@ -2176,5 +2456,22 @@
       ],
       "tell": "Free, nothing to sign, no hurry, and leaving is fine. A real gift."
     }
+  },
+  "reveal": {
+    "kind": [
+      "Happens to everyone, Pip.",
+      "Everyone gets fooled once. Now you know.",
+      "That one fooled a lot of people.",
+      "It stings, and now you will spot it next time."
+    ],
+    "spotted": [
+      "Nicely spotted, Pip!",
+      "You asked the right question."
+    ],
+    "fairTook": [
+      "Checked first, paid fair. That's the way."
+    ],
+    "lostLabel": "Lost",
+    "tellLabel": "The tell"
   }
 }
