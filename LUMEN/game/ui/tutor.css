@@ -83,3 +83,4 @@
 /* phone landscape: sits in the left thumb zone, above the Build button, clear of the tutor card (bottom-centre) and the 'drag to move' label */
 @media (max-height: 460px) { .ll-tutor-joy { left: 11%; bottom: 76px; width: 88px; height: 88px; } .ll-tutor-joy .tj-knob { width: 40px; height: 40px; margin: -20px 0 0 -20px; } .ll-tutor-joy .tj-hand, .ll-tutor-joy .tj-hand .ll-ico { width: 52px; height: 52px; margin-left: -26px; } .ll-tutor-joy.keys { left: 16px; bottom: 90px; } }
 @media (prefers-reduced-motion: reduce) { .ll-tutor-joy .tj-base, .ll-tutor-joy .tj-ring, .ll-tutor-joy .tj-knob, .ll-tutor-joy .tj-hand, .ll-tutor-joy .tj-hand .ll-hand-a, .ll-tutor-joy .tj-hand .ll-hand-b, .tj-keys .k-w { animation: none; } .ll-tutor-joy .tj-hand .ll-hand-b { opacity: 0; } }
+body.tj-on .ll-joy-hint { opacity: 0 !important; }   /* S60-A: the drawn stick demo replaces the text label while it plays */

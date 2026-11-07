@@ -103,7 +103,8 @@ export function mountTutor(root, opts = {}) {
     if (!hand) return; hand.classList.remove('show', 'flip'); if (st.raf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(st.raf); st.raf = 0;
     if (joy) joy.classList.remove('show', 'touch', 'keys');
     const demo = !!(c && c.demo === 'move' && joy), touch = isTouch();                          // S60-A: touch → joystick demo (no world hand); desktop → WASD keys + the hand far ahead
-    if (demo) { joy.classList.add('show', touch ? 'touch' : 'keys'); }
+    if (hasDoc && document.body && document.body.classList) document.body.classList.toggle('tj-on', false);
+    if (demo) { joy.classList.add('show', touch ? 'touch' : 'keys'); if (touch && document.body && document.body.classList) document.body.classList.add('tj-on'); }   // tj-on hides the plain 'drag to move' label while the drawn stick says it better
     const specs = c ? specsOf(c, world) : []; if (!specs.length && !demo) return;
     const host = root || document, vw = () => (typeof window !== 'undefined' && window.innerWidth) || 800, vh = () => (typeof window !== 'undefined' && window.innerHeight) || 450;
     const size = () => hand.offsetWidth || 56;
