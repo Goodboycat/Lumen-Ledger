@@ -823,7 +823,11 @@ export function createLumenGame(game, opts = {}) {
     if (kind === 'hero') return hp ? { x: hp.x, z: hp.z } : null;
     // S60-A: 'go there' marker for the Move step, ~6 u away (3 u landed on Pip's own legs). Tries screen-up (-z, toward the stalls), then the sides, then the plaza centre; always on LAND and clear of buildings.
     if (kind === 'ahead') { if (!hp) return null; const isl = sb.island, occ = (x, z) => !!sb.build?.occupied?.(x, z); const D = 6;
-      for (const [dx, dz] of [[0, -1], [0.6, -0.8], [-0.6, -0.8], [1, 0], [-1, 0], [0, 1]]) { const x = hp.x + dx * D, z = hp.z + dz * D; if ((!isl?.isLand || isl.isLand(x, z)) && !occ(x, z)) return { x, z, y: 0.2 }; }
+      // S61-B: 'up' is read from the CAMERA (ground-projected forward = screen-up), so a rotated camera still gets a marker that reads as 'go up the screen'. Mock / missing camera -> -z (the fixed ¾ rig looks down -z).
+      let ux = 0, uz = -1; try { const c = game.camera?.three || game.camera; const o = c?.position, t = game.camera?.lookAt; if (o && t && Number.isFinite(o.x) && Number.isFinite(t.x)) { const fx = t.x - o.x, fz = t.z - o.z, fl = Math.hypot(fx, fz); if (fl > 1e-3) { ux = fx / fl; uz = fz / fl; } } } catch (_) {}
+      const rot = (a, b, k) => [a * Math.cos(k) - b * Math.sin(k), a * Math.sin(k) + b * Math.cos(k)];   // rotate the (ux,uz) unit vector by k rad (0.64 rad ~ the 0.6/-0.8 diagonals)
+      const dirs = [0, 0.64, -0.64, 1.571, -1.571, 3.142].map((k) => rot(ux, uz, k));
+      for (const [dx, dz] of dirs) { const x = hp.x + dx * D, z = hp.z + dz * D; if ((!isl?.isLand || isl.isLand(x, z)) && !occ(x, z)) return { x, z, y: 0.2 }; }
       const d = Math.hypot(hp.x, hp.z) || 1; return { x: hp.x - hp.x / d * Math.min(D, d), z: hp.z - hp.z / d * Math.min(D, d), y: 0.2 }; }
     if (kind === 'coin') { const q = near(sb.coins); return q ? { ...q, y: 0.35 } : null; }
     if (kind.startsWith('jar:')) { const m = sb.jarsWorld?.get?.(kind.slice(4)); const q = xz(m); return q ? { ...q, y: 1.4 } : null; }
