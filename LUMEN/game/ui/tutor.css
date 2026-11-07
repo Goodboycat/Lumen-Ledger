@@ -49,6 +49,8 @@
   .ll-tutor { left: 16px; transform: translateX(0) translateY(10px); bottom: calc(max(12px, env(safe-area-inset-bottom)) + 64px); }
   .ll-tutor.show { transform: translateX(0) translateY(0); }
 }
+/* S64-D: desktop, Build tray open: the card used to sit on the tray's lower-left and hide the first jar card. It now rides just above the tray. */
+@media (min-width: 701px) and (min-height: 461px) { body.ll-tray-open:not(.ll-placing) .ll-tutor { bottom: calc(max(12px, env(safe-area-inset-bottom)) + var(--ll-build-h, 230px) + 10px); left: 150px; max-width: min(400px, calc(100vw - 170px)); } }   /* left: clear of the WASD keycaps */
 @media (prefers-reduced-motion: reduce) { .ll-tutor { transition: opacity .15s; } .ll-tutor-hand, .ll-tutor-av, .ll-tutor-hand .ll-hand-a, .ll-tutor-hand .ll-hand-b { animation: none; } .ll-tutor-hand .ll-hand-b { opacity: 0; } }
 
 /* ---- S60-A: SIMULATED JOYSTICK (touch) / WASD keycaps (desktop). Drawn like the real stick in ui/touch.css; the cloud hand drags the knob up-right and back,

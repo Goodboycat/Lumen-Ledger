@@ -85,6 +85,8 @@ export function mountBuildMenu(root, opts = {}) {
   detail.append(detIcon, detInfo, priceBox, deployBtn, upBtn, sellBtn, detClose);
   tray.append(tabs, grid, detail, foot);
   wrap.append(placing, demolishPill, tray, toggle);
+  // S64-D: publish the build block's height so the tutor card can sit just above the open tray (desktop) instead of on top of it
+  if (typeof ResizeObserver === 'function') { try { new ResizeObserver(() => document.body?.style?.setProperty('--ll-build-h', wrap.offsetHeight + 'px')).observe(wrap); } catch (e) { /* no RO in the node shim */ } }
   root.appendChild(wrap);
 
   // tabs
@@ -211,12 +213,12 @@ export function mountBuildMenu(root, opts = {}) {
   const api = {
     el: wrap, state: st, cards,
     get isOpen() { return st.open; },
-    open() { if (st.open || (typeof api.canOpen === 'function' && !api.canOpen())) return api; st.open = true;   // S59-B: refused while a dialogue line is on screen
+    open() { if (st.open || (typeof api.canOpen === 'function' && !api.canOpen())) return api; st.open = true; document.body?.classList?.add('ll-tray-open');   /* S64-D: the tutor card lifts above the tray on desktop (ui/tutor.css) */   // S59-B: refused while a dialogue line is on screen
       wrap.classList.remove('closing'); wrap.classList.add('open'); renderGrid(); if (st.demolish) footTxt.textContent = 'demolish: tap a building (50 % refund)'; else if (!st.selected && document.body?.classList?.contains('is-touch')) footTxt.textContent = 'pick a card, then tap Deploy';   /* S63-D: no keyboard letters (B / R) on a phone */ syncDemolishPill(); bus.emit('ui:build:open', {}); return api; },
     // BUGFIX P13: close() keeps st.demolish (the player closes the tray to tap a stall on the island) — the 💥 button stays `.on` and
     // the integrator keeps lg.demolishMode; Esc / a card pick / 💥 again / cancel() end it in both layers.
     close() {
-      if (!st.open) return api; st.open = false; wrap.classList.remove('open'); wrap.classList.add('closing');
+      if (!st.open) return api; st.open = false; wrap.classList.remove('open'); wrap.classList.add('closing'); document.body?.classList?.remove('ll-tray-open');
       setTimeout(() => wrap.classList.remove('closing'), 220); st.selected = null; refreshCards(); syncDemolishPill(); bus.emit('ui:build:close', {}); return api;
     },
     toggle() { return st.open ? api.close() : api.open(); },
