@@ -1230,6 +1230,9 @@ function installRunWires(lg) {
     if ((lg.sb.pier?.near?.() || lg.sb.scamNpc?.near?.() || lg.sb.novelty?.near?.()) && hero?.root && Math.hypot(hero.root.position.x - world.x, hero.root.position.z - world.z) <= 4.5) { if (lg.sb.talk?.()) return true; }   // S63-B: tap near them talks at once (NPC only; a tap never touches a jar)
     if (ui?.build?.isOpen) return false;                                                   // open tray: a land tap is handled by the tray / placement
     if (lg.sb.island?.isLand && !lg.sb.island.isLand(world.x, world.z)) return false;     // water: nothing to build on
+    // S64-A: a ground tap never opens the tray by itself while the tutorial is still on Move / Coin / Sword (verbs step 0-2) or right after a dialogue closed.
+    //   The Build button + the 'Tap empty ground, pick a stall' card (step 3) are how the player meets the tray, never an accident.
+    if (lg.tapGrace?.() || (lg.verbs && lg.verbs.step >= 0 && lg.verbs.step < 3)) return false;
     lg.tapCell = { x: world.x, z: world.z, at: lg.game.time };
     bus.emit('ui:tap:land', { x: world.x, z: world.z });
     ui?.build?.open?.();
