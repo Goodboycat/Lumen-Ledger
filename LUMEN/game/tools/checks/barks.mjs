@@ -1,5 +1,5 @@
 // 41A BARKS — check.mjs --barks section (split out per START_HERE rule 0b). Returns the number of failures.
-//   story.json: every bark ≤ 60 chars, speakers ∈ data.speakers, seasons[0].opening.length === 2
+//   story.json: every bark ≤ 60 chars, speakers ∈ data.speakers, seasons[0].opening.length === 3
 //   headless createLumenGame fresh PLAY: ≥ 5 story:bark within 12 s, story:begin groups at start === 1, no ui:pause from barks
 //   resume from a save: 0 barks replayed · mountBarks with domshim: 60 frames, destroy → listeners back to baseline, 0 nodes
 import { pathToFileURL } from 'node:url';
@@ -19,9 +19,9 @@ export async function checkBarks() {
       n++; if (!l.text || l.text.length > 60) throw new Error(`barks.${g} line > 60 chars: "${l.text}"`);
       if (!speakers.has(l.speaker)) throw new Error(`barks.${g} unknown speaker ${l.speaker}`);
     }
-    if ((data.seasons[0].opening || []).length !== 2) throw new Error('seasons[0].opening.length !== 2: ' + data.seasons[0].opening.length);
+    if ((data.seasons[0].opening || []).length !== 3) throw new Error('seasons[0].opening.length !== 3: ' + data.seasons[0].opening.length);
     const walk = B.walkIn || []; if (walk.length !== 2 || Math.max(...walk.map((l) => l.at || 0)) > 9 || walk.some((l) => l.speaker === 'pip')) throw new Error('48B: walkIn must be exactly 2 non-pip lines with at ≤ 9 s (CINE.arrivalMax)');
-    console.log(`  story.json: ${n} barks in ${Object.keys(B).length} groups (all ≤ 60 chars, speakers valid) · opening = 2 lines · walkIn ${walk.length} lines 0–${Math.max(...walk.map((l) => l.at))} s OK`);
+    console.log(`  story.json: ${n} barks in ${Object.keys(B).length} groups (all ≤ 60 chars, speakers valid) · opening = 3 lines (Owl, Pip, Cloud) · walkIn ${walk.length} lines 0–${Math.max(...walk.map((l) => l.at))} s OK`);
   } catch (err) { bad++; console.log('  data FAIL →', err.message); }
   // --- headless game
   try {
@@ -49,7 +49,7 @@ export async function checkBarks() {
     // fresh PLAY: barks arrive over the first 12 s even while the 2-line opening is waiting for ui:advance (barks never block)
     const A = run(false); A.ui.title.buttons.story.click(); A.step();
     const openingGroups = A.ev.begin.filter((b) => b.group === 'opening').length; if (openingGroups !== 1) throw new Error('opening groups at start = ' + openingGroups);
-    const firstLine = A.ui.dialogue.line; if (!firstLine || firstLine.total !== 2) throw new Error('dialogue opening total !== 2: ' + JSON.stringify(firstLine?.total));
+    const firstLine = A.ui.dialogue.line; if (!firstLine || firstLine.total !== 3) throw new Error('dialogue opening total !== 3: ' + JSON.stringify(firstLine?.total));
     // headless has no walk-in cinematic (cinematics:false) so the 2-line opening opens at once and pauses the clock → dismiss it like a player, then listen 12 s
     let n = 0; while (A.ui.dialogue.isOpen && n++ < 10) { A.ui.dialogue.skip(); A.ui.dialogue.advance(); A.step(); }
     const pausesBefore = A.ev.pause.length; A.ev.pause.length = 0;
@@ -91,7 +91,7 @@ export async function checkBarks() {
     bk.destroy(); const L1 = (() => { let n = 0; for (const s of B.bus.map.values()) n += s.size; return n; })();
     if (L1 !== L0) throw new Error(`listeners after destroy ${L1} != ${L0}`); if (bk.items.length) throw new Error('nodes left ' + bk.items.length);
     B.lg.destroy(); B.ui.destroy();
-    console.log(`  headless fresh PLAY: opening groups 1 (2 lines) · ${walkBarks.length} walk-in barks in 12 s (${walkBarks.map((b) => b.t.toFixed(1)).join(', ')} s) · 0 ui:pause · ≤ 2 bubbles · one-shots ×1 · barksPlayed serialized · ${resumeNote}: 0 replayed · mountBarks destroy clean · ${Date.now() - t0} ms OK`);
+    console.log(`  headless fresh PLAY: opening groups 1 (3 lines) · ${walkBarks.length} walk-in barks in 12 s (${walkBarks.map((b) => b.t.toFixed(1)).join(', ')} s) · 0 ui:pause · ≤ 2 bubbles · one-shots ×1 · barksPlayed serialized · ${resumeNote}: 0 replayed · mountBarks destroy clean · ${Date.now() - t0} ms OK`);
   } catch (err) { bad++; console.log('  headless FAIL →', err.message, err.stack?.split('\n')[1]?.trim() || ''); }
   return bad;
 }

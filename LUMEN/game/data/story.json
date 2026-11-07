@@ -16,6 +16,10 @@
       "name": "Pip",
       "role": "hero, young Channeler who has never heard a money word in his life (debt? commission? is that a hat?) — innocent, satirical, learns out loud"
     },
+    "cloud": {
+      "name": "Cloud",
+      "role": "S59 tutor: a baby cloud that floats beside Pip, says hello after the Owl, points its glove at what to tap next. Short, warm, never lectures."
+    },
     "owl": {
       "name": "Tally-Owl",
       "role": "mentor, keeps the books, dry humour, never scolds twice"
@@ -127,6 +131,11 @@
         {
           "speaker": "pip",
           "text": "Right. Sell things, fill the jars, shoo the fog. How hard can an 'owes' be?",
+          "mood": "happy"
+        },
+        {
+          "speaker": "cloud",
+          "text": "Hi, Pip! I'm the little Cloud. I'll float beside you and point at whatever to tap next.",
           "mood": "happy"
         }
       ],

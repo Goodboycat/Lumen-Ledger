@@ -40,6 +40,7 @@
 .ll-blob.owl .ll-blob-hat { display: block; left: 12px; right: 12px; top: -6px; height: 10px; background: linear-gradient(90deg, #A1704A 0 12px, transparent 12px calc(100% - 12px), #A1704A calc(100% - 12px)); clip-path: polygon(0 100%, 12px 0, 24px 100%, calc(100% - 24px) 100%, calc(100% - 12px) 0, 100% 100%); }
 /* Glimmer / Fog Collector / generic */
 .ll-blob.glimmer { background: var(--sp, var(--blue)); }
+.ll-blob.cloud { background: #e3f3ff; }
 .ll-blob.collector { background: #9c89c4; }
 .ll-blob.collector .ll-blob-hat { display: block; left: 18px; right: 18px; top: -10px; height: 12px; background: #4a148c; border: 3px solid var(--ink); border-radius: 6px 6px 2px 2px; }
 .ll-blob.generic { background: #cfd8dc; }
@@ -56,6 +57,7 @@
 .ll-dlg-box.sp-narrator .ll-dlg-body::before, .ll-dlg-box.sp-narrator .ll-dlg-body::after { display: none; }
 .ll-dlg-name { position: absolute; top: -14px; left: 14px; background: var(--gold); border: 3px solid var(--ink); border-radius: 999px; padding: 1px 12px; font-size: 12px; font-weight: 900; box-shadow: 0 3px 0 var(--ink); transform: rotate(-1.5deg); }
 .ll-dlg-box.sp-baron .ll-dlg-name { background: #CE93D8; } .ll-dlg-box.sp-owl .ll-dlg-name { background: #d7b48f; } .ll-dlg-box.sp-glimmer .ll-dlg-name { background: var(--sp, var(--blue)); }
+.ll-dlg-box.sp-cloud .ll-dlg-name { background: #bfe3ff; }
 .ll-dlg-text { margin: 0; font-size: 15px; font-weight: 700; line-height: 1.4; min-height: 42px; }
 .ll-dlg-text::after { content: '▍'; opacity: .6; animation: ll-caret .6s steps(2) infinite; }
 .ll-dlg-text.done::after { content: none; }

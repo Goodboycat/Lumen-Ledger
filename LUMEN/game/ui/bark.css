@@ -16,6 +16,7 @@
 .ll-bark.baron { background: #EDE4F7; } .ll-bark.baron .who { color: var(--fog); }
 .ll-bark.collector { background: #E0F7FA; }
 .ll-bark.stranger { background: #FFF3C4; } .ll-bark.stranger .who { color: #B26A00; }   /* T4: warm, friendly */
+.ll-bark.cloud { background: #E3F3FF; } .ll-bark.cloud .who { color: #2B6CB0; }   /* S59-F */
 /* 45B: keyframes must NOT touch `transform` — with fill-mode both they overrode the inline translate(sx,sy) from bark.js place() forever, parking every bark at (0,0) off-screen. Individual `scale`/`translate` compose with it. */
 @keyframes ll-bark-in { from { opacity: 0; scale: .6; } to { opacity: 1; scale: 1; } }
 @keyframes ll-bark-out { from { opacity: 1; } to { opacity: 0; scale: .92; translate: 0 -12%; } }

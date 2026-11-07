@@ -22,7 +22,7 @@ const drain = (bus, story, pick = 1, max = 200) => { let n = 0; while (story.isP
 
 // ---- pure helpers
 ok(pickLedgerVariant(0) === 'low' && pickLedgerVariant(1) === 'low' && pickLedgerVariant(2) === 'default' && pickLedgerVariant(3) === 'high', 'pickLedgerVariant 0/1 low · 2 default · 3 high');
-ok(linesFor(data, 'opening', 1).length === 2 && linesFor(data, 'opening', 2).length >= 2 && linesFor(data, 'ledger', 4, 'high')[1].speaker === 'baron' && linesFor(data, 'event', 'storm').length === 1 && linesFor(data, 'scam', 'quickFlip').length === 2 && linesFor(data, 'nope', 1).length === 0, 'linesFor opening/ledger/event/scam, unknown → []');
+ok(linesFor(data, 'opening', 1).length === 3 && linesFor(data, 'opening', 2).length >= 2 && linesFor(data, 'ledger', 4, 'high')[1].speaker === 'baron' && linesFor(data, 'event', 'storm').length === 1 && linesFor(data, 'scam', 'quickFlip').length === 2 && linesFor(data, 'nope', 1).length === 0, 'linesFor opening/ledger/event/scam, unknown → []');
 ok(linesFor(null, 'opening', 1).length === 0 && linesFor(data, 'ledger', 99, 'low').length === 0, 'linesFor never throws on missing data');
 
 // ---- season 1 opening via update() (autoplay), one line at a time, story:end once
@@ -30,7 +30,7 @@ ok(linesFor(null, 'opening', 1).length === 0 && linesFor(data, 'ledger', 99, 'lo
   const { bus, eco, ev, story } = mk();
   ok(!story.isPlaying && !ev['story:line'], 'nothing plays before update()');
   story.update(0.016);
-  ok(story.isPlaying && ev['story:line'].length === 1 && ev['story:line'][0].speaker === 'owl' && /Baron/.test(ev['story:line'][0].text) && ev['story:begin'][0].group === 'opening' && ev['story:begin'][0].season === 1, 'update() → season 1 opening (41A: 2 lines, Owl states the goal first)');
+  ok(story.isPlaying && ev['story:line'].length === 1 && ev['story:line'][0].speaker === 'owl' && /Baron/.test(ev['story:line'][0].text) && ev['story:begin'][0].group === 'opening' && ev['story:begin'][0].season === 1, 'update() → season 1 opening (S59-F: 3 lines — Owl states the goal first, Pip, then the Cloud says hello)');
   story.update(1); story.update(1);
   ok(ev['story:line'].length === 1, 'no auto-advance by default (waits for ui:advance)');
   bus.emit('ui:advance', {});

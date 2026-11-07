@@ -28,6 +28,7 @@ export const SPEAKERS = {
   tallyOwl: { name: 'Tally-Owl',  cls: 'owl',      initial: 'O' },
   glimmer:  { name: 'Glimmer',    cls: 'glimmer',  initial: 'G' },
   collector:{ name: 'Fog Collector', cls: 'collector', initial: 'F' },
+  cloud:    { name: 'Cloud',     cls: 'cloud',    initial: 'C' },   // S59-F: the baby-cloud tutor (drawn face_cloud / face_cloud_happy)
   stranger: { name: 'Stranger',  cls: 'stranger', initial: 'S' },   // T4: the friendly stranger species (drawn face_stranger)
   narrator: { name: '',           cls: 'narrator', initial: '' },
 };
