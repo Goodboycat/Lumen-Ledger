@@ -96,3 +96,6 @@ body.is-touch .ll-jars-debt .ll-btn { min-height: 44px; }
 
 /* S59-B: while a dialogue line is on screen the Jars panel is gone at EVERY size (it used to only fold on phones and stayed tappable under the box). */
 body.ll-dlg-open .ll-jars { display: none !important; }
+
+/* S64-B: a row of a jar that is not built yet must really disappear (the grid rule above beat the [hidden] attribute) */
+.ll-jar[hidden] { display: none; }

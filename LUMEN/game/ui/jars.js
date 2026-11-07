@@ -135,6 +135,7 @@ export function mountJars(root, opts = {}) {
       // BUGFIX P02: Spend IS the pouch (sales land there, APPLY moves only save/invest/protect) → show pouch + any spend-jar Spark, not a dead 0
       r.bal.innerHTML = iconize(Math.round(k === 'spend' ? (st.balances.spend || 0) + st.spark : (st.balances[k] || 0)) + ' ✦');
       r.row.classList.toggle('locked', !!st.locked[k]);
+      r.row.classList.toggle('has-bal', k !== 'spend' && (st.balances[k] || 0) > 0);   // S64-B: the cloud hand points at the first arrow whose jar holds Spark
       if (changed === k || changed === '*') retrigger(r.icon, 'pop');
     }
     const s = summary ? Math.round((st.balances.spend || 0) + st.spark + (st.balances.save || 0) + (st.balances.invest || 0) + (st.balances.protect || 0)) : sumPct(st.pct);
