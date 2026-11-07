@@ -75,8 +75,12 @@ export function installVerbChain(lg) {
   //   time while one is open. Headless tests have no ui → unaffected.
   const dialogueOpen = () => !!lg.ui?.dialogue?.isOpen;
   V.pending = null;                           // step index waiting for the dialogue to close (null = none)
-  V.start = (i = 0) => { if (!lg.sb) return; if (dialogueOpen()) { V.pending = i; return; } V.pending = null; V.total = 0; V.autoBarks = 0; freezeEco(lg.sb); silenceOldGates(); enter(i); };
+  // S59-A: the chain ALSO waits for the arrival cinematic. Probe (tools/probe_s59.mjs): the Move step used to start at cine:begin, Pip's walk-in counted as the 3 u,
+  //   so when the opening dialogue closed the Move card flashed for 0 ms and the Coin card jumped up. Now: no step starts until cinematic AND dialogue are both over.
+  const cineActive = () => { const a = lg.cine?.active; return !!a && a !== 'title'; };
+  V.start = (i = 0) => { if (!lg.sb) return; if (dialogueOpen() || cineActive()) { V.pending = i; return; } V.pending = null; V.total = 0; V.autoBarks = 0; freezeEco(lg.sb); silenceOldGates(); enter(i); };
   on('ui:dialogue:close', () => { if (V.pending !== null && lg.sb) { const i = V.pending; V.pending = null; V.start(i); } });
+  on('cine:end', () => { if (V.pending !== null && lg.sb) { const i = V.pending; V.pending = null; V.start(i); } });   // S59-A (V.start re-queues itself while a dialogue is still open)
   V.skip = () => { if (V.step < 0) return; bus.emit('tut:skip', { at: VERB_STEPS[V.step] }); finish(true); };
   V.update = (dt) => {
     if (V.step < 0 || !lg.sb || lg.cine?.active || dialogueOpen()) return;

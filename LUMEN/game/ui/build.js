@@ -209,7 +209,8 @@ export function mountBuildMenu(root, opts = {}) {
   const api = {
     el: wrap, state: st, cards,
     get isOpen() { return st.open; },
-    open() { if (st.open) return api; st.open = true; wrap.classList.remove('closing'); wrap.classList.add('open'); renderGrid(); if (st.demolish) footTxt.textContent = 'demolish: tap a building (50 % refund)'; syncDemolishPill(); bus.emit('ui:build:open', {}); return api; },
+    open() { if (st.open || (typeof api.canOpen === 'function' && !api.canOpen())) return api; st.open = true;   // S59-B: refused while a dialogue line is on screen
+      wrap.classList.remove('closing'); wrap.classList.add('open'); renderGrid(); if (st.demolish) footTxt.textContent = 'demolish: tap a building (50 % refund)'; syncDemolishPill(); bus.emit('ui:build:open', {}); return api; },
     // BUGFIX P13: close() keeps st.demolish (the player closes the tray to tap a stall on the island) — the 💥 button stays `.on` and
     // the integrator keeps lg.demolishMode; Esc / a card pick / 💥 again / cancel() end it in both layers.
     close() {

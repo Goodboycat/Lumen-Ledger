@@ -109,3 +109,6 @@ body.is-touch .ll-build.has-detail .ll-build-grid { max-height: 92px; }
 .ll-build-tab.ll-new, .ll-build-toggle.ll-new { animation: ll-new-pulse 1.2s ease-out 1; }
 @keyframes ll-new-pulse { 0% { transform: scale(1); box-shadow: 0 2px 0 var(--ink), 0 0 0 0 rgba(255, 196, 0, .9); } 35% { transform: scale(1.12); box-shadow: 0 2px 0 var(--ink), 0 0 0 10px rgba(255, 196, 0, 0); } 70% { transform: scale(1.06); } 100% { transform: scale(1); box-shadow: 0 2px 0 var(--ink), 0 0 0 0 rgba(255, 196, 0, 0); } }
 .ll-card-new { position: absolute; top: -6px; right: -6px; font-size: 9px; font-weight: 900; letter-spacing: .5px; background: var(--orange, #ff9f43); color: var(--ink); border: 2px solid var(--ink); border-radius: 999px; padding: 1px 6px; transform: rotate(8deg); animation: ll-new-pulse 1.2s ease-out 1; pointer-events: none; }
+
+/* S59-B: no Build button / tray / placing banner under a dialogue; they come back (closed) when the last line is passed. */
+body.ll-dlg-open .ll-build { display: none !important; }

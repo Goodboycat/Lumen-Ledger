@@ -81,6 +81,10 @@ export function mountUI(root, opts = {}) {
     };
     window.addEventListener('keydown', onEscCapture, true); ui._offEsc = () => window.removeEventListener('keydown', onEscCapture, true);
   }
+  // S59-B (user report): when a dialogue opens, the Build tray (and a placing ghost) CLOSE AT ONCE and the Build button + Jars panel are hidden (ui/build.css, ui/jars.css:
+  //   body.ll-dlg-open) until the last line is passed. They never re-open by themselves; build.canOpen() refuses B / the button while a line is on screen.
+  ui.build.canOpen = () => !ui.dialogue?.isOpen;
+  bus.on('ui:dialogue:open', () => { const b = ui.build; if (!b) return; if (b.state?.placing || b.state?.demolish) b.cancel?.(); if (b.isOpen) b.close(); });
   if (ui.tutor) add('guideCodex', mountGuideCodex(root, { bus, tutor: ui.tutor }));   // T2: before pause so the sheet stacks above it (z-index 52)
   if (opts.scamReveal !== false) add('scamReveal', mountScamReveal(root, { bus, data: opts.storyData?.reveal }));   // T5.2
   add('journal', mountJournal(root, { bus, journal: () => ui._journal?.() || null }));   // T5: index.html binds ui._journal = () => lg.sb?.journal
