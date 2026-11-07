@@ -10,6 +10,9 @@ Grep the ID in code comments (`S63-x`). Keep the drawn-icon art style (no font e
 | S63-F | Carry-over: ?debug=1 text overlaps placing bar (rigs only, players never see it) | wontfix (debug-only, hidden for players) |
 | S63-G | Carry-over: tools/shots grows ~1 MB per rig run, prune old shots | DONE: tools/shots pruned 101 MB -> 19 MB (kept s60d, s62*, s63*); history keeps the rest |
 | S63-I | Idea: add a node gate for S63-A (J.press via landTap -> holding false after 1 s of J.update) in tools/gates/jars1.mjs | open |
+| S63-J | Found in the final review, NOT fixed: on phone landscape with the Build tray open, the blue tutor card ('Grab the coin ahead.') and the cloud hand touch the tray's lower-right edge (S62-C only lifts the card while PLACING, not while the tray is open). Seen in tools/shots/s63d_phone_tray.png. Desktop: the hand floats near a fence while the card says 'Grab the coin ahead' (hand target not on the coin) | open |
+| S63-K | Found, NOT fixed: tutor card `jar:withdraw` (data/tutor.json) still says 'Hold E (or tap the arrow) to take back' on touch; give it a `textTouch`. On touch the only withdraw is the arrow in the Jars panel now (a tap no longer holds) | open |
+| S63-L | Stale statuses: S59-A, S59-B, S59-D, S59-E still read 'in progress' above though later notes say they shipped. Not re-verified this chat | open |
 | S63-H | User asked for the 'brainstorm_suggestion .md'. NO file or text with that name or word exists in the repo or its git history (searched names + contents + all commits). The nearest thing is LUMEN_extras/game/docs/SUGGESTIONS.md (S01-S23 ideas list). Ask the user for the file or the original text. | blocked, needs user |
 
 # HANDOFF S62 (user report 2026-11-07) — IDs for you and the next chats
