@@ -1,8 +1,8 @@
 /* LUMEN LEDGER — T4 (S57): stranger marker (ui/stranger.js). A bobbing golden bell over the stranger + an edge arrow when off-screen. DOM only. */
 .ll-stranger-layer { position: absolute; inset: 0; pointer-events: none; z-index: 27; overflow: hidden; }
-.ll-stranger-bell { position: absolute; left: 0; top: 0; width: 44px; height: 44px; will-change: transform; filter: drop-shadow(0 3px 0 rgba(38,50,56,.55)); }
+.ll-stranger-bell { position: absolute; left: 0; top: 0; width: 44px; height: 44px; will-change: transform; pointer-events: auto; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; filter: drop-shadow(0 3px 0 rgba(38,50,56,.55)); }
 .ll-stranger-bell .ll-ico { width: 100%; height: 100%; display: block; transform-origin: 50% 0; animation: ll-stranger-ring 1.3s ease-in-out infinite; }
-.ll-stranger-arrow { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; will-change: transform; animation: ll-stranger-blink 1s ease-in-out infinite alternate; }
+.ll-stranger-arrow { position: absolute; left: 0; top: 0; pointer-events: auto; cursor: pointer; touch-action: manipulation; padding: 6px; margin: -6px; display: flex; flex-direction: column; align-items: center; will-change: transform; animation: ll-stranger-blink 1s ease-in-out infinite alternate; }
 .ll-stranger-chev { width: 30px; height: 30px; line-height: 0; filter: drop-shadow(0 2px 0 var(--ink)); }
 .ll-stranger-chev img, .ll-stranger-chev svg { width: 100%; height: 100%; display: block; }
 .ll-stranger-face { line-height: 0; margin-top: -4px; } .ll-stranger-face .ll-ico { width: 30px; height: 30px; filter: drop-shadow(0 2px 0 var(--ink)); }
@@ -10,5 +10,5 @@
 @keyframes ll-stranger-ring { 0%, 100% { transform: rotate(0); } 12% { transform: rotate(14deg); } 24% { transform: rotate(-12deg); } 36% { transform: rotate(8deg); } 48% { transform: rotate(-4deg); } 60% { transform: rotate(0); } }
 @keyframes ll-stranger-blink { from { opacity: .75; } to { opacity: 1; } }
 /* phone landscape (short viewports): smaller, still >= 24 px glyphs */
-@media (max-height: 460px) { .ll-stranger-bell { width: 36px; height: 36px; } .ll-stranger-chev { width: 24px; height: 24px; } .ll-stranger-face .ll-ico { width: 24px; height: 24px; } }
+@media (max-height: 460px) { .ll-stranger-bell { width: 36px; height: 36px; } .ll-stranger-bell::after { content: ''; position: absolute; inset: -6px; } .ll-stranger-chev { width: 24px; height: 24px; } .ll-stranger-face .ll-ico { width: 24px; height: 24px; } }
 @media (prefers-reduced-motion: reduce) { .ll-stranger-bell .ll-ico, .ll-stranger-arrow { animation: none; } }

@@ -49,7 +49,9 @@ export function mountUI(root, opts = {}) {
   add('wave', mountWave(root, { bus }));   // S41/15D — index.html binds camera/enemies via ui.wave.bind({...}) once the sandbox exists
   add('stranger', mountStranger(root, { bus }));   // T4 — index.html binds camera/scamNpc/hero via ui.stranger.bind({...})
   if (opts.nudge !== false) add('nudge', mountNudge(root, { bus }));   // S42/16B — Game.js binds the bored() predicate via ui.nudge.bind({...})
-  if (opts.barks !== false) add('barks', mountBarks(root, { bus }));
+  // S58 (user order 2026-11-07): NO speech bubbles over Pip / the Owl / the Baron / strangers / customers. The layer is not mounted by default
+  //   (opts.barks === true brings it back for demos + the --barks gate). `story:bark` events still fire (data/gates), they just draw nothing.
+  if (opts.barks === true) add('barks', mountBarks(root, { bus }));
   if (opts.powerAnswer !== false) add('powerAnswer', mountPowerAnswer(root, { bus }));   // T2b
   if (opts.tutor !== false && opts.tutorData) add('tutor', mountTutor(root, { bus, data: opts.tutorData, seen: opts.tutorSeen || [], counts: opts.tutorCounts || {} }));   // 48F — Game.js binds touched() + persists ui.tutor.seen (save v4 tutorSeen)
   if (opts.abilityChips !== false) add('abilityChips', mountAbilityChips(root, { bus }));   // 41D — Game.js emits ui:abilities on start/resume   // 41A — index.html binds camera/hero/owl/baron via ui.barks.bind({...})
@@ -79,7 +81,7 @@ export function mountUI(root, opts = {}) {
   if (ui.tutor) add('guideCodex', mountGuideCodex(root, { bus, tutor: ui.tutor }));   // T2: before pause so the sheet stacks above it (z-index 52)
   add('pause', mountPause(root, { bus, onOutline: opts.onOutline, hotkey: false, canOpen: () => !(ui.title?.isOpen) && !(ui.ledger?.isOpen) && !(ui.dialogue?.isOpen) && !(ui.seasons?.isOpen), storageKey: opts.storageKey }));
   // mobile bugfix: season info (HUD lesson tag + tap-the-pill card + new-season banner) — explains what a season is and what it teaches
-  add('seasons', mountSeasonInfo(root, { bus, seasonsToWin, noEsc: true, lessons: opts.storyData?.lessons, seasons: opts.storyData?.seasons, isModal: () => !!(ui.title?.isOpen || ui.ledger?.isOpen || ui.dialogue?.isOpen || ui.pause?.isOpen) }));
+  add('seasons', mountSeasonInfo(root, { bus, seasonsToWin, noEsc: true, autoBanner: opts.seasonBanner === true, lessons: opts.storyData?.lessons, seasons: opts.storyData?.seasons, isModal: () => !!(ui.title?.isOpen || ui.ledger?.isOpen || ui.dialogue?.isOpen || ui.pause?.isOpen) }));
   if (opts.touch !== false && opts.input) add('touch', mountTouch(root, opts.input, { bus, force: opts.forceTouch }));
   // 46B: the 11-step overlay tutorial (ui/tutorial.js, ?oldtutorial) is deleted — the verb chain (src/systems/verbChain.js) is the tutorial.
   // S41/15A: progressive HUD — jars collapsed on every new game; skippers get jars → fog → rep → speed → powers revealed one at a time (opts.reveal === false turns it off)

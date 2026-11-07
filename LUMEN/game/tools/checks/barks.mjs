@@ -40,7 +40,7 @@ export async function checkBarks() {
       const bus = new EventBus(); const game = mkGame(bus); const ev = { bark: [], begin: [], pause: [] };
       bus.on('story:bark', (p) => ev.bark.push({ ...p, t: game.time })); bus.on('story:begin', (p) => ev.begin.push(p)); bus.on('ui:pause', (p) => ev.pause.push(p));
       document.body.innerHTML = '';
-      const ui = mountUI(document.body, { bus, stats: () => game.stats, input: game.input, catalog: PROP_CATALOG, seasonsToWin: 10, touch: false, version: 'check', hasSave: () => hasSave });
+      const ui = mountUI(document.body, { bus, stats: () => game.stats, input: game.input, catalog: PROP_CATALOG, seasonsToWin: 10, touch: false, version: 'check', hasSave: () => hasSave, barks: true });   // S58: bubbles are opt-in (default UI mounts none)
       const lg = createLumenGame(game, { ui, storyData: data, headless: true, seasonSeconds: 60, seed: 3, storage, cinematics: false });
       ui.barks?.bind({ owl: () => lg.sb?.owl || lg.sb?.helpers?.owl || lg.sb?.hero, baron: () => lg.sb?.enemies?.baron, project: (p) => ({ x: p.x * 10 + 180, y: p.z * 10 + 320 }) });   // test-only: owl → hero so the 2 walk-in owl barks resolve headless
       const dt = 1 / 30; const step = () => { game.time += dt; game.sequences.update(dt); game.tweens.update(dt); for (const s of game.systems) s.update?.(game.paused ? 0 : dt, game, dt); ui.update(dt); };
@@ -58,6 +58,12 @@ export async function checkBarks() {
     if (A.ev.pause.filter((p) => p?.on !== false && p?.paused !== false).length) throw new Error('ui:pause fired ' + A.ev.pause.length + ' during barks (opening dialogue alone fired ' + pausesBefore + ')');
     if (A.ui.barks.items.filter((it) => it.kind !== 'want' && it.kind !== 'price').length > 1) throw new Error('48B: > 1 word bubble on screen');
     const shown = A.ui.barks.count; if (shown < 1) throw new Error('bubbles spawned ' + shown);
+    // S58 (user order): the DEFAULT ui draws no speech bubbles and no auto season banner
+    { const bus0 = new EventBus(); document.body.innerHTML = ''; const u0 = mountUI(document.body, { bus: bus0, touch: false, version: 'check' });
+      if (u0.barks || document.querySelector('.ll-barks')) throw new Error('S58: default mountUI mounted a bubble layer');
+      bus0.emit('story:bark', { speaker: 'owl', text: 'hi', anchor: { x: 1, y: 0, z: 1 } }); if (document.querySelector('.ll-bark')) throw new Error('S58: a bubble was drawn');
+      bus0.emit('game:start', {}); await new Promise((r) => setTimeout(r, 600)); if (document.querySelector('.ll-season-banner')?.classList.contains('on')) throw new Error('S58: season banner popped up by itself');
+      u0.destroy(); document.body.innerHTML = ''; }
     // first-* one-shots fire once
     A.lg.story.barkGroup('firstCoin'); A.lg.story.barkGroup('firstCoin'); A.bus.emit('jars:deposit', {}); A.bus.emit('jars:deposit', {});
     const once = (g) => A.ev.bark.filter((b) => b.group === g).length; if (once('firstCoin') !== 1 || once('firstDeposit') !== 1) throw new Error(`one-shots coin ${once('firstCoin')} deposit ${once('firstDeposit')}`);

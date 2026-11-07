@@ -445,10 +445,28 @@ function installJarsWorld(sb) {
     bus.emit('jars:autowalk', { jar, done: false, why: 'start' }); return true;
   };
   sb.cancelAutoWalk = (why = 'cancel') => awEnd(why);
+  // S58 (open item 2): tap the stranger's bell / the stranger → Pip walks over and the talk opens (same override, same cancel rules as a jar walk).
+  const AW_STRANGER_STOP = 1.7, AW_STRANGER_TIMEOUT = 12;
+  sb.startWalkToStranger = () => {
+    const N = sb.scamNpc; if (!N?.active || !(N.state === 'pitch' || N.state === 'arrive') || !N.g || !hero?.root) return false;
+    if (N.near?.(AW_STRANGER_STOP + 0.4)) { sb.interact(); return true; }                   // already beside them → just talk
+    if (sb.autoWalk) awEnd('retarget'); else if (hero.inputOverride) return false;
+    const ov = { move: { x: 0, y: 0 } }; hero.inputOverride = ov; sb.autoWalk = { jar: 'stranger', ov, t: 0, pt: () => (N.active && (N.state === 'pitch' || N.state === 'arrive') && N.g ? N.g.position : null) };
+    bus.emit('jars:autowalk', { jar: 'stranger', done: false, why: 'start' }); return true;
+  };
   sb.autoWalkTick = (dt) => {
     const a = sb.autoWalk; if (!a) return;
     const inp = sb.game.input?.move;
     if (hero.inputOverride !== a.ov) { sb.autoWalk = null; return; }      // someone else took over
+    if (a.pt) {                                                           // walking to the stranger
+      const p = a.pt(); if (!p) return awEnd('removed');
+      if (sb.game.paused || sb.build?.mode !== 'idle') return awEnd('blocked');
+      if (inp && inp.x * inp.x + inp.y * inp.y > AW_STICK * AW_STICK) return awEnd('input');
+      a.t += dt; if (a.t > AW_STRANGER_TIMEOUT) return awEnd('timeout');
+      const h = hero.root.position; let dx = p.x - h.x, dz = p.z - h.z; const d = Math.hypot(dx, dz) || 1;
+      if (d <= AW_STRANGER_STOP) { a.ov.move.x = 0; a.ov.move.y = 0; awEnd('arrived'); sb.scamNpc?.state === 'pitch' && sb.interact(); return; }
+      a.ov.move.x = dx / d; a.ov.move.y = -dz / d; return;
+    }
     if (!J.get(a.jar)) return awEnd('removed');
     if (sb.game.paused || sb.build?.mode !== 'idle') return awEnd('blocked');   // modals: lg.update cancels (it owns ui)
     if (inp && inp.x * inp.x + inp.y * inp.y > AW_STICK * AW_STICK) return awEnd('input');   // the player grabbed the stick
@@ -1161,6 +1179,8 @@ function installRunWires(lg) {
     if (!lg.sb || lg.game.paused || ui?.isModal?.() || build.mode === 'place' || build.mode === 'drag' || lg.demolishMode || !world) return false;
     const J = lg.sb.jarsWorld; const ids = J?.ids?.() || [];
     for (const id of ids) { const m = J.meshOf?.(id); const p = m?.position || m; if (p && Math.hypot(p.x - world.x, p.z - world.z) <= 1.2) { if (J.near() !== id && lg.sb.startAutoWalk?.(id)) return true; lg.interact(); return true; } }   // T1-B: far jar → auto-walk, then deposit
+    { const N = lg.sb.scamNpc; const gp = N?.active && (N.state === 'pitch' || N.state === 'arrive') ? N.g?.position : null;   // S58: tap on the stranger → walk there + talk
+      if (gp && Math.hypot(gp.x - world.x, gp.z - world.z) <= 2.2 && lg.sb.startWalkToStranger?.()) return true; }
     if ((lg.sb.pier?.near?.() || lg.sb.scamNpc?.near?.() || lg.sb.novelty?.near?.()) && hero?.root && Math.hypot(hero.root.position.x - world.x, hero.root.position.z - world.z) <= 2.5) { lg.interact(); return true; }
     if (ui?.build?.isOpen) return false;                                                   // open tray: a land tap is handled by the tray / placement
     if (lg.sb.island?.isLand && !lg.sb.island.isLand(world.x, world.z)) return false;     // water: nothing to build on

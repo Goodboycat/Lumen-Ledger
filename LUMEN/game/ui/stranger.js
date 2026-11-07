@@ -9,7 +9,7 @@
 //   • ON SCREEN  → a golden BELL (drawn icon) bobs above their head. Same bell for a scam and a fair deal: the marker never gives the kind away.
 //   • OFF SCREEN → an edge arrow (bell + chevron + metres) on the screen border pointing at them, like the Collector arrows (ui/wave.js) but gold.
 //   • Hidden while Pip is already talking (state 'offered') or the stranger is leaving, and under every modal (index.js does not call update).
-// Never takes input (pointer-events none), no Three import (duck-typed Vector3.project), 0 meshes, 0 draw calls.
+// The bell + arrow take taps (S58: walk to the stranger); the layer itself never does (pointer-events none), no Three import (duck-typed Vector3.project), 0 meshes, 0 draw calls.
 import { icon } from './icons.js';
 
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -22,6 +22,8 @@ export function mountStranger(root, opts = {}) {
   const arrow = el('div', 'll-stranger-arrow'); arrow.style.display = 'none';
   const chev = el('div', 'll-stranger-chev', icon('arrow')), face = el('span', 'll-stranger-face', icon('bell')), dist = el('span', 'll-stranger-dist', '');
   arrow.append(chev, face, dist); layer.append(bell, arrow); root.append(layer);
+  // S58 (open item 2): the bell / arrow are BUTTONS — a beginner taps what blinks. Tap → deps.onTap() (Game.js: Pip walks to the stranger and the talk opens).
+  for (const b of [bell, arrow]) { b.setAttribute('role', 'button'); b.setAttribute('aria-label', 'A stranger wants to talk — tap to walk there'); b.addEventListener('pointerdown', (e) => { e.stopPropagation?.(); }); b.addEventListener('click', (e) => { e.stopPropagation?.(); bus.emit('ui:stranger:tap', {}); deps?.onTap?.(); }); }
   let deps = null, visible = true, shown = null;   // shown: 'bell' | 'arrow' | null (last frame, for tests)
   const _p = { x: 0, y: 0, z: 0 };
 
@@ -57,6 +59,7 @@ export function mountStranger(root, opts = {}) {
       const S = get('scam'); const g = S?.g;
       // only while the stranger is out there waiting (arrive/pitch). Offered (in conversation) / leaving / flee → no marker.
       if (!S?.active || !g || !(S.state === 'arrive' || S.state === 'pitch')) { if (shown) hide(); return; }
+      if (get('cardOpen')) { if (shown) hide(); return; }   // S58 (open item 1): never behind / under a card — the bell waits until the card is gone
       const hero = get('hero'), hp = hero?.root?.position || null, cam = get('camera'); const pos = g.position;
       const W = root.clientWidth || (typeof window !== 'undefined' ? window.innerWidth : 800), H = root.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 450);
       _p.x = pos.x; _p.y = pos.y; _p.z = pos.z;
