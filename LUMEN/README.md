@@ -22,6 +22,9 @@ LUMEN/
 > Everything from update 17 onward in the old plan (regions/biomes/World v3, 13B, 14) is **stopped**. Next IDs: `40A 40B 41A–41D 42A–42D 43Z 44Z 45Z`
 > (see `LUMEN_extras/README_pipeline.md` "## Next"; `game/tools/next.sh` prints the one to do).
 
+## Touch fixes (S63, 2026-11-07) — version shown in the title menu: `S63 · jam build`
+User report: on a phone a jar tap kept extracting (the tap pressed the jar but never released), and Strangers / the Baron needed a very close, long stand-still. Now **a tap = one deposit** (`sb.tapJar`), the **talk range is 3.4 u** and needs **0.25 s** of standing still (Baron's visit included, `sb.talk()` never touches a jar), the jar tag and tray hint use touch wording (no E / B / R letters), the 'drag to move' label fades on the first step. IDs S63-A..I in `game/docs/HANDOFF_S59.md`; rigs `tools/play_s63.mjs`, `tools/play_s63c.mjs`.
+
 ## Placing fix (S62, 2026-11-07) — version shown in the title menu: `S62 · jam build`
 User report: after placing a jar the game kept offering to place another one (red 'blocked' ghost). Now **placing any item (jar, decor, stall) ends placing mode at once** (`src/Game.js` `build:placed` -> `build.exit()`); the blue tutor card no longer covers the placing bar on phones (`body.ll-placing`), and the keyboard letters B / R are hidden on touch. Gate `node tools/check.mjs --jars1` 11/11 (T1.8), rigs `tools/play_s62.mjs`, `tools/play_s62b.mjs`. IDs S62-A..D in `game/docs/HANDOFF_S59.md`.
 

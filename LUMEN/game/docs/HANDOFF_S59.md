@@ -6,9 +6,10 @@ Grep the ID in code comments (`S63-x`). Keep the drawn-icon art style (no font e
 | S63-B | "To talk to a Stranger or the Baron I need to get real close. Make the talk range farther and interact faster, I must stay still for a few seconds." Cause: proxTick needs <= 1.3 u AND still 0.6 s (hero.vel never exactly 0), and the baronVisit novelty is not in proxTick at all. | open |
 | S63-C | Carry-over: 'drag to move' label fades after the first stick move | open |
 | S63-D | Carry-over: tray hint line ('pick a card') too small on phones | open |
-| S63-E | Carry-over: real-device notch + touch-hold check (human step, = S60-E / S61-E) | open (human) |
-| S63-F | Carry-over: ?debug=1 text overlaps placing bar (rigs only, players never see it) | wontfix-candidate |
+| S63-E | Carry-over: real-device notch + touch-hold check (human step, = S60-E / S61-E). Also confirm on a real phone that a jar TAP is one deposit and the Stranger talks from ~3 u | open (human) |
+| S63-F | Carry-over: ?debug=1 text overlaps placing bar (rigs only, players never see it) | wontfix (debug-only, hidden for players) |
 | S63-G | Carry-over: tools/shots grows ~1 MB per rig run, prune old shots | open |
+| S63-I | Idea: add a node gate for S63-A (J.press via landTap -> holding false after 1 s of J.update) in tools/gates/jars1.mjs | open |
 | S63-H | User asked for the 'brainstorm_suggestion .md'. NO file or text with that name or word exists in the repo or its git history (searched names + contents + all commits). The nearest thing is LUMEN_extras/game/docs/SUGGESTIONS.md (S01-S23 ideas list). Ask the user for the file or the original text. | blocked, needs user |
 
 # HANDOFF S62 (user report 2026-11-07) — IDs for you and the next chats
