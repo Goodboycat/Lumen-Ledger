@@ -31,8 +31,8 @@ await hint('stall'); out.g1_toggle = await probe('.ll-build-toggle'); await shot
 await p.evaluate(() => ui.build.open()); await p.waitForTimeout(900);
 out.g2_trayOpenBeforeTab = await probe('.ll-build-tab[data-cat=stall]'); await shot('g2_tray');
 await p.evaluate(() => { document.querySelector('.ll-build-tab[data-cat=stall]')?.click(); }); await p.waitForTimeout(500);
-await hint('stall'); out.g3_cards = await probe('.ll-build-grid .ll-card'); await shot('g3_cards');
-await p.evaluate(() => document.querySelector('.ll-build-grid .ll-card')?.click()); await p.waitForTimeout(700);
+await hint('stall'); out.g3_cards = await probe('.ll-build-grid .ll-card:not(.owned)'); await shot('g3_cards');
+await p.evaluate(() => document.querySelector('.ll-build-grid .ll-card:not(.owned)')?.click()); await p.waitForTimeout(700);
 await hint('stall'); out.g4_deploy = await probe('.ll-build-detail .ll-btn.deploy'); await shot('g4_deploy');
 // ---- deploy for real (tap the ground cell), so later cards have a stall to point at
 await p.evaluate(() => document.querySelector('.ll-build-detail .ll-btn.deploy')?.click()); await p.waitForTimeout(700);
