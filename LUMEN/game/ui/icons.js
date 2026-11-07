@@ -206,7 +206,7 @@ def('chat', () => P('M8 12Q8 6 14 6H50Q56 6 56 12V38Q56 44 50 44H30L16 58V44H14Q
 const cloudBlob = (parts, fill, shade) => {                       // parts: [['c',x,y,r] | ['l',x1,y1,x2,y2,w]]
   const ink = parts.map((p) => (p[0] === 'c' ? `<circle cx="${f(p[1])}" cy="${f(p[2])}" r="${f(p[3] + sw / 2)}" fill="${INK}"/>` : `<path d="M${p[1]} ${p[2]}L${p[3]} ${p[4]}" stroke="${INK}" stroke-width="${f(p[5] + sw)}" stroke-linecap="round" fill="none"/>`)).join('');
   const body = parts.map((p) => (p[0] === 'c' ? `<circle cx="${f(p[1])}" cy="${f(p[2])}" r="${f(p[3] - sw / 2)}" fill="${fill}"/>` : `<path d="M${p[1]} ${p[2]}L${p[3]} ${p[4]}" stroke="${fill}" stroke-width="${f(p[5] - sw)}" stroke-linecap="round" fill="none"/>`)).join('');
-  const sh = shade ? parts.filter((p) => p[0] === 'c').map((p) => `<circle cx="${f(p[1] + p[3] * 0.18)}" cy="${f(p[2] + p[3] * 0.36)}" r="${f(p[3] * 0.5)}" fill="${shade}" opacity=".5"/>`).join('') : '';
+  const sh = shade ? parts.filter((p) => p[0] === 'c' && p[3] >= 9).map((p) => `<circle cx="${f(p[1] + p[3] * 0.18)}" cy="${f(p[2] + p[3] * 0.36)}" r="${f(p[3] * 0.5)}" fill="${shade}" opacity=".5"/>`).join('') : '';
   return ink + body + sh;
 };
 def('cloudbaby', () => shadow(32, 60, 20)
@@ -214,9 +214,9 @@ def('cloudbaby', () => shadow(32, 60, 20)
   + P('M30 12Q27 4 33 5Q38 6 34 13', 'none') + L('M30 13Q31 8 34 8', 2.6, C.sky)                     // the baby curl on top
   + hi(22, 22, 6, 3.4, 0.9) + eye(25, 38, 3.4) + eye(40, 38, 3.4)
   + On(18.5, 46, 4, C.pink, 0.7) + On(46.5, 46, 4, C.pink, 0.7) + L('M28.5 46Q32.5 51 36.5 46', 3));
-def('cloudhand', () => cloudBlob([['l', 32, 8, 32, 32, 13], ['c', 32, 45, 17], ['c', 17, 46, 10], ['c', 47, 48, 10], ['c', 19, 36, 8.5], ['c', 45, 38, 8]], C.white, C.sky)
-  + hi(28, 17, 2.6, 8, 0.85) + hi(25, 40, 6, 3.4, 0.8) + eye(27, 46, 2.6) + eye(38, 46, 2.6)
-  + On(22, 52, 3, C.pink, 0.7) + On(43, 52, 3, C.pink, 0.7) + L('M29.5 52Q32.5 55.5 35.5 52', 2.4));
+def('cloudhand', () => shadow(32, 61, 19)
+  + cloudBlob([['l', 28, 11, 28, 32, 16], ['c', 30, 44, 17], ['c', 12, 42, 8.5], ['c', 47, 35, 8], ['c', 50, 45, 8], ['c', 46, 54, 7.5], ['c', 20, 55, 9], ['c', 33, 56, 9.5]], C.white, C.sky)
+  + hi(24, 15, 2.8, 7, 0.95) + hi(22, 38, 6, 3.4, 0.85) + On(21, 48, 3.8, C.pink, 0.7) + On(37, 48, 3.8, C.pink, 0.7));
 def('stormmark', () => shadow(32, 60, 16)
   + P('M6 10Q6 6 11 6H53Q58 6 58 10Q58 13 56 16L35 54Q32 59 29 54L8 16Q6 13 6 10Z', C.purple)       // reverse (point-down) triangle
   + Pn('M13 12H51L45 22H19Z', '#fff" opacity=".28') + P('M32 14L22 31H30L27 44L42 25H33L37 14Z', C.gold) + hi(40, 12, 8, 2.2, 0.35));
