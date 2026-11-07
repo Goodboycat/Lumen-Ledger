@@ -13,7 +13,7 @@
 import { icon } from './icons.js';
 
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
-export const STRANGER_UI = { edge: 28, lift: 2.9, nearHide: 2.2 };   // px inset from the screen edge · world units above the ground · metres: bell fades when Pip is this close (the card takes over)
+export const STRANGER_UI = { edge: 30, top: 64, bottom: 76, lift: 2.0, nearHide: 2.2 };   // px insets: sides · top (clear of the HUD pills) · bottom (clear of Build + ability chips) · world units above the ground · metres: bell hides when Pip is this close (the speech bubble + card take over)
 
 export function mountStranger(root, opts = {}) {
   const bus = opts.bus; if (!bus) throw new Error('mountStranger: opts.bus required');
@@ -45,10 +45,11 @@ export function mountStranger(root, opts = {}) {
         behind = cw <= 0; const iw = 1 / (Math.abs(cw) || 1e-6); sx = (cx * iw + 1) / 2 * W; sy = (1 - cy * iw) / 2 * H; if (behind) { sx = W - sx; sy = H - sy; }
       } else return null;
       const d = hp ? Math.hypot(p.x - hp.x, p.z - hp.z) : 0;
-      const pad = STRANGER_UI.edge, on = !behind && sx > pad && sx < W - pad && sy > pad && sy < H - pad;
-      if (on) return { on: true, x: sx, y: sy, d };
-      const cx = W / 2, cy = H / 2; let dx = sx - cx, dy = sy - cy; const len = Math.hypot(dx, dy) || 1; dx /= len; dy /= len;
-      const hw = cx - pad, hh = cy - pad, t = Math.min(hw / Math.max(Math.abs(dx), 1e-6), hh / Math.max(Math.abs(dy), 1e-6));
+      const U = STRANGER_UI, on = !behind && sx > 8 && sx < W - 8 && sy > 8 && sy < H - 8;
+      // on screen → the bell, nudged down so it never hides behind the HUD row (bell box = 36–44 px tall, anchored at its bottom edge)
+      if (on) return { on: true, x: Math.min(W - 24, Math.max(24, sx)), y: Math.max(sy, U.top + 40), d };
+      const cx = W / 2, cy = (U.top + (H - U.bottom)) / 2; let dx = sx - cx, dy = sy - (H / 2) + (H / 2 - cy); const len = Math.hypot(dx, dy) || 1; dx /= len; dy /= len;
+      const hw = cx - U.edge, hh = (H - U.bottom - U.top) / 2, t = Math.min(hw / Math.max(Math.abs(dx), 1e-6), hh / Math.max(Math.abs(dy), 1e-6));
       return { on: false, x: cx + dx * t, y: cy + dy * t, ang: Math.atan2(dy, dx) * 180 / Math.PI, d };
     },
     update() {

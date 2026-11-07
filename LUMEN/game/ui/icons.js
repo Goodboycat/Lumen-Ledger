@@ -233,6 +233,10 @@ const FACES = {
   owl: () => '',   // filled in below: the existing 'owl' drawing is reused
   glimmer: (m) => shadow(32, 60, 16) + P('M12 56Q10 20 32 16Q54 20 52 56Q32 62 12 56Z', C.blue) + hi(22, 28, 6, 4, 0.5)
     + P('M28 16Q32 6 36 16Z', C.blueD) + faceEyes(25, 39, 36, m, 3.6) + faceMouth(32, 46, m, 7),
+  stranger: (m) => shadow(32, 60, 16) + P('M12 58Q12 46 32 46Q52 46 52 58Z', C.teal) + P('M18 47Q32 53 46 47L44 53Q32 57 20 53Z', C.orange)   // shoulders + scarf
+    + O(32, 33, 18, C.skin) + hi(24, 26, 5, 3, 0.5)
+    + E(32, 19, 28, 6, C.wood) + P('M17 19Q17 5 32 5Q47 5 47 19Z', C.wood) + R(17, 13, 30, 5, 2, C.red)                                     // sun hat (brim, crown, band)
+    + On(21, 40, 3.4, C.pink, 0.55) + On(43, 40, 3.4, C.pink, 0.55) + faceEyes(26, 38, 33, m === 'neutral' ? 'happy' : m, 3) + faceMouth(32, 42, m === 'neutral' ? 'happy' : m, 7),
   collector: (m) => shadow(32, 60, 16) + P('M12 56Q10 22 32 18Q54 22 52 56Q32 62 12 56Z', '#9c89c4') + hi(22, 30, 6, 4, 0.4)
     + P('M18 22Q32 6 46 22Z', '#4a148c') + R(16, 20, 32, 6, 2, '#4a148c')                      // pointy cap
     + faceEyes(25, 39, 36, m, 3.4) + faceMouth(32, 46, m, 7),

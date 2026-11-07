@@ -81,8 +81,8 @@ export async function run({ resolve, pathToFileURL }) {
         const g = N.g.position, far = { x: g.x, z: g.z + 10 }; sb.hero.root.position.set(far.x, 0, far.z);
         const r = mkr.place({ x: g.x, y: g.y, z: g.z }, sb.hero.root.position, W, H, cam); if (!r) throw new Error(id + ': place() null');
         if (!Number.isFinite(r.x) || !Number.isFinite(r.y)) throw new Error(`${id}@${where}: marker NaN`);
-        if (r.on) { bellSeen++; if (r.x < 0 || r.x > W || r.y < 0 || r.y > H) throw new Error(`${id}@${where}: bell off-canvas`); }
-        else { arrowSeen++; if (r.x < STRANGER_UI.edge - 1 || r.x > W - STRANGER_UI.edge + 1 || r.y < STRANGER_UI.edge - 1 || r.y > H - STRANGER_UI.edge + 1) throw new Error(`${id}@${where}: arrow outside the edge ring (${r.x.toFixed(0)},${r.y.toFixed(0)})`); if (Math.abs(r.d - 10) > 0.5) throw new Error(`${id}@${where}: arrow metres ${r.d}`); }
+        if (r.on) { bellSeen++; if (r.x < 0 || r.x > W || r.y < STRANGER_UI.top || r.y > H) throw new Error(`${id}@${where}: bell off-canvas or under the HUD row (y ${r.y.toFixed(0)})`); }
+        else { arrowSeen++; if (r.x < STRANGER_UI.edge - 1 || r.x > W - STRANGER_UI.edge + 1 || r.y < STRANGER_UI.top - 1 || r.y > H - STRANGER_UI.bottom + 1) throw new Error(`${id}@${where}: arrow outside the safe ring (clear of HUD + buttons) (${r.x.toFixed(0)},${r.y.toFixed(0)})`); if (Math.abs(r.d - 10) > 0.5) throw new Error(`${id}@${where}: arrow metres ${r.d}`); }
         mkr.update(); if (!mkr.shown) throw new Error(`${id}@${where}: update() showed no marker (state ${N.state})`);
         if (mkr.shown === 'arrow' && !/\d+ m$/.test(mkr.arrow.querySelector('.ll-stranger-dist')?.textContent || mkr.arrow.children?.[2]?.textContent || '')) throw new Error(`${id}@${where}: arrow has no metre readout`);
       }

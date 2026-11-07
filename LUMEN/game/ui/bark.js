@@ -11,7 +11,7 @@ import { icon } from './icons.js';
 // 44B: want bubble {kind:'want', icon:'stall_<kind>', ok} → stall kind → drawn icon (same names as ui/build.js ICONS via icons.js EMOJI map)
 const WANT_ICON = { fruit: 'apple', bread: 'bread', lantern: 'lantern', fish: 'fish', flower: 'tulip', tool: 'hammer', cloth: 'thread', pottery: 'vase', toy: 'teddy', tea: 'tea', book: 'books', sparkExchange: 'spark' };
 export const BARK_DEFAULTS = { max: 1, glyphMax: 2, gapS: 6, ttl: 3.2, lift: 2.1, fadeS: 0.22, pad: 8 };
-const NAMES = { pip: 'Pip', owl: 'Owl', baron: 'Baron Gilt', collector: 'Collector' };
+const NAMES = { pip: 'Pip', owl: 'Owl', baron: 'Baron Gilt', collector: 'Collector', stranger: 'Stranger' };
 
 export function mountBarks(root, opts = {}) {
   const bus = opts.bus; if (!bus) throw new Error('mountBarks: opts.bus required');
@@ -33,7 +33,7 @@ export function mountBarks(root, opts = {}) {
     if (anchor === 'hero' || !anchorPos(anchor)) return null;                               // 48B: hero / unresolved anchor → dropped
     if (isGlyph(p.kind)) { const g = items.filter((it) => isGlyph(it.kind)); while (g.length >= cfg.glyphMax) remove(g.shift(), true); }
     else {
-      if (clock - lastWordAt < cfg.gapS) return null;                                        // 48B: too soon after the last word bark → dropped, not queued
+      if (!p.force && clock - lastWordAt < cfg.gapS) return null;                                        // 48B: too soon after the last word bark → dropped, not queued
       const w = items.filter((it) => !isGlyph(it.kind)); while (w.length >= cfg.max) remove(w.shift(), true);
       lastWordAt = clock;
     }

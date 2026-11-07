@@ -26,7 +26,7 @@ export function createScamNpc(deps = {}) {
   const dist = () => { const h = heroPos(), p = S.g?.position; return p ? Math.hypot(p.x - h.x, p.z - h.z) : Infinity; };
   const pierPos = () => world.pierSpawn || { x: 0, z: -10 };
   const clock = () => game?.time ?? S.t;
-  const say = (text, speaker = 'stranger', ttl = 3.2) => { if (text && S.g) bus.emit('story:bark', { speaker, text, anchor: { x: S.g.position.x, y: 2.1, z: S.g.position.z }, ttl, group: 'scamNpc' }); };
+  const say = (text, speaker = 'stranger', ttl = 3.2, force = false) => { if (text && S.g) bus.emit('story:bark', { speaker, text, anchor: { x: S.g.position.x, y: 2.1, z: S.g.position.z }, ttl, group: 'scamNpc', force }); };   // force: lesson lines (whiff / flash) bypass the 6 s bark-diet gap
   const free = (x, z) => !canStand || canStand(x, z);
   const spotsFree = () => SCAM.spots.filter((s) => free(s.x, s.z));
   const pickSpot = () => (spotsFree()[0] || SCAM.spots[0]);
@@ -86,7 +86,7 @@ export function createScamNpc(deps = {}) {
     if (!S.active || (S.state !== 'pitch' && S.state !== 'offered')) return false;
     S.stats.whiffs++; S.stats.hits++;
     if (S.t - S.lastWhiffT > 0.45) { S.lastWhiffT = S.t; S.anim?.play?.('dodge'); }
-    if (clock() - S.lastWhiffBark > SCAM.whiffBark) { S.lastWhiffBark = clock(); say('Not an enemy. Talk to them.', 'owl', 2.8); }
+    if (clock() - S.lastWhiffBark > SCAM.whiffBark) { S.lastWhiffBark = clock(); say('Not an enemy. Talk to them.', 'owl', 2.8, true); }
     bus.emit('scam:whiff', { id: S.id, kind: S.kind });
     return true;
   };
