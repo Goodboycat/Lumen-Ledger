@@ -34,7 +34,7 @@ export function mountNudge(root, opts = {}) {
   if (hasDoc) {
     wrap = el('div', 'll-nudge'); wrap.setAttribute('aria-hidden', 'true');
     // 48F (HANDOFF_48Z D2): the bubble is gone — the bobbing hand beside ⏩ IS the card. Tapping the hand = tapping ⏩.
-    hand = el('button', 'll-nudge-hand'); hand.type = 'button'; hand.innerHTML = icon('point');   // 48C: pointing hand = drawn icon, not 👆
+    hand = el('button', 'll-nudge-hand'); hand.type = 'button'; hand.innerHTML = icon('cloudhand');   // S59: the baby cloud's pointing glove (same hand the tutor cards use)
     hand.addEventListener('click', (e) => { e.stopPropagation?.(); bus.emit('ui:speed', { cycle: true, source: 'nudge' }); api.hide('tap'); });
     wrap.append(hand);
     (root || document.body).appendChild(wrap);

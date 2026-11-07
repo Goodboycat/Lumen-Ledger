@@ -1,9 +1,9 @@
 /* LUMEN LEDGER — S42/16B: speed-up nudge (ui/nudge.js). A drawn pointing hand under the HUD ⏩ button (48F: no bubble, no words — tap the hand). */
 .ll-nudge { position: absolute; left: 0; top: 0; z-index: 27; transform: translateX(-50%); display: none; flex-direction: column; align-items: center; gap: 2px; pointer-events: none; }
 .ll-nudge.show { display: flex; animation: ll-nudge-in .4s cubic-bezier(.34,1.56,.64,1); }
-.ll-nudge-hand { pointer-events: auto; cursor: pointer; background: none; border: 0; padding: 0; width: 34px; height: 34px; line-height: 0; filter: drop-shadow(0 2px 0 rgba(0,0,0,.35)); animation: ll-nudge-bob .7s ease-in-out infinite alternate; transform-origin: 50% 100%; }
-.ll-nudge-hand .ll-ico { width: 34px; height: 34px; display: block; }   /* 48C icon size · 48F: bubble deleted, the hand is a button */
+.ll-nudge-hand { pointer-events: auto; cursor: pointer; background: none; border: 0; padding: 0; width: 60px; height: 60px; line-height: 0; filter: drop-shadow(0 0 6px rgba(127,211,255,.9)) drop-shadow(0 3px 0 rgba(0,0,0,.3)); animation: ll-nudge-bob .7s ease-in-out infinite alternate; transform-origin: 50% 100%; }
+.ll-nudge-hand .ll-ico { width: 60px; height: 60px; display: block; }   /* 48C icon size · 48F: bubble deleted, the hand is a button */
 @keyframes ll-nudge-bob { from { transform: translateY(-4px) rotate(-6deg); } to { transform: translateY(4px) rotate(6deg); } }
 @keyframes ll-nudge-pulse { from { filter: brightness(1); } to { filter: brightness(1.08); } }
 @keyframes ll-nudge-in { from { opacity: 0; transform: translateX(-50%) scale(.6); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
-@media (max-width: 640px) { .ll-nudge-hand { width: 28px; height: 28px; } .ll-nudge-hand .ll-ico { width: 28px; height: 28px; } body.ll-reduce-motion .ll-nudge-hand, body.ll-reduce-motion 
+@media (max-width: 640px), (max-height: 460px) { .ll-nudge-hand { width: 52px; height: 52px; } .ll-nudge-hand .ll-ico { width: 52px; height: 52px; } body.ll-reduce-motion .ll-nudge-hand, body.ll-reduce-motion 

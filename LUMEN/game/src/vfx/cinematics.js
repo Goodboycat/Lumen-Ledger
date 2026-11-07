@@ -17,8 +17,9 @@
 //   • Driven by dtReal (not dt) so it runs while the game is paused (dialogue / title). Shots are time-based; `arrival` also ends
 //     when Pip is within CINE.arriveDist of the target (or after CINE.arrivalMax seconds as a safety).
 //   • reduceMotion → every shot is a cut: 'arrival'/'victory' collapse to a ~0.6 s hold + fade; 'title' orbit becomes a static wide shot.
-//   • DOM: one `.ll-cine` layer in the container: letterbox bars + ⏭ SKIP button (tap anywhere on the bars = skip). Headless-safe.
+//   • DOM: one `.ll-cine` layer in the container: letterbox bars + SKIP button (drawn 'skip' icon) (tap anywhere on the bars = skip). Headless-safe.
 import * as THREE from '../../vendor/three.module.js';
+import { icon } from '../../ui/icons.js';   // S59: the SKIP button wears the drawn 'skip' icon (the old `typeof iconize` guard never matched → raw ⏭ glyph)
 
 const hasDOM = typeof document !== 'undefined' && typeof document.createElement === 'function' && !!document.body;
 export const CINE = {
@@ -163,7 +164,7 @@ export class CinematicDirector {
     const el = document.createElement('div'); el.className = 'll-cine'; el.setAttribute('aria-hidden', 'true');
     const top = document.createElement('div'); top.className = 'll-cine-bar top';
     const bot = document.createElement('div'); bot.className = 'll-cine-bar bot';
-    const skip = document.createElement('button'); skip.type = 'button'; skip.className = 'll-cine-skip'; skip.innerHTML = 'SKIP ' + (typeof iconize === 'function' ? iconize('⏭') : '⏭'); skip.setAttribute('aria-label', 'Skip cinematic');
+    const skip = document.createElement('button'); skip.type = 'button'; skip.className = 'll-cine-skip'; skip.innerHTML = '<span class="ll-cine-skip-txt">SKIP</span>' + icon('skip'); skip.setAttribute('aria-label', 'Skip cinematic');
     skip.addEventListener('click', (e) => { e.stopPropagation(); this.skip(); });
     el.addEventListener('pointerdown', (e) => { e.stopPropagation(); }, true);
     el.addEventListener('click', () => this.skip());

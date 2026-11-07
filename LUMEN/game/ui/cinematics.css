@@ -4,10 +4,11 @@
 .ll-cine-bar { position: absolute; left: 0; right: 0; height: 0; background: #0e1420; transition: height .6s cubic-bezier(.2,.8,.2,1); }
 .ll-cine-bar.top { top: 0; } .ll-cine-bar.bot { bottom: 0; }
 .ll-cine.letterbox .ll-cine-bar { height: clamp(28px, 9vh, 90px); }
-.ll-cine-skip { position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: calc(clamp(28px, 9vh, 90px) + 12px); padding: 8px 14px; border-radius: 12px;
+.ll-cine-skip { position: absolute; right: max(16px, env(safe-area-inset-right)); bottom: calc(clamp(28px, 9vh, 90px) + 12px); display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 12px 6px 16px; border-radius: 14px;
   border: 3px solid var(--ink, #1e2430); background: rgba(255,255,255,.88); color: var(--ink, #1e2430); font: 900 13px/1 inherit; letter-spacing: .6px; cursor: pointer;
   opacity: 0; transform: translateY(6px); transition: opacity .3s ease .8s, transform .3s ease .8s; box-shadow: 0 3px 0 var(--ink, #1e2430); }
 .ll-cine.on .ll-cine-skip { opacity: .92; transform: none; }
+.ll-cine-skip .ll-ico { width: 30px; height: 30px; display: block; flex: none; }
 .ll-cine-skip:active { transform: translateY(3px); box-shadow: 0 0 0 var(--ink, #1e2430); }
 /* while a cinematic owns the screen the HUD / touch pad / toasts fade so the shot is clean (body class set by Game.js) */
 body.ll-cine-on .ll-hud, body.ll-cine-on .ll-touch, body.ll-cine-on .ll-touch-pad, body.ll-cine-on .ll-joy-zone, body.ll-cine-on .ll-touch-abilities, body.ll-cine-on .ll-toasts, body.ll-cine-on .ll-pause-fab,
