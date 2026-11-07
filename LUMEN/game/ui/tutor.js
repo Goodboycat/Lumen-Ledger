@@ -94,7 +94,7 @@ export function mountTutor(root, opts = {}) {
     const out = [];
     const pt = c && c.point; for (const p of Array.isArray(pt) ? pt : pt ? [pt] : []) if (typeof p === 'string') out.push(p);
     const id = c ? String(c.id) : '';
-    if (id.startsWith('power:')) { const n = id.slice(6); out.push(`.ll-touch-ab[data-ability="${n}"]`, `.ll-abil-chip[data-id="${n}"]`); }
+    if (id.startsWith('power:')) { const n = id.slice(6); out.push(`.ll-touch-ab[data-ability="${n}"]`, `.ll-touch-btn[data-ability="${n}"]`, `.ll-abil-chip[data-id="${n}"]`);   // S65-A: Dash button = Magnet }
     if (c && (c.target || id.startsWith('hud:'))) out.push(`[data-guide="${c.target || id}"]`);
     if (world && Number.isFinite(world.x) && !isLive(c)) out.push({ world });                      // static things only (jar, stall, till …): last resort when locate() cannot find it
     return out;

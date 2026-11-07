@@ -27,7 +27,7 @@ const TOAST = {
   jars:   { text: '🫙 Money jars unlocked — tap the jar header to split your Spark into Spend · Save · Invest · Protect.', icon: '🫙' },
   rep:    { text: '★ Reputation — happy Glimmers raise it, fair prices keep it. More stars = more customers.', icon: '★' },
   speed:  { text: '⏩ Waiting for customers? Tap ⏩ (or T) to speed up time: 1× → 2× → 3×.', icon: '⏩' },
-  powers: { text: '✨ FinLit powers unlocked — the chips above the buttons: Magnet · Shield · Grow · Flash · Haggle · Sweep.', icon: '✨' },
+  powers: { text: '✨ FinLit powers unlocked — the Dash button and the chips above it: Shield · Grow · Flash · Haggle · Sweep.', icon: '✨' },
 };
 
 export function mountReveal(ui, opts = {}) {

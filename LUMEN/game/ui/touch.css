@@ -94,3 +94,15 @@ body.is-touch .help { display: none; }
 
 /* S59: phone landscape — the Cloud avatar + tutor card live at the bottom centre, so the joystick label rides higher (it used to hide behind them). */
 @media (max-height: 460px) { .ll-joy-hint { bottom: max(104px, calc(env(safe-area-inset-bottom) + 104px)); left: 42%; font-size: 12px; opacity: .8; color: #fff; text-shadow: 0 0 3px #263238, 0 1px 2px #263238, 0 0 6px rgba(38,50,56,.7); } }
+
+/* S65-A: the green Dash button IS the Magnet power (no white Magnet chip any more). Same cooldown sweep / shake / drain bar as the chips, on a round button. */
+.ll-touch-btn.dash { overflow: hidden; }
+.ll-touch-btn.dash .ll-touch-ab-cd { border-radius: 50%; }
+.ll-touch-btn.dash.cooling .ll-touch-ab-cd { opacity: 1; }
+.ll-touch-btn.dash.cooling { filter: saturate(.5); }
+.ll-touch-btn.dash.cooling::after { content: attr(data-left); position: absolute; right: 50%; top: 50%; transform: translate(50%, -50%); font-size: 20px; font-weight: 900; color: #fff; text-shadow: 0 0 3px var(--ink), 0 0 3px var(--ink), 0 0 3px var(--ink); z-index: 4; }
+.ll-touch-btn.dash.cooling .ll-touch-ico { opacity: .55; }
+.ll-touch-btn.dash.deny { animation: ll-ab-deny .32s ease-in-out; }
+.ll-touch-btn.dash .ll-touch-ab-fx { left: 12px; right: 12px; top: 6px; }
+.ll-touch-btn.dash.fx .ll-touch-ab-fx { opacity: 1; }
+.ll-touch-btn.dash .ll-touch-ico, .ll-touch-btn.dash .ll-touch-lab { position: relative; z-index: 1; }

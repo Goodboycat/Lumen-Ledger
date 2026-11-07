@@ -35,11 +35,11 @@ export const TOUCH_BUTTONS = {
   attack:   { icon: icon('swords'), label: 'Attack', cls: 'attack', repeat: 220 },
   dash:     { icon: icon('dash'),   label: 'Dash',   cls: 'dash',   repeat: 0 },
 };
-// S08: FinLit ability strip for touch — the 6 hero powers that desktop fires with Q W E R F G. Order = FINLIT (3B). Each tap emits
+// S65-A: the white Magnet chip is GONE — the green Dash button below IS the coinMagnetDash power (cooldown sweep, shake, hold = guide).
+// S08: FinLit ability strip for touch — the 5 chip powers (+ Dash on the pad) that desktop fires with Q W E R F G. Order = FINLIT (3B). Each tap emits
 //   `ui:touch { action: 'ability', name }` (Game.js → lg.ability(name)); `touch.setCooldown(name, seconds)` runs the radial cooldown
 //   sweep and `touch.flashDenied(name)` shakes the chip (busy / cooling). Hidden with the rest of the pad under modals and while placing.
 export const TOUCH_ABILITIES = [
-  { name: 'coinMagnetDash', icon: '💨', label: 'Magnet', key: 'Q' },
   { name: 'bubbleShield',   icon: '🛡', label: 'Shield', key: 'W' },
   { name: 'growthStomp',    icon: '🌱', label: 'Grow',   key: 'E' },
   { name: 'ledgerFlash',    icon: '📒', label: 'Flash',  key: 'R' },
@@ -89,6 +89,14 @@ export function mountTouch(root, input, opts = {}) {
     b.append(cd, fx, ic, lab, cs); strip.appendChild(b);
     abilities[a.name] = { el: b, cd, fx, def: a, until: 0, total: 0, timer: 0, hold: 0, held: false };
   }
+  // S65-A: the green Dash button is the Magnet power. It used to call input.press('dash'), which nothing listens to (the dead button the player
+  //   found in the tutorial) while the white Magnet chip did the work. Now it joins `abilities` under 'coinMagnetDash': same tap / hold-for-guide /
+  //   cooldown sweep / shake as the chips, no second control.
+  if (buttons.dash) {
+    const db = buttons.dash.el; db.dataset.ability = 'coinMagnetDash';
+    const cd = el('i', 'll-touch-ab-cd'); const fx = el('i', 'll-touch-ab-fx'); db.append(cd, fx);
+    abilities.coinMagnetDash = { el: db, cd, fx, def: { name: 'coinMagnetDash', label: 'Dash', key: 'Q' }, until: 0, total: 0, timer: 0, hold: 0, held: false };
+  }
   wrap.append(zone, strip, pad);
   root.appendChild(wrap);
 
@@ -137,6 +145,7 @@ export function mountTouch(root, input, opts = {}) {
   };
   const up = (n) => { const b = buttons[n]; if (!b || !b.held) return; b.held = false; b.pointerId = -1; b.el.classList.remove('down'); clearInterval(b.timer); b.timer = 0; if (input && input.actions && n in input.actions) input.actions[n] = false; };
   for (const n of names) {
+    if (n === 'dash') continue;   // S65-A: owned by the ability wiring below (tap = power, hold = guide)
     const b = buttons[n].el;
     // multi-touch: each button tracks its own pointerId → a release from ANOTHER finger (joystick thumb, other button) never lets go of it
     const mine = (e) => { const bb = buttons[n]; return !e || e.pointerId == null || bb.pointerId === -1 || e.pointerId === bb.pointerId; };
@@ -144,7 +153,7 @@ export function mountTouch(root, input, opts = {}) {
     for (const t of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(t, (e) => { if (mine(e)) up(n); });
     b.addEventListener('contextmenu', (e) => e.preventDefault && e.preventDefault());
   }
-  const onBlur = () => { for (const n of names) up(n); if (st.joy.active) joyEnd({ pointerId: st.joy.id }); };
+  const onBlur = () => { for (const n of names) if (n !== 'dash') up(n); if (st.joy.active) joyEnd({ pointerId: st.joy.id }); };
   window.addEventListener('blur', onBlur);
 
   // S08: ability chips — a tap emits ui:touch { action: 'ability', name }; Game.js decides (cooldown / busy) and answers with

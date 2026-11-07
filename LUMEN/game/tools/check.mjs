@@ -1290,7 +1290,7 @@ if (doUI) {
     const forced = mountTouch(root, input, { bus, force: true }); if (!forced.visible) throw new Error('force show'); forced.destroy();
     // S08: ability strip — 6 chips, tap → ui:touch {action:'ability', name}, sandbox:ability:start → cooling sweep (tap while cooling = deny shake, no emit), sandbox:denied → shake, hidden while placing / tray open
     const { TOUCH_ABILITIES } = await import(pathToFileURL(resolve('ui/touch.js')).href);
-    const t2 = mountTouch(root, input, { bus, force: true }); const abN = Object.keys(t2.abilities).length; if (abN !== 6 || TOUCH_ABILITIES.length !== 6 || !t2.abilities.fogSweep) throw new Error('ability chips ' + abN);
+    const t2 = mountTouch(root, input, { bus, force: true }); const abN = Object.keys(t2.abilities).length; if (abN !== 6 || TOUCH_ABILITIES.length !== 5 || !t2.abilities.fogSweep || !t2.abilities.coinMagnetDash || t2.strip.querySelector('[data-ability="coinMagnetDash"]') || !t2.buttons.dash.el.dataset.ability) throw new Error('ability chips ' + abN);
     const before = (ev['ui:touch'] || []).length; t2.simulateAbility('coinMagnetDash'); const last = ev['ui:touch'][ev['ui:touch'].length - 1]; if ((ev['ui:touch'] || []).length !== before + 1 || last.action !== 'ability' || last.name !== 'coinMagnetDash') throw new Error('ability tap emit ' + JSON.stringify(last));
     bus.emit('sandbox:ability:start', { name: 'coinMagnetDash', cooldown: 0.3 }); if (!t2.abilities.coinMagnetDash.el.classList.contains('cooling')) throw new Error('cooldown class');
     const b2 = ev['ui:touch'].length; t2.simulateAbility('coinMagnetDash'); if (ev['ui:touch'].length !== b2 || !t2.abilities.coinMagnetDash.el.classList.contains('deny')) throw new Error('tap while cooling must shake, not emit');
