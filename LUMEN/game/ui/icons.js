@@ -199,6 +199,30 @@ def('mask', () => shadow(32, 60, 22) + P('M6 20Q6 12 14 14Q24 18 32 18Q40 18 50 
 def('sticker', () => shadow(32, 60, 20) + P('M10 8H54V44L40 58H10Z', C.paper) + P('M54 44L40 58V50Q40 44 46 44Z', C.cream) + P('M16 14H48V38H16Z', C.sky) + P(starPts(32, 26, 5, 9, 4), C.gold) + L('M18 48H34', 3, C.brown) + hi(22, 17, 8, 2, 0.5));
 def('chat', () => P('M8 12Q8 6 14 6H50Q56 6 56 12V38Q56 44 50 44H30L16 58V44H14Q8 44 8 38Z', C.white) + hi(18, 14, 8, 2.6, 0.5) + On(22, 25, 3.4, INK) + On(32, 25, 3.4, INK) + On(42, 25, 3.4, INK));
 
+// ---------- S59: the baby-cloud tutor + its pointing hand, the storm marker, the cinematic SKIP ----------
+// cloudbaby = the cute cloud that teaches (face + tuft + blush) · cloudhand = that cloud's pointing glove (index finger UP, like 'point', so rotate() still works)
+// stormmark = reverse-triangle map marker (storm warning) · skip = fast-forward chevrons + bar (cinematic SKIP, replaces the ⏭ glyph)
+// Pieces are drawn as ONE ink union (all outlines first, all fills after) so overlapping puffs/finger never show inner seams.
+const cloudBlob = (parts, fill, shade) => {                       // parts: [['c',x,y,r] | ['l',x1,y1,x2,y2,w]]
+  const ink = parts.map((p) => (p[0] === 'c' ? `<circle cx="${f(p[1])}" cy="${f(p[2])}" r="${f(p[3] + sw / 2)}" fill="${INK}"/>` : `<path d="M${p[1]} ${p[2]}L${p[3]} ${p[4]}" stroke="${INK}" stroke-width="${f(p[5] + sw)}" stroke-linecap="round" fill="none"/>`)).join('');
+  const body = parts.map((p) => (p[0] === 'c' ? `<circle cx="${f(p[1])}" cy="${f(p[2])}" r="${f(p[3] - sw / 2)}" fill="${fill}"/>` : `<path d="M${p[1]} ${p[2]}L${p[3]} ${p[4]}" stroke="${fill}" stroke-width="${f(p[5] - sw)}" stroke-linecap="round" fill="none"/>`)).join('');
+  const sh = shade ? parts.filter((p) => p[0] === 'c').map((p) => `<circle cx="${f(p[1] + p[3] * 0.18)}" cy="${f(p[2] + p[3] * 0.36)}" r="${f(p[3] * 0.5)}" fill="${shade}" opacity=".5"/>`).join('') : '';
+  return ink + body + sh;
+};
+def('cloudbaby', () => shadow(32, 60, 20)
+  + cloudBlob([['c', 17, 40, 12], ['c', 47, 40, 12], ['c', 24, 28, 14], ['c', 41, 28, 14], ['c', 32, 40, 17], ['c', 32, 45, 12]], C.white, C.sky)
+  + P('M30 12Q27 4 33 5Q38 6 34 13', 'none') + L('M30 13Q31 8 34 8', 2.6, C.sky)                     // the baby curl on top
+  + hi(22, 22, 6, 3.4, 0.9) + eye(25, 38, 3.4) + eye(40, 38, 3.4)
+  + On(18.5, 46, 4, C.pink, 0.7) + On(46.5, 46, 4, C.pink, 0.7) + L('M28.5 46Q32.5 51 36.5 46', 3));
+def('cloudhand', () => cloudBlob([['l', 32, 8, 32, 32, 13], ['c', 32, 45, 17], ['c', 17, 46, 10], ['c', 47, 48, 10], ['c', 19, 36, 8.5], ['c', 45, 38, 8]], C.white, C.sky)
+  + hi(28, 17, 2.6, 8, 0.85) + hi(25, 40, 6, 3.4, 0.8) + eye(27, 46, 2.6) + eye(38, 46, 2.6)
+  + On(22, 52, 3, C.pink, 0.7) + On(43, 52, 3, C.pink, 0.7) + L('M29.5 52Q32.5 55.5 35.5 52', 2.4));
+def('stormmark', () => shadow(32, 60, 16)
+  + P('M6 10Q6 6 11 6H53Q58 6 58 10Q58 13 56 16L35 54Q32 59 29 54L8 16Q6 13 6 10Z', C.purple)       // reverse (point-down) triangle
+  + Pn('M13 12H51L45 22H19Z', '#fff" opacity=".28') + P('M32 14L22 31H30L27 44L42 25H33L37 14Z', C.gold) + hi(40, 12, 8, 2.2, 0.35));
+def('skip', () => R(48, 10, 9, 44, 4, C.gold) + P('M6 10Q6 6 10 8L30 28Q33 32 30 36L10 56Q6 58 6 54Z', C.gold) + P('M26 10Q26 6 30 8L50 28Q53 32 50 36L30 56Q26 58 26 54Z', C.goldD)
+  + hi(12, 20, 2.6, 7, 0.6) + hi(32, 20, 2.6, 7, 0.45) + hi(52, 22, 2, 8, 0.6));
+
 // ---------- S35: character FACES for the dialogue portraits (drawn, not CSS) — face_<who>[_<mood>] ----------
 // kind: pip (orange cap of hair, skin face, sword-scarf KNOT at the collar — no more "red stick") · baron (purple, top hat, monocle)
 //       owl (Tally-Owl) · glimmer (blue blob) · collector (fog blob, purple cap). mood: neutral | happy | sad | angry | shout
@@ -265,7 +289,7 @@ export const EMOJI = {
   '💎': 'gem', '🌉': 'bridge', '🧱': 'wall', '🌿': 'bush', '🫐': 'berries', '💐': 'bouquet', '🌾': 'wheat', '🏠': 'house', '⚓': 'anchor', '🏯': 'pagoda',
   '💧': 'droplet', '🪵': 'log', '🚪': 'door', '📦': 'crate', '🛢️': 'barrel', '🛢': 'barrel', '➡️': 'signArrow', '🪧': 'signBoard', '🪑': 'bench', '🟫': 'pathDirt',
   '⬜': 'pathStone', '🎏': 'banner', '🪴': 'pot', '🛁': 'trough', '▪️': 'square', '▪': 'square', '↩': 'undo', '↩️': 'undo',
-  '⏩': 'fastforward', '⏭': 'skipnext', '🔍': 'magnify', '🧹': 'broom', '📣': 'megaphone',
+  '⏩': 'fastforward', '⏭': 'skip', '🔍': 'magnify', '🧹': 'broom', '📣': 'megaphone',
   '♥': 'heart', '❤': 'heart', '➤': 'arrow', '🚫': 'cross',
 };
 
