@@ -1187,7 +1187,15 @@ function installRunWires(lg) {
   // BUGFIX (mobile): with debugKeys off (the real game) nothing handled a tap while PLACING → the ghost never moved on phones.
   //   touch: tap = move the ghost there (confirm with ✓ place / 🔨) · mouse: the ghost already follows the cursor → click places it.
   build.followTarget = () => { const h = hero.root.position, a = hero.facing || 0; return { x: h.x + Math.sin(a) * 2, z: h.z + Math.cos(a) * 2 }; };
+  // S64-A (user: "on mobile the first thing after the dialogues is that Build opens"): the tap that closes a dialogue / title / ledger is often followed by a
+  //   second quick tap (people tap through lines). The box is already gone, so that tap hit the ground -> landTap -> the tray opened by itself.
+  //   Any world tap within 0.7 s (real time, the game clock is paused in dialogues) of a modal closing is swallowed. Placing / drag are unaffected.
+  lg.modalClosedAt = 0; const stampModal = () => { lg.modalClosedAt = performance.now(); };
+  for (const n of ['ui:dialogue:close', 'ui:title:close', 'ui:ledger:close', 'ui:season:close', 'ui:seasons:close', 'cine:end']) offs.push(bus.on(n, stampModal));
+  offs.push(bus.on('ui:pause', (p) => { if (p && p.on === false) stampModal(); }));
+  lg.tapGrace = () => performance.now() - (lg.modalClosedAt || 0) < 700;
   if (lg.game.input) lg.game.input.onTap = (world, ev) => {
+    if (build.mode !== 'place' && lg.tapGrace()) return;   // S64-A
     if (build.mode === 'place') { if (ui?.isModal?.()) return; build.moveTo(world.x, world.z); if (ev?.pointerType === 'mouse') build.confirm(); return; }
     // BUGFIX P17: prefer the prop under the cursor in 3D (roof / sign / awning) — the ground-plane point sits ~1.9 u behind a 2.2 u tall stall
     if (lg.demolishMode) { const e = build.pick(lg.game.input?._ray?.ray) || build.nearest(world.x, world.z, 1.2); if (e && !e.scenery) build.demolish(e); else if (e && e.scenery) return; }   // P23: explain instead of silent refusal
