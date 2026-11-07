@@ -4,7 +4,7 @@
 :root { --tut-bg: #2A6CB0; --tut-ink: #FFFFFF; --tut-edge: #7FD3FF; }   /* S59-E: opaque blue (was 90 % glass) so the black border reads on the busy island */
 
 .ll-tutor { position: absolute; z-index: 33; left: 50%; bottom: calc(max(10px, env(safe-area-inset-bottom)) + 84px); transform: translateX(-50%) translateY(10px);
-  display: flex; align-items: flex-end; gap: 6px; max-width: min(88vw, 400px);
+  display: flex; align-items: flex-end; gap: 6px; max-width: min(88vw, 400px, calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 24px));
   opacity: 0; pointer-events: none; transition: opacity .22s ease, transform .32s cubic-bezier(.34,1.56,.64,1);
   font: 600 14px/1.25 system-ui, -apple-system, 'Segoe UI', sans-serif; letter-spacing: .1px; text-align: left; }
 .ll-tutor.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -53,7 +53,7 @@
 
 /* ---- S60-A: SIMULATED JOYSTICK (touch) / WASD keycaps (desktop). Drawn like the real stick in ui/touch.css; the cloud hand drags the knob up-right and back,
    so a phone player SEES that a thumb-stick exists and where to put the thumb. Steps aside (.hide) the moment the real stick is touched. */
-.ll-tutor-joy { position: absolute; z-index: 34; left: 15%; bottom: 128px; width: 100px; height: 100px; display: none; pointer-events: none; transition: opacity .2s; }
+.ll-tutor-joy { position: absolute; z-index: 34; left: max(15%, calc(env(safe-area-inset-left) + 12px)); bottom: 128px; width: 100px; height: 100px; display: none; pointer-events: none; transition: opacity .2s; }
 .ll-tutor-joy.show { display: block; }
 .ll-tutor-joy.hide { opacity: 0; }
 .ll-tutor-joy .tj-base, .ll-tutor-joy .tj-hand { display: none; }
@@ -76,21 +76,21 @@
 /* desktop: four keycaps in a WASD cross; W breathes ("forward") */
 .ll-tutor-joy .tj-keys { display: none; position: absolute; left: 0; top: 0; width: 100px; height: 80px; }
 .ll-tutor-joy.keys .tj-keys { display: block; }
-.ll-tutor-joy.keys { left: 24px; bottom: 150px; }
+.ll-tutor-joy.keys { left: max(24px, calc(env(safe-area-inset-left) + 12px)); bottom: 150px; }
 .tj-keys b { position: absolute; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 8px; background: #fff; color: var(--ink, #263238); border: 3px solid var(--ink, #263238); box-shadow: 0 3px 0 var(--ink, #263238); font: 900 15px/1 system-ui, sans-serif; }
 .tj-keys .k-w { left: 35px; top: 0; animation: tj-key 1.4s ease-in-out infinite; } .tj-keys .k-a { left: 2px; top: 36px; } .tj-keys .k-s { left: 35px; top: 36px; } .tj-keys .k-d { left: 68px; top: 36px; }
 @keyframes tj-key { 0%, 100% { transform: translateY(0); background: #fff; } 50% { transform: translateY(3px); box-shadow: 0 0 0 var(--ink, #263238); background: var(--gold, #FFC93C); } }
 /* phone landscape: sits in the left thumb zone, above the Build button, clear of the tutor card (bottom-centre) and the 'drag to move' label */
-@media (max-height: 460px) { .ll-tutor-joy { left: 11%; bottom: 76px; width: 88px; height: 88px; } .ll-tutor-joy .tj-knob { width: 40px; height: 40px; margin: -20px 0 0 -20px; } .ll-tutor-joy .tj-hand, .ll-tutor-joy .tj-hand .ll-ico { width: 52px; height: 52px; margin-left: -26px; } .ll-tutor-joy.keys { left: 16px; bottom: 90px; } }
+@media (max-height: 460px) { .ll-tutor-joy { left: max(11%, calc(env(safe-area-inset-left) + 12px)); bottom: 76px; width: 88px; height: 88px; } .ll-tutor-joy .tj-knob { width: 40px; height: 40px; margin: -20px 0 0 -20px; } .ll-tutor-joy .tj-hand, .ll-tutor-joy .tj-hand .ll-ico { width: 52px; height: 52px; margin-left: -26px; } .ll-tutor-joy.keys { left: max(16px, calc(env(safe-area-inset-left) + 12px)); bottom: 90px; } }
 @media (prefers-reduced-motion: reduce) { .ll-tutor-joy .tj-base, .ll-tutor-joy .tj-ring, .ll-tutor-joy .tj-knob, .ll-tutor-joy .tj-hand, .ll-tutor-joy .tj-hand .ll-hand-a, .ll-tutor-joy .tj-hand .ll-hand-b, .tj-keys .k-w { animation: none; } .ll-tutor-joy .tj-hand .ll-hand-b { opacity: 0; } }
 body.tj-on .ll-joy-hint { opacity: 0 !important; }   /* S60-A: the drawn stick demo replaces the text label while it plays */
 
 /* S61-A: very small phones (<= 360 px tall, e.g. 640x360 / 568x320 / 480x270). The centred card is up to 56vw wide and ~71 px tall there, so the 88 px stick demo
    (left 11 %) used to touch it at 480x270. Smaller stick (72 px) pinned to the left margin: it ends at x = 82 px, the card starts at x >= 120 px. Travel scales with the stick. */
-@media (max-height: 360px) { .ll-tutor-joy { left: 10px; bottom: 68px; width: 72px; height: 72px; --tj-dx: 19px; --tj-dy: -21px; }
+@media (max-height: 360px) { .ll-tutor-joy { left: max(10px, calc(env(safe-area-inset-left) + 8px)); bottom: 68px; width: 72px; height: 72px; --tj-dx: 19px; --tj-dy: -21px; }
   .ll-tutor-joy .tj-knob { width: 34px; height: 34px; margin: -17px 0 0 -17px; }
   .ll-tutor-joy .tj-hand, .ll-tutor-joy .tj-hand .ll-ico { width: 44px; height: 44px; margin-left: -22px; margin-top: -4px; }
-  .ll-tutor-joy.keys { left: 12px; bottom: 76px; } }
+  .ll-tutor-joy.keys { left: max(12px, calc(env(safe-area-inset-left) + 8px)); bottom: 76px; } }
 
 /* S61-A2: on very short screens (<= 300 px tall: 480x270, 360x240) the Cloud avatar beside the card used to land on the BUILD button label. It becomes a small badge
    perched on the card's top-left corner instead, so the card is narrower-by-nothing and never reaches the Build button. */

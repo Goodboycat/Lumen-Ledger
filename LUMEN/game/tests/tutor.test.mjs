@@ -7,6 +7,7 @@ installDomShim();
 const { EventBus } = await import('../src/core/EventBus.js');
 const { mountTutor } = await import('../ui/tutor.js');
 const { installVerbChain } = await import('../src/systems/verbChain.js');
+const { aheadPoint } = await import('../src/systems/aheadPoint.js');
 const data = JSON.parse(readFileSync(new URL('../data/tutor.json', import.meta.url), 'utf8'));
 
 function mount(seen = []) {
@@ -171,4 +172,24 @@ test('verb chain (41B) has no DOM: 5 tutor:hint ids → 5 verb cards once; no #v
   const all = walk(document.body);
   assert.equal(all.some((n) => n.id === 'verb-hint' || /ll-verb/.test(n.className || '')), false, 'no #verb-hint / .ll-verb-* chip or Skip in the DOM');
   lg.verbs.destroy(); tutor.destroy();
+});
+
+test('S61-B aheadPoint: marker is 6 u up the SCREEN for any camera yaw, stays on land and clear of buildings', () => {
+  const hero = { x: 1, z: 2 }, close = (a, b) => Math.abs(a - b) < 1e-6;
+  // fixed ¾ rig: camera sits at +z looking toward -z -> up the screen = -z
+  let p = aheadPoint({ hero, camPos: { x: 1, z: 12 }, camLook: { x: 1, z: 2 } }); assert.ok(close(p.x, 1) && close(p.z, -4), 'default rig: 6 u toward -z');
+  // no camera at all -> same fallback
+  p = aheadPoint({ hero }); assert.ok(close(p.x, 1) && close(p.z, -4), 'no camera: -z');
+  // camera rotated 90°, 180°, 270° around Pip: the marker follows the camera's forward direction
+  for (const [ox, oz] of [[10, 0], [0, -10], [-10, 0]]) {
+    p = aheadPoint({ hero, camPos: { x: hero.x + ox, z: hero.z + oz }, camLook: hero });
+    const dx = p.x - hero.x, dz = p.z - hero.z; assert.ok(close(Math.hypot(dx, dz), 6), '6 u away'); assert.ok(close(dx, -ox * 0.6) && close(dz, -oz * 0.6), `forward for cam offset (${ox},${oz})`);
+  }
+  // water straight ahead -> falls to the next candidate on land; occupied tiles are skipped too
+  const land = (x, z) => z > -3; p = aheadPoint({ hero, camPos: { x: 1, z: 12 }, camLook: hero, isLand: land }); assert.ok(land(p.x, p.z), 'on land'); assert.ok(p.z > -3);
+  p = aheadPoint({ hero, camPos: { x: 1, z: 12 }, camLook: hero, occupied: (x, z) => z < -3 && Math.abs(x - 1) < 1 }); assert.ok(!(p.z < -3 && Math.abs(p.x - 1) < 1), 'skips the building');
+  // nothing free -> heads for the plaza centre, still finite
+  p = aheadPoint({ hero, isLand: () => false }); assert.ok(Number.isFinite(p.x) && Number.isFinite(p.z)); assert.equal(aheadPoint({}), null, 'no hero -> null');
+  // degenerate camera (lookAt == position on the ground) -> default direction
+  p = aheadPoint({ hero, camPos: { x: 5, z: 5 }, camLook: { x: 5, z: 5 } }); assert.ok(close(p.z, -4));
 });
