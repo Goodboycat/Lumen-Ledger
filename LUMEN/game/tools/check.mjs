@@ -2283,13 +2283,14 @@ if (doCine) {
     if (C.active !== 'victory' || lg.state !== 'ending') throw new Error('victory not playing on eco:win (' + C.active + ' ' + lg.state + ')');
     if (!lg.story.held || ui.dialogue.isOpen) throw new Error('ending lines not held during victory');
     if (lampStates.includes('lit')) throw new Error('lamp lit before the shot');
-    run(CINE.victoryFly + 1.2); if (!lampStates.includes('lit') || !ev['cine:lamp']) throw new Error('shot did not light the lamp');
-    const lookD = C.rig.look.distanceTo(lh.getWorldPosition(new THREE.Vector3())); if (!(lookD < 8)) throw new Error('camera not looking at the lighthouse (' + lookD.toFixed(1) + ')');
+    if (!lampStates.includes('flicker') && C.t < CINE.victoryLamp - 1.8) { /* flicker starts 1.8 s before ignition */ }
+    run(CINE.victoryLamp + 0.5); if (!lampStates.includes('flicker')) throw new Error('lamp did not flicker before igniting'); if (!lampStates.includes('lit') || !ev['cine:lamp']) throw new Error('shot did not light the lamp');
+    const lampW = lh.getWorldPosition(new THREE.Vector3()); lampW.y += (lh.userData.lampPos?.y ?? 6); const lookD = C.rig.look.distanceTo(lampW); if (!(lookD < 4))   /* S66-D: the shot looks AT the lamp */ throw new Error('camera not looking at the lighthouse (' + lookD.toFixed(1) + ')');
     let k = 0; while (C.active && k < 20 * 30) { step(); k++; }
     if (C.active || lg.story.held) throw new Error('victory did not end');
     run(0.5); if (!ui.dialogue.isOpen) throw new Error('ending lines did not start after the victory shot');
     const dv = drain();
-    console.log(`  4. eco:win → victory ${((CINE.victoryFly + CINE.victoryHold + CINE.victoryReturn)).toFixed(1)} s: ending held, lamp lit by the shot at fly+hold·0.15, look ${lookD.toFixed(1)} m from the lamp, ended → ${dv} ending lines  OK`);
+    console.log(`  4. eco:win → victory ${CINE.victoryDur.toFixed(1)} s (S66-D: flicker → ignite at ${CINE.victoryLamp} s, dolly zoom, fog burn): ending held, lamp lit by the shot, look ${lookD.toFixed(1)} m from the lamp, ended → ${dv} ending lines  OK`);
     // 5. reduceMotion cut · ?nocine · teardown
     bus.emit('ui:title'); step(); if (!lg.showcaseSb || C.active !== 'title') throw new Error('back to title: showcase not rebuilt');
     bus.emit('ui:settings', { key: 'reduceMotion', value: true }); lg.reduceMotion = true; step();

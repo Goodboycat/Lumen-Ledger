@@ -250,7 +250,7 @@ export class LighthouseBeam {
 // | anticipation |  300 | inOutCubic| fog "inhales": coverage → cov0 + 0.08, blobs lift 0 → -0.15 (rise slightly)             |
 // | recede       | 1200 | outCubic  | coverage → 0, blobs sink (lift 0 → 1, flattens them), ring opacity 0.72 → 0 via lift     |
 // | relight      |  400 | outBack   | lighthouse beam on (show + fade), confetti/coinRain hook if pack1 present, done           |
-export function makeFogRecedeSequence(vfx, { onDone = null, lighthouse = null, confetti = true } = {}) {
+export function makeFogRecedeSequence(vfx, { onDone = null, lighthouse = null, confetti = true, relight = true } = {}) {   // S66-D: relight:false = the victory cinematic lights the lamp itself
   const fog = vfx.fog; let cov0 = 0;
   const seq = new Sequence('fogRecede')
     .phase('anticipation', 300, Easing.inOutCubic, (e) => { fog.coverage = Math.min(1, cov0 + 0.08 * e); for (const b of fog.blobs) b.lift = -0.15 * e; fog.dirty = true; },
@@ -258,6 +258,7 @@ export function makeFogRecedeSequence(vfx, { onDone = null, lighthouse = null, c
     .phase('recede', 1200, Easing.outCubic, (e) => { fog.coverage = (cov0 + 0.08) * (1 - e); for (const b of fog.blobs) b.lift = -0.15 + 1.15 * e; fog.dirty = true; })
     .phase('relight', 400, Easing.outBack, () => {}, { onEnter: () => {
       fog.coverage = 0; for (const b of fog.blobs) b.lift = 0; fog.dirty = true;
+      if (!relight) return;
       if (lighthouse) vfx.lighthouseBeam.show(lighthouse, { on: true }); else vfx.lighthouseBeam.on = true;
       if (confetti && vfx.confetti) { _v.copy(vfx.lighthouseBeam.pivot.position); _v.y = 0; vfx.confetti(_v, 40); }
       if (vfx.coinRain) { _v.copy(vfx.lighthouseBeam.pivot.position); _v.y = 0; vfx.coinRain(_v, 10); }

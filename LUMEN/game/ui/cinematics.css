@@ -29,3 +29,9 @@ body.ll-title-3d .ll-title-sub, body.ll-title-3d .ll-title-foot { color: #fff; o
 body.ll-title-3d .ll-title-btn { box-shadow: 0 6px 0 var(--ink, #1e2430), 0 10px 24px rgba(14,20,32,.35); }
 body.ll-title-3d .ll-title-btn:hover, body.ll-title-3d .ll-title-btn.focus { box-shadow: 0 8px 0 var(--ink, #1e2430), 0 12px 26px rgba(14,20,32,.35); }
 @media (prefers-reduced-motion: reduce) { .ll-cine-bar, .ll-cine-skip { transition: none; } }
+/* S66-D: Lighthouse ignition flash (white-gold wash, --flash 1 -> 0 over 0.7 s, set by CinematicDirector) + a soft vignette during the victory shot */
+.ll-cine::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: var(--flash, 0); background: radial-gradient(ellipse at 50% 45%, rgba(255,250,214,.95) 0%, rgba(255,226,140,.7) 38%, rgba(255,214,120,0) 80%); z-index: 1; }
+.ll-cine.victory::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, rgba(14,20,32,0) 55%, rgba(14,20,32,.38) 100%); }
+.ll-cine-bar, .ll-cine-skip { z-index: 2; }
+@media (prefers-reduced-motion: reduce) { .ll-cine::before { display: none; } }
+body.reduce-motion .ll-cine::before { display: none; }

@@ -326,7 +326,7 @@ function wireEconomy(sb) {
     if (sb.enemies?.active.length) { const n = sb.enemies.sendHome(); sb.log.push(`S${r.season} collectors walk home (${n})`); }   // S16b: season over → they turn and walk back to the pier (not a defeat)
     sb.log.push(`S${r.season} income ${r.income} exp ${r.expenses} debt ${r.debt} fog ${(r.fog01 * 100) | 0}% ★${r.stars}`);
   }));
-  off.push(bus.on('eco:win', () => { if (!sb._cineLamp) { world.lighthouse?.userData.setState?.('lit'); vfx.lighthouseBeam?.show?.(world.lighthouse); } vfx.fogRecede?.(); }));   // S18: the victory cinematic lights the lamp itself
+  off.push(bus.on('eco:win', () => { if (!sb._cineLamp) { world.lighthouse?.userData.setState?.('lit'); vfx.lighthouseBeam?.show?.(world.lighthouse); } vfx.fogRecede?.(sb._cineLamp ? { relight: false } : undefined); }));   // S18: the victory cinematic lights the lamp itself (S66-D: and throws the confetti / coins itself)
   off.push(bus.on('eco:lose', () => { vfx.fog?.setCoverage?.(1); vfx.debtPulse?.(1); }));
   off.push(bus.on('eco:win', () => sb.enemies?.clear())); off.push(bus.on('eco:lose', () => sb.enemies?.clear()));   // S16
   off.push(bus.on('eco:season', () => { sb._stormClearAt = null; sb.storm?.clear(2); })); off.push(bus.on('eco:win', () => sb.storm?.clear(1.5)));   // S17: a new season always starts under a clear sky

@@ -4,7 +4,8 @@ import { damp } from '../anim/Easing.js';
 
 export class GameCamera {
   constructor(aspect) {
-    this.cam = new THREE.PerspectiveCamera(38, aspect, 0.1, 120);
+    this.baseFov = 38;   // S66-D: a cinematic rig may carry `fov` (dolly zoom); it is blended in/out with cineBlend and restored to baseFov
+    this.cam = new THREE.PerspectiveCamera(this.baseFov, aspect, 0.1, 120);
     this.target = new THREE.Vector3();
     this.lookAt = new THREE.Vector3();
     this.offset = new THREE.Vector3(0, 13, 10); // ¾ view; tune pitch via y/z ratio
@@ -49,6 +50,8 @@ export class GameCamera {
       px += (rig.pos.x - px) * k; py += (rig.pos.y - py) * k; pz += (rig.pos.z - pz) * k;
       this._cineLook.copy(this.lookAt).lerp(rig.look, k);
     } else this._cineLook.copy(this.lookAt);
+    const wantFov = rig && k > 0 && Number.isFinite(rig.fov) ? this.baseFov + (rig.fov - this.baseFov) * k : this.baseFov;
+    if (Math.abs(this.cam.fov - wantFov) > 0.005) { this.cam.fov = wantFov; this.cam.updateProjectionMatrix(); }
 
     // shake
     if (this.trauma > 0) {
