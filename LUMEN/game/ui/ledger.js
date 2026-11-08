@@ -81,6 +81,9 @@ export function mountLedger(root, opts = {}) {
   const stars = el('div', 'll-ledger-stars'); const starEls = [];
   for (let i = 0; i < 3; i++) { const s = el('i', null, '★'); stars.append(s); starEls.push(s); }
   const starTxt = el('p', 'll-ledger-startxt', '');
+  // S66-C2: the three star goals as a checklist (done = drawn check, missing = drawn cross + what to do), so a player knows what to aim for
+  const goalList = el('ul', 'll-ledger-goals'); goalList.id = 'll-ledger-goals'; const goalEls = [];
+  for (let i = 0; i < 3; i++) { const li = el('li', 'goal'); const ic = el('span', 'goal-ico'); const tx = el('span', 'goal-txt'); li.append(ic, tx); goalList.append(li); goalEls.push({ li, ic, tx }); }
   const lesson = el('aside', 'll-lesson');
   const lessonTag = el('span', 'll-lesson-tag', 'FinLit lesson');
   const lessonTitle = el('h3', 'll-lesson-title', '');
@@ -96,7 +99,7 @@ export function mountLedger(root, opts = {}) {
   const foot = el('footer', 'll-ledger-foot');
   const btn = el('button', 'll-btn ll-ledger-continue', 'CONTINUE ▸');
   foot.append(btn);
-  sheet.append(head, table, chips, crewBox, stars, starTxt, unlockCard, lesson, foot);
+  sheet.append(head, table, chips, crewBox, stars, starTxt, goalList, unlockCard, lesson, foot);
   wrap.append(backdrop, sheet);
   root.appendChild(wrap);
 
@@ -160,6 +163,18 @@ export function mountLedger(root, opts = {}) {
       for (let i = 0; i < 3; i++) later(rowsEnd() + STAR_GAP * i, () => { if (i < starsN) { starEls[i].classList.add('on'); retrigger(starEls[i], 'pop'); } else starEls[i].classList.add('pop'); });
       starTxt.textContent = ['No stars — the Fog is winning. Save first, spend second.', 'One star. Steady. Try to earn more than you spend.', 'Two stars! Solid season — keep the debt down.', 'Three stars! A perfect ledger ✦'][starsN];
       starTxt.classList.remove('in'); later(rowsEnd() + STAR_GAP * 3, () => starTxt.classList.add('in'));
+      // S66-C2: checklist (one row per star goal; text says what you did / what was missing)
+      { const gs = Array.isArray(report.goals) ? report.goals : null; goalList.hidden = !gs; goalList.classList.remove('in');
+        if (gs) { const fm = (n) => Math.round(+n || 0); const sMin = fm(report.starSaveMin ?? 20), mul = report.starIncomeGood ?? 1.25;
+          const txt = [
+            (g) => g.ok ? 'Earned more than you spent' : `Earn ${mul}× what you spend`,
+            (g) => g.ok ? (report.debtBefore > 0 && report.saved < sMin ? 'Cut the debt' : `Saved ${fm(report.saved)} ✦`) : `Save ${sMin} ✦ (or cut the debt)`,
+            (g) => g.ok ? 'Debt held down' + (g.paidInterest && g.interest > 0 ? ` · paid the Baron's ${fm(g.interest)} ✦` : '')
+              : (g.debtHeld ? `Pay the Baron's ${fm(g.interest)} ✦ interest` : `Debt went up — PAY ${fm(g.interest)} ✦+ at the pier`),
+          ];
+          gs.forEach((g, i) => { const e = goalEls[i]; if (!e) return; e.li.classList.toggle('ok', !!g.ok); e.li.classList.toggle('miss', !g.ok); e.li.dataset.goal = g.id;
+            e.ic.innerHTML = iconize(g.ok ? '✓' : '✗'); e.tx.innerHTML = iconize(txt[i](g)); });
+          later(rowsEnd() + STAR_GAP * 3 + 60, () => goalList.classList.add('in')); } }
       // lesson card
       const L = o.lesson || st.pendingLesson || lessons[report.lessonId] || null; st.pendingLesson = null; fillLesson(L);
       lesson.classList.remove('in'); later(rowsEnd() + STAR_GAP * 3 + 120, () => lesson.classList.add('in'));
@@ -177,7 +192,7 @@ export function mountLedger(root, opts = {}) {
       if (!st.open) return api; clearTimers();
       for (const k of Object.keys(rows)) { const r = rows[k]; r.row.classList.add('in'); r.t = ROW_COUNT_MS; r.shown = r.target; r.val.textContent = fmt(r.target); }
       chips.classList.add('in'); const n = Math.max(0, Math.min(3, (st.report && st.report.stars) | 0));
-      starEls.forEach((s, i) => { s.classList.toggle('on', i < n); s.classList.add('pop'); }); starTxt.classList.add('in'); lesson.classList.add('in'); btn.classList.add('in'); btn.disabled = false;
+      starEls.forEach((s, i) => { s.classList.toggle('on', i < n); s.classList.add('pop'); }); starTxt.classList.add('in'); goalList.classList.add('in'); lesson.classList.add('in'); btn.classList.add('in'); btn.disabled = false;
       return api;
     },
     hide() {

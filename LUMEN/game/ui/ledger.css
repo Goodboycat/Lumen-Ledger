@@ -43,6 +43,13 @@
 .ll-ledger-startxt { text-align: center; margin: 2px 0 8px; font-size: 12px; font-weight: 800; opacity: 0; transition: opacity .3s; min-height: 14px; }
 .ll-ledger-startxt.in { opacity: 1; }
 
+.ll-ledger-goals { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 3px; opacity: 0; transition: opacity .3s; }
+.ll-ledger-goals[hidden] { display: none; }
+.ll-ledger-goals.in { opacity: 1; }
+.ll-ledger-goals .goal { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 10px; border: 2px solid var(--ink); background: #fff; }
+.ll-ledger-goals .goal.ok { background: #e3f7d6; } .ll-ledger-goals .goal.miss { background: #fff1e0; }
+.ll-ledger-goals .goal-ico .ll-ico { width: 20px; height: 20px; vertical-align: middle; }
+@media (max-height: 420px) { .ll-ledger-goals .goal { font-size: 11px; padding: 2px 8px; } .ll-ledger-goals .goal-ico .ll-ico { width: 16px; height: 16px; } }
 .ll-lesson { background: #fff; border: 3px solid var(--ink); border-radius: 14px; padding: 10px 12px 10px; box-shadow: 0 4px 0 var(--ink); position: relative; opacity: 0; transform: translateY(18px) scale(.96); transition: opacity .32s, transform .32s cubic-bezier(.34,1.56,.64,1); }
 .ll-lesson.in { opacity: 1; transform: none; }
 .ll-lesson.empty { display: none; }
