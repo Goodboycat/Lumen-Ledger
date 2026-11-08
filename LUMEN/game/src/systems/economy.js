@@ -332,6 +332,7 @@ export class Economy {
       if (!JARS.includes(k)) { this.bus.emit('eco:denied', { reason: 'unknown jar ' + k }); return false; }
       const d = round(+v || 0); if (!isFinite(d)) { this.bus.emit('eco:denied', { reason: 'bad amount ' + k }); return false; }
       if (d === 0) continue;
+      if (k === 'invest' && d < 0 && this.investLocked()) { this.bus.emit('eco:denied', { reason: 'locked', jar: 'invest', seasonsLeft: this.investLockLeft() }); return false; }   // S67: Index Fund
       if (this.state.jars[k] + d < 0) { this.bus.emit('eco:denied', { reason: 'jar ' + k + ' would go negative' }); return false; }
       deltas[k] = d; net += d;
     }
@@ -450,6 +451,12 @@ export class Economy {
   applyEvent(eventId) {
     const ev = this.events[eventId]; if (!ev || this.state.ended) return null;
     const effect = typeof ev.effect === 'function' ? ev.effect(this, this.rng) : ev.effect;
+    if ((this.state.boonFree || 0) > 0 && effect && effect.spark < 0) {   // S67: a boon pays for this bad event (the price was paid when you picked it)
+      this.state.boonFree--; this.ledger.events.push(eventId);
+      const out = { id: eventId, event: ev, effect: { spark: 0, absorbed: 0, debt: 0, fog: 0, reputation: 0, investPct: 0, exposed: 0 }, boon: true };
+      this.bus.emit('eco:absorbed', { id: eventId, event: ev, boon: true }); this.bus.emit('eco:event', out);
+      return out;
+    }
     const result = this._applyEffect(effect, 'event:' + eventId);
     this.ledger.events.push(eventId);
     const out = { id: eventId, event: ev, effect: result };
@@ -599,6 +606,7 @@ export class Economy {
     this.history.push(report);
     this.ledger = this._freshLedger();
     s.season++; s.day01 = 0;
+    if (s.boons && s.boons.length) { const keep = s.boons.filter((b) => !(b && b.until != null && s.season >= b.until)); if (keep.length !== s.boons.length) { this.bus.emit('boon:expired', { ids: s.boons.filter((b) => !keep.includes(b)).map((b) => b.id), season: s.season }); s.boons = keep; } }   // S67: timed boons run out
     report.seasonSeconds = this.seasonSecondsFor(s.season);   // 41C: NEXT season's length so the HUD day bar scales
     this.bus.emit('eco:season', report);
     // win / lose
