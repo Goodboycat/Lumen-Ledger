@@ -30,8 +30,8 @@ export async function run({ resolve, pathToFileURL }) {
     const J = sb.jarsWorld; if (!J || typeof sb.interact !== 'function' || typeof sb.interactRelease !== 'function') throw new Error('sb.jarsWorld / sb.interact / sb.interactRelease missing');
     // 48E: jars are BUILDABLES — a fresh sandbox has 0 jars; place the 4 (cost 0) on free land cells far from the origin (near() at (0,0) must stay null)
     if (J.jars.size !== 0) throw new Error('48E fresh sandbox should have 0 jars, has ' + [...J.jars.keys()].join(','));
-    { const cells = sb.island.gridCells().filter((c) => Math.hypot(c.x, c.z) > 3); for (const k of ['spend', 'save', 'invest', 'protect']) { const c = cells.find((c) => sb.build.canPlace('jar_' + k, c.x, c.z, 0)); if (!c) throw new Error('48E no free cell for jar_' + k); if (!sb.build.place('jar_' + k, c.x, c.z, 0, { animate: false })) throw new Error('48E place jar_' + k); } }
-    if (J.jars.size !== 4 || !['spend', 'save', 'invest', 'protect'].every((k) => J.jars.has(k))) throw new Error('jars map ' + [...J.jars.keys()].join(','));
+    { const cells = sb.island.gridCells().filter((c) => Math.hypot(c.x, c.z) > 3); for (const k of ['save', 'invest', 'protect']) { const c = cells.find((c) => sb.build.canPlace('jar_' + k, c.x, c.z, 0)); if (!c) throw new Error('48E no free cell for jar_' + k); if (!sb.build.place('jar_' + k, c.x, c.z, 0, { animate: false })) throw new Error('48E place jar_' + k); } }
+    if (J.jars.size !== 3 || !['save', 'invest', 'protect'].every((k) => J.jars.has(k))) throw new Error('jars map ' + [...J.jars.keys()].join(','));
     const meshes0 = meshCount(scene); const isCreature = (o) => { for (let p = o; p && p !== scene; p = p.parent) if (/^(cust_|helper|enemy|coll|baron)/.test(p.name || '')) return true; return false; }; const nonCreature = () => { let n = 0; scene.traverse((o) => { if (o.isMesh && !isCreature(o)) n++; }); return n; }; const meshesNC0 = nonCreature();
     const dt = 1 / 30; const step = () => { game.time += dt; game.sequences.update(dt); game.tweens.update(dt); for (const s of game.systems) s.update?.(dt); /* sb.update ticks J.update */ if (sb.eco.pendingOffer) sb.eco.refuseOffer(); };
     const run = (sec) => { for (let i = 0; i < Math.round(sec * 30); i++) step(); };
@@ -39,20 +39,20 @@ export async function run({ resolve, pathToFileURL }) {
     const jarXZ = (id) => { const m = J.jars.get(id); return [m.position.x, m.position.z]; };
 
     // ---------------------------------------------------------------- 1. proximity
-    hp.set(...[jarXZ('spend')[0], 0, jarXZ('spend')[1]]); step();
-    if (J.near() !== 'spend') throw new Error(`near at spend jar → ${J.near()}`);
+    hp.set(...[jarXZ('protect')[0], 0, jarXZ('protect')[1]]); step();
+    if (J.near() !== 'protect') throw new Error(`near at protect jar → ${J.near()}`);
     hp.set(jarXZ('save')[0], 0, jarXZ('save')[1]); step();
     if (J.near() !== 'save') throw new Error(`near at save jar → ${J.near()}`);
     hp.set(0, 0, 0); step();
     if (J.near() !== null) throw new Error(`near at origin → ${J.near()}`);
     const nearSeq = (ev['jars:near'] || []).map((p) => String(p.jar));
-    if (nearSeq.slice(-3).join(',') !== 'spend,save,null') throw new Error('jars:near sequence ' + nearSeq.join(','));
-    const nearPip = (sb.hero.root.position.distanceTo(new THREE.Vector3(jarXZ('spend')[0], 0, jarXZ('spend')[1])));
+    if (nearSeq.slice(-3).join(',') !== 'protect,save,null') throw new Error('jars:near sequence ' + nearSeq.join(','));
+    const nearPip = (sb.hero.root.position.distanceTo(new THREE.Vector3(jarXZ('protect')[0], 0, jarXZ('protect')[1])));
     if (!(nearPip > NEAR_R)) throw new Error('origin is within NEAR_R of a jar — world layout changed');
     // 48D: Game.js landTap needs the jar meshes by id (tap on a jar → sb.interact()); near() must agree with the mesh positions
-    const ids48 = J.ids(); if (ids48.length < 4 || !ids48.includes('spend') || !ids48.includes('save')) throw new Error('48D J.ids() ' + ids48.join(','));
+    const ids48 = J.ids(); if (ids48.length < 3 || !ids48.includes('protect') || !ids48.includes('save')) throw new Error('48D J.ids() ' + ids48.join(','));
     for (const id of ids48) { const m = J.meshOf(id); if (!m || !m.position) throw new Error('48D meshOf(' + id + ') has no position'); }
-    { const m = J.meshOf('spend'); hp.set(m.position.x, 0, m.position.z); step(); if (J.near() !== 'spend') throw new Error('48D meshOf(spend) position is not near spend'); hp.set(0, 0, 0); step(); }
+    { const m = J.meshOf('protect'); hp.set(m.position.x, 0, m.position.z); step(); if (J.near() !== 'protect') throw new Error('48D meshOf(protect) position is not near protect'); hp.set(0, 0, 0); step(); }
 
     // ---------------------------------------------------------------- 2. deposit: pouch 35 at Save → 10,10,10,5 then empty
     eco.state.spark = 35; const save0 = eco.state.jars.save; const denied0 = (ev['eco:denied'] || []).length;
@@ -126,7 +126,7 @@ export async function run({ resolve, pathToFileURL }) {
     }
     destroySandbox(sb);
     if (!J.destroyed || J.tags.size !== 0 || sb.jarsWorld) throw new Error('destroy left J alive');
-    console.log(`  jarsWorld: near spend/save/null · 48D ids()/meshOf() · 35 ✦ → 10,10,10,5 + empty (no eco:denied) · Invest hold → locked · Save hold → 10 then repeat ${REPEAT_S}s · walk-away releases · spill 100→92 (cap 8) · +0 meshes · destroy  OK`);
+    console.log(`  jarsWorld: near protect/save/null · 48D ids()/meshOf() · 35 ✦ → 10,10,10,5 + empty (no eco:denied) · Invest hold → locked · Save hold → 10 then repeat ${REPEAT_S}s · walk-away releases · spill 100→92 (cap 8) · +0 meshes · destroy  OK`);
 
     // ---------------------------------------------------------------- 6. pure unit: register a 5th jar (43 hook) on a mock eco
     {

@@ -1,7 +1,7 @@
 // tools/gates/jars1.mjs — T1 headless gate: `node tools/check.mjs --jars1`  (section "T1 JARS", FUN_PASS §4 T1)
 // REAL createLumenGame + mountUI on tools/domshim.mjs (same rig as --debug). Proves:
-//   • T1.1  fresh PLAY → the tray's Jars tab lists exactly jar_spend; state().jars.unlocked === ['spend']
-//   • T1.2  unlockJar('save') → jars:unlocked ×1, tray = spend+save · eco:season{season:2} → invest listed · novelty:start{id:'stormWarning'} → protect listed
+//   • T1.1  fresh PLAY → the tray's Jars tab lists NO jar (S66-A: Spend is the pouch); state().jars.unlocked === ['spend']
+//   • T1.2  unlockJar('save') → jars:unlocked ×1, tray = save · eco:season{season:2} → invest listed · novelty:start{id:'stormWarning'} → protect listed
 //           (wrong payloads do NOT unlock) · a rule fires once only
 //   • T1.3  (T1-B) Save placed ≥ 5 u from Pip, lg.landTap({x,z}) → Pip walks over and 10 ✦ move in within 6 s, hero ≤ 1.3 u, inputOverride released
 //           · a far tap on a jar is NOT swallowed · a tap on empty land still opens the tray · stick input / timeout / pause cancel the walk
@@ -46,13 +46,13 @@ export async function run({ resolve, pathToFileURL }) {
     const hp = sb.hero.root.position; const listed = () => ui.build.listed('jar').slice().sort();
 
     // ---- T1.1
-    eq(listed(), ['jar_spend'], 'T1.1 tray jars on a fresh game');
+    eq(listed(), [], 'T1.1 tray jars on a fresh game (S66-A: Spend is the pouch, no Spend jar to build)');
     eq(lg.debug.state().jars.unlocked, ['spend'], 'T1.1 state().jars.unlocked');
-    ok('T1.1 fresh game: tray lists exactly jar_spend · state().jars.unlocked = [spend]');
+    ok('T1.1 fresh game: tray lists no jar (Spend = pouch) · state().jars.unlocked = [spend]');
 
     // ---- T1.2
     let r = lg.debug.unlockJar('save'); if (!r.ok) throw new Error('unlockJar(save) ' + JSON.stringify(r));
-    eq(listed(), ['jar_save', 'jar_spend'], 'T1.2 tray after unlockJar(save)'); eq((ev['jars:unlocked'] || []).length, 1, 'T1.2 jars:unlocked count');
+    eq(listed(), ['jar_save'], 'T1.2 tray after unlockJar(save)'); eq((ev['jars:unlocked'] || []).length, 1, 'T1.2 jars:unlocked count');
     if (lg.debug.unlockJar('save').ok !== false || (ev['jars:unlocked'] || []).length !== 1) throw new Error('T1.2 second unlock of save must be a no-op');
     // rule payloads: standalone createJarUnlocks on its OWN bus (a synthetic eco:season / novelty:start on the game bus would open story dialogues)
     { const { createJarUnlocks } = await imp('src/systems/jarUnlocks.js'); const b2 = new EventBus(); const got = []; b2.on('jars:unlocked', (p) => got.push(p.jar));
@@ -63,8 +63,8 @@ export async function run({ resolve, pathToFileURL }) {
       eq(got, ['save', 'protect', 'invest'], 'T1.2 rules: till:collect → save · stormWarning → protect · eco:season 2 → invest');
       b2.emit('till:collect', {}); b2.emit('eco:season', { season: 2 }); eq(got.length, 3, 'T1.2 each rule fires once'); U.destroy(); }
     lg.debug.unlockJar('protect'); lg.debug.unlockJar('invest');
-    eq(listed(), ['jar_invest', 'jar_protect', 'jar_save', 'jar_spend'], 'T1.2 tray with all four unlocked'); eq((ev['jars:unlocked'] || []).map((e) => e.jar), ['save', 'protect', 'invest'], 'T1.2 unlock events');
-    ok('T1.2 unlockJar(save) → 1 event, tray spend+save · (data/jars.json rules, own bus) wrong payloads ignored, till:collect → save, stormWarning → protect, eco:season 2 → invest, once each · tray lists all 4');
+    eq(listed(), ['jar_invest', 'jar_protect', 'jar_save'], 'T1.2 tray with all three buildable jars unlocked'); eq((ev['jars:unlocked'] || []).map((e) => e.jar), ['save', 'protect', 'invest'], 'T1.2 unlock events');
+    ok('T1.2 unlockJar(save) → 1 event, tray save · (data/jars.json rules, own bus) wrong payloads ignored, till:collect → save, stormWarning → protect, eco:season 2 → invest, once each · tray lists all 3 buildable jars');
 
     // ---- place jars on land cells (cost 0), far enough from the hero
     const place = (k, minD, maxD = 99) => { const cells = sb.island.gridCells().filter((c) => { const d = Math.hypot(c.x - hp.x, c.z - hp.z); return d >= minD && d <= maxD; }); const c = cells.find((c) => sb.build.canPlace('jar_' + k, c.x, c.z, 0)); if (!c) throw new Error('no cell for jar_' + k); const rr = sb.build.place?.('jar_' + k, c.x, c.z, 0) ?? sb.build.placeAt?.('jar_' + k, c.x, c.z, 0); return { c, rr }; };
@@ -113,13 +113,13 @@ export async function run({ resolve, pathToFileURL }) {
     ok('T1.3 empty-land tap still opens the build tray (no walk)');
 
     // ---- T1.4 two jars
-    farAgain(); place('spend', 3, 9); const sp = J.get('spend').position; hp.set(sp.x, 0, sp.z); step(); eco._addSpark(60 - eco.state.spark, 'test');
-    const saveBal = eco.state.jars.save; J.press(); J.release(); eq(eco.state.jars.save, saveBal, 'T1.4 other jar unchanged'); if ((eco.state.jars.spend || 0) < 10) throw new Error('spend deposit missing');
-    const spendBal = eco.state.jars.spend; const pouchB = Math.floor(eco.state.spark);
+    farAgain(); place('protect', 3, 9); const sp = J.get('protect').position; hp.set(sp.x, 0, sp.z); step(); eco._addSpark(60 - eco.state.spark, 'test');
+    const saveBal = eco.state.jars.save; J.press(); J.release(); eq(eco.state.jars.save, saveBal, 'T1.4 other jar unchanged'); if ((eco.state.jars.protect || 0) < 10) throw new Error('protect deposit missing');
+    const spendBal = eco.state.jars.protect; const pouchB = Math.floor(eco.state.spark);
     const e0 = (ev['jars:removed'] || []).length; { const ent = [...sb.build.placed.values()].find((e) => e.id === 'jar_save'); if (!ent) throw new Error('no jar_save build entry'); sb.build.demolish(ent, { animate: false, refund: false }); }   // the real removal path (build:removed → unregister)
     if (J.get('save')) throw new Error('jar_save still registered after demolish'); const rem = (ev['jars:removed'] || []).slice(e0)[0];
-    eq(rem.refunded, saveBal, 'T1.4 refund = only the removed jar balance'); eq(eco.state.jars.spend, spendBal, 'T1.4 other jar balance after remove'); eq(Math.floor(eco.state.spark), pouchB + saveBal, 'T1.4 pouch after remove');
-    ok(`T1.4 deposit into Spend leaves Save at ${saveBal} · removing Save returns only its ${saveBal} ✦ to the pouch, Spend stays ${spendBal}`);
+    eq(rem.refunded, saveBal, 'T1.4 refund = only the removed jar balance'); eq(eco.state.jars.protect, spendBal, 'T1.4 other jar balance after remove'); eq(Math.floor(eco.state.spark), pouchB + saveBal, 'T1.4 pouch after remove');
+    ok(`T1.4 deposit into Protect leaves Save at ${saveBal} · removing Save returns only its ${saveBal} ✦ to the pouch, Protect stays ${spendBal}`);
 
     // ---- T1.6 Invest refuses withdrawal mid-season (jars:locked), balance untouched
     { farAgain(); place('invest', 3, 9); const ip = J.get('invest').position; hp.set(ip.x, 0, ip.z); step(); eco._addSpark(30, 'test'); J.press(); J.release();
@@ -131,7 +131,7 @@ export async function run({ resolve, pathToFileURL }) {
     // ---- T1.8 (S62-A) placing ANY item ends the placing mode (a jar used to leave a permanently red 'place another' ghost behind)
     { const B = sb.build; eco._addSpark(300 - eco.state.spark, 'test'); const armed = (id) => { if (!B.enter(id) || B.mode !== 'place' || !B.ghost) throw new Error('T1.8 enter ' + id); };
       const cellFor = (id) => { const c = sb.island.gridCells().find((c) => Math.hypot(c.x - hp.x, c.z - hp.z) >= 2 && B.canPlace(id, c.x, c.z, 0)); if (!c) throw new Error('T1.8 no cell for ' + id); return c; };
-      const jarId = ['jar_spend', 'jar_save', 'jar_protect', 'jar_invest'].find((id) => !B.owned(id)); if (!jarId) throw new Error('T1.8 every jar already placed');
+      const jarId = ['jar_save', 'jar_protect', 'jar_invest'].find((id) => !B.owned(id)); if (!jarId) throw new Error('T1.8 every jar already placed');
       armed(jarId); let c = cellFor(jarId); B.moveTo(c.x, c.z); if (!B.confirm()) throw new Error('T1.8 jar confirm');
       eq([B.mode, !!B.ghost, ui.build.st?.placing ?? null], ['idle', false, null], 'T1.8 after placing a jar');
       const n0 = B.placed.size; if (B.confirm() !== null || B.placed.size !== n0) throw new Error('T1.8 a 2nd confirm after the jar must do nothing');
