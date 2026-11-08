@@ -163,6 +163,17 @@ def('wheat', () => [18, 32, 46].map((x, i) => L(`M${x} 60Q${x + (i - 1) * 2} 34 
 def('droplet', () => P('M32 4Q50 30 50 40A18 18 0 0 1 14 40Q14 30 32 4Z', C.blue) + hi(25, 36, 3.5, 7, 0.6));
 
 // --- landmarks ---
+// --- S66-E: icons for the next systems + the checklist (all procedural, same toon look) ---
+// focus: a calm eye/lens ring with a bright pupil + four little focus ticks (S67 Focus meter)
+def('focus', () => O(32, 32, 25, C.sky) + `<circle cx="32" cy="32" r="16" fill="none" stroke="${C.blueD}" stroke-width="4"/>` + O(32, 32, 8.5, C.gold) + hi(29, 29, 3, 2, 0.8) + L('M32 4V12M32 52V60M4 32H12M52 32H60', 4.5) + hi(22, 18, 6, 3, 0.45));
+// boon: a drawn card with a star seal and a ribbon (S67 Boon Draft)
+def('boon', () => shadow(32, 60, 18) + P('M14 8H50Q54 8 54 12V52Q54 56 50 56H14Q10 56 10 52V12Q10 8 14 8Z', C.paper) + R(16, 14, 32, 22, 4, C.purple) + P(starPts(32, 25, 5, 9, 4), C.gold) + L('M18 44H46', 3.5, C.brown) + L('M18 50H38', 3.5, C.brown) + hi(20, 18, 5, 2, 0.45) + P('M42 44L48 58L52 52L58 54L52 40Z', C.red));
+// laurel: two leafy branches around a gold coin (THE END / finale)
+def('laurel', () => { let d = ''; const leaf = (cx, cy, deg, fill) => `<ellipse cx="${f(cx)}" cy="${f(cy)}" rx="7.2" ry="3.7" transform="rotate(${f(deg)} ${f(cx)} ${f(cy)})" ${st(fill)}/>`; for (let i = 0; i < 7; i++) { const th = (104 + i * 25) * Math.PI / 180, R0 = 23 + (i % 2 ? 2.6 : -2.2), x = 32 + Math.cos(th) * R0, y = 33 + Math.sin(th) * R0, deg = th * 180 / Math.PI + 90 + (i % 2 ? 14 : -14); d += leaf(x, y, deg, i % 2 ? C.leaf : C.grass) + leaf(64 - x, y, 180 - deg, i % 2 ? C.leaf : C.grass); } return d + O(32, 33, 12, C.gold) + `<circle cx="32" cy="33" r="8" fill="none" stroke="${C.goldD}" stroke-width="2.6"/>` + P(starPts(32, 33, 4, 6, 2.2), INK) + hi(28, 28, 3.5, 2, 0.6) + P('M28 58L32 52L36 58L32 56Z', C.red); });
+// payhand: a hand dropping a coin into the Baron's hat-shaped slot, an arrow down (PAY tutor card)
+def('payhand', () => shadow(32, 60, 18) + R(10, 40, 44, 16, 5, C.purple) + R(16, 36, 32, 8, 3, C.purpleD) + L('M24 40H40', 4.5, INK) + O(32, 18, 11, C.gold) + `<circle cx="32" cy="18" r="7" fill="none" stroke="${C.goldD}" stroke-width="2.4"/>` + P(starPts(32, 18, 4, 5, 1.8), INK) + hi(28, 13, 3.5, 2, 0.6) + L('M32 32V37', 4, C.redD) + P('M26 33L32 40L38 33Z', C.red));
+// goals: a clipboard with three ticked lines (ledger star checklist)
+def('goals', () => shadow(32, 60, 18) + R(11, 8, 42, 50, 5, C.cream) + R(22, 4, 20, 10, 3, C.stoneD) + L('M18 24L21 27L27 20', 3.4, C.grassD) + L('M32 24H46', 3.4, C.brown) + L('M18 36L21 39L27 32', 3.4, C.grassD) + L('M32 36H46', 3.4, C.brown) + L('M19 46L26 53M26 46L19 53', 3.2, C.red) + L('M32 49H42', 3.4, C.brown) + hi(17, 14, 4, 2, 0.4));
 def('lighthouse', () => shadow() + P('M22 56L26 18H38L42 56Z', C.white) + Pn('M24.6 38L25.6 30H38.4L39.4 38Z', C.red) + Pn('M23 52L23.8 46H40.2L41 52Z', C.red) + P('M22 56L26 18H38L42 56Z', 'none') + R(22, 10, 20, 9, 2, C.gold) + P('M20 10L32 2L44 10Z', C.red) + rays(32, 14, 6, 14, 22, C.goldD, 3, Math.PI) + R(29, 46, 6, 10, 2, C.woodD));
 def('house', () => shadow() + R(12, 28, 40, 28, 3, C.cream) + P('M6 30L32 8L58 30Z', C.red) + R(28, 40, 10, 16, 2, C.wood) + R(16, 34, 9, 9, 2, C.sky) + R(42, 12, 6, 12, 1, C.stoneD));
 def('anchor', () => O(32, 12, 6, 'none') + L('M32 18V56', 6) + L('M20 26H44', 5) + L('M8 38Q10 56 32 56Q54 56 56 38', 6) + P('M2 40L8 32L14 40Z', INK) + P('M50 40L56 32L62 40Z', INK) + L('M32 18V56M8 38Q10 56 32 56Q54 56 56 38', 2.4, C.stone));
