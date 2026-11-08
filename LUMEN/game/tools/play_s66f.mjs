@@ -22,7 +22,13 @@ const payInfo = await p.evaluate(() => ({ cur: ui.tutor.current, cards: window._
 // a real S1 season end with a fair 3rd star: sell, save, repay >= interest
 await p.evaluate(() => { const e = lg.sb.eco; e.state.spark = 400; for (let i = 0; i < 20; i++) e.sell('fruit', 'regular', 5); e.allocate({ save: 30 }); e.repay(100); ui.tutor.dismiss(); });
 await p.evaluate(() => { lg.sb.eco.state.day01 = 0.999; lg.sb.eco.tick(1.0); });
-for (let i = 0; i < 40; i++) { await p.waitForTimeout(400); const o = await p.evaluate(() => ui.ledger.isOpen); if (o) break; }
+// the Baron pier comes first (state 'pier'); finish his visit like a real player would, then the ledger opens
+for (let i = 0; i < 40; i++) {
+  await p.waitForTimeout(400);
+  const st = await p.evaluate(() => ({ o: ui.ledger.isOpen, s: lg.state }));
+  if (st.o) break;
+  if (st.s === 'pier') await p.evaluate(() => { const b = lg.sb.pier; if (b && b.active) b.settle('rig'); });
+}
 await p.waitForTimeout(500);
 await p.evaluate(() => { for (let i = 0; i < 6; i++) { if (ui.dialogue.isOpen) { ui.dialogue.skip(); ui.dialogue.advance(); } } });
 await p.waitForTimeout(1200);

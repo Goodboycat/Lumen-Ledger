@@ -99,7 +99,12 @@ export function mountLedger(root, opts = {}) {
   const foot = el('footer', 'll-ledger-foot');
   const btn = el('button', 'll-btn ll-ledger-continue', 'CONTINUE ▸');
   foot.append(btn);
-  sheet.append(head, table, chips, crewBox, stars, starTxt, goalList, unlockCard, lesson, foot);
+  // S66-F: two columns on short landscape screens (phone): left = the money, right = stars / goals / lesson / button. Elsewhere display:contents = unchanged single column.
+  const colL = el('div', 'll-ledger-col ll-ledger-col-l'); colL.append(head, table, chips, crewBox);
+  const colR = el('div', 'll-ledger-col ll-ledger-col-r'); colR.append(stars, starTxt, goalList, unlockCard, lesson, foot);
+  sheet.append(colL, colR);
+  // very short phones (568x320): the right column is full, the left one has room -> CONTINUE lives under the money table there
+  try { const mq = typeof matchMedia === 'function' ? matchMedia('(max-height: 340px) and (min-width: 480px)') : null; const place = () => { (mq && mq.matches ? colL : colR).appendChild(foot); foot.classList.toggle('in-left', !!(mq && mq.matches)); }; place(); mq && (mq.addEventListener ? mq.addEventListener('change', place) : mq.addListener && mq.addListener(place)); } catch (e) { /* no matchMedia (tests) */ }
   wrap.append(backdrop, sheet);
   root.appendChild(wrap);
 

@@ -98,3 +98,38 @@
 .ll-crew-chip { font-size: 11px; font-weight: 900; padding: 2px 9px; border: 2px solid var(--ink); border-radius: 999px; background: #FFF8E7; box-shadow: 0 2px 0 var(--ink); white-space: nowrap; }
 .ll-crew-chip.tallyOwl { background: #FFF3C4; } .ll-crew-chip.packMole { background: #DCEBFA; } .ll-crew-chip.sparkBee { background: #FFF9C4; }
 .ll-crew-chip.guardTortoise { background: #DDF3DE; } .ll-crew-chip.scoutFox { background: #FFE3D5; } .ll-crew-chip.gardenerSnail { background: #F8DCE8; }
+
+/* S66-F: phone landscape (short screens) - two columns so the checklist + CONTINUE never leave the screen */
+.ll-ledger-col { display: contents; }
+@media (max-height: 460px) and (min-width: 480px) {
+  .ll-ledger-sheet { width: min(720px, calc(100vw - 24px)); max-height: calc(100vh - 14px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); padding: 10px 14px 12px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 14px; align-items: start; border-width: 3px; border-radius: 16px; box-shadow: 0 5px 0 var(--ink), 0 14px 24px rgba(0,0,0,.25); }
+  .ll-ledger-col { display: flex; flex-direction: column; min-width: 0; }
+  .ll-ledger-col-r { justify-content: flex-start; }
+  .ll-ledger-head { margin: 0 0 6px; }
+  .ll-ledger-title { font-size: 17px; padding: 2px 12px; border-width: 2px; box-shadow: 0 3px 0 var(--ink); }
+  .ll-ledger-sub { margin: 5px 0 0; font-size: 11px; }
+  .ll-ledger-rows { gap: 2px; }
+  .ll-ledger-row { padding: 2px 8px; font-size: 12px; } .ll-ledger-row .ll-ledger-label { font-size: 11px; } .ll-ledger-row .ll-ledger-val { font-size: 13px; }
+  .ll-ledger-row.net { padding-top: 4px; margin-top: 2px; border-top-width: 2px; } .ll-ledger-row.net .ll-ledger-val { font-size: 16px; }
+  .ll-ledger-chips { margin: 6px 0 2px; gap: 4px; } .ll-chip { font-size: 10px; padding: 1px 7px; }
+  .ll-ledger-crew { margin: 2px 0 4px; }
+  .ll-ledger-stars { margin: 2px 0 0; gap: 6px; } .ll-ledger-stars i { font-size: 28px; }
+  .ll-ledger-startxt { margin: 0 0 4px; font-size: 11px; min-height: 12px; }
+  .ll-ledger-goals { margin: 0 0 6px; gap: 2px; } .ll-ledger-goals .goal { font-size: 11px; padding: 2px 8px; border-width: 2px; line-height: 1.2; }
+  .ll-lesson { padding: 7px 10px 7px; border-width: 2px; box-shadow: 0 3px 0 var(--ink); }
+  .ll-lesson-tag { top: -9px; font-size: 9px; padding: 0 7px; }
+  .ll-lesson-title { margin: 2px 0 2px; font-size: 13px; } .ll-lesson-body { margin: 0 0 4px; font-size: 11px; line-height: 1.25; } .ll-lesson-tip { font-size: 10px; padding: 2px 6px; }
+  .ll-unlock { margin: 4px 0 2px; padding: 5px 9px; } .ll-unlock-title { font-size: 13px; } .ll-unlock-body { font-size: 11px; }
+  .ll-ledger-foot { margin-top: 8px; }
+  .ll-ledger-continue { padding: 7px 24px; font-size: 14px; border-width: 3px; box-shadow: 0 4px 0 var(--ink); min-height: 40px; }
+}
+
+.ll-chip.worth { color: #5d4300; background: #fff3cf; }   /* S66-F: was pale-on-cream = unreadable */
+.ll-chip.worth.bad { color: #b71c1c; background: #ffe0e0; }
+@media (max-height: 340px) and (min-width: 480px) {
+  .ll-ledger-foot.in-left { margin-top: 10px; }
+  .ll-ledger-sheet { padding: 8px 12px 10px; }
+  .ll-ledger-startxt { display: none; }
+  .ll-ledger-goals .goal { font-size: 10.5px; padding: 1px 7px; }
+  .ll-lesson-body { font-size: 10.5px; }
+}
