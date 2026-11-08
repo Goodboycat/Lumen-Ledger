@@ -140,3 +140,10 @@
   .ll-ledger-col { display: flex; flex-direction: column; min-width: 0; }
   .ll-ledger-startxt { margin-bottom: 6px; }
 }
+
+/* S66-F: NEW ABILITY card was pale text for a dark sheet = unreadable on the cream paper; and it touched the lesson card */
+.ll-unlock { margin: 8px 0 12px; background: linear-gradient(135deg, #fff1c2, #dff4ff); border: 3px solid var(--ink); box-shadow: 0 3px 0 var(--ink); }
+.ll-unlock-tag { color: #7a5a00; }
+.ll-unlock-title { color: var(--ink); }
+.ll-unlock-body { color: #3b3b3b; opacity: 1; }
+@media (max-height: 460px) { .ll-unlock { margin: 4px 0 10px; padding: 4px 9px; border-width: 2px; } }
