@@ -55,7 +55,7 @@ export const BALANCE = {
   protectAbsorb: 1.0,            // fraction of a loss the Protect jar can absorb (1 = full, up to jar balance)
   starIncomeGood: 1.25,          // stars: income ≥ expenses×this  → +1
   starSaveMin: 20,               // stars: saved ≥ this this season → +1  (or debt went down)
-  // stars: 3rd star = no debt increase AND fog did not grow
+  // stars: 3rd star = debt did not go up AND (fog did not grow OR you repaid >= the interest charged)  (S66-C)
 
   repGainFair: 0.02,             // reputation per fair sale (price ≤ 1.1·fair)
   repLossGouge: 0.05,            // reputation lost per rip-off (price ≥ 1.4·fair)
@@ -177,7 +177,7 @@ export class Economy {
     this.pendingOffer = null;
   }
 
-  _freshLedger() { return { income: 0, expenses: 0, interestEarned: 0, interestPaid: 0, saved: 0, invested: 0, protected: 0, absorbed: 0, exposed: 0, loansTaken: 0, repaid: 0, sales: 0, units: 0, events: [], scamsAccepted: 0, scamsRefused: 0, raided: 0, recovered: 0 }; }   // 42C raided/recovered
+  _freshLedger() { return { debtStart: this.state ? this.state.debt : 0, income: 0, expenses: 0, interestEarned: 0, interestPaid: 0, saved: 0, invested: 0, protected: 0, absorbed: 0, exposed: 0, loansTaken: 0, repaid: 0, sales: 0, units: 0, events: [], scamsAccepted: 0, scamsRefused: 0, raided: 0, recovered: 0 }; }   // 42C raided/recovered
 
   // ------------------------------------------------ time
   /** 41C: length in seconds of `season`. config.seasonSecondsOverride (set by createSandbox opts.seasonSeconds / tests) wins, else the
@@ -564,7 +564,16 @@ export class Economy {
     let stars = 0;
     if (income >= expenses * c.starIncomeGood) stars++;
     if (L.saved >= c.starSaveMin || (debtBefore > 0 && s.debt < debtBefore)) stars++;
-    if (s.debt <= debtBefore && s.fog01 <= fogBefore) stars++;
+    // S66-C: fair 3rd star. Old rule (fog flat) was unreachable while ANY debt stood: the fog grows each season you end with debt.
+    // Now: the debt did not go up AND you either held the fog or repaid at least the interest the Baron charged this season.
+    const debtStart = L.debtStart ?? (debtBefore + L.repaid - L.loansTaken);   // debt when the season began (debtBefore is read AFTER this season's repayments)
+    const debtHeld = s.debt <= debtStart + 1e-9, fogHeld = s.fog01 <= fogBefore + 1e-9, paidInterest = L.repaid + 1e-9 >= interestPaid;
+    const goals = [
+      { id: 'income', ok: income >= expenses * c.starIncomeGood },
+      { id: 'save', ok: L.saved >= c.starSaveMin || (debtBefore > 0 && s.debt < debtBefore) },
+      { id: 'debt', ok: debtHeld && (fogHeld || paidInterest), debtHeld, fogHeld, paidInterest, debtStart, interest: interestPaid, repaid: L.repaid },
+    ];
+    if (goals[2].ok) stars++;
     const report = {
       season, income, expenses, interestEarned, interestPaid, investReturn, investRate: +investRate.toFixed(3), upkeep, wages, tillTax: L.tillTax || 0, tillSwept: L.tillSwept || 0,   // 42A
       upkeepDebt: upkeepRes.debt, saved: L.saved, invested: L.invested, protected: L.protected, absorbed: L.absorbed,
@@ -572,7 +581,7 @@ export class Economy {
       scamsAccepted: L.scamsAccepted, scamsRefused: L.scamsRefused, raided: L.raided || 0, recovered: L.recovered || 0,   // 42C
       debt: s.debt, debtBefore, interestOwed: s.interestOwed || 0, fog01: s.fog01, fogDelta: +(s.fog01 - fogBefore).toFixed(4), spark: s.spark, jars: { ...s.jars },
       netWorth: this.netWorth(), reputation: +s.reputation.toFixed(3),
-      lessonId: c.lessons[(season - 1) % c.lessons.length], stars,
+      lessonId: c.lessons[(season - 1) % c.lessons.length], stars, goals, starSaveMin: c.starSaveMin, starIncomeGood: c.starIncomeGood,
     };
     this.history.push(report);
     this.ledger = this._freshLedger();

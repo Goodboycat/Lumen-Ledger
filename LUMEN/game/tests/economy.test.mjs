@@ -108,6 +108,12 @@ ok(typeof Economy === 'function' && BALANCE && EVENTS && SCAMS && UPGRADES, 'exp
   const p = mk({ startDebt: 0, startFog: 0.5, startSpark: 1000 }); p.allocate({ save: 300 });
   for (let i = 0; i < 40; i++) p.sell('fruit', 'regular', 5);
   const rp = p.endSeason(); ok(rp.stars === 3, `perfect season (income, saved, no debt/fog growth) → 3 stars (got ${rp.stars})`);
+  // S66-C: with a big debt, the 3rd star = debt not up AND you repaid >= the Baron's interest
+  const q = mk({ startDebt: 300, startFog: 0.4, startSpark: 400 }); for (let i = 0; i < 20; i++) q.sell('fruit', 'regular', 5); q.allocate({ save: 30 });
+  q.repay(100); const rq = q.endSeason();
+  ok(rq.goals && rq.goals.length === 3 && rq.goals[2].ok && rq.goals[2].paidInterest && !rq.goals[2].fogHeld && rq.stars >= 2, `S66-C: debt 300 + repaid >= interest → debt goal met even though fog grew (stars ${rq.stars})`);
+  const q2 = mk({ startDebt: 300, startFog: 0.4, startSpark: 400 }); q2.repay(5); const rq2 = q2.endSeason();
+  ok(!rq2.goals[2].ok && rq2.goals[2].debtHeld === false, 'S66-C: repaying less than the interest → debt goal NOT met');
   const z = mk({ startDebt: 300, startFog: 0.5 }); const rz = z.endSeason(); ok(rz.stars === 0, `idle season with debt → 0 stars (got ${rz.stars})`);
 }
 
