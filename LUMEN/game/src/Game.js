@@ -786,7 +786,7 @@ export const GAME_VERSION = 'S65';   // S64 (2026-11-07): desktop tutor card rid
 // S42:   // S42 (2026-11-01): 16A point-blank sword fix · 16B readability — Debt-Fog HUD bar hidden (island fog is the meter), lesson tag/ⓘ gone, 'Touch here!' ⏩ nudge when nothing happens. Game_Bible S42.md in LUMEN_extras/
 // S41:   // S41 (2026-10-31): playtest-readability pass 15-0…15F — no fps/calls HUD pill, progressive HUD reveal, one text channel, unaffordable build cards, Collector wave banner + edge arrows, solid props, debt-clarity toasts. Game_Bible S41.md in LUMEN_extras/
 // S40:   // S40 (2026-10-28): low-fps protection removed (no DPR/quality auto-demotion), quality locked to Settings, AudioContext resume watchdog. Game_Bible S40.md in LUMEN_extras/
-export const GAME_STATES = ['title', 'playing', 'pier', 'review', 'ending', 'endless'];   // 42D: 'pier' = the Baron collects interest between a season and its ledger review
+export const GAME_STATES = ['title', 'playing', 'pier', 'review', 'ending'];   // S66-B: no 'endless' state   // 42D: 'pier' = the Baron collects interest between a season and its ledger review
 export const ABILITY_KEYS = { KeyQ: 'coinMagnetDash', KeyW: 'bubbleShield', KeyE: 'growthStomp', KeyR: 'ledgerFlash', KeyF: 'haggleShout', KeyG: 'fogSweep' };   // = FINLIT[name].key (3B)
 
 /**
@@ -813,12 +813,12 @@ export function createLumenGame(game, opts = {}) {
     bus.emit('game:speed', { speed: n });
     return n;
   };
-  lg._offs.push(bus.on('ui:speed', (p) => { if (!lg.sb || (lg.state !== 'playing' && lg.state !== 'endless')) return; const next = p?.cycle ? SPEEDS[(SPEEDS.indexOf(lg.speed) + 1) % SPEEDS.length] : p?.speed; lg.setSpeed(next); }));
+  lg._offs.push(bus.on('ui:speed', (p) => { if (!lg.sb || (lg.state !== 'playing')) return; const next = p?.cycle ? SPEEDS[(SPEEDS.indexOf(lg.speed) + 1) % SPEEDS.length] : p?.speed; lg.setSpeed(next); }));
   lg._offs.push(bus.on('game:paused', (p) => { if (p?.paused && lg.speed !== 1) lg.setSpeed(1, { silent: true }); }));
   // ---- S42/16B speed-up nudge: ui.nudge shows a "Touch here!" hand on ⏩ after ~7 s of nothing happening. "Bored" = playing at 1×,
   //   no Collector chasing, no Glimmer on the island, no pending deal, not in build/placing mode. Game.js owns the predicate; ui/nudge.js the timing.
   lg.isBored = () => {
-    const sb = lg.sb; if (!sb || (lg.state !== 'playing' && lg.state !== 'endless') || game.paused || lg.speed !== 1) return false;
+    const sb = lg.sb; if (!sb || (lg.state !== 'playing') || game.paused || lg.speed !== 1) return false;
     if (sb.eco?.pendingOffer || sb.modalOpen?.()) return false;
     if (sb.enemies?.active?.length) return false;
     if (sb.cust?.active?.some((c) => c.state !== 'pooled' && c.state !== 'despawn')) return false;
@@ -886,17 +886,16 @@ function installStart(lg) {
   lg.start = (mode = 'story') => {
     const fresh = !!lg._freshPlay; lg._freshPlay = false;                               // S18: set by the ui:start handler (PLAY button) only
     lg.cine?.stop(true);                                                                // S18: title orbit ends (silent — no cine:end)
-    lg.mode = mode === 'endless' ? 'endless' : 'story';
+    lg.mode = 'story';   // S66-B: only the story mode exists
     // S18: a fresh story PLAY re-uses the island that was already built for the title backdrop (same seed/balance, starter stalls) —
     //   no second build, no visual pop. Resume (starterStalls:false) / endless (other balance) tear it down and build their own.
     const reuse = lg.showcaseSb && !lg._resuming && lg.mode === 'story' && !lg.sb ? lg.showcaseSb : null;
     if (reuse) lg.showcaseSb = null;                                                   // keep it out of teardown's way
     lg.teardown?.();
-    const balance = lg.mode === 'endless' ? { ...(opts.balance || {}), winRequiresSeasons: false, endless: true } : opts.balance;
+    const balance = opts.balance;
     const sb = lg.sb = reuse || createSandbox(game, { headless: !!opts.headless, storyData: opts.storyData, jarsData: opts.jarsData, seasons: opts.seasons, seasonSeconds: opts.seasonSeconds, seed: opts.seed, balance, zonesUnlocked: opts.zonesUnlocked, maxActive: opts.maxActive, debugKeys: !!opts.debugKeys, starterStalls: lg._resuming ? false : undefined, labelsRoot: lg.ui?.root || null, pierPays: lg.pierPays });
     if (reuse) { lg.stats.showcaseReused = (lg.stats.showcaseReused || 0) + 1; game.followTarget = sb.hero.root.position; }
     sb.modalOpen = () => !!(ui?.dialogue?.isOpen || ui?.ledger?.isOpen);                 // P62: the Collector wave waits for the dialogue box to close
-    if (lg.mode === 'endless') sb.updateScheduler = wrapNoScam(sb);                      // endless: events yes, Baron's deals no
     lg.story = (lg.mode === 'story' && opts.storyData) ? new StorySystem(sb.eco, { data: opts.storyData, bus, ledgerLinesBeforeReview: true, autoAdvance: !!opts.autoAdvance, lineGap: opts.lineGap }) : null;
     if (lg._resuming?.story && lg.story) Object.assign(lg.story.state, StorySystem.deserialize(lg._resuming.story, sb.eco, { data: opts.storyData, autoplay: false }).state);   // 10D: before title.hide() → no toast replay
     installRunWires(lg);
@@ -1124,7 +1123,7 @@ function installRunWires(lg) {
     const ok = eco.allocate(d); if (ok) bus.emit('game:allocated', { moved, deltas: d, spark: eco.state.spark }); return ok;
   };
   on('ui:jar:apply', (p) => lg.applyJars(p?.pct));
-  on('ui:ability', (p) => { if (!p?.name) return; if (lg.sb && (lg.state === 'playing' || lg.state === 'endless') && (ui?.isModal?.() || ui?.build?.isOpen || build.mode === 'place' || lg.game.paused)) { bus.emit('sandbox:denied', { name: p.name, why: 'blocked', reason: lg.game.paused && !ui?.isModal?.() ? 'paused' : ui?.isModal?.() ? 'modal' : build.mode === 'place' ? 'placing' : 'tray' }); return; } lg.ability(p.name); });                                        // 41D chips click
+  on('ui:ability', (p) => { if (!p?.name) return; if (lg.sb && (lg.state === 'playing') && (ui?.isModal?.() || ui?.build?.isOpen || build.mode === 'place' || lg.game.paused)) { bus.emit('sandbox:denied', { name: p.name, why: 'blocked', reason: lg.game.paused && !ui?.isModal?.() ? 'paused' : ui?.isModal?.() ? 'modal' : build.mode === 'place' ? 'placing' : 'tray' }); return; } lg.ability(p.name); });                                        // 41D chips click
   // T2b: HOLD a power chip (touch or desktop, ≥ 350 ms) = ask the guide, the press is NOT fired. Locked: the card AND the live ★ count.
   on('ui:power:ask', (p) => { const n = p?.name; if (!n || !ui?.tutor) return; const u = lg.sb?.unlocks; const locked = !!(u && !u.abilities.has(n));
     ui.tutor.ask('power:' + n);
@@ -1152,7 +1151,7 @@ function installRunWires(lg) {
   lg.repay = (amount) => { const a = eco.repay(amount != null ? amount : eco.state.debt); if (a > 0) { bus.emit('game:repaid', { amount: a, debt: eco.state.debt, spark: eco.state.spark }); ui?.hud?.sync?.(eco.state); } return a; };
   on('ui:repay', (p) => { lg.repay(p?.amount); });   // 48H: HUD PAY toast deleted (the jars panel shows its own debt row)
   // ability keys — only while playing/endless and no modal owns the screen (dialogue keys 1–4, ledger Enter, pause Esc)
-  lg.ability = (name) => { if (!lg.sb || (lg.state !== 'playing' && lg.state !== 'endless') || lg.game.paused) return null; return sb.ability(name); };
+  lg.ability = (name) => { if (!lg.sb || (lg.state !== 'playing') || lg.game.paused) return null; return sb.ability(name); };
   // BUGFIX P27: 🔨 on the touch pad while a ghost is up CONFIRMS placement (BuildSystem._onAction already did via input.press) — it must
   //   not toggle (= close) the tray, which emitted ui:build:close → build.exit() and cancelled the placement. In demolish mode 🔨 leaves it (P28).
   on('ui:touch', (p) => { if (p?.action !== 'build' || lg.game.paused) return; if (build.mode === 'place') return; if (lg.demolishMode) { lg.demolishMode = false; ui?.build?.cancel?.(); return; } ui?.build?.toggle?.(); });
@@ -1320,7 +1319,7 @@ function installRunWires(lg) {
       if (e.repeat) return;
       // BUGFIX P33: U = upgrade the stall next to Pip (the tutorial / README said so, but U was debug-only) — same handler as touch ✋
       if (e.code === 'KeyU' && !hotkeysBlocked() && lg.sb && lg.sb.build.mode !== 'place') { lg.interact(); return; }
-      const name = ABILITY_KEYS[e.code] || ((e.code === 'ShiftLeft' || e.code === 'KeyK') ? 'coinMagnetDash' : null); if (!name) return; if (hotkeysBlocked()) { if (lg.sb && (lg.state === 'playing' || lg.state === 'endless')) bus.emit('sandbox:denied', { name, why: 'blocked', reason: ui?.isModal?.() ? 'modal' : build.mode === 'place' ? 'placing' : 'tray' }); return; }
+      const name = ABILITY_KEYS[e.code] || ((e.code === 'ShiftLeft' || e.code === 'KeyK') ? 'coinMagnetDash' : null); if (!name) return; if (hotkeysBlocked()) { if (lg.sb && (lg.state === 'playing')) bus.emit('sandbox:denied', { name, why: 'blocked', reason: ui?.isModal?.() ? 'modal' : build.mode === 'place' ? 'placing' : 'tray' }); return; }
       if (e.code === 'KeyE' && lg.sb?.build?.mode !== 'place' && lg.sb?.build?.mode !== 'drag') { const r = lg.sb?.interact?.(); if (r) { eDown = true; return; } }   // 42B: E at a jar = deposit (hold = withdraw); elsewhere E stays growthStomp
       if (e.code === 'KeyW') { const k = lg.game.input?.keys; wDown = (k && MOVE_KEYS.some((c) => k.has(c))) ? 0 : (performance.now?.() || Date.now()); return; }
       if (e.code === 'KeyR' && lg.sb?.build?.mode === 'place') return;
@@ -1368,18 +1367,13 @@ function installSeasonLoop(lg) {
   on('story:finale', (p) => { if (lg.state === 'ending') finale(lg, p?.outcome || lg.pendingOutcome || 'win'); });
   on('ui:continue', (p) => {
     const out = p?.outcome || 'season';
-    if (out === 'season') { if (lg.state === 'review') lg.setState(lg.mode === 'endless' ? 'endless' : 'playing'); }
-    else if (out === 'win') { lg.goEndless(); }
+    if (out === 'season') { if (lg.state === 'review') lg.setState('playing'); }
+    else if (out === 'win') { lg.finishRun(); }   // S66-B: the story is over. No Endless mode: the run ends and the title comes back
     else if (out === 'lose') { lg.toTitle('lose'); }
   });
-  // win → keep the island, drop the win gate, scams off, no more story (8B goes quiet after the finale), state 'endless'
-  lg.goEndless = () => {
-    const sb = lg.sb; if (!sb) return lg.setState('title');
-    lg.mode = 'endless'; sb.eco.config.winRequiresSeasons = false; sb.eco.config.endless = true; sb.eco.state.ended = null; sb.eco.state.day01 = 0;
-    sb.updateScheduler = wrapNoScam(sb); lg.stats.finales++;
-    ui?.hud?.setSeason?.(sb.eco.state.season, 0);
-    lg.setState('endless'); bus.emit('game:endless', { season: sb.eco.state.season });
-  };
+  // S66-B: win -> the story is finished and STAYS finished (Endless mode was removed). The save slot is cleared (a finished run has nothing to continue)
+  //   and the title comes back; 'game:won' lets credits / audio hook in later.
+  lg.finishRun = () => { lg.stats.finales++; lg.save?.clear?.(); bus.emit('game:won', { season: lg.sb?.eco?.state?.season ?? 0 }); lg.toTitle('win'); };
   lg.toTitle = (why = 'menu') => { lg.teardown(); lg.setState('title'); if (ui?.title && !ui.title.isOpen) ui.title.show?.(); lg.pause('title', true); bus.emit('game:title', { why }); };
   function finale(lg2, outcome) { lg2.stats.finales++; showLedger(lg2.lastReport || lg2.sb?.eco.history.at(-1), { outcome }); }
 }
@@ -1481,13 +1475,12 @@ function installSave(lg) {
     describe: () => Save.describe(Save.load(storage)),
     // S25: persistent unlocks (lumen.unlocks) — ∞ ENDLESS on the title only after the first story win
     unlocks: () => Save.unlocks(storage), hasWon: () => Save.hasWon(storage),
-    unlock: (key, v = true) => { const ok = Save.setUnlock(key, v, storage); if (key === 'endless') ui?.title?.setUnlocked?.({ endless: !!v }); return ok; },
+    unlock: (key, v = true) => Save.setUnlock(key, v, storage),
   };
-  ui?.title?.setUnlocked?.({ endless: Save.hasWon(storage) });
   lg.resume = (snap = Save.load(storage)) => {
     if (!snap) return false;
     lg._resuming = snap;
-    try { lg.start(snap.mode === 'endless' ? 'endless' : 'story'); } finally { lg._resuming = null; }
+    try { lg.start('story'); } finally { lg._resuming = null; }   // S66-B: old 'endless' saves resume as a normal story run
     const sb = lg.sb; if (!sb) return false;
     // BUGFIX B18: a slot that passed parseSnapshot but still breaks during restore → drop it, fall back to a fresh run (never a dead title)
     try { applySnapshot(lg, sb, snap); }
@@ -1496,17 +1489,15 @@ function installSave(lg) {
     return true;
   };
   on('eco:season', () => { if (lg.sb && !lg.sb.eco.state.ended) lg.save.write(); });
-  on('game:state', (p) => { if (p.prev === 'review' && (p.state === 'playing' || p.state === 'endless')) lg.save.write(); });
-  on('game:endless', () => lg.save.write());
-  on('game:title', (p) => { if (p?.why === 'lose') lg.save.clear(); });
+  on('game:state', (p) => { if (p.prev === 'review' && (p.state === 'playing')) lg.save.write(); });
+  on('game:title', (p) => { if (p?.why === 'lose' || p?.why === 'win') lg.save.clear(); });
   // BUGFIX B12: season checkpoint = snapshot at the start of every season (fresh start, resume, review → next season, endless)
   const checkpoint = () => { if (lg.sb && !lg.sb.eco.state.ended) lg.seasonCheckpoint = Save.snapshot(lg); };
   on('game:start', () => { if (!lg._resuming) checkpoint(); });
   on('game:resumed', checkpoint);
-  on('game:state', (p) => { if (p.prev === 'review' && (p.state === 'playing' || p.state === 'endless')) checkpoint(); });
-  on('game:endless', checkpoint);
+  on('game:state', (p) => { if (p.prev === 'review' && (p.state === 'playing')) checkpoint(); });
   on('eco:lose', () => lg.save.clear());
-  on('eco:win', () => { if (lg.sb && lg.mode === 'story' && !lg.save.hasWon()) { lg.save.unlock('endless', true); bus.emit('game:unlock', { key: 'endless' }); } });   // S25: the 10-season STORY victory unlocks Endless (never an endless-mode fog win)
+  // S66-B: the old eco:win -> unlock('endless') hook is gone with Endless mode.
   on('game:start', () => { if (!lg._resuming) ui?.title?.setHasSave?.(lg.save.has()); });
   on('ui:jar', (p) => { if (p?.pct) lg.jarPct = { ...p.pct }; });
   installTutorialGates(lg);
@@ -1540,7 +1531,6 @@ function applySnapshot(lg, sb, snap) {
     eco.state = { ...eco.state, ...e2.state, day01, ended: null }; eco.ledger = e2.ledger; eco.history = e2.history; eco.pendingOffer = null;
     if (snap.midSeason && sb.sched && snap.sched) { sb.sched.season = eco.state.season; sb.sched.event = !!snap.sched.event; sb.sched.scam = !!snap.sched.scam; }
     if (snap.midSeason && snap.novelty && sb.novelties) sb.novelties.start(snap.novelty, eco.state.season);   // 43D (save v3): re-enter the active novelty (start is re-entrant, 43C note); its mark is skipped below
-    if (lg.mode === 'endless') { eco.config.winRequiresSeasons = false; eco.config.endless = true; }
   }
   // BUGFIX B14: unlocked zones come back from the owned zone_* upgrades BEFORE the buildings are re-placed (locked zones are water → placements rejected)
   for (const id of eco.state.owned || []) { const u = eco.upgrades?.[id]; if (u?.kind === 'zone' && Number.isInteger(u.effect?.zone)) { if (sb.island.unlockInstant?.(u.effect.zone)) lg.stats.zonesRestored = (lg.stats.zonesRestored || 0) + 1; } }

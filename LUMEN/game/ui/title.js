@@ -6,14 +6,13 @@
 //
 // What it does
 //   • Full-screen sky panel: logo image (icon.png, lettered h1 kept hidden for a11y), the 3D island orbit behind it (S18) and
-//     three chunky buttons: ▶ PLAY (new story run) · ⟳ CONTINUE (only when a save exists) · ∞ ENDLESS (free play — HIDDEN until the
-//     player has won the story once: `opts.hasWon` fn / `title.setUnlocked({endless:true})`, persisted by Game.js under `lumen.unlocks`).
+//     two chunky buttons: ▶ PLAY (new story run) · ⟳ CONTINUE (only when a save exists). S66-B: the ∞ ENDLESS button + its unlock were removed.
 //     S24 (2026-10-24): no tagline / no sub-line / no footer by default — the menu is only the logo + buttons; the version sits as a
 //     tiny corner tag. `opts.chrome: true` restores the old texts (tests). Button labels use the toon style of the logo (title.css).
 //   • Emits `ui:title:open` / `ui:title:close` (touch pad hides itself while the title owns the screen) and
-//     `ui:start { mode: 'story' | 'continue' | 'endless' }` when a button is pressed (10C starts the game, then calls title.hide()).
+//     `ui:start { mode: 'story' | 'continue' }` when a button is pressed (10C starts the game, then calls title.hide()).
 //     `title.hide()` is NOT automatic on press — the integrator decides (e.g. fade only after the world is built). `opts.hideOnStart: true` flips that.
-//   • Keyboard: Enter / Space = PLAY (or CONTINUE when a save exists); E = endless; C = continue. Arrow ↑/↓ moves focus.
+//   • Keyboard: Enter / Space = PLAY (or CONTINUE when a save exists); C = continue. Arrow ↑/↓ moves focus.
 //   • Listens `eco:lose {reason}` + `ui:continue {outcome:'lose'}` → re-shows with "The Fog won this time…" sub-line (opts.showOnLose, default true).
 //   • Pure display otherwise. Nothing is read from localStorage unless `opts.hasSave` is given.
 //
@@ -28,14 +27,12 @@ const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls)
 export const TITLE_MODES = {
   story:    { icon: '▶', label: 'PLAY',     sub: 'New story · 10 seasons', cls: 'play', key: 'Enter' },
   continue: { icon: '⟳', label: 'CONTINUE', sub: 'Resume your island',      cls: 'cont', key: 'c' },
-  endless:  { icon: '∞', label: 'ENDLESS',  sub: 'Free play · no Baron',    cls: 'endless', key: 'e' },
 };
 
 export function mountTitle(root, opts = {}) {
   const bus = opts.bus || defaultBus;
   const hasSaveFn = typeof opts.hasSave === 'function' ? opts.hasSave : () => !!opts.hasSave;
   const version = opts.version || 'jam build';
-  const hasWonFn = typeof opts.hasWon === 'function' ? opts.hasWon : () => !!opts.hasWon;
   const chrome = !!opts.chrome;   // S24: tagline / sub-line / footer are off by default (clean menu)
 
   // ---------------------------------------------------------------- DOM
@@ -66,14 +63,14 @@ export function mountTitle(root, opts = {}) {
   root.appendChild(wrap);
 
   // ---------------------------------------------------------------- state
-  const st = { open: false, busy: false, hasSave: false, endless: false, focus: 0, lastMode: null };
-  const order = () => Object.keys(TITLE_MODES).filter((m) => (m !== 'continue' || st.hasSave) && (m !== 'endless' || st.endless));
+  const st = { open: false, busy: false, hasSave: false, focus: 0, lastMode: null };
+  const order = () => Object.keys(TITLE_MODES).filter((m) => (m !== 'continue' || st.hasSave));   /* S66-B: no Endless mode */
   const setFocus = (i) => { const o = order(); st.focus = (i + o.length) % o.length; o.forEach((m, k) => buttons[m].classList.toggle('focus', k === st.focus)); };
 
   const start = (mode) => {
     if (!st.open || st.busy) return;
     if (mode === 'continue' && !st.hasSave) mode = 'story';
-    if (mode === 'endless' && !st.endless) return;   // locked until the first story win
+    if (!buttons[mode]) return;   // S66-B: unknown / removed modes (old 'endless') do nothing
     st.lastMode = mode; buttons[mode].classList.add('down'); setTimeout(() => buttons[mode].classList.remove('down'), 160);
     bus.emit('ui:start', { mode, hasSave: st.hasSave });
     if (opts.hideOnStart) api.hide();
@@ -84,7 +81,6 @@ export function mountTitle(root, opts = {}) {
     if (!st.open) return;
     const k = e.key;
     if (k === 'Enter' || k === ' ') { e.preventDefault && e.preventDefault(); start(order()[st.focus]); }
-    else if (k === 'e' || k === 'E') start('endless');
     else if (k === 'c' || k === 'C') start(st.hasSave ? 'continue' : 'story');
     else if (k === 'ArrowDown' || k === 'ArrowRight') setFocus(st.focus + 1);
     else if (k === 'ArrowUp' || k === 'ArrowLeft') setFocus(st.focus - 1);
@@ -96,14 +92,13 @@ export function mountTitle(root, opts = {}) {
     get isOpen() { return st.open; },
     get lastMode() { return st.lastMode; },
     setHasSave(v) { st.hasSave = !!v; buttons.continue.style.display = st.hasSave ? '' : 'none'; wrap.classList.toggle('has-save', st.hasSave); setFocus(0); return api; },
-    /** S25: unlock flags. `{ endless: true }` shows the ∞ ENDLESS button (after the first story win). */
-    setUnlocked(u = {}) { if ('endless' in u) { st.endless = !!u.endless; buttons.endless.style.display = st.endless ? '' : 'none'; wrap.classList.toggle('has-endless', st.endless); setFocus(Math.min(st.focus, order().length - 1)); } return api; },
-    get unlocked() { return { endless: st.endless }; },
+    setUnlocked() { return api; },   /* S66-B: kept as a no-op for old callers (the only unlock was Endless) */
+    get unlocked() { return {}; },
     setBusy(v) { st.busy = !!v; wrap.classList.toggle('busy', st.busy); for (const b of Object.values(buttons)) b.disabled = st.busy; return api; },
     setSub(text) { sub.textContent = text; return api; },
     show(o = {}) {
       if (st.open) return api;
-      st.open = true; api.setHasSave(hasSaveFn()); api.setUnlocked({ endless: hasWonFn() }); if (o.sub) { api.setSub(o.sub); sub.hidden = false; sub.style.display = ''; } else if (!chrome) { sub.hidden = true; sub.style.display = 'none'; } clearTimeout(st.goneT); wrap.classList.remove('hide', 'gone'); wrap.classList.add('open');
+      st.open = true; api.setHasSave(hasSaveFn()); if (o.sub) { api.setSub(o.sub); sub.hidden = false; sub.style.display = ''; } else if (!chrome) { sub.hidden = true; sub.style.display = 'none'; } clearTimeout(st.goneT); wrap.classList.remove('hide', 'gone'); wrap.classList.add('open');
       wrap.classList.toggle('replay', !!o.replay); document.body && document.body.classList && document.body.classList.add('ll-title-open');
       bus.emit('ui:title:open', { hasSave: st.hasSave, replay: !!o.replay }); return api;
     },
@@ -124,7 +119,6 @@ export function mountTitle(root, opts = {}) {
     offs.push(bus.on('ui:continue', (p) => { if (p && p.outcome === 'lose') api.show({ sub: 'The Fog won this time… Try again?', replay: true }); }));
   }
 
-  api.setUnlocked({ endless: hasWonFn() });
   setFocus(0);
   if (opts.autoShow !== false) api.show();
   return api;

@@ -22,7 +22,7 @@
 //     pitch's last line carries `choices`; `ui:choice {index}` / `choose(i)`: the id's array on the scam node ENDS IN choices (48G `look`/`ask`/
 //     `stall`) → swapped in as the next decision (group stays 'scam'); otherwise it is a leaf: `accept`/`sign` → `economy.acceptOffer()`,
 //     `refuse`/`walk`/other → `refuseOffer()`, then the leaf lines play and `story:lesson` carries the scam's `tell` (lesson 'Too-Good Deals').
-//   • `eco:win` → `ending.win` then `ending.endlessUnlock`, `story:lesson` planningForAGoal, then `story:finale {endless:true}`.
+//   • `eco:win` → `ending.win` then `ending.endlessUnlock`, `story:lesson` planningForAGoal, then `story:finale {outcome:'win'}` (S66-B: endless is always false now; the key 'endlessUnlock' in story.json is the farewell lines).
 //     `eco:lose` → `ending.lose`, then `story:finale {endless:false}`.
 //   • Tutorial toasts: for every `tutorial[i].trigger` bus event, emits `story:toast {text,icon}` ONCE per run (ids kept in state.toastsFired).
 //   • `opts.autoplay` (default true): drives everything from bus events. false → the integrator calls the on*() methods itself.
@@ -192,7 +192,7 @@ export class StorySystem {
     if (this.state.finale) return false; this.state.finale = 'win';
     this.emitLesson('planningForAGoal');
     this._play('ending', linesFor(this.data, 'ending', 'win'), { kind: 'win' });
-    return this._play('ending', linesFor(this.data, 'ending', 'endlessUnlock'), { kind: 'endlessUnlock' }, () => this.bus.emit('story:finale', { endless: true, outcome: 'win' }));
+    return this._play('ending', linesFor(this.data, 'ending', 'endlessUnlock'), { kind: 'endlessUnlock' }, () => this.bus.emit('story:finale', { endless: false, outcome: 'win' }));
   }
   onLose(reason) {
     if (this.state.finale) return false; this.state.finale = 'lose';

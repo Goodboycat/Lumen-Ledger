@@ -113,7 +113,7 @@ export function mountHUD(root, opts = {}) {
     },
     setSeason(n, day01) {
       if (n !== st.season) { st.season = n; retrigger(season, 'pop'); }
-      seasonTxt.textContent = n > seasonsToWin ? `Endless · S${n}` : `Season ${n} / ${seasonsToWin}`;
+      seasonTxt.textContent = `Season ${Math.min(n, seasonsToWin)} / ${seasonsToWin}`;   /* S66-B: no Endless label */
       if (day01 != null) api.setDay(day01);
       lenChip.hidden = n !== 1;   // 41C: "70 s" chip on S1 only
       return api;

@@ -176,7 +176,7 @@ ok(linesFor(null, 'opening', 1).length === 0 && linesFor(data, 'ledger', 99, 'lo
   bus.emit('eco:win', { season: 10 });
   ok(story.isPlaying && story.current.group === 'ending' && story.line.text === data.ending.win[0].text && last(ev['story:lesson']).id === 'planningForAGoal', 'eco:win → ending.win + lesson planningForAGoal');
   drain(bus, story);
-  ok(ev['story:line'].some((l) => l.text === data.ending.endlessUnlock[0].text) && ev['story:finale']?.[0].endless === true && ev['story:finale'][0].outcome === 'win', 'endlessUnlock lines → story:finale {endless:true}');
+  ok(ev['story:line'].some((l) => l.text === data.ending.endlessUnlock[0].text) && ev['story:finale']?.[0].endless === false && ev['story:finale'][0].outcome === 'win', 'farewell lines → story:finale {outcome:win} (S66-B: no endless)');
   ok(story.onWin() === false && story.onLose() === false, 'finale plays once');
   const L = mk(); L.story.update(0); drain(L.bus, L.story); L.bus.emit('eco:lose', { season: 4, reason: 'fog' }); drain(L.bus, L.story);
   ok(L.ev['story:finale'][0].endless === false && L.ev['story:finale'][0].reason === 'fog' && L.ev['story:line'].some((l) => l.text === data.ending.lose[2].text), 'eco:lose → ending.lose → story:finale {endless:false, reason}');
@@ -202,7 +202,7 @@ ok(linesFor(null, 'opening', 1).length === 0 && linesFor(data, 'ledger', 99, 'lo
   // mid lines are not expected here: the loop never ticks day01 past 0.5 (mid is covered above). Floor = 10 × (opening ≥ 2 (41A) + ledger 2).
   ok(ev['story:review'].length === 10 && lines >= 10 * (2 + 2) && !ev['story:line'].some((l) => !l.speaker || !l.text), `10 reviews · ${lines} lines total · all lines have speaker+text (variants ${variants.join('')})`);
   if (eco.state.ended === 'win') { story.onWin(); while (story.isPlaying) story.update(0.2); }
-  ok(eco.state.season === 11 && (eco.state.ended !== 'win' || ev['story:finale']?.[0].endless === true), `economy after S10: ended=${eco.state.ended} debt=${eco.state.debt} fog=${eco.state.fog01.toFixed(2)}`);
+  ok(eco.state.season === 11 && (eco.state.ended !== 'win' || ev['story:finale']?.[0].outcome === 'win'), `economy after S10: ended=${eco.state.ended} debt=${eco.state.debt} fog=${eco.state.fog01.toFixed(2)}`);
   story.destroy(); ok(!story.isPlaying && story.pending === 0, 'destroy()');
 }
 

@@ -72,7 +72,7 @@ export function mountSeasonInfo(root, opts = {}) {
     const n = st.season, L = lessonFor(n), left = (1 - st.day01) * st.seasonSeconds;
     const list = LESSON_ORDER.map((id, i) => { const x = lessons[id] || {}; const cls = i + 1 < n ? 'done' : (i + 1 === n ? 'now' : ''); return `<li class="${cls}"><b>${i + 1}</b> ${LESSON_ICON[id] || ''} ${esc(x.title || id)}</li>`; }).join('');
     card.innerHTML = iconize(`
-      <header class="ll-sc-head"><span class="ll-sc-big">${L.icon}</span><div><small>${st.endless || n > seasonsToWin ? `Endless · Season ${n}` : `Season ${n} of ${seasonsToWin}`}${L.chapter ? ' · ' + esc(L.chapter) : ''}</small><h2>${esc(L.title)}</h2></div><button class="ll-sc-x" type="button" aria-label="close">✕</button></header>
+      <header class="ll-sc-head"><span class="ll-sc-big">${L.icon}</span><div><small>Season ${Math.min(n, seasonsToWin)} of ${seasonsToWin}${L.chapter ? ' · ' + esc(L.chapter) : ''}</small><h2>${esc(L.title)}</h2></div><button class="ll-sc-x" type="button" aria-label="close">✕</button></header>
       <div class="ll-sc-body">
         <p class="ll-sc-lesson">${esc(L.text)}</p>
         ${L.tip ? `<p class="ll-sc-tip">💡 <b>Tip:</b> ${esc(L.tip)}</p>` : ''}
@@ -110,7 +110,7 @@ export function mountSeasonInfo(root, opts = {}) {
     banner(n = st.season) {
       st.season = n; hookPill(); renderTag();
       const L = lessonFor(n);
-      bTop.textContent = st.endless || n > seasonsToWin ? `Endless · Season ${n}` : `Season ${n} / ${seasonsToWin}${L.chapter ? ' · ' + L.chapter : ''}`;
+      bTop.textContent = `Season ${Math.min(n, seasonsToWin)} / ${seasonsToWin}${L.chapter ? ' · ' + L.chapter : ''}`;
       bTitle.innerHTML = iconize(`${L.icon} This season: <b>${esc(L.title)}</b>`);
       bTip.innerHTML = L.tip ? icon('bulb') + ' ' + esc(L.tip) : esc(L.text);
       banner.classList.remove('on'); void banner.offsetWidth; banner.classList.add('on');
@@ -136,7 +136,6 @@ export function mountSeasonInfo(root, opts = {}) {
     // P54 / S23: the Season banner / lesson card waits while a cinematic (arrival / victory) owns the screen
     bus.on('cine:begin', (p) => { if (p?.shot !== 'title') { st.cine = true; api.hideBanner(); } }),
     bus.on('cine:end', () => { st.cine = false; setTimeout(() => api._flush(), 300); }),
-    bus.on('game:endless', () => { st.endless = true; renderTag(); }),
     bus.on('game:title', () => { st.playing = false; api.hideBanner(); api.close(); tag.classList.remove('on'); }),
   ];
   hookPill(); renderTag();

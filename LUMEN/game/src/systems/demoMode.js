@@ -43,7 +43,7 @@ export const SHOTS = [];
 
 export function createDemoMode(lg, opts = {}) {
   const game = lg.game, bus = lg.bus || game.bus, ui = lg.ui || opts.ui || null;
-  const O = { seconds: 60, loop: true, hud: true, autoStart: false, startMode: 'endless', keys: true, cine: false, slowMo: true, ...opts };
+  const O = { seconds: 60, loop: true, hud: true, autoStart: false, startMode: 'story', keys: true, cine: false, slowMo: true, ...opts };
   const D = {
     version: DEMO_VERSION, lg, game, bus, ui, opts: O, shots: SHOTS, seq: null, state: { running: false, shotIndex: -1, elapsed: 0, shotElapsed: 0, loops: 0, actions: 0, hudHidden: false, cine: false, log: [] },
     rig: { target: new THREE.Vector3(), from: new THREE.Vector3(), to: new THREE.Vector3(), zoomFrom: 1, zoomTo: 1, prevFollow: null, prevZoom: 1, prevOffset: null, walk: null },

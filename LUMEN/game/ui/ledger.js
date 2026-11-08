@@ -168,7 +168,7 @@ export function mountLedger(root, opts = {}) {
       if (U) { unlockTitle.textContent = `${U.title || U.id}  [${U.key || ''}]`; unlockBody.textContent = U.lesson || ''; later(rowsEnd() + STAR_GAP * 3 + 60, () => unlockCard.classList.add('in')); }
       // button
       btn.classList.remove('in'); btn.disabled = true; later(rowsEnd() + STAR_GAP * 3 + 420, () => { btn.classList.add('in'); btn.disabled = false; });
-      btn.innerHTML = iconize(st.outcome === 'win' ? 'ENDLESS MODE ▸' : st.outcome === 'lose' ? 'TRY AGAIN ▸' : 'CONTINUE ▸');
+      btn.innerHTML = iconize(st.outcome === 'win' ? 'THE END ▸' : st.outcome === 'lose' ? 'TRY AGAIN ▸' : 'CONTINUE ▸');
       bus.emit('ui:ledger:open', { season, stars: starsN });
       return api;
     },

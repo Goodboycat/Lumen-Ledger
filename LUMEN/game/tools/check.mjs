@@ -1192,7 +1192,7 @@ if (doUI) {
     bus.emit('eco:season', { ...rep, season: 10, stars: 3, lessonId: 'scams' }); ledger.skip();
     if (q('.ll-lesson-title').textContent !== 'From 8B' || !/last season|Lighthouse waits/.test(q('.ll-ledger-sub').textContent) || ledger.el.querySelectorAll('.ll-ledger-stars i.on').length !== 3) throw new Error('story:lesson override / S10 sub: ' + q('.ll-lesson-title').textContent);
     bus.emit('eco:win', { season: 10 }); ledger.skip();
-    if (!ledger.el.classList.contains('win') || !/Lighthouse is lit/.test(q('.ll-ledger-title').textContent) || !/ENDLESS MODE/.test(q('.ll-ledger-continue').textContent)) throw new Error('win header ' + q('.ll-ledger-title').textContent);
+    if (!ledger.el.classList.contains('win') || !/Lighthouse is lit/.test(q('.ll-ledger-title').textContent) || !/THE END/.test(q('.ll-ledger-continue').textContent)) throw new Error('win header ' + q('.ll-ledger-title').textContent);
     ledger.continue(); if (ev['ui:continue'][1].outcome !== 'win') throw new Error('win outcome');
     bus.emit('eco:season', { ...rep, stars: 0, fog01: 0.92, debt: 540 }); bus.emit('eco:lose', { reason: 'fog' }); ledger.skip();
     if (!ledger.el.classList.contains('lose') || !/Fogged out/.test(q('.ll-ledger-title').textContent) || !/covered the Lighthouse/.test(q('.ll-ledger-sub').textContent) || ledger.el.querySelectorAll('.ll-ledger-stars i.on').length !== 0 || !/No stars/.test(q('.ll-ledger-startxt').textContent)) throw new Error('lose header');
@@ -1305,31 +1305,30 @@ if (doUI) {
   try {
     const { mountTitle, TITLE_MODES } = await import(pathToFileURL(resolve('ui/title.js')).href);
     let save = false, won = false;
-    // S24/S25: clean menu by default — tagline / sub / footer texts hidden, version in a corner tag; ENDLESS hidden until hasWon()
+    // S24: clean menu by default — tagline / sub / footer texts hidden, version in a corner tag; S66-B: no ENDLESS
     const clean = mountTitle(root, { bus, hasSave: () => save, hasWon: () => won, version: 'test' });
     if (clean.el.querySelector('.ll-title-tag').style.display !== 'none' || clean.el.querySelector('.ll-title-sub').style.display !== 'none') throw new Error('S24 tagline/sub must be hidden');
     if (/FinLit|Zoud/.test(clean.el.querySelector('.ll-title-foot').textContent) || !clean.el.querySelector('.ll-title-foot.corner .ll-title-ver')) throw new Error('S24 footer text ' + clean.el.querySelector('.ll-title-foot').textContent);
-    if (clean.buttons.endless.style.display !== 'none' || clean.unlocked.endless || clean.el.classList.contains('has-endless')) throw new Error('S25 ENDLESS must be hidden before a win');
-    const n0 = (ev['ui:start'] || []).length; pressKey('e'); clean.buttons.endless.click(); if ((ev['ui:start'] || []).length !== n0) throw new Error('S25 locked endless must not start');
-    pressKey('ArrowDown'); pressKey('ArrowDown'); pressKey('Enter'); if (ev['ui:start'][n0].mode !== 'story') throw new Error('S25 arrows skip the hidden ENDLESS: ' + ev['ui:start'][n0].mode);
-    clean.setUnlocked({ endless: true }); if (clean.buttons.endless.style.display === '' && clean.unlocked.endless && clean.el.classList.contains('has-endless')) { pressKey('e'); if (ev['ui:start'].at(-1).mode !== 'endless') throw new Error('S25 unlocked → E starts endless'); } else throw new Error('S25 setUnlocked');
-    clean.hide(); won = true; clean.show(); if (clean.buttons.endless.style.display !== '') throw new Error('S25 show() re-reads hasWon'); clean.hide(); won = false; clean.show(); if (clean.buttons.endless.style.display !== 'none') throw new Error('S25 show() re-locks'); clean.destroy();
+    if (clean.buttons.endless) throw new Error('S66-B ENDLESS button must not exist');
+    const n0 = (ev['ui:start'] || []).length; pressKey('e'); if ((ev['ui:start'] || []).length !== n0) throw new Error('S66-B E must not start anything'); clean.start('endless'); if ((ev['ui:start'] || []).length !== n0) throw new Error('S66-B start(endless) must be ignored');
+    pressKey('ArrowDown'); pressKey('Enter'); if (ev['ui:start'][n0].mode !== 'story') throw new Error('S66-B arrows + Enter → story: ' + ev['ui:start'][n0].mode);
+    clean.hide(); clean.show(); clean.destroy();
     delete ev['ui:start']; delete ev['ui:title:open']; delete ev['ui:title:close'];
     const title = mountTitle(root, { bus, hasSave: () => save, hasWon: () => true, chrome: true, version: 'test' });
     if (!title.isOpen || !ev['ui:title:open'] || !title.el.classList.contains('open') || !document.body.classList.contains('ll-title-open')) throw new Error('autoShow');
-    if (Object.keys(TITLE_MODES).length !== 3 || title.buttons.continue.style.display !== 'none' || title.el.querySelectorAll('.ll-title-ch').length !== 11) throw new Error('buttons/logo letters');
+    if (Object.keys(TITLE_MODES).length !== 2 || title.buttons.continue.style.display !== 'none' || title.el.querySelectorAll('.ll-title-ch').length !== 11) throw new Error('buttons/logo letters');
     if (!/Make\s*FinLit\s*Fun/.test(title.el.querySelector('.ll-title-tag').textContent)) throw new Error('chrome tagline ' + title.el.querySelector('.ll-title-tag').textContent);
     title.buttons.story.click(); if (!ev['ui:start'] || ev['ui:start'][0].mode !== 'story' || ev['ui:start'][0].hasSave !== false || !title.isOpen) throw new Error('PLAY → ui:start story (title stays open until hide())');
-    pressKey('e'); if (ev['ui:start'][1].mode !== 'endless') throw new Error('E → endless');
-    pressKey('c'); if (ev['ui:start'][2].mode !== 'story') throw new Error('C w/o save → story');
+    pressKey('e'); if (ev['ui:start'].length !== 1) throw new Error('E does nothing (S66-B)');
+    pressKey('c'); if (ev['ui:start'][1].mode !== 'story') throw new Error('C w/o save → story');
     title.hide(); if (title.isOpen || !ev['ui:title:close'] || ev['ui:title:close'][0].mode !== 'story' || document.body.classList.contains('ll-title-open')) throw new Error('hide');
     save = true; title.show(); if (title.buttons.continue.style.display === 'none' || !title.el.classList.contains('has-save')) throw new Error('CONTINUE shown with save');
-    pressKey('ArrowDown'); pressKey('Enter'); if (ev['ui:start'][3].mode !== 'continue') throw new Error('arrow → Enter picks CONTINUE: ' + ev['ui:start'][3].mode);
+    pressKey('ArrowDown'); pressKey('Enter'); if (ev['ui:start'][2].mode !== 'continue') throw new Error('arrow → Enter picks CONTINUE: ' + ev['ui:start'][2].mode);
     title.setBusy(true); const k = ev['ui:start'].length; title.buttons.story.click(); if (ev['ui:start'].length !== k || !title.buttons.story.disabled) throw new Error('busy blocks'); title.setBusy(false);
     title.hide(); bus.emit('eco:lose', { reason: 'fog' }); if (!title.isOpen || !title.el.classList.contains('replay') || !/Fog won/.test(title.el.querySelector('.ll-title-sub').textContent)) throw new Error('eco:lose re-show');
     title.destroy(); if (title.el.parentNode) throw new Error('destroy');
-    const quiet = mountTitle(root, { bus, autoShow: false, hideOnStart: true, hasWon: true }); if (quiet.isOpen) throw new Error('autoShow:false'); quiet.show(); quiet.start('endless'); if (quiet.isOpen) throw new Error('hideOnStart'); quiet.destroy();
-    console.log('  title: S24 clean menu (no tagline/sub/footer text, corner version) · S25 ENDLESS hidden until hasWon / setUnlocked (E + click + arrows blocked, show() re-reads) · chrome:true → autoShow → ui:title:open · 11 logo letters · "Make FinLit Fun" · CONTINUE hidden w/o save · PLAY → ui:start{story} (stays open) · E/C keys · hide → ui:title:close · save → CONTINUE + ↓ Enter · busy · eco:lose → replay sub · autoShow:false + hideOnStart · destroy  OK');
+    const quiet = mountTitle(root, { bus, autoShow: false, hideOnStart: true, hasWon: true }); if (quiet.isOpen) throw new Error('autoShow:false'); quiet.show(); quiet.start('story'); if (quiet.isOpen) throw new Error('hideOnStart'); quiet.destroy();
+    console.log('  title: S24 clean menu (no tagline/sub/footer text, corner version) · S66-B no ENDLESS button (E ignored) · chrome:true → autoShow → ui:title:open · 11 logo letters · "Make FinLit Fun" · CONTINUE hidden w/o save · PLAY → ui:start{story} (stays open) · E/C keys · hide → ui:title:close · save → CONTINUE + ↓ Enter · busy · eco:lose → replay sub · autoShow:false + hideOnStart · destroy  OK');
   } catch (err) { bad++; console.log('  title FAIL →', err.message); }
   try {
     const { mountPause, normalizeSettings, loadSettings, saveSettings, DEFAULT_SETTINGS } = await import(pathToFileURL(resolve('ui/pause.js')).href);
@@ -1677,7 +1676,7 @@ if (doGame) {
     const { mountUI } = await import(pathToFileURL(resolve('ui/index.js')).href);
     const { PROP_CATALOG } = await import(pathToFileURL(resolve('src/assets/props.js')).href);
     const { readFileSync } = await import('node:fs'); const storyData = JSON.parse(readFileSync(resolve('data/story.json'), 'utf8'));
-    const bus = new EventBus(); const ev = {}; for (const n of ['game:state', 'game:paused', 'game:start', 'story:line', 'story:review', 'ui:continue', 'eco:season', 'game:endless', 'game:title', 'game:allocated', 'game:withdrew', 'game:repaid', 'cust:price', 'build:placed', 'sandbox:ability', 'eco:scam']) bus.on(n, (p) => { (ev[n] ??= []).push(p); });
+    const bus = new EventBus(); const ev = {}; for (const n of ['game:state', 'game:paused', 'game:start', 'story:line', 'story:review', 'ui:continue', 'eco:season', 'game:won', 'game:endless', 'game:title', 'game:allocated', 'game:withdrew', 'game:repaid', 'cust:price', 'build:placed', 'sandbox:ability', 'eco:scam']) bus.on(n, (p) => { (ev[n] ??= []).push(p); });
     const game = { scene: new THREE.Scene(), bus, sequences: new SequencePlayer(), tweens, hitStop: new HitStop(), input: { pointerWorld: new THREE.Vector3(), hasPointerWorld: false, move: new THREE.Vector2(), joystick: new THREE.Vector2(), actions: {}, pressed: () => false, press() {} }, camera: { zoom: 1, shake() {} }, time: 0, timeScale: 1, paused: false, followTarget: null, systems: [], stats: { fps: 60, drawCalls: 0 }, add(s) { this.systems.push(s); return s; }, hitstop() {} };
     const root = document.body;
     const ui = mountUI(root, { bus, stats: () => game.stats, input: game.input, catalog: PROP_CATALOG, seasonsToWin: 10, touch: false, version: 'check' });
@@ -1690,7 +1689,7 @@ if (doGame) {
     const drain = () => { let n = 0; while (ui.dialogue.isOpen && n < 40) { if (ui.dialogue.line?.choices) ui.dialogue.choose(1); else { ui.dialogue.skip(); ui.dialogue.advance(); } step(); n++; } return n; };
     // 1. title → PLAY
     if (lg.state !== 'title' || !ui.title.isOpen || !game.paused) throw new Error('title: state ' + lg.state + ' open ' + ui.title.isOpen + ' paused ' + game.paused);
-    if (GAME_STATES.length !== 6 || !GAME_STATES.includes('pier')) throw new Error('GAME_STATES');
+    if (GAME_STATES.length !== 5 || GAME_STATES.includes('endless') || !GAME_STATES.includes('pier')) throw new Error('GAME_STATES');
     run(1); if (lg.sb) throw new Error('sandbox before PLAY');
     ui.title.buttons.story.click();
     if (lg.state !== 'playing' || !lg.sb || !lg.story || ui.title.isOpen) throw new Error('PLAY → ' + lg.state);
@@ -1793,19 +1792,17 @@ if (doGame) {
     run(1); if (!lg.ability('bubbleShield')) throw new Error(`ability while playing refused: hero ${lg.sb.hero.state}/${lg.sb.hero.currentMove?.name} cd ${JSON.stringify(lg.sb.cooldown)}`); run(2); if (!ev['sandbox:ability'] || !(lg.sb.shield.until > game.time)) throw new Error('ability did not resolve (sandbox:ability / shield)');
     console.log(`  3. ui:build select/rotate/confirm → stall ${placed0}→${lg.sb.build.placed.size}, spark ${spark0}→${eco.state.spark + moved} · ui:jar:apply 40/30/20/10 → moved ${moved} into save/invest/protect · Esc → pause (modal, ability refused) → Esc resume → ability fired  OK`);
     // 4. WIN: fake the last season being over (season 10, fog 0, debt 0) → endSeason → eco:win → 'ending' → 8B ending lines → story:finale
-    //    → ledger outcome 'win' (ENDLESS MODE ▸) → click → 'endless': island kept, winRequiresSeasons off, scams refused, clock ticking
+    //    → ledger outcome 'win' (THE END ▸) → click → title (S66-B: no Endless)
     run(2); eco.state.season = 10; eco.state.day01 = 0.99; eco.state.fog01 = 0; eco.state.debt = 0; eco.state.spark = Math.max(eco.state.spark, 50);
     const r10 = eco.endSeason(); if (!r10 || eco.state.ended !== 'win') throw new Error('forced win: ended=' + eco.state.ended + ' fog ' + eco.state.fog01 + ' debt ' + eco.state.debt);
     if (lg.state !== 'ending' || lg.pendingOutcome !== 'win') throw new Error('eco:win → state ' + lg.state);
     if (ui.ledger.isOpen) throw new Error('ledger opened before the ending lines');
     step(); if (!ui.dialogue.isOpen) throw new Error('ending lines did not start'); const dEnd = drain();
-    if (!ui.ledger.isOpen || ui.ledger.el.querySelector('.ll-ledger-continue').textContent.indexOf('ENDLESS') < 0 || !/Lighthouse/.test(ui.ledger.el.textContent)) throw new Error('win ledger: open ' + ui.ledger.isOpen + ' btn ' + ui.ledger.el.querySelector('.ll-ledger-continue').textContent);
-    const mWin = meshes(); ui.ledger.skip(); ui.ledger.continue();
-    if (lg.state !== 'endless' || lg.mode !== 'endless' || !ev['game:endless'] || eco.config.winRequiresSeasons !== false || eco.state.ended) throw new Error(`ENDLESS → state ${lg.state} mode ${lg.mode} wrs ${eco.config.winRequiresSeasons} ended ${eco.state.ended}`);
-    if (ui.ledger.isOpen || game.paused || meshes() !== mWin || !lg.sb) throw new Error('endless: island not kept / still paused');
-    const d0 = eco.state.day01; run(3); if (!(eco.state.day01 > d0)) throw new Error('endless clock not running'); drain();
-    eco.offerScam('zeroInterestLoan'); lg.sb.updateScheduler(); if (eco.pendingOffer) throw new Error('endless: scam not auto-refused');
-    console.log(`  4. forced S10 win → eco:win → ending · ${dEnd} ending lines (Enter ×${dEnd}) → story:finale → ledger "Lighthouse is lit" ENDLESS MODE ▸ → endless (mode endless, win gate off, ${mWin} meshes kept, clock running, Too-Good Deal auto-refused)  OK`);
+    if (!ui.ledger.isOpen || ui.ledger.el.querySelector('.ll-ledger-continue').textContent.indexOf('THE END') < 0 || !/Lighthouse/.test(ui.ledger.el.textContent)) throw new Error('win ledger: open ' + ui.ledger.isOpen + ' btn ' + ui.ledger.el.querySelector('.ll-ledger-continue').textContent);
+    ui.ledger.skip(); ui.ledger.continue();
+    if (lg.state !== 'title' || lg.sb || !ev['game:won'] || ev['game:endless']) throw new Error(`S66-B THE END → state ${lg.state} sb ${!!lg.sb} won ${!!ev['game:won']} endless ${!!ev['game:endless']}`);
+    if (lg.save.has()) throw new Error('S66-B a finished run must not leave a CONTINUE save');
+    console.log(`  4. forced S10 win → eco:win → ending · ${dEnd} ending lines (Enter ×${dEnd}) → story:finale → ledger "Lighthouse is lit" THE END ▸ → title (S66-B: no Endless, save cleared, sandbox torn down)  OK`);
     // 5. LOSE on a fresh run: title via pause menu → PLAY → fog 1.0 → endSeason → eco:lose → ending lines → ledger "Fogged out" TRY AGAIN ▸ → title,
     //    sandbox torn down (scene back to the UI-less mesh count) → PLAY again → fresh season 1 · ui:restart → same mode from S1
     bus.emit('ui:title'); if (lg.state !== 'title' || lg.sb || !ui.title.isOpen || !game.paused || !ev['game:title']) throw new Error('ui:title → ' + lg.state);
@@ -1950,18 +1947,18 @@ if (doSave) {
     if (B.lg.state !== 'title' || B.ui.title.buttons.continue.style.display !== 'none') throw new Error('after lose: ' + B.lg.state + ' continue shown ' + B.ui.title.buttons.continue.style.display);
     B.lg.destroy(); B.ui.destroy();
     console.log(`  4. forced fog loss → eco:lose → save cleared → TRY AGAIN → title without CONTINUE · destroy clean  OK`);
-    // 5. S25: ENDLESS is hidden on the title until the first story win; the win writes lumen.unlocks (survives a later loss / save clear)
-    { if (Save.hasWon(storage)) throw new Error('S25: unlocked before any win'); Save.clearUnlocks(storage);
-      const W = rig(); if (W.ui.title.buttons.endless.style.display !== 'none') throw new Error('S25: ENDLESS visible on a fresh title');
+    // 5. S66-B: Endless is gone. A forced story win must not unlock anything, the title has no ENDLESS button, an old 'endless' save resumes as a normal story run.
+    { Save.clearUnlocks(storage);
+      const W = rig(); if (W.ui.title.buttons.endless) throw new Error('S66-B: ENDLESS button exists');
       W.bus.emit('ui:start', { mode: 'story' }); W.step(); W.drain(); const ecoW = W.lg.sb.eco;
       ecoW.state.debt = 0; ecoW.state.fog01 = 0; ecoW.state.season = ecoW.config.seasonsToWin; ecoW.state.day01 = 0.99; ecoW.endSeason();
-      if (ecoW.state.ended !== 'win') throw new Error('S25: forced win → ' + ecoW.state.ended);
-      if (!Save.hasWon(storage) || !W.lg.save.hasWon() || W.ui.title.buttons.endless.style.display !== '') throw new Error('S25: win did not unlock endless (' + Save.hasWon(storage) + ' / ' + W.ui.title.buttons.endless.style.display + ')');
+      if (ecoW.state.ended !== 'win') throw new Error('S66-B: forced win → ' + ecoW.state.ended);
+      if (Save.hasWon(storage) && Save.unlocks(storage).endless) throw new Error('S66-B: a win must not write an endless unlock');
       W.lg.destroy(); W.ui.destroy();
-      Save.clear(storage); const W2 = rig(); if (W2.ui.title.buttons.endless.style.display !== '' || !W2.ui.title.el.classList.contains('has-endless')) throw new Error('S25: unlock did not persist across a fresh title');
-      W2.ui.title.start('endless'); W2.step(); if (W2.lg.mode !== 'endless') throw new Error('S25: unlocked ENDLESS did not start: ' + W2.lg.mode);
+      W.bus.emit?.('noop');
+      const W2 = rig(); W2.bus.emit('ui:start', { mode: 'endless' }); W2.step(); if (W2.lg.mode !== 'story') throw new Error('S66-B: ui:start endless must start the story, got ' + W2.lg.mode);
       W2.lg.destroy(); W2.ui.destroy(); Save.clearUnlocks(storage);
-      console.log(`  5. S25 ENDLESS hidden on a fresh title → forced story win → lumen.unlocks{endless} → button shown · persists after save clear → ENDLESS starts  OK`); }
+      console.log(`  5. S66-B no ENDLESS button · a forced win writes no unlock · ui:start{endless} falls back to the story  OK`); }
     if (TUTORIAL_GATES.length !== 5) throw new Error('TUTORIAL_GATES');
   } catch (err) { bad++; console.log('  save FAIL →', err.message, process.env.STACK ? err.stack : ''); }
 }

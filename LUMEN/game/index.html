@@ -93,7 +93,6 @@ try {
     // S41/15-0: no fps·calls pill in the HUD (playtest 1:33 "what is calls?") — ?debug / F3 keep the tiny bottom-left line
     bus: game.bus, stats: params.has('debug') ? () => game.stats : null, input: game.input, catalog: PROP_CATALOG, seasonsToWin: 10,
     hasSave: () => Save.hasSave(),                                                        // 10D: localStorage slot → CONTINUE on the title (reload resumes)
-    hasWon: () => Save.hasWon(),                                                          // S25: ∞ ENDLESS appears only after the first story win (lumen.unlocks)
     onOutline: setOutlineThickness, touch: true, storyData,
     jarsSummary: true,                                                                   // 42B: jars are places — read-only summary. 46C: the ?sliders=1 legacy panel flag is gone (mountJars({summary:false}) remains for tests only)
     version: `${GAME_VERSION} · jam build`,
@@ -155,8 +154,8 @@ try {
     });
   }
 
-  // ?autoplay (smoke / trailer): skip the title. ?endless: start in Endless.
-  if (params.has('autoplay') || params.has('endless')) setTimeout(() => game.bus.emit('ui:start', { mode: params.has('endless') ? 'endless' : 'story' }), 300);
+  // ?autoplay (smoke / trailer): skip the title. (S66-B: ?endless was removed with Endless mode.)
+  if (params.has('autoplay')) setTimeout(() => game.bus.emit('ui:start', { mode: 'story' }), 300);
   // S18 smoke: ?cinelog prints cine:begin / cine:end / cine:showcase to the console (tools smoke + PlaywrightConsoleCapture read it)
   if (params.has('cinelog')) for (const n of ['cine:showcase', 'cine:begin', 'cine:end', 'cine:lamp', 'game:start']) game.bus.on(n, (p) => console.log('[cine]', n, JSON.stringify(p || {}), 'active=' + (lg.cine?.active ?? 'none'), 'meshes=' + game.scene.children.length));
   game.start();
