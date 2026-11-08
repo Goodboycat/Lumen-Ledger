@@ -13,19 +13,19 @@ const v3 = (extra = {}) => ({
   story: null, helpers: [], jars: null, ...extra,
 });
 
-test('constants: SAVE_VERSION 4, v1–v4 accepted, 4-row legacy layout', () => {
+test('constants: SAVE_VERSION 4, v1–v4 accepted, 3-row legacy layout (S66-A: no Spend jar)', () => {
   assert.equal(SAVE_VERSION, 4);
   assert.deepEqual(SAVE_VERSIONS_OK, [1, 2, 3, 4]);
-  assert.deepEqual(LEGACY_JAR_ROW.map((r) => r[0]), ['jar_spend', 'jar_save', 'jar_invest', 'jar_protect']);
+  assert.deepEqual(LEGACY_JAR_ROW.map((r) => r[0]), ['jar_save', 'jar_invest', 'jar_protect']);
   assert.equal(JAR_SNAP_TRIES, 6);
 });
 
-test('v3 → parseSnapshot synthesizes 4 jar_* build entries; balances equal; stall kept', () => {
+test('v3 → parseSnapshot synthesizes 3 jar_* build entries; balances equal; stall kept', () => {
   const d = parseSnapshot(JSON.stringify(v3()));
   assert.ok(d, 'v3 parses');
   const jars = d.build.filter((e) => e.id.startsWith('jar_'));
-  assert.equal(jars.length, 4);
-  assert.deepEqual(jars.map((e) => [e.id, e.cx, e.cz]), [['jar_spend', -8, 3], ['jar_save', -7, 3], ['jar_invest', -6, 3], ['jar_protect', -5, 3]]);
+  assert.equal(jars.length, 3);
+  assert.deepEqual(jars.map((e) => [e.id, e.cx, e.cz]), [['jar_save', -7, 3], ['jar_invest', -6, 3], ['jar_protect', -5, 3]]);
   assert.ok(jars.every((e) => e.cost === 0 && e.level === 1 && e.legacyJar === true));
   assert.equal(d.build.filter((e) => e.id === 'stall_fruit').length, 1, 'stall entry kept');
   const eco = JSON.parse(d.eco);
@@ -33,9 +33,9 @@ test('v3 → parseSnapshot synthesizes 4 jar_* build entries; balances equal; st
   assert.equal(d.jarsMigrated, true);
 });
 
-test('v3 with no build[] at all still gets the 4 jars', () => {
+test('v3 with no build[] at all still gets the 3 jars', () => {
   const d = parseSnapshot(JSON.stringify(v3({ build: undefined })));
-  assert.ok(d); assert.equal(d.build.filter((e) => e.id.startsWith('jar_')).length, 4);
+  assert.ok(d); assert.equal(d.build.filter((e) => e.id.startsWith('jar_')).length, 3);
 });
 
 test('v4 save is left alone: no synthesized jars, no duplicate when jars already present', () => {
@@ -49,16 +49,15 @@ test('v4 save is left alone: no synthesized jars, no duplicate when jars already
 });
 
 test('snapJarsToLand: water cells move +1 z until land (≤ 6), land cells stay, non-jars untouched', () => {
-  const land = new Set(['-8,5', '-7,3', '-6,9', '2,2']);                      // spend needs +2, save is fine, invest needs +6, protect never (south)
+  const land = new Set(['-8,5', '-7,3', '-6,9', '2,2']);                      // save is fine, invest needs +6, protect never (south)
   const isLand = (x, z) => land.has(`${x},${z}`);
   const d = parseSnapshot(JSON.stringify(v3()));
   const moved = snapJarsToLand(d.build, isLand);
   const at = (id) => { const e = d.build.find((e) => e.id === id); return [e.cx, e.cz]; };
-  assert.deepEqual(at('jar_spend'), [-8, 5]);
   assert.deepEqual(at('jar_save'), [-7, 3]);
   assert.deepEqual(at('jar_invest'), [-6, 9]);
   assert.deepEqual(at('stall_fruit'), [2, 2], 'stall never moves');
-  assert.ok(moved >= 2);
+  assert.ok(moved >= 1);   // S66-A: only invest moves now (no spend jar)
   // protect: nothing south within 6 → tries north, then east; with nothing anywhere it stays where it was (build.load will then drop/deny it, never float a jar on purpose)
   assert.deepEqual(at('jar_protect'), [-5, 3]);
 });
@@ -74,12 +73,12 @@ test('snapJarsToLand falls back north, then east; idempotent', () => {
   assert.equal(snapJarsToLand(null, east), 0); assert.equal(snapJarsToLand(b2, null), 0);
 });
 
-test('all 4 legacy jars snapped onto land when the row is half water (the real world shape: z=3 is water at x ≤ -7)', () => {
+test('all 3 legacy jars snapped onto land when the row is half water (the real world shape: z=3 is water at x ≤ -7)', () => {
   const isLand = (x, z) => !(z === 3 && x <= -7) && z <= 4;                   // row 3 is water for x ≤ -7, row 4 is land
   const d = parseSnapshot(JSON.stringify(v3()));
   snapJarsToLand(d.build, isLand);
   for (const e of d.build.filter((e) => e.id.startsWith('jar_'))) assert.ok(isLand(e.cx, e.cz), `${e.id} on land at ${e.cx},${e.cz}`);
-  assert.deepEqual(d.build.find((e) => e.id === 'jar_spend').cz, 4);
+  assert.deepEqual(d.build.find((e) => e.id === 'jar_save').cz, 4);
   assert.deepEqual(d.build.find((e) => e.id === 'jar_invest').cz, 3);
 });
 
@@ -115,4 +114,13 @@ test('T1.5 migrateJarsUnlocked tolerates garbage (non-array / non-string entries
   assert.deepEqual(migrateJarsUnlocked({ jarsUnlocked: 'save' }), ['spend']);
   assert.deepEqual(migrateJarsUnlocked({ jarsUnlocked: ['save', 3] }), ['spend']);
   assert.deepEqual(migrateJarsUnlocked(null), ['spend']);
+});
+
+// S66-A: a save written before S66 may carry a jar_spend prop; it is dropped on parse, its Spark balance (eco.state.jars.spend) is untouched.
+test('S66-A old save with a jar_spend build entry: entry dropped, balance kept, other jars kept', () => {
+  const own = [{ id: 'jar_spend', cx: -8, cz: 3, rot: 0, level: 1, cost: 0 }, { id: 'jar_save', cx: -7, cz: 3, rot: 0, level: 1, cost: 0 }];
+  const d = parseSnapshot(JSON.stringify(v3({ v: 4, build: own })));
+  assert.ok(d); assert.deepEqual(d.build.map((e) => e.id), ['jar_save']);
+  assert.deepEqual(JSON.parse(d.eco).state.jars, { spend: 0, save: 40, invest: 20, protect: 10 });
+  assert.ok(d.jarsUnlocked.includes('spend'), 'spend still counts as unlocked (the pouch)');
 });

@@ -21,7 +21,7 @@ import { bus as defaultBus } from '../src/core/EventBus.js';
 
 export const JAR_ORDER = ['spend', 'save', 'invest', 'protect'];
 export const JAR_INFO = {
-  spend:   { name: 'Spend',   hint: 'needs & wants — stalls, upkeep' },
+  spend:   { name: 'Spend',   hint: 'your pouch - needs & wants, stalls, upkeep' },
   save:    { name: 'Save',    hint: 'earns +5 % / season · pushes the Fog back at 150' },
   invest:  { name: 'Invest',  hint: '8 % ± 4 % / season · can dip' },
   protect: { name: 'Protect', hint: 'insurance — absorbs shocks' },
@@ -95,7 +95,7 @@ export function mountJars(root, opts = {}) {
       row.append(wd); row.classList.add('has-wd');
     }
     row.title = JAR_INFO[k].hint;
-    if (opts.placed !== 'all') row.hidden = true;   // 48E: a row appears when its jar is BUILT (api.show / build:placed jar_*); opts.placed:'all' = legacy/tests
+    if (opts.placed !== 'all' && k !== 'spend') row.hidden = true;   // S66-A: the Spend row never hides (it is the pouch). 48E: a row appears when its jar is BUILT (api.show / build:placed jar_*); opts.placed:'all' = legacy/tests
     panel.append(row);
     rows[k] = { row, icon, liquid, input, pctEl: pctEl.firstChild, bal: name.querySelector('.ll-jar-bal') };
     input.addEventListener('input', () => { api.setPct({ [k]: +input.value }, 'drag'); });
@@ -107,9 +107,9 @@ export function mountJars(root, opts = {}) {
   const applyBtn = el('button', 'll-btn', 'APPLY'); applyBtn.disabled = true;
   // S03: AUTO = "pay yourself first" — every sale is split by the sliders the moment it lands (Game.js listens to eco:spark reason 'sale')
   const autoBtn = el('button', 'll-btn auto', '⚡ AUTO'); autoBtn.type = 'button'; autoBtn.setAttribute('aria-pressed', 'false'); autoBtn.title = 'Pay yourself first: split every sale into the jars automatically';
-  if (summary) { const chip = el('span', 'll-jars-chip', 'Owl suggests 40/30/20/10'); chip.title = 'spend / save / invest / protect — carry Spark to the jars by the cottage and press E'; foot.append(chip); }
+  if (summary) { const chip = el('span', 'll-jars-chip', 'Owl suggests 40/30/20/10'); chip.title = 'spend / save / invest / protect - your pouch is Spend; tap a jar to put Spark in'; foot.append(chip); }
   else foot.append(presetBtn, applyBtn, autoBtn);
-  const hint = el('div', 'll-jars-hint', summary ? 'walk to a jar by the cottage · E puts 10 ✦ in · hold E takes 10 out' : 'drag a jar — the others rebalance');
+  const hint = el('div', 'll-jars-hint', summary ? 'tap a jar to put 10 ✦ in · Spend is your pouch' : 'drag a jar — the others rebalance');
   // B01: the debt row — the ONLY player-facing way to pay down Baron Gilt's principal (interest compounds every season)
   const debtRow = el('div', 'll-jars-debt');
   const debtLab = el('span', 'll-jars-debt-lab', '🎩 Debt'); const debtVal = el('b', 'll-jars-debt-val', '0 ✦'); debtLab.append(debtVal);
@@ -188,12 +188,14 @@ export function mountJars(root, opts = {}) {
     show(k) { if (rows[k]) { rows[k].row.hidden = false; retrigger(rows[k].icon, 'pop'); } syncEmpty(); return api; },
     hide(k) { if (rows[k]) rows[k].row.hidden = true; syncEmpty(); return api; },
     shown() { return JAR_ORDER.filter((k) => rows[k] && !rows[k].row.hidden); },
+    /** S66-A: jars you can build (Spend is the pouch). */
+    buildable() { return JAR_ORDER.filter((k) => k !== 'spend'); },
     destroy() { offs.forEach((f) => f()); panel.removeEventListener?.('scroll', onScroll); panel.remove(); },
   };
   // 48E mobile scroll affordance: jars.css (max-width 700px) fades the bottom + shows a 6 px chevron; ONE scroll listener hides it once scrolled.
   const onScroll = () => panel.classList.toggle('scrolled', (panel.scrollTop || 0) > 0);
   panel.addEventListener?.('scroll', onScroll, { passive: true });
-  const syncEmpty = () => { const none = !JAR_ORDER.some((k) => rows[k] && !rows[k].row.hidden); panel.classList.toggle('empty', none); panel.hidden = none && opts.placed !== 'all'; };
+  const syncEmpty = () => { const none = !JAR_ORDER.some((k) => k !== 'spend' && rows[k] && !rows[k].row.hidden); /* S66-A: Spend alone does not open the panel */ panel.classList.toggle('empty', none); panel.hidden = none && opts.placed !== 'all'; };
   const jarKey = (p) => { const id = String(p?.id || p?.entry?.id || ''); return id.startsWith('jar_') ? id.slice(4) : null; };
   const offs = [
     bus.on('build:placed', (p) => { const k = jarKey(p); if (k) api.show(k); }),

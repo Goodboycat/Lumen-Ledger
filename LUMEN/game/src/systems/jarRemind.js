@@ -14,7 +14,7 @@
 // Output: bus `curious:ping {id:'jar:add', hint:'jar:add', text}` — ui/tutor.js answers it with the card `jar:add` (data/tutor.json), showing `text`
 //   (names the missing jars). No hero position → the cloud hand points at the Build button / Jars tab (card `point`).
 export const JAR_NAMES = { spend: 'Spend', save: 'Save', protect: 'Protect', invest: 'Invest' };
-const ORDER = ['spend', 'save', 'protect', 'invest'];
+const ORDER = ['save', 'protect', 'invest'];   // S66-A: Spend is the pouch, never a jar to place
 
 /** PURE: the one-line reminder (≤ 60 chars) naming the missing jars. `names` = jar keys, in any order. */
 export function remindText(names) {

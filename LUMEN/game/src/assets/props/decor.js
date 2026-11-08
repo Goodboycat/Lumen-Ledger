@@ -417,7 +417,7 @@ export function makeWaterTrough(opts = {}) {
 const entry = (make, name, footprint = [1, 1], cost = 0) => ({ make, footprint, category: 'decor', name, cost, tris: 0 });
 export const DECOR_PROPS = {
   // 48E: jars are BUILDABLES (category 'jar' = first tab of the build menu, cost 0, one each — build.owned() denies the second)
-  jar_spend:       { ...entry(makeJarSpend, 'Spend Jar', [1, 1], 0), category: 'jar', kind: 'jar', jar: 'spend' },
+  // S66-A: no Spend jar prop - Spend IS the pouch Pip carries. The panel row 'Spend' (ui/jars.js) shows it. makeJarSpend stays exported for old demos only.
   jar_save:        { ...entry(makeJarSave, 'Save Jar', [1, 1], 0), category: 'jar', kind: 'jar', jar: 'save' },
   jar_invest:      { ...entry(makeJarInvest, 'Invest Jar', [1, 1], 0), category: 'jar', kind: 'jar', jar: 'invest' },
   jar_protect:     { ...entry(makeJarProtect, 'Protect Jar', [1, 1], 0), category: 'jar', kind: 'jar', jar: 'protect' },
@@ -439,5 +439,5 @@ export const DECOR_PROPS = {
   water_trough:    entry(makeWaterTrough, 'Water Trough', [2, 1], 8),
 };
 export const DECOR_IDS = Object.keys(DECOR_PROPS);
-export const JAR_IDS = JAR_KINDS.map((k) => 'jar_' + k);
+export const JAR_IDS = JAR_KINDS.filter((k) => k !== 'spend').map((k) => 'jar_' + k);   // S66-A: 3 buildable jars (save / invest / protect)
 export const LANTERN_IDS = ['lantern_post', 'lantern_hanging'];

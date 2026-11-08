@@ -18,7 +18,7 @@ export const SAVE_VERSION = 4;                // 41D: v2 adds abilities[] + star
                                               //      parseSnapshot synthesizes the 4 jar_* build entries (balances untouched); applySnapshot snaps them onto land via snapJarsToLand.
 export const SAVE_VERSIONS_OK = [1, 2, 3, 4];
 /** 48E: where the pre-48E world placed its 4 jars (Game.js `place(makeProp(id,{fill:.25}), -8+i, 3)` — the row that hung one jar over water). */
-export const LEGACY_JAR_ROW = [['jar_spend', -8, 3], ['jar_save', -7, 3], ['jar_invest', -6, 3], ['jar_protect', -5, 3]];
+export const LEGACY_JAR_ROW = [['jar_save', -7, 3], ['jar_invest', -6, 3], ['jar_protect', -5, 3]];   // S66-A: no jar_spend any more (Spend = the pouch)
 export const JAR_SNAP_TRIES = 6;
 /** 48E migration half 1 (no world needed): a < v4 snapshot gets 4 jar_* build entries at the legacy row unless it already carries jars. */
 export function synthesizeLegacyJars(d) {
@@ -131,6 +131,7 @@ export function parseSnapshot(raw) {
   if (!d.tutorCounts || typeof d.tutorCounts !== 'object' || Array.isArray(d.tutorCounts)) d.tutorCounts = {};   // T2: tolerant — old saves / bad map → {} (tutorSeen ids then count once each in ui/tutor.js merge)
   else for (const k of Object.keys(d.tutorCounts)) { const v = Math.floor(+d.tutorCounts[k]); if (!Number.isFinite(v) || v < 1) delete d.tutorCounts[k]; else d.tutorCounts[k] = Math.min(v, 99); }
   if (d.scamJournal != null && (typeof d.scamJournal !== 'object' || Array.isArray(d.scamJournal))) d.scamJournal = undefined;   // T5: tolerant — a bad journal never blocks a save (restore() → empty)
+  if (Array.isArray(d.build)) d.build = d.build.filter((e) => e.id !== 'jar_spend');   // S66-A: old saves had a Spend jar prop; it is gone (its balance, if any, stays in eco.state.jars.spend and still counts as Spend)
   if (Math.floor(+d.v) < 4) synthesizeLegacyJars(d);
   // T1-C: jarsUnlocked is an additive v4 field (no version bump). Missing / malformed → legacy migration: Spend + every jar the player already owns (build[] jar_*,\n  //   incl. the 4 synthesized by synthesizeLegacyJars) + progress (season ≥ 2 → Save + Protect, ≥ 3 → Invest) so a mid-run profile never loses a jar it was using\n  //   and never waits for a one-shot rule that already fired in the past.\n
   d.jarsUnlocked = migrateJarsUnlocked(d);                       // 48E migrate v1–v3 → 4 jar_* build entries (land-snap happens in applySnapshot)

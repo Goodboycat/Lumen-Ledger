@@ -28,7 +28,7 @@ export const ICONS = {
   rock_small: '🪨', rock_medium: '🪨', rock_large: '⛰️', rock_flat: '🪨', rock_spire: '🗻', rock_cluster: '🪨', rock_crystal: '💎', rock_arch: '🌉', rock_mossy: '🪨', rock_cliff: '🧱',
   bush_round: '🌿', bush_berry: '🫐', bush_hedge: '🌿', bush_flower: '💐', bush_fern: '🌿', bush_tallgrass: '🌾',
   lighthouse: '🗼', cottage: '🏠', pier: '⚓', bridge: '🌉', fog_tower: '🏯', cliff_wall: '🧱', waterfall: '💧',
-  jar_spend: '🫙', jar_save: '🫙', jar_invest: '🫙', jar_protect: '🫙', fence_post: '🪵', fence_rail: '🪵', fence_gate: '🚪', crate: '📦', barrel: '🛢️',
+  jar_save: '🫙', jar_invest: '🫙', jar_protect: '🫙', fence_post: '🪵', fence_rail: '🪵', fence_gate: '🚪', crate: '📦', barrel: '🛢️',
   lantern_post: '🏮', lantern_hanging: '🏮', sign_arrow: '➡️', sign_board: '🪧', sign_hanging: '🪧', bench: '🪑', path_dirt: '🟫', path_stone: '⬜', banner_string: '🎏', flower_pot: '🪴', water_trough: '🛁',
 };
 export const CATEGORY_LABELS = { jar: 'Jars', stall: 'Stalls', decor: 'Decor', nature: 'Nature', landmark: 'Landmarks', crew: 'Crew & Land' };

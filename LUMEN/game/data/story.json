@@ -51,7 +51,7 @@
       "season": 1,
       "title": "Budgeting",
       "lesson": "A budget is a plan for your Spark before you spend it. Every coin that comes in gets a jar before it gets a wish.",
-      "tip": "Fill the four jars first. Spend only what sits in Spend."
+      "tip": "Fill Save, Invest and Protect first. Spend only what is left in your pouch."
     },
     "needsVsWants": {
       "id": "needsVsWants",
@@ -1738,13 +1738,13 @@
       "id": "t_firstpay",
       "trigger": "cust:paid",
       "icon": "✨",
-      "text": "First sale! Every coin lands in your pouch — that is your Spend jar. Press APPLY on the jars to split it into Save, Invest and Protect."
+      "text": "First sale! Every coin lands in your pouch — that is your Spend money. Walk some to the Save jar and tap it."
     },
     {
       "id": "t_jars",
       "trigger": "ui:jar:apply",
       "icon": "🏺",
-      "text": "Jars set. Save pays 5 %/season, Invest wobbles 8±4 %, Protect absorbs shocks, Spend buys things."
+      "text": "Jars set. Save pays 5 %/season, Invest wobbles 8±4 %, Protect absorbs shocks, your pouch buys things."
     },
     {
       "id": "t_fog",

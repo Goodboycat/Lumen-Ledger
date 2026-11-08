@@ -121,7 +121,7 @@ function buildSections(ctx) {
   row(crisisNa ? naBtn('trigger crisis', crisisNa) : btn('trigger crisis', () => call('crisis', evSel.value)));
 
   h4('jars & crew');
-  const JAR_KEYS = ['spend', 'save', 'protect', 'invest'];
+  const JAR_KEYS = ['save', 'protect', 'invest'];   // S66-A: Spend is the pouch, not a jar
   const jarSel = sel(JAR_KEYS);
   const jarNa = naOf('unlockJar', 'save');
   row(jarSel, jarNa ? naBtn('unlock jar', jarNa) : btn('unlock jar', () => call('unlockJar', jarSel.value)));
