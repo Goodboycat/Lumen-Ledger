@@ -167,6 +167,8 @@ export class Economy {
       reputation: 0.5,
       stalls: 0,                         // count of built stalls (BuildSystem calls addStall/removeStall) → upkeep
       stallUpkeepExtra: 0,               // BUGFIX C01: extra upkeep from upgraded stalls (L2 +3, L3 +6) — set by the integrator from BuildSystem
+      boons: [],                         // S67: Boon Draft picks [{id, since, left|null, lock, fx}] (fx copied in, so a save needs no lookup table)
+      boonFree: 0,                       // S67: bad events still to be absorbed for free (Emergency Pouch / Overdraft Cover)
       owned: [],                         // BUGFIX C03: ids of one-time upgrades bought (helpers, zones) — saved with the state
       lighthouseLit: false,
       storyWon: false,                   // BUGFIX B19: the story victory fires ONCE; Endless never re-triggers it
@@ -224,7 +226,7 @@ export class Economy {
     price = Math.max(0, +price || 0);
     const mood = this.mood(glimmerType);
     // BUGFIX B10/C01: opts.level (stall level 1–3) applies the stallL2/L3 baseMul; owned helpers apply baseMulAll (Spark Bee)
-    const base = info.base * (opts.baseMul || 1) * this.levelMul(opts.level) * this.mod('baseMulAll', 1);
+    const base = info.base * (opts.baseMul || 1) * this.levelMul(opts.level) * this.mod('baseMulAll', 1) * this.boonGrowMul();
     const q = demand(price, info.fair, base, mood, g.tolerance);
     // deterministic rounding: integer part + Bernoulli on the fraction
     let sold = Math.floor(q); if (this.rng() < q - sold) sold++;
@@ -234,8 +236,8 @@ export class Economy {
     const happy = sold > 0 && ratio <= 1.1;
     // reputation drift
     const c = this.config;
-    if (sold > 0 && ratio <= 1.1) this.state.reputation = clamp(this.state.reputation + c.repGainFair, 0, 1);
-    else if (ratio >= 1.4 || sold === 0) this.state.reputation = clamp(this.state.reputation - c.repLossGouge, 0, 1);
+    if (sold > 0 && ratio <= 1.1) this.state.reputation = clamp(this.state.reputation + c.repGainFair * this.mod('repGainMul', 1), 0, 1);
+    else if (ratio >= 1.4 || sold === 0) this.state.reputation = clamp(this.state.reputation - c.repLossGouge * this.mod('repLossMul', 1), 0, 1);
     // 42A: opts.toTill → the money lands on the stall's counter (till.js), NOT in the pouch. The ledger still counts the sale
     //   (sales/units/income) — the ledger reports sales, the pouch reports cash; that difference IS the lesson. Pouch += only on T.collect.
     const toTill = !!opts.toTill;
@@ -264,7 +266,7 @@ export class Economy {
   }
   addStall(n = 1) { this.state.stalls = Math.max(0, this.state.stalls + n); }
   removeStall(n = 1) { this.addStall(-n); }
-  stallCost(stallId) { const i = this.stallInfo(stallId); return i ? i.cost : Infinity; }
+  stallCost(stallId) { const i = this.stallInfo(stallId); return i ? Math.max(1, Math.round(i.cost * this.mod('stallCostMul', 1))) : Infinity; }   // S67: Cheap Credit / Careful Saver change the price
   /** Convenience for BuildSystem: pay for a stall and count it. */
   buyStall(stallId) { const cost = this.stallCost(stallId); if (!this.spend(cost, 'build:' + stallId)) return false; this.addStall(1); return true; }
 
@@ -290,8 +292,19 @@ export class Economy {
       if (typeof e[key] === 'boolean') { if (e[key]) v = true; continue; }
       v = mul ? v * e[key] : v + e[key];
     }
+    for (const b of this.state.boons || []) {   // S67: Boon Draft effects use the same keys (*Mul multiply, the rest add)
+      const e = b && b.fx; if (!e || e[key] === undefined) continue;
+      if (typeof e[key] === 'boolean') { if (e[key]) v = true; continue; }
+      v = mul ? v * e[key] : v + e[key];
+    }
     return v;
   }
+  /** S67: Snowball-style growth: every boon with `grow` adds that fraction per season it has stood (1 + grow·(age+1)). */
+  boonGrowMul() { let m = 1; const now = this.state.season; for (const b of this.state.boons || []) if (b && b.grow) m *= 1 + b.grow * (Math.max(0, now - (b.since ?? now)) + 1); return m; }
+  /** S67: true while a locking boon (Index Fund) keeps the Invest jar closed. */
+  investLocked() { const now = this.state.season; return (this.state.boons || []).some((b) => b && b.fx && b.fx.lockInvest && now - (b.since ?? now) < (b.lock || 0)); }
+  /** S67: seasons left on the lock (0 = open). */
+  investLockLeft() { const now = this.state.season; let n = 0; for (const b of this.state.boons || []) if (b && b.fx && b.fx.lockInvest) n = Math.max(n, (b.lock || 0) - (now - (b.since ?? now))); return Math.max(0, n); }
   /** Seasonal wages of owned helpers. */
   helperWages() { let n = 0; for (const id of this.state.owned || []) { const u = this.upgrades[id]; if (u && u.kind === 'helper') n += +u.upkeep || 0; } return n; }
   /** Why an upgrade cannot be bought right now (null = it can). Stall levels are repeatable (bought per stall by BuildSystem). */
@@ -351,7 +364,7 @@ export class Economy {
    *  S01 gentler S1, optional 41C season scaling). 0 when debt-free. */
   interestDue(season = this.state.season) {
     const c = this.config, s = this.state;
-    const rate = (s.scamRate ? Math.max(c.loanRate, s.scamRate) : c.loanRate) * (season === 1 ? (c.season1RateMul ?? 1) : 1) * (c.seasonScaleInterest ? this.seasonCostScale(season) : 1);
+    const rate = Math.max(0, (s.scamRate ? Math.max(c.loanRate, s.scamRate) : c.loanRate) + this.mod('loanRateAdd', 0)) * (season === 1 ? (c.season1RateMul ?? 1) : 1) * (c.seasonScaleInterest ? this.seasonCostScale(season) : 1);
     return round(Math.max(0, s.debt) * rate);
   }
   /** 42D (pierPays mode): pay `state.interestOwed` from the pouch; what the pouch cannot cover is added to the debt (the Baron says so aloud).
@@ -537,7 +550,7 @@ export class Economy {
     const interestEarned = round(s.jars.save * (c.savingsRate + this.mod('interestBonus', 0)));   // + Tally Owl
     s.jars.save += interestEarned;
     // Invest: 8 % ± 4 %
-    const investRate = c.investMean + (this.rng() * 2 - 1) * c.investSpread;
+    const investRate = c.investMean + this.mod('investBonus', 0) + (this.rng() * 2 - 1) * c.investSpread * this.mod('investSpreadMul', 1);   // S67: Index Fund / Bold Bet
     const investReturn = round(s.jars.invest * investRate);
     s.jars.invest += investReturn;
     // BAD interest, compounding (scam loans use the hidden higher rate)
@@ -547,7 +560,7 @@ export class Economy {
     else s.debt += interestPaid;                        // old auto path (headless tests, no-pier mode): compounds silently
     // upkeep (routine cost: pouch → Spend jar → forced debt; the Protect jar is for shocks, NOT rent)
     // BUGFIX C01: upgraded stalls cost their promised extra upkeep, Pack Mole cuts STALL upkeep −20 %, helpers are paid wages
-    const stallUpkeep = round((c.upkeepPerStall * s.stalls + (s.stallUpkeepExtra || 0)) * this.mod('upkeepMul', 1));
+    const stallUpkeep = round((c.upkeepPerStall * s.stalls + (s.stallUpkeepExtra || 0) + this.mod('stallUpkeepAdd', 0) * s.stalls) * this.mod('upkeepMul', 1));   // S67: stallUpkeepAdd (Snowball)
     const wages = this.helperWages();
     const upkeep = round((c.baseUpkeep + stallUpkeep + wages) * kS);   // 41C: scaled by the season length
     const repBonus = this.mod('reputationBonus', 0); if (repBonus) s.reputation = clamp(s.reputation + repBonus, 0, 1);   // Gardener Snail
