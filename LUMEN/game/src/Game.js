@@ -1560,10 +1560,11 @@ function applySnapshot(lg, sb, snap) {
 //   tut:move      hero walked > 2 u from spawn (replaces the ui:start toast timing: fires when the player actually moved)
 //   tut:build     12 s into season 1 with no stall placed by the player → "Press B to build"
 //   tut:jars      after the first sale, 15 s without an APPLY → "Set your jars"
+//   tut:pay       S66-C3: season 1, debt > 0, pouch >= 25, 2 sales, day01 > 0.3, nothing repaid yet -> the PAY card
 //   tut:endSeason day01 > 0.85 in season 1 → "the season ends soon — the Ledger shows how you did"
 //   tut:upgrade   season ≥ 2, 10 s in, spark ≥ upgrade cost, no upgrade yet → "stand by a stall, press U/⬆ to upgrade"
 // Gates only run in story mode, season ≤ 2, while playing and unpaused. They are observable as `lg.tut.fired` for check.mjs.
-export const TUTORIAL_GATES = ['tut:move', 'tut:build', 'tut:jars', 'tut:endSeason', 'tut:upgrade'];
+export const TUTORIAL_GATES = ['tut:move', 'tut:build', 'tut:jars', 'tut:pay', 'tut:endSeason', 'tut:upgrade'];
 export const TUTORIAL_LINES = {                                               // used only when data/story.json has no entry for the trigger
   'tut:move':      { icon: '🦉', text: 'Nice — Pip walks wherever you point. Glimmers wander in from the dock on the left.' },
   'tut:build':     { icon: '🔨', text: 'Press B (or tap 🔨) and pick a stall. Place it on the grass near the path so Glimmers can reach it.' },
@@ -1573,7 +1574,7 @@ export const TUTORIAL_LINES = {                                               //
 };
 function installTutorialGates(lg) {
   const { bus } = lg, on = (n, f) => lg._offs.push(bus.on(n, f));
-  const T = lg.tut = { fired: new Set(), t: 0, sinceSale: null, built: 0, applied: 0, upgraded: 0, sold: 0, spawn: null, enabled: lg.opts.tutorial !== false };
+  const T = lg.tut = { fired: new Set(), t: 0, sinceSale: null, built: 0, applied: 0, repaid: 0, upgraded: 0, sold: 0, spawn: null, enabled: lg.opts.tutorial !== false };
   // fire: bus event (8B picks it up if data/story.json names the trigger) → else the built-in line below, recorded in 8B's toastsFired so it is saved.
   const fire = (name, extra = {}) => {
     if (T.fired.has(name)) return false; T.fired.add(name); bus.emit(name, { tutorial: true, ...extra });
@@ -1583,12 +1584,13 @@ function installTutorialGates(lg) {
     st.state.toastsFired.push(name); bus.emit('story:toast', { id: name, text: t.text, icon: t.icon || '🦉', kind: 'info', trigger: name }); return true;
   };
   T.fire = fire;
-  on('game:start', () => { T.fired.clear(); T.t = 0; T.sinceSale = null; T.built = 0; T.applied = 0; T.upgraded = 0; T.sold = 0; T.spawn = null; });
+  on('game:start', () => { T.fired.clear(); T.t = 0; T.sinceSale = null; T.built = 0; T.applied = 0; T.repaid = 0; T.upgraded = 0; T.sold = 0; T.spawn = null; });
   on('game:resumed', () => { for (const id of lg.story?.state.toastsFired || []) T.fired.add(id); });   // resumed run: whatever 8B already showed counts as fired
   on('build:placed', (p) => { if (!p?.silent) T.built++; });
   on('build:upgraded', () => { T.upgraded++; });
   on('cust:paid', () => { T.sold++; if (T.sinceSale == null) T.sinceSale = 0; });
   on('ui:jar:apply', () => { T.applied++; });
+  on('game:repaid', () => { T.repaid = (T.repaid || 0) + 1; });
   T.update = (dt) => {
     const sb = lg.sb; if (!T.enabled || !sb || lg.mode !== 'story' || lg.state !== 'playing' || lg.game.paused) return;
     const s = sb.eco.state; if (s.season > 2) return;
@@ -1598,6 +1600,8 @@ function installTutorialGates(lg) {
     if (s.season === 1) {
       if (T.t > 12 && T.built === 0) fire('tut:build');
       if (T.sinceSale != null && T.sinceSale > 15 && T.applied === 0) fire('tut:jars');
+      // S66-C3: teach PAY. Season 1, debt standing, enough in the pouch to matter, a sale made, nothing repaid yet, the verb chain is over -> one card pointing at the PAY chip (tutor.json onDebtPay, teaches 'pay')
+      if (!T.fired.has('tut:pay') && !T.repaid && s.debt > 0 && s.spark >= 25 && T.sold >= 2 && s.day01 > 0.3 && !(lg.verbs && lg.verbs.step >= 0)) fire('tut:pay');
       if (s.day01 > 0.85) fire('tut:endSeason');
     } else if (s.season === 2 && T.t > 10 && T.upgraded === 0 && s.spark >= 60) fire('tut:upgrade');
   };

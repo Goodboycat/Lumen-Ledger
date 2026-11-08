@@ -1959,7 +1959,7 @@ if (doSave) {
       const W2 = rig(); W2.bus.emit('ui:start', { mode: 'endless' }); W2.step(); if (W2.lg.mode !== 'story') throw new Error('S66-B: ui:start endless must start the story, got ' + W2.lg.mode);
       W2.lg.destroy(); W2.ui.destroy(); Save.clearUnlocks(storage);
       console.log(`  5. S66-B no ENDLESS button · a forced win writes no unlock · ui:start{endless} falls back to the story  OK`); }
-    if (TUTORIAL_GATES.length !== 5) throw new Error('TUTORIAL_GATES');
+    if (TUTORIAL_GATES.length !== 6) throw new Error('TUTORIAL_GATES');
   } catch (err) { bad++; console.log('  save FAIL →', err.message, process.env.STACK ? err.stack : ''); }
 }
 if (doVerbs) {

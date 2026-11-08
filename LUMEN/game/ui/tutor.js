@@ -54,7 +54,12 @@ export function mountTutor(root, opts = {}) {
   const cards = new Map(); for (const c of data.cards || []) if (c && c.id) cards.set(c.id, c);
   const seen = Array.isArray(opts.seen) ? opts.seen.filter((id) => typeof id === 'string') : [];
   const counts = {};                                                           // T2: id → times shown (retired = 99). `seen` (ids with n ≥ 1) is kept in sync for old saves / tests.
-  const RETIRED = 99, maxOf = (c) => Math.max(1, (c.maxShows | 0) || (c.target ? 3 : 1)), retired = (c) => (counts[c.id] || 0) >= maxOf(c);
+  const RETIRED = 99, maxOf = (c) => Math.max(1, (c.maxShows | 0) || (c.target ? 3 : 1));
+  // S66-C4: `teaches` = the POINT a card makes ("pouch", "jar-place", "pay" ...). Once ANY card with that key was shown (or its thing was done), every other card with the same key
+  //   is retired: a point already told is never told again (also after a reload: the key is stored in `counts` as 'teach:<key>', which save.js already persists).
+  const teachKey = (c) => (c && c.teaches ? 'teach:' + c.teaches : null);
+  const taught = (c) => { const k = teachKey(c); return !!k && (counts[k] || 0) > 0; };
+  const retired = (c) => (counts[c.id] || 0) >= maxOf(c) || taught(c);
   const putCounts = (m) => { if (!m || typeof m !== 'object' || Array.isArray(m)) return; for (const [id, n] of Object.entries(m)) { const v = Math.floor(+n); if (typeof id === 'string' && Number.isFinite(v) && v > 0) { counts[id] = Math.max(counts[id] || 0, Math.min(v, RETIRED)); if (!seen.includes(id)) seen.push(id); } } };
   for (const id of seen) counts[id] = Math.max(counts[id] || 0, 1);
   putCounts(opts.counts);
@@ -148,6 +153,7 @@ export function mountTutor(root, opts = {}) {
   /** Put card `c` on screen (counts it). mode 'event' (48F) | 'curious' (approach/linger/ping) | 'ask' (tap / HUD tap). */
   function display(c, mode, world, text) {
     counts[c.id] = Math.min(RETIRED - 1, (counts[c.id] || 0) + 1); if (!seen.includes(c.id)) seen.push(c.id);
+    { const tk = teachKey(c); if (tk) counts[tk] = 1; }                 // S66-C4: this point is now told
     st.cur = c; st.mode = mode; st.world = world || null; st.t = 0; st.age = 0; st.at = now(); st.last[c.id] = st.clock;
     // S59-D: the words wear DRAWN icons (✦ → spark, ★ → star …), never a font emoji. `text` = a one-off line from the caller (jar reminders name the missing jars).
     if (wrap) { ico.innerHTML = c.icon ? icon(c.icon) : ''; txt.innerHTML = iconizeText(String(text || (c.textTouch && isTouch() ? c.textTouch : c.text) || '').slice(0, 60)); wrap.classList.add('show'); pointAt(c, world); }
@@ -162,6 +168,7 @@ export function mountTutor(root, opts = {}) {
   }
   function retire(id) {
     const c = cards.get(id); if (!c) return false;
+    { const tk = teachKey(c); if (tk) counts[tk] = 1; }                      // S66-C4: the player DID it → the point is learned
     counts[id] = RETIRED;                                                    // learned by doing: never offered again, but NOT 'seen' (nothing was shown)
     const qi = st.queue.findIndex((q) => q.c.id === id); if (qi >= 0) st.queue.splice(qi, 1);
     if (st.cur && st.cur.id === id && (st.mode !== 'ask' || st.age > cfg.sameGesture)) api.dismiss('done');   // S59: a tap that ALSO does the thing keeps its card for 1.2 s, then it is followed
@@ -218,7 +225,7 @@ export function mountTutor(root, opts = {}) {
       const c = st.cur; if (!c) return api;
       st.cur = null; st.moving = false; st.hp = null; const ms = Math.round(now() - st.at); st.gap = cfg.gap;
       if (wrap) { wrap.classList.remove('show'); pointAt(null); }
-      if ((why === 'modal' || why === 'title') && (counts[c.id] || 0) > 0 && (counts[c.id] || 0) < RETIRED) counts[c.id]--;   // S59: shut by a modal, not read → still unseen
+      if ((why === 'modal' || why === 'title') && (counts[c.id] || 0) > 0 && (counts[c.id] || 0) < RETIRED) { counts[c.id]--; if (!(counts[c.id] > 0)) { const tk = teachKey(c); if (tk) delete counts[tk]; } }   // S59: shut by a modal, not read → still unseen (S66-C4: and the point is not told yet)
       if (why === 'modal' && isVerb(c)) st.pendingVerb = c.id;                                  // …and a verb card comes back when the modal closes
       bus.emit('tutor:dismissed', { id: c.id, ms, why });
       if (why === 'title' || why === 'destroy') st.queue.length = 0;

@@ -193,3 +193,20 @@ test('S61-B aheadPoint: marker is 6 u up the SCREEN for any camera yaw, stays on
   // degenerate camera (lookAt == position on the ground) -> default direction
   p = aheadPoint({ hero, camPos: { x: 5, z: 5 }, camLook: { x: 5, z: 5 } }); assert.ok(close(p.z, -4));
 });
+
+test('S66-C4: cards that teach the same point show only once (even after a reload); PAY card exists + teaches pay', () => {
+  const m = mount();
+  assert.ok(data.cards.find((c) => c.id === 'onDebtPay' && c.teaches === 'pay'), 'PAY card');
+  m.bus.emit('eco:spark', { reason: 'tip:x' });                              // onFirstCoin  (teaches pouch)
+  assert.equal(m.tutor.current, 'onFirstCoin'); m.tutor.dismiss();
+  assert.equal(m.tutor.offer('hud:pouch'), false, 'hud:pouch teaches the same point → retired');
+  assert.equal(m.tutor.show('hud:pouch'), false);
+  // reload: counts persisted (save.js tutorCounts) keep the teach key
+  const m2 = mount(); m2.tutor.merge({ counts: { ...m.tutor.counts } });
+  assert.equal(m2.tutor.offer('hud:pouch'), false, 'after reload the point is still told');
+  // a card of ANOTHER point is unaffected
+  m2.bus.emit('tut:pay', {}); assert.equal(m2.tutor.current, 'onDebtPay');
+  m2.bus.emit('game:repaid', { amount: 10 }); assert.equal(m2.tutor.current, null, 'doing PAY closes the card');
+  assert.equal(m2.tutor.offer('hud:debt'), false, 'hud:debt (pay) retired once PAY was shown/done');
+  m.tutor.destroy(); m2.tutor.destroy();
+});
