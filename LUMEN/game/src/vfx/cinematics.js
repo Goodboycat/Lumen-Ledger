@@ -50,10 +50,10 @@ export function victoryKeys(Y, C = CINE) {
     { t: C.victoryFly, az: 0.55, d: 19, h: 9.5, ly: 0.85 * Y, lz: 1 },       // K0 wide, fog gathering
     { t: 4.2, az: 0.30, d: 9.5, h: Y + 0.6, ly: 1.0 * Y, lz: 1 },             // K1 PUSH-IN (zoom in) while the lamp flickers
     { t: C.victoryLamp, az: 0.22, d: 6.6, h: Y + 0.3, ly: 1.08 * Y, lz: 1 }, // K2 closest: ignition + flash
-    { t: C.victoryLamp + 1.5, az: -0.10, d: 16, h: Y + 2.2, ly: 1.02 * Y, lz: 2.4 },   // K3 vertigo out (lamp same size, fog stretches)
-    { t: 9.0, az: -0.95, d: 14, h: Y + 4, ly: 0.8 * Y, lz: 1.35 },          // K4 lens relaxes, orbit while the beam burns the fog
-    { t: 10.8, az: -1.5, d: 19, h: 12, ly: 1.5, lz: 1 },                      // K5 wide reveal (confetti)
-    { t: end, az: -1.6, d: 20, h: 12.5, ly: 1.2, lz: 1 },                     // K6 hold, then the existing return-to-Pip blend
+    { t: C.victoryLamp + 1.5, az: -0.10, d: 16, h: Y + 1.6, ly: 1.1 * Y, lz: 2.4 },   // K3 vertigo out (lamp same size, fog stretches)
+    { t: 9.0, az: -0.95, d: 14, h: Y + 3, ly: 1.0 * Y, lz: 1.35 },          // K4 lens relaxes, orbit while the beam burns the fog
+    { t: 10.8, az: -1.5, d: 19, h: 12, ly: 0.62 * Y, lz: 1 },                      // K5 wide reveal (confetti)
+    { t: end, az: -1.6, d: 20, h: 12.5, ly: 0.5 * Y, lz: 1 },                     // K6 hold, then the existing return-to-Pip blend
   ];
 }
 export function hermite(keys, prop, t) {
