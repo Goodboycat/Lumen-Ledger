@@ -11,6 +11,7 @@ import { mountReveal } from './reveal.js';   // S41/15A: progressive HUD (jars c
 import { mountJars } from './jars.js';
 import { mountBuildMenu } from './build.js';
 import { mountLedger } from './ledger.js';
+import { mountBoonDraft } from './boonDraft.js';   // S67: 3 cards after each season ledger + owned badges
 import { mountDialogue } from './dialogue.js';
 import { mountStranger } from './stranger.js';   // T4: bell marker + edge arrow for the friendly stranger
 import { mountWave } from './wave.js';     // S41/15D: Collector wave banner + edge arrows pointing at off-screen enemies
@@ -28,7 +29,7 @@ import { mountTouch } from './touch.js';
 import { mountSeasonInfo } from './seasons.js';
 
 export const UI_VERSION = 'S57';
-export const UI_CSS = ['ui/base.css', 'ui/hud.css', 'ui/jars.css', 'ui/build.css', 'ui/ledger.css', 'ui/dialogue.css', 'ui/wave.css', 'ui/stranger.css', 'ui/bark.css', 'ui/title.css', 'ui/pause.css', 'ui/guideCodex.css', 'ui/journal.css', 'ui/scamReveal.css', 'ui/touch.css', 'ui/seasons.css', 'ui/tutor.css'];   // 46B: ui/tutorial.css deleted (old overlay tutorial gone)
+export const UI_CSS = ['ui/base.css', 'ui/hud.css', 'ui/jars.css', 'ui/build.css', 'ui/ledger.css', 'ui/boonDraft.css', 'ui/dialogue.css', 'ui/wave.css', 'ui/stranger.css', 'ui/bark.css', 'ui/title.css', 'ui/pause.css', 'ui/guideCodex.css', 'ui/journal.css', 'ui/scamReveal.css', 'ui/touch.css', 'ui/seasons.css', 'ui/tutor.css'];   // 46B: ui/tutorial.css deleted (old overlay tutorial gone)
 
 /**
  * @param {HTMLElement} root  overlay root (#game-root). Panels append themselves; the canvas stays underneath.
@@ -46,6 +47,7 @@ export function mountUI(root, opts = {}) {
   // 7A's own B hotkey is not modal-aware (it would open the tray under the title / dialogue / pause) → it is off and re-owned below, gated by ui.isModal().
   add('build', mountBuildMenu(root, { bus, catalog: opts.catalog || {}, spark: opts.spark || 0, categories: opts.categories || ['stall', 'decor', 'nature'], noHotkey: true, noEsc: true }));
   add('ledger', mountLedger(root, { bus, seasonsToWin, autoOpen: false, selfDrive: false }));
+  add('boons', mountBoonDraft(root, { bus }));   // S67
   add('dialogue', mountDialogue(root, { bus, pauseGame: opts.pauseGame !== false, selfDrive: false, cps: opts.cps }));
   // 48A: toast deleted — no top notifications. ui.toast is undefined; callers use ui.toast?.
   add('wave', mountWave(root, { bus }));   // S41/15D — index.html binds camera/enemies via ui.wave.bind({...}) once the sandbox exists
@@ -68,7 +70,7 @@ export function mountUI(root, opts = {}) {
     { id: 'journal', open: () => !!ui.journal?.isOpen, act: () => ui.journal.close() },
     { id: 'dialogue', open: () => !!ui.dialogue?.isOpen, act: () => {} },
     { id: 'build', open: () => !!(ui.build?.isOpen || ui.build?.state?.placing || ui.build?.state?.demolish), act: () => { const st = ui.build.state; if (st.placing || st.demolish) ui.build.cancel(); else ui.build.close(); } },
-    { id: 'pause', open: () => !(ui.title?.isOpen || ui.ledger?.isOpen), act: () => ui.pause.toggle() },
+    { id: 'pause', open: () => !(ui.title?.isOpen || ui.ledger?.isOpen || ui.boons?.isOpen), act: () => ui.pause.toggle() },
   ];
   /** S11: dispatch one Escape press through the stack. Returns the id of the layer that took it (null = nothing open). */
   ui.escape = () => { for (const L of ui.escStack()) { if (L.open()) { L.act(); bus.emit('ui:escape', { layer: L.id }); return L.id; } } return null; };
@@ -88,9 +90,9 @@ export function mountUI(root, opts = {}) {
   if (ui.tutor) add('guideCodex', mountGuideCodex(root, { bus, tutor: ui.tutor }));   // T2: before pause so the sheet stacks above it (z-index 52)
   if (opts.scamReveal !== false) add('scamReveal', mountScamReveal(root, { bus, data: opts.storyData?.reveal }));   // T5.2
   add('journal', mountJournal(root, { bus, journal: () => ui._journal?.() || null }));   // T5: index.html binds ui._journal = () => lg.sb?.journal
-  add('pause', mountPause(root, { bus, onOutline: opts.onOutline, hotkey: false, canOpen: () => !(ui.title?.isOpen) && !(ui.ledger?.isOpen) && !(ui.dialogue?.isOpen) && !(ui.seasons?.isOpen), storageKey: opts.storageKey }));
+  add('pause', mountPause(root, { bus, onOutline: opts.onOutline, hotkey: false, canOpen: () => !(ui.title?.isOpen) && !(ui.ledger?.isOpen) && !(ui.boons?.isOpen) && !(ui.dialogue?.isOpen) && !(ui.seasons?.isOpen), storageKey: opts.storageKey }));
   // mobile bugfix: season info (HUD lesson tag + tap-the-pill card + new-season banner) — explains what a season is and what it teaches
-  add('seasons', mountSeasonInfo(root, { bus, seasonsToWin, noEsc: true, autoBanner: opts.seasonBanner === true, lessons: opts.storyData?.lessons, seasons: opts.storyData?.seasons, isModal: () => !!(ui.title?.isOpen || ui.ledger?.isOpen || ui.dialogue?.isOpen || ui.pause?.isOpen) }));
+  add('seasons', mountSeasonInfo(root, { bus, seasonsToWin, noEsc: true, autoBanner: opts.seasonBanner === true, lessons: opts.storyData?.lessons, seasons: opts.storyData?.seasons, isModal: () => !!(ui.title?.isOpen || ui.ledger?.isOpen || ui.boons?.isOpen || ui.dialogue?.isOpen || ui.pause?.isOpen) }));
   if (opts.touch !== false && opts.input) add('touch', mountTouch(root, opts.input, { bus, force: opts.forceTouch }));
   // 46B: the 11-step overlay tutorial (ui/tutorial.js, ?oldtutorial) is deleted — the verb chain (src/systems/verbChain.js) is the tutorial.
   // S41/15A: progressive HUD — jars collapsed on every new game; skippers get jars → fog → rep → speed → powers revealed one at a time (opts.reveal === false turns it off)
@@ -99,7 +101,7 @@ export function mountUI(root, opts = {}) {
   /** One clock for every panel (count-ups, typewriter, fps readout). */
   ui.update = (dt) => { ui.hud.update(dt); ui.ledger.update(dt); ui.dialogue.update(dt); if (ui.wave) { if (ui.isModal()) ui.wave.setVisible(false); else { ui.wave.setVisible(true); ui.wave.update(dt); } } if (ui.stranger) { if (ui.isModal()) ui.stranger.setVisible(false); else { ui.stranger.setVisible(true); ui.stranger.update(dt); } } if (ui.reveal?.staged && !ui.isModal()) ui.reveal.update(dt); if (ui.nudge) { if (ui.isModal()) ui.nudge.hide('modal'); else ui.nudge.update(dt); } if (ui.barks) ui.barks.update(dt); if (ui.powerAnswer) ui.powerAnswer.update(dt); if (ui.scamReveal) ui.scamReveal.update(dt); if (ui.tutor && !ui.isModal()) ui.tutor.update(dt); };
   /** True when any modal owns the screen (title / ledger / dialogue / pause / season card) → the game loop should be paused. */
-  ui.isModal = () => !!(ui.title?.isOpen || ui.ledger?.isOpen || ui.dialogue?.isOpen || ui.pause?.isOpen || ui.seasons?.isOpen);
+  ui.isModal = () => !!(ui.title?.isOpen || ui.ledger?.isOpen || ui.boons?.isOpen || ui.dialogue?.isOpen || ui.pause?.isOpen || ui.seasons?.isOpen);
   // B = build tray toggle, only when no modal owns the screen and not while placing (Esc cancels placing — 7A handles that one itself).
   let offKey = null;
   if (!opts.noBuildHotkey && typeof window !== 'undefined' && window.addEventListener) {

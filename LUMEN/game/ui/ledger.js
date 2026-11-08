@@ -209,6 +209,14 @@ export function mountLedger(root, opts = {}) {
     /** Player pressed CONTINUE (or integrator calls it). Emits ui:continue, then hides. */
     continue() {
       if (!st.open) return api; const r = st.report || {};
+      // S67: the Boon Draft sits between the Ledger and the next season. api.beforeContinue(proceed) is set by Game.js; it calls proceed() once a card was picked.
+      if (st.outcome === 'season' && typeof api.beforeContinue === 'function' && !st.gated) {
+        st.gated = true; let went = false;
+        const proceed = () => { if (went) return; went = true; st.gated = false; bus.emit('ui:continue', { season: r.season ?? 1, stars: r.stars | 0, lessonId: r.lessonId, outcome: st.outcome }); };
+        const handled = api.beforeContinue(proceed, r);
+        if (handled) return api.hide();
+        st.gated = false;
+      }
       bus.emit('ui:continue', { season: r.season ?? 1, stars: r.stars | 0, lessonId: r.lessonId, outcome: st.outcome });
       return api.hide();
     },
