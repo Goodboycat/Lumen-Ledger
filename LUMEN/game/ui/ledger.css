@@ -133,3 +133,10 @@
   .ll-ledger-goals .goal { font-size: 10.5px; padding: 1px 7px; }
   .ll-lesson-body { font-size: 10.5px; }
 }
+
+/* S66-F: short desktop windows (1280x720): same two columns, normal type sizes */
+@media (min-width: 900px) and (max-height: 800px) {
+  .ll-ledger-sheet { width: min(760px, calc(100vw - 40px)); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 20px; align-items: start; }
+  .ll-ledger-col { display: flex; flex-direction: column; min-width: 0; }
+  .ll-ledger-startxt { margin-bottom: 6px; }
+}

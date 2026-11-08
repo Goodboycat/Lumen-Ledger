@@ -197,7 +197,7 @@ export function mountLedger(root, opts = {}) {
       if (!st.open) return api; clearTimers();
       for (const k of Object.keys(rows)) { const r = rows[k]; r.row.classList.add('in'); r.t = ROW_COUNT_MS; r.shown = r.target; r.val.textContent = fmt(r.target); }
       chips.classList.add('in'); const n = Math.max(0, Math.min(3, (st.report && st.report.stars) | 0));
-      starEls.forEach((s, i) => { s.classList.toggle('on', i < n); s.classList.add('pop'); }); starTxt.classList.add('in'); goalList.classList.add('in'); lesson.classList.add('in'); btn.classList.add('in'); btn.disabled = false;
+      starEls.forEach((s, i) => { s.classList.toggle('on', i < n); s.classList.add('pop'); }); starTxt.classList.add('in'); goalList.classList.add('in'); lesson.classList.add('in'); if (!unlockCard.hidden) unlockCard.classList.add('in'); if (!crewBox.hidden) crewBox.classList.add('in'); btn.classList.add('in'); btn.disabled = false;   // S66-F: skip() left the unlock card/crew invisible but still taking space
       return api;
     },
     hide() {
