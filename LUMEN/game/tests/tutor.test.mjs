@@ -210,3 +210,12 @@ test('S66-C4: cards that teach the same point show only once (even after a reloa
   assert.equal(m2.tutor.offer('hud:debt'), false, 'hud:debt (pay) retired once PAY was shown/done');
   m.tutor.destroy(); m2.tutor.destroy();
 });
+
+// S73: passive S3 player (17-20 walk-aways) gets ONE blue card that says HOW (build the stalls they want), once.
+test('cust:unserved shows the BUILD card once, points at the build button, leaves when the tray opens', () => {
+  const { bus, tutor, shown } = mount();
+  const card = data.cards.find((c) => c.id === 'cust:unserved'); assert.ok(card, 'card exists'); assert.deepEqual(card.point, ['.ll-build-toggle']);
+  bus.emit('cust:unserved', { count: 6, season: 3, want: 'cloth' });
+  assert.deepEqual(shown(), ['cust:unserved']); assert.equal(tutor.current, 'cust:unserved');
+  bus.emit('ui:build:open', {}); assert.notEqual(tutor.current, 'cust:unserved', 'following it (opening Build) closes it');
+});

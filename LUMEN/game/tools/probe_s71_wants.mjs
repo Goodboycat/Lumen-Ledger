@@ -21,6 +21,7 @@ for (let i = 0; i < N; i++) {
   const drain = () => { let n = 0; while (ui.dialogue.isOpen && n < 40) { if (ui.dialogue.line?.choices) ui.dialogue.choose(1); else { ui.dialogue.skip(); ui.dialogue.advance(); } step(); n++; } };
   const wants = []; const chips = []; const seas = {};
   bus.on('hud:chip', (p) => { if (p?.want && p.on !== false) chips.push({ s: lg.sb.eco.state.season, text: p.text }); });
+  bus.on('cust:unserved', (p) => chips.push({ s: p.season, text: `[cust:unserved fired at ${p.count} walk-aways]` }));
   bus.on('cust:want', (p) => { if (!p.found) wants.push({ s: lg.sb.eco.state.season, want: p.want, type: p.type }); });
   ui.title.buttons.story.click(); step(); drain();
   const eco = lg.sb.eco; let guard = 0, last = { sold: 0 }; const season0 = () => eco.state.season; const log = [];

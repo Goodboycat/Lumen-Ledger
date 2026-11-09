@@ -43,6 +43,7 @@ const _v = new THREE.Vector3(), _d = { x: 0, z: 0 };
 
 const WANT_NAME = { fruit: 'fruit', bread: 'bread', lantern: 'lanterns', fish: 'fish', flower: 'flowers', tool: 'tools', cloth: 'cloth', pottery: 'pottery', toy: 'toys', tea: 'tea', book: 'books', sparkExchange: 'swaps' };   // S71
 /** Type → stall type preference weights (unlisted stall = 1). Mirrors GAME_BIBLE flavour text. */
+export const UNSERVED_AT = 6;   // S73: walk-aways per season before the BUILD card shows
 export const PREFS = {
   regular:   {},
   saver:     { fruit: 2, bread: 2, tea: 1.5, tool: 0.5, lantern: 0.5, sparkExchange: 1.5 },
@@ -140,7 +141,7 @@ export class CustomerSystem {
   spawnWave(season = 1, n) {
     const w = WAVES[Math.min(WAVES.length - 1, Math.max(0, (season | 0) - 1))];
     const prevSeason = this.season; this.season = Math.max(1, season | 0);   // 44A: price bubbles start at S2
-    if (this.season !== prevSeason) this._wantBarked = new Set();           // 44B: Owl "nobody sells X" once per want per season
+    if (this.season !== prevSeason) { this._wantBarked = new Set(); this._seasonNoStall = 0; }           // 44B: Owl "nobody sells X" once per want per season
     const total = n ?? w.n;
     let queued = 0;
     for (let i = 0; i < total; i++) {
@@ -259,6 +260,8 @@ export class CustomerSystem {
     if ((this.season | 0) >= 2 && (!found || this._wantN % 3 === 0)) { const pos = c.root.position; this.bus.emit('story:bark', { kind: 'want', icon: 'stall_' + want, ok: found, speaker: c.type, text: want, anchor: { x: pos.x, y: 1.9, z: pos.z }, ttl: 1.2 }); }
     if (found) return false;
     c.result = { noStall: true, want, type: c.type }; this.totals.noStall = (this.totals.noStall || 0) + 1;
+    this._seasonNoStall = (this._seasonNoStall | 0) + 1;   // S73: 6 empty-handed Glimmers in one season -> ONE 'cust:unserved' (tutor card: "build the stalls they want")
+    if (this._seasonNoStall === UNSERVED_AT) this.bus.emit('cust:unserved', { count: this._seasonNoStall, season: this.season | 0, want });
     this._owlWant(want, c.type);
     this._react(c, 'sad', 'noStall'); return true;
   }
