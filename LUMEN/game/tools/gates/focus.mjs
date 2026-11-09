@@ -108,7 +108,7 @@ export async function run({ resolve, pathToFileURL }) {
     // ---- F.6 focusRegenMul boon
     const boon = Object.values(lg.boons.byId).find((b) => b.fx && b.fx.focusRegenMul);
     if (!boon) throw new Error('F.6 no boon carries fx.focusRegenMul');
-    set(0); runS(5); const base = F.value; near(base, 10, 'F.6 base regen 2/s', 0.6);
+    set(0); runS(5); const base = F.value; near(base, 10 / 3, 'F.6 base regen 2/3 per s (S75: 3x slower)', 0.3);
     lg.boons.apply(eco, boon.id); if (!eco.state.boons.some((b) => b.id === boon.id)) throw new Error('F.6 boon not stored');
     set(0); runS(5); const boosted = F.value; if (!(boosted > base * 1.3)) throw new Error(`F.6 boosted ${boosted} vs base ${base}`);
     ok(`F.6 boon "${boon.id}" (focusRegenMul x${boon.fx.focusRegenMul}) -> 5 s regen ${base.toFixed(1)} -> ${boosted.toFixed(1)}`);

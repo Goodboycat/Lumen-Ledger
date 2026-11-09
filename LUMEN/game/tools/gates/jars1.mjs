@@ -111,9 +111,10 @@ export async function run({ resolve, pathToFileURL }) {
     lg.modalClosedAt = performance.now(); { const before = (ev['ui:tap:land'] || []).length; if (lg.landTap({ x: 0, z: 0 }) !== false || ui.build.isOpen || (ev['ui:tap:land'] || []).length !== before) throw new Error('S64-A: a land tap inside the 0.7 s grace window must be swallowed'); }
     lg.modalClosedAt = 0;
     farAgain(); const emptyCell = sb.island.gridCells().find((c) => Math.hypot(c.x - jp.x, c.z - jp.z) > 3 && Math.hypot(c.x - hp.x, c.z - hp.z) > 2); const tapsBefore = (ev['ui:tap:land'] || []).length;
-    const h2 = lg.landTap({ x: emptyCell.x, z: emptyCell.z }); if (h2 !== true || (ev['ui:tap:land'] || []).length !== tapsBefore + 1 || !ui.build.isOpen) throw new Error('empty-land tap no longer opens the tray');
-    ui.build.close(); if (sb.autoWalk) throw new Error('land tap started a walk');
-    ok('T1.3 empty-land tap still opens the build tray (no walk)');
+    // S75: tapping empty ground NEVER opens the build tray (user request). No tap event, no tray, no walk from landTap.
+    const h2 = lg.landTap({ x: emptyCell.x, z: emptyCell.z }); if (h2 !== false || (ev['ui:tap:land'] || []).length !== tapsBefore || ui.build.isOpen) throw new Error('S75: an empty-land tap must NOT open the tray');
+    if (sb.autoWalk) throw new Error('land tap started a walk');
+    ok('T1.3 (S75) empty-land tap does NOT open the build tray, no walk');
 
     // ---- T1.4 two jars
     farAgain(); place('protect', 3, 9); const sp = J.get('protect').position; hp.set(sp.x, 0, sp.z); step(); eco._addSpark(60 - eco.state.spark, 'test');
