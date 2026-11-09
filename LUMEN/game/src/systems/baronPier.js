@@ -36,6 +36,7 @@ const tierOf = (s) => (s <= 3 ? 't1' : s <= 6 ? 't2' : 't3');
 
 export function createBaronPier(deps = {}) {
   const { bus, eco, world = {}, hero, vfx, creatures = {}, scene = null, game = null, story = null } = deps;
+  const jarCash = () => { const j = eco.state.jars || {}; return Math.round((j.spend || 0) + (j.save || 0) + (j.protect || 0)); };   // S72: Invest is locked mid-season, so it is not withdrawable
   const B = { active: false, phase: 'off', g: null, anim: null, t: 0, idle: 0, tauntT: 0, from: null, to: null, season: 0,
     interest: 0, paid: 0, shortfall: 0, repaid: 0, settled: false, canPay: true, grace: 0, stats: { visits: 0, paid: 0, short: 0, repaid: 0, timeouts: 0, skips: 0 } };
   const offs = [];
@@ -67,7 +68,7 @@ export function createBaronPier(deps = {}) {
     anim.faceTo?.(new THREE.Vector3(B.to.x, 0, B.to.z)); anim.play?.('strut');
     B.active = true; B.phase = 'arrive'; B.t = 0; B.lastTick = -1; B.idle = 0; B.tauntT = 1.2; B.settled = false; B.season = s.season;
     B.interest = owed; B.canPay = (s.spark || 0) + 1e-9 >= owed; B.grace = PIER.graceMax; B.paid = 0; B.shortfall = 0; B.repaid = 0; B.stats.visits++;
-    bus.emit('pier:due', { interest: owed, debt: s.debt, pos: { ...B.to }, season: s.season, waitCap: PIER.waitCap, spark: Math.round(s.spark || 0), canPay: (s.spark || 0) + 1e-9 >= owed });   // S71: canPay → the HUD hint 'pay it all = ★' / 'need N more'
+    bus.emit('pier:due', { interest: owed, debt: s.debt, pos: { ...B.to }, season: s.season, waitCap: PIER.waitCap, spark: Math.round(s.spark || 0), canPay: (s.spark || 0) + 1e-9 >= owed, jar: jarCash() });   // S71: canPay → the HUD hint 'pay it all = ★' / 'need N more'
     return true;
   };
 
@@ -134,14 +135,14 @@ export function createBaronPier(deps = {}) {
 
   // the season closes → the Baron comes to collect (only in pierPays mode; win/lose go their own way)
   offs.push(bus.on('eco:season', () => { if (eco.pierPays && !eco.state.ended) B.begin(); }));
-  // S72: a short player who gets Spark into the pouch while he waits (till walk-over, tip coin, jar withdraw) sees the chip update live
+  // S72: a short player who gets Spark into the pouch while he waits (jar withdraw ↩, tip coin; tills are already swept at season end) sees the chip update live
   // ('need N more' -> 'pay it all = star'), and each gain buys a few extra seconds (graceMax in total) so the fix is not a race against the countdown.
   offs.push(bus.on('eco:spark', (p) => {
     if (!B.active || B.settled || B.phase !== 'wait' || !(B.interest > 0)) return;
     const spark = Math.round(eco.state.spark || 0), can = eco.state.spark + 1e-9 >= B.interest;
-    if (!B.canPay && p?.delta > 0 && B.grace > 0) { const add = Math.min(PIER.graceStep, B.grace); B.grace -= add; B.t = Math.max(0, B.t - add); bus.emit('pier:grace', { added: add, left: B.grace }); }
+    if (!B.canPay && p?.delta > 0 && B.grace > 0) { const add = Math.min(PIER.graceStep, B.grace, B.t); if (add > 0) { B.grace -= add; B.t -= add; bus.emit('pier:grace', { added: add, left: B.grace }); } }   // only time really given back is charged to the grace budget
     B.canPay = can;
-    bus.emit('pier:pouch', { spark, interest: B.interest, canPay: can, need: Math.max(0, Math.ceil(B.interest - eco.state.spark - 1e-9)) });
+    bus.emit('pier:pouch', { spark, interest: B.interest, canPay: can, jar: jarCash(), need: Math.max(0, Math.ceil(B.interest - eco.state.spark - 1e-9)) });
   }));
   offs.push(bus.on('eco:win', () => B.destroyVisit())); offs.push(bus.on('eco:lose', () => B.destroyVisit()));
   B.destroyVisit = () => { B.active = false; B.phase = 'off'; remove(); };
