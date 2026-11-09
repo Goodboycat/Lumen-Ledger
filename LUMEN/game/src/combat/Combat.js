@@ -38,7 +38,7 @@ const _dir0 = new THREE.Vector3(), _d = new THREE.Vector3(), _c = new THREE.Vect
 //   s2 backhand : starts low-left where s1 ended -> sweeps through the front at chest height -> finishes wide on the sword side
 //   th thrust   : elbow back, blade level beside the hip -> arm straight, point forward at chest height (a lunge; picked when the target is > 1.6 u away)
 export const KF = {
-  s1: [{ ty: 1.06, tx: -0.05, ax: -0.7, az: -0.66, sx: 1.27 }, { ty: -0.27, tx: 0.15, ax: -0.47, az: -0.27, sx: 1.49 }, { ty: -0.41, tx: 0.25, ax: 0.01, az: -1.6, sx: 2.64 }],
+  s1: [{ ty: 1.04, tx: -0.05, ax: -0.6, az: -0.76, sx: 1.26 }, { ty: 0.14, tx: 0.1, ax: -0.53, az: -0.77, sx: 1.52 }, { ty: -0.28, tx: 0.15, ax: -0.44, az: -0.77, sx: 1.6 }, { ty: -0.66, tx: 0.2, ax: -0.31, az: -0.78, sx: 1.62 }, { ty: -1.13, tx: 0.25, ax: -0.16, az: -0.73, sx: 1.69 }],   // S78: 5 chained keys (solver 'chain' mode) - no mid-strike tip dip
   s2: [{ ty: -1.2, tx: 0.1, ax: -0.12, az: -0.48, sx: 1.41 }, { ty: -0.3, tx: 0.15, ax: -0.63, az: -0.58, sx: 1.85 }, { ty: 1.2, tx: 0.2, ax: -0.1, az: -1.33, sx: 2.14 }],
   th: [{ ty: 0.35, tx: 0.1, ax: 0.35, az: -0.2, sx: 1.45 }, { ty: -0.2, tx: 0.2, ax: -1.45, az: -0.15, sx: 2.95 }],
 };
@@ -97,8 +97,8 @@ export function createCombat({ hero, game, targets, bus }) {
     if (i === 0 || i === 1 || variant === 'thrust') {
       // S77-SW: keyframed from tools/sword_solve.mjs (blade-tip targets in Pip's frame). The old poses snapped the blade through the body in 2 frames;
       // now: wind-up (from WHATEVER pose Pip is in, so chains flow) -> strike through 3 keys (ease in-out, hit when the blade is in front) -> settle.
-      const K = variant === 'thrust' ? KF.th : i === 0 ? KF.s1 : KF.s2, wind = K[0], mid = K.length > 2 ? K[1] : null, end = K[K.length - 1];
-      const at = (e) => (mid ? (e < 0.5 ? mixK(wind, mid, e * 2) : mixK(mid, end, (e - 0.5) * 2)) : mixK(wind, end, e));
+      const K = variant === 'thrust' ? KF.th : i === 0 ? KF.s1 : KF.s2, wind = K[0], end = K[K.length - 1];
+      const at = (e) => { const n = K.length - 1, f = Math.min(n - 1e-6, Math.max(0, e * n)), j = Math.floor(f); return mixK(K[j], K[j + 1], f - j); };   // S78: piecewise over any number of keys
       const squash = (a0, a1, e) => p.body.scale.set(lerp(a0[0], a1[0], e), lerp(a0[1], a1[1], e), lerp(a0[2], a1[2], e));
       const thr = variant === 'thrust';
       seq.phase('anticipation', st.ant, Easing.outCubic, (e) => { putK(mixK(S.from || wind, wind, e)); squash([1, 1, 1], thr ? [0.95, 0.9, 1.12] : [1.08, 0.88, 1.08], e); p.head.rotation.y = lerp(0, thr ? 0.1 : -0.35 * Math.sign(wind.ty || 1), e); p.armL.rotation.set(lerp(0.1, thr ? 0.5 : -0.4, e), 0, lerp(0.35, 0.6, e)); }, { onEnter: () => { enter(); S.from = capK(); } });

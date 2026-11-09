@@ -19,13 +19,13 @@ const out = await p.evaluate(async (T) => {
   const res = {}; const THREE_V = h.root.position.constructor;
   const apply = (q, ty, tx) => { P.torso.rotation.set(tx, q[3], 0); P.armR.rotation.set(q[0], 0, q[1]); h.sword.rotation.set(q[2], 0, 0); P.armL.rotation.set(0.1, 0, 0.35); h.root.updateMatrixWorld(true); solveArmClearance(h); h.root.updateMatrixWorld(true); };
   const measure = () => { const tip = new THREE_V(0, 1.35, 0); h.sword.localToWorld(tip); const base = new THREE_V(0, 0.3, 0); h.sword.localToWorld(base); const d = tip.clone().sub(base).normalize(); return { tip: [tip.z, tip.x, tip.y], dir: [d.z, d.x, d.y] }; };
-  const cost = (q, t) => { apply(q, t.ty, t.tx); const m = measure(); let c = 0; for (let i = 0; i < 3; i++) c += (m.tip[i] - t.tip[i]) ** 2; const dd = m.dir[0] * t.dir[0] + m.dir[1] * t.dir[1] + m.dir[2] * t.dir[2]; const n = Math.hypot(...t.dir); c += 0.6 * (1 - dd / n); c += 0.004 * (q[0] ** 2 + q[1] ** 2) + 0.01 * q[3] ** 2; return c; };
+  let PREV = null; const cost = (q, t) => { apply(q, t.ty, t.tx); const m = measure(); let c = 0; for (let i = 0; i < 3; i++) c += (m.tip[i] - t.tip[i]) ** 2; const dd = m.dir[0] * t.dir[0] + m.dir[1] * t.dir[1] + m.dir[2] * t.dir[2]; const n = Math.hypot(...t.dir); c += 0.6 * (1 - dd / n); c += 0.004 * (q[0] ** 2 + q[1] ** 2) + 0.01 * q[3] ** 2; if (PREV && t.chain) for (let i = 0; i < 4; i++) c += 0.12 * (q[i] - PREV[i]) ** 2; return c; };
   for (const [name, t] of Object.entries(T)) {
-    let best = [-1, 0.3, 1, 0], bc = cost(best, t);
-    for (let r = 0; r < 6; r++) { let s = 1.2; let cur = r === 0 ? best.slice() : best.map((x) => x + (Math.random() - 0.5)); let cc = cost(cur, t);
+    PREV = t.chain ? PREV : null; let best = t.chain && PREV ? PREV.slice() : [-1, 0.3, 1, 0], bc = cost(best, t);
+    for (let r = 0; r < 6; r++) { let s = 1.2; let cur = r === 0 ? best.slice() : best.map((x) => x + (Math.random() - 0.5) * (t.chain ? 0.3 : 1)); let cc = cost(cur, t);
       for (let i = 0; i < 700; i++) { const cand = cur.map((x) => x + (Math.random() - 0.5) * 2 * s); cand[0] = Math.max(-3.0, Math.min(1.0, cand[0])); cand[1] = Math.max(-1.6, Math.min(1.6, cand[1])); cand[2] = Math.max(-1.0, Math.min(3.2, cand[2])); cand[3] = Math.max(-1.2, Math.min(1.2, cand[3])); const c2 = cost(cand, t); if (c2 < cc) { cc = c2; cur = cand; } if (i % 100 === 99) s *= 0.6; }
       if (cc < bc) { bc = cc; best = cur; } }
-    apply(best, t.ty, t.tx); const m = measure();
+    PREV = best.slice(); apply(best, t.ty, t.tx); const m = measure();
     res[name] = { armX: +best[0].toFixed(2), armZ: +best[1].toFixed(2), swX: +best[2].toFixed(2), ty: +best[3].toFixed(2), tx: t.tx, gotTip: m.tip.map((x) => +x.toFixed(2)), wantTip: t.tip, cost: +bc.toFixed(3) };
   }
   return res;
