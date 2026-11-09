@@ -71,3 +71,19 @@ test('HUD want chips: at most 2 at once (a passive S3 player met 4); other chips
   bus.emit('hud:chip', { id: 'want:lantern', want: 'lantern', text: 'again', on: true, ttl: 5 }); assert.equal(box.children.filter((n) => n.dataset?.id === 'want:lantern').length, 1, 'same id reuses its chip');
   hud.destroy();
 });
+
+// S76: debt cleared AT the pier in the final season = the win (eco:win fires before pier:done; the old code only checked isWin() at season end, before the Baron was paid)
+test('S76 debt paid to zero at the pier after the last season -> eco.tryWin() wins once (cinematic + ending dialogue follow)', async () => {
+  const { makeEconomy } = await import('../src/systems/economyData.js');
+  const bus = new EventBus(); const wins = [];
+  bus.on('eco:win', (p) => wins.push(p));
+  const eco = makeEconomy({ bus, seed: 1, autoSeason: false, pierPays: true });
+  eco.state.season = 11; eco.state.debt = 0; eco.state.fog01 = 0.3; eco.state.ended = false;
+  assert.equal(eco.isWin(), true, 'debt 0 + past season 10 + fog < 1 = win');
+  assert.equal(eco.tryWin(), true); assert.equal(eco.state.ended, 'win'); assert.equal(wins.length, 1);
+  assert.equal(eco.tryWin(), false, 'only once');
+  const e2 = makeEconomy({ bus, seed: 1, autoSeason: false, pierPays: true }); e2.state.season = 11; e2.state.debt = 5;
+  assert.equal(e2.tryWin(), false, 'still owing 5 = no win');
+  const e3 = makeEconomy({ bus, seed: 1, autoSeason: false, pierPays: true }); e3.state.season = 5; e3.state.debt = 0;
+  assert.equal(e3.tryWin(), false, 'a debt-free S5 is not the ending');
+});

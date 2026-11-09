@@ -135,6 +135,7 @@ export const BALANCE_TUNED = {
                              //   → debt 260 → 315 even with careful play. 0.5 broke the 'hoarder loses ≥ 8/10' gate (never repays → S1 interest is its clock);
                              //   0.75 keeps every sweep gate (sensible win@10 ×20/20, borrow lose S3–5, hoarder lose 8/10) and still softens the tutorial season.
   startFog: 0.40,
+  winFogMax: 0.99,           // S76: debt 0 after the last season = the ending (fog < 1). The old 'fog must also be 0' left a player who cleared the whole debt in S10 with no ending (the fog is lifted by the lighthouse cinematic).
   fogPerDebtSeason: 0.07,    // each season ended in debt: +0.07 (borrow-everything hits 1.0 at S3–5, hoarder at S8–10)
   fogRelief: 0.12,           // debt-free + Save ≥ saveThreshold: −0.12 (+0.02 with a Protect jar) → fog 0 lands at S9–10, win at S10 (17/20 seeds) or S11
   saveThreshold: 200,        // ≈ 3 seasons of upkeep with 6 stalls (14 + 6×7 = 56) + one more stall

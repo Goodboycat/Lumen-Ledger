@@ -49,6 +49,7 @@ export const BALANCE = {
   saveThreshold: 150,            // "emergency fund" size that pushes the fog back
   fogLoseAt: 1.0,                // lose when fog01 reaches this
   fogWinAt: 0.0,                 // win when fog01 is at/below this at season end (after season ≥ seasonsToWin... see isWin)
+  winFogMax: 0,                  // S76: the fog level a debt-free player may still carry into the win (default 0 = fog must be gone; BALANCE_TUNED raises it: clearing the Baron's debt IS the ending, the lighthouse cinematic lifts the fog)
   winRequiresSeasons: true,      // true → must also reach season ≥ seasonsToWin ; false → fog 0 is enough (Endless)
 
   upkeepPerStall: 6,             // Spark per stall per season (expenses)
@@ -652,11 +653,20 @@ export class Economy {
     this.bus.emit('eco:stars', { season: r.season, stars, from, report: r, why });
     return r;
   }
+  /** S76 BUGFIX ("I paid the whole debt in S10, the Baron ran, but the season kept going - no cinematic, no dialogue"): isWin() was only read inside endSeason(),
+   *  i.e. BEFORE the Baron's pier visit, when the debt was still owed. Debt cleared AT the pier never re-checked the gate. baronPier.done() now calls this right after
+   *  closePier(): the run is won when the season that just closed was the last one (or later) and nothing is owed. Emits eco:win once. */
+  tryWin() {
+    const s = this.state; if (s.ended) return false;
+    if (!this.isWin()) return false;
+    s.ended = 'win'; s.lighthouseLit = true; s.storyWon = true; this.bus.emit('eco:win', { season: Math.max(1, s.season - 1) });
+    return true;
+  }
   isWin() {
     const c = this.config, s = this.state;
     if (s.ended === 'win') return true;
     if (c.endless) return false;                                       // BUGFIX B19: Endless (after a win or from the title) has no win gate
-    if (s.fog01 > c.fogWinAt || s.debt > 0) return false;
+    if (s.fog01 > Math.max(c.fogWinAt, c.winFogMax || 0) || s.debt > 0) return false;
     return c.winRequiresSeasons ? s.season > c.seasonsToWin : true;   // season has already advanced past the last one
   }
   isLose() {

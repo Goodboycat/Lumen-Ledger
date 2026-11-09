@@ -94,7 +94,9 @@ export function createBaronPier(deps = {}) {
     B.phase = 'leave'; B.t = 0;
     B.anim?.faceTo?.(new THREE.Vector3(B.from.x, 0, B.from.z)); B.anim?.play?.('strut');
     eco.closePier?.(why);   // S70: what was paid / repaid at the pier counts for the season that just closed → final stars, BEFORE the ledger opens
-    bus.emit('pier:done', { interest: B.interest, paid: B.paid, repaid: B.repaid, shortfall: B.shortfall, debt: eco.state.debt, why, season: B.season });
+    // S76: debt cleared at the pier in the final season (or later) = the win. eco:win BEFORE pier:done: Game.js moves to 'ending' (victory cinematic + dialogue), so the 'pier' -> 'review' hop is skipped.
+    const won = eco.tryWin ? eco.tryWin() : false;
+    bus.emit('pier:done', { interest: B.interest, paid: B.paid, repaid: B.repaid, shortfall: B.shortfall, debt: eco.state.debt, why, season: B.season, won });
   }
 
   B.interact = () => {
