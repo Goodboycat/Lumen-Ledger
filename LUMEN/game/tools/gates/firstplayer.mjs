@@ -30,7 +30,11 @@ export async function run({ resolve, pathToFileURL }) {
       const s1 = R[0];
       if (!(s1.income > s1.expenses)) throw new Error(`seed ${seed}: S1 income ${s1.income} ≤ expenses ${s1.expenses} — first season still loses ground`);
       if (!(s1.income < 320)) throw new Error(`seed ${seed}: S1 income ${s1.income} too high (flood)`);
-      for (const r of R) { if (!(r.units >= 15)) throw new Error(`seed ${seed}: S${r.season} sold only ${r.units} units`); if (!isFinite(r.spark) || r.spark < 0) throw new Error(`seed ${seed}: S${r.season} spark ${r.spark}`); }
+      // S69: since S44B a customer whose want nobody sells (S3 mix: impulse -> toy, tourist -> lantern/pottery, spender -> cloth/toy) leaves 'noStall' BY DESIGN
+      //   (tools/gates/wants.mjs) - a passive 3-starter-stall beginner sells ~11-22 units in S3 on purpose ("build what they ask for"). So: S1/S2 keep >= 15 units,
+      //   S3 only needs >= 8, and the real "nobody buys" guard is that EVERY customer is accounted for: paid + noStall leavers >= 85 % of all spawned.
+      const T = sb.cust.totals; if (!(T.paid + (T.noStall || 0) >= 0.85 * T.spawned)) throw new Error(`seed ${seed}: only ${T.paid} paid + ${T.noStall || 0} noStall of ${T.spawned} spawned - customers are leaving for another reason (a real 'nobody buys' bug)`);
+      for (const r of R) { const floor = r.season >= 3 ? 8 : 15; if (!(r.units >= floor)) throw new Error(`seed ${seed}: S${r.season} sold only ${r.units} units (floor ${floor})`); if (!isFinite(r.spark) || r.spark < 0) throw new Error(`seed ${seed}: S${r.season} spark ${r.spark}`); }
       for (let i = 1; i < R.length; i++) if (!(R[i].debt > R[i - 1].debt)) throw new Error(`seed ${seed}: debt did not grow S${R[i].season} (${R[i - 1].debt} → ${R[i].debt}) — the Baron must still bite`);
       if (ev.angry > 1) throw new Error(`seed ${seed}: ${ev.angry} angry Glimmers over 3 seasons — queues cannot cope with the waves`);
       if (sb.eco.state.ended) throw new Error(`seed ${seed}: run ended (${sb.eco.state.ended}) in 3 seasons`);
