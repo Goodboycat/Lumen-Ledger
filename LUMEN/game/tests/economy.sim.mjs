@@ -17,6 +17,7 @@ const seasons70 = args.includes('--seasons70');   // 41C: per-season income/expe
 const seed = +(args.find((a) => !a.startsWith('--')) ?? 1);
 const types = Object.keys(BALANCE.glimmers);
 const pad = (v, n = 7) => String(v).padStart(n);
+const REPAY_BIG = +(process.env.REPAY_BIG || 0.85);
 const stallsToBuild = ['fruit', 'tea', 'bread', 'flower', 'fish', 'toy'];
 
 let overrideBalance = null;   // set by the tuner (tools) to try candidate BALANCE values
@@ -32,7 +33,7 @@ export const STRATEGIES = {
     for (let i = 0; i < visits && built; i++) { const st = stallsToBuild[i % built]; eco.sell(st, types[(i * 7 + season) % types.length], eco.stallInfo(st).fair, { baseMul }); }
     if (season % 3 === 2) { eco.offerScam(); eco.refuseOffer(); }
     const ev = useBase ? 'storm' : pickEvent(eco, season); if (ev && season % 2 === 0) eco.applyEvent(ev);
-    if (eco.state.debt > 0) eco.repay(Math.floor(eco.state.spark * 0.6));
+    if (eco.state.debt > 0) eco.repay(Math.floor(eco.state.spark * (eco.state.debt > 300 ? REPAY_BIG : 0.6)));   // S74: the big inherited debt (1000+) is attacked harder than a small one
     build(40);                                           // reinvest the rest of the day's takings, keep a 40 Spark buffer
     const p = eco.state.spark; eco.allocate({ save: Math.floor(p * 0.4), invest: Math.floor(p * 0.15), protect: Math.floor(p * 0.1) });
     return built;

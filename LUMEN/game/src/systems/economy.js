@@ -44,6 +44,8 @@ export const BALANCE = {
 
   fogPerDebtSeason: 0.08,        // fog grows +0.08 each season you end with debt > 0
   fogRelief: 0.10,               // fog shrinks −0.10 each season with debt == 0 AND save ≥ saveThreshold
+  fogPaydown: 0,                 // S74: fog shrinks by this when you still owe but ENDED the season with LESS debt than you started it (net paydown, after interest). 0 = off (old rule)
+  fogPaydownMin: 0,              // S74: ...and the net paydown is at least this fraction of the season-start debt (0.04 = 4 %)
   saveThreshold: 150,            // "emergency fund" size that pushes the fog back
   fogLoseAt: 1.0,                // lose when fog01 reaches this
   fogWinAt: 0.0,                 // win when fog01 is at/below this at season end (after season ≥ seasonsToWin... see isWin)
@@ -577,7 +579,10 @@ export class Economy {
     const upkeepRes = this.applyLoss(upkeep, 'upkeep', { useProtect: false });
     // fog rules
     let fogDelta = 0;
-    if (s.debt > 0) fogDelta += c.fogPerDebtSeason;
+    const _ds = L.debtStart ?? (debtBefore + L.repaid - L.loansTaken);   // S74: debt when the season began
+    const paydownOk = (c.fogPaydown || 0) > 0 && s.debt > 0 && _ds > 0 && (_ds - s.debt) >= _ds * (c.fogPaydownMin || 0) && s.debt < _ds - 1e-9;
+    if (paydownOk) fogDelta -= c.fogPaydown;                            // S74: you are really paying the Baron down → the fog backs off a little
+    else if (s.debt > 0) fogDelta += c.fogPerDebtSeason;
     else if (s.jars.save >= c.saveThreshold) fogDelta -= c.fogRelief;
     if (s.debt === 0 && s.jars.protect > 0) fogDelta -= 0.02;          // insured & debt-free: a little extra push
     this._setFog(s.fog01 + fogDelta, 'season');
