@@ -112,3 +112,31 @@ All pushed to origin/main. Green: full `node tools/check.mjs` (ALL OK, 75 gates,
 7. S66-F leftovers: 568x320 + 1280x720 shots of title/HUD/PAY card.
 8. Full `node tools/check.mjs` + each `node --test tests/*.mjs` one by one before the next push.
 - Then S68 Wishes + Neighbours, S69 Regions, S70 cinematic polish + credits screen (no credits after THE END yet). FinLit guard: each new system teaches or protects; no streak guilt; no new enemy types.
+
+### CLOSING NOTE 5 (end of chat S68-prep) - READ FIRST NEXT CHAT
+**Setup**: `bash LUMEN/game/tools/github.sh <TOKEN>`; `cd LUMEN/game/tools && npm i playwright@1.47.0 && npx playwright install chromium` + apt libs (`libasound2t64` on this image); server `cd LUMEN/game && setsid -f python3 -m http.server 3000 --bind 0.0.0.0`. NOTE: /tmp is a 493 MB tmpfs here - never `mv` the repo across it (disk-full); clone straight into /home/user/webapp.
+
+**DONE this chat (all pushed)**
+- Touch power strip "0x0": NOT a touch.js bug. `ui/reveal.js` stages the strip with `ll-staged` (display:none) for first-run players until the first attack / 75 s. `tools/hud_shot.mjs` now calls `ui.reveal.revealAll({quiet:true})`; strip = 236x42 at 844x390. Shots: tools/shots/s67_hud_{844x390,568x320}_nd_chips.png show strip chips with Focus prices and the low-Focus dim (looked at 568x320: readable, no overlap with the tutor card, Dash bubble legible).
+- Dash price label: 12 px white-on-ink bubble (red when `.nofocus`, button dims); strip chip prices 10 px (ui/touch.css).
+- `node tools/check.mjs --focus` (tools/gates/focus.mjs, 7/7): habit refills (+4/+10/+15, gouge/giveaway/auto-deposit/accepted scam give 0), season caps + eco:season reset, denial line "Need 35 Focus (have 10)", HUD pill+bar == sb.focus, chips dim on touch+desktop, `sb.cooldown = {}` shim refill + 0.6 s gap, Steady Mind boon.
+- New boon `steady_mind` (saver, focusRegenMul 1.5, sales -5 %). boons.json = 13 cards. `tests/boons.test.mjs` variety sample widened (79 -> 400 seeds).
+- Guide: `hud:focus` card already existed; added `hud:boons` card + `data-guide="hud:boons"` on the badge row. `--ui --curiosity --boons --focus --powers` ALL OK.
+- `--till` fixed properly: scripted hero = 131/131 = 100 % of SALES income; the gap was a 35 Spark `event:festival` windfall (nothing to collect). Gate now needs sales >= 80 % and all-in >= 75 % (78.9 %).
+- `--story` gate updated: finale is `{endless:false, outcome:'win'}` since S66-B (was a stale assertion).
+- All 14 `node --test tests/*.test.mjs` files pass.
+
+**FULL RUN (every flag together) = 4 gates still red, ALL pre-existing (identical at S67 head 6210e1d and at S65 684102d - not caused by S67/S68)**:
+1. `--customers`: "wave FAIL paid 8/20" and "edge-cases FAIL did not pick a stall" (tools/check.mjs ~778, ~802). Customers don't pick/pay a stall in the headless rig - probably a spawn/ stall-open rule changed (S6x) - investigate before trusting customer flow.
+2. `--enemies`: "P62 wave spawned behind the deal dialogue" (check.mjs ~1413).
+3. `--firstplayer`: "seed 3: S3 sold only 12 units" (balance gate; S66-C star rule or Focus may have changed pacing - check with economy.sim.mjs).
+4. `--jars1` T1.3 "empty-land tap no longer opens the tray" (gate jars1.mjs:111).
+Plain `node tools/check.mjs` (no flags) only imports modules; gates are opt-in. Full list of flags: grep `args.includes` in tools/check.mjs.
+
+**NOT done / TODO**
+- The 4 red gates above (decide: real bug vs stale test). Start with customers + firstplayer - they might be a real "nobody buys" bug.
+- Focus is still not persisted (every load = full) - deliberately left; add `focus` to save.js snapshot (additive field) if wanted.
+- No new procedural icons this chat (none needed; `focus`/`boon` exist). If new icons are made: icons_shot.mjs -> side-by-side sheet -> icons_png.mjs extracts PNGs.
+- `--boons` is a separate flag (works, 6/6); it is not folded into `--ui`.
+- S66-F leftovers: 568x320 + 1280x720 shots of title / PAY card; 1280x720 desktop chips with prices still unseen (run `node tools/hud_shot.mjs 1280 720 nodebug`).
+- Credits screen after THE END (S70). Then S68 Wishes + Neighbours, S69 Regions, S70 cinematic polish.
