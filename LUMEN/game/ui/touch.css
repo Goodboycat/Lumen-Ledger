@@ -108,8 +108,12 @@ body.is-touch .help { display: none; }
 .ll-touch-btn.dash .ll-touch-ico, .ll-touch-btn.dash .ll-touch-lab { position: relative; z-index: 1; }
 
 /* S67: Focus price on every touch power chip + the Dash button; dim when Focus is below it */
-.ll-touch-ab-fc { position: absolute; left: 0; right: 0; bottom: -1px; text-align: center; font-style: normal; font-size: 9px; font-weight: 900; line-height: 1; color: #0277BD; z-index: 2; text-shadow: 0 0 2px #FFF8E7, 0 0 2px #FFF8E7, 0 0 2px #FFF8E7; pointer-events: none; }
+.ll-touch-ab-fc { position: absolute; left: 0; right: 0; bottom: -1px; text-align: center; font-style: normal; font-size: 10px; font-weight: 900; line-height: 1; color: #0277BD; z-index: 2; text-shadow: 0 0 2px #FFF8E7, 0 0 2px #FFF8E7, 0 0 2px #FFF8E7; pointer-events: none; }
 .ll-touch-ab-fc::before { content: '\25CE'; margin-right: 1px; }
+/* S68: Dash price was 9px on a green disc - now a readable 12px bubble (white on ink) so a phone thumb sees what the power costs */
+.ll-touch-btn.dash .ll-touch-ab-fc { left: 50%; right: auto; bottom: 3px; transform: translateX(-50%); font-size: 12px; padding: 1px 6px 2px; border-radius: 9px; background: var(--ink, #3b2f2f); color: #fff; text-shadow: none; white-space: nowrap; }
+.ll-touch-btn.dash.nofocus .ll-touch-ab-fc { background: #C62828; color: #fff; }
+.ll-touch-btn.dash.nofocus { opacity: .7; filter: saturate(.4); }
 .ll-touch-ab.nofocus:not(.locked) { opacity: .6; filter: saturate(.35); }
 .ll-touch-ab.nofocus:not(.locked) .ll-touch-ab-fc { color: #C62828; }
 .ll-touch-ab.locked .ll-touch-ab-fc { display: none; }
