@@ -20,6 +20,13 @@ cp /tmp/lumen-ledger-web.zip /home/user/webapp/lumen-ledger-web.zip # name MUST 
 - Run the zip AFTER the last gate/commit so the zip matches origin/main. Mention size + file count + sha256.
 - Mid-task (IDs still open) nobody zips; this rule fires once, at the end.
 
+## RULE ITCH — DEV LOG AT THE VERY END (user order 2026-11-09)
+**When EVERYTHING is solved (all IDs of the task done, gates green, final zip built per RULE Z), write the itch.io dev log** as `LUMEN/game/docs/ITCH_DEVLOG.md`, paste-ready for itch.io (Devlog -> New post):
+- Scope: from the moment the UI was being eliminated (emoji/text UI replaced by drawn procedural icons, tutorial overlay removed, HUD slimmed) ALL THE WAY to the current build - but RESUMED: one short story, not a changelog dump. ~500-900 words.
+- Structure: hook line -> "What changed for players" (5-8 bullets: icons, HUD/phone-landscape layout, shop tray, Cloud crew pet, Baron boss/banner, sword combat, Ledger) -> "How we built it" (procedural art + side-by-side icon sheet pipeline, Three.js toon, Playwright screenshot QA at 844x390 / 568x320) -> "What we learned" (2-3 lines) -> "Try it" (link, controls, mobile landscape tip) -> "Next".
+- Everything needed: title, tags, 3-5 screenshot file paths (from `tools/shots/` or `docs/screenshots/`, real captures of the final build), version string, credits. Use facts from `docs/HANDOFF_S*.md` (S69-S79 are the UI/phone era); do not invent features.
+- If you run out of budget before everything is solved, do NOT write it; add "ITCH_DEVLOG still to write" to your HANDOFF so the next chat does it last.
+
 ## RULE -1 — 41B IS STOPPED (user order 2026-11-02)
 41B (verb-chain tutorial) killed two chats purely on reading cost. Never open `prompts/41B_*.md`, never read Game.js tutorial gates for it. `next.sh` skips it (⛔ row). General corollary: if `next.sh` points at an ID whose TRAIL shows ≥ 2 chats with no code commit, write a ⛔ row and move on — do not become the third.
 
