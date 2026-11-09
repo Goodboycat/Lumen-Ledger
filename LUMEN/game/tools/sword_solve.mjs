@@ -25,8 +25,8 @@ const out = await p.evaluate(async (T) => {
     for (let r = 0; r < 6; r++) { let s = 1.2; let cur = r === 0 ? best.slice() : best.map((x) => x + (Math.random() - 0.5) * (t.chain ? 0.3 : 1)); let cc = cost(cur, t);
       for (let i = 0; i < 700; i++) { const cand = cur.map((x) => x + (Math.random() - 0.5) * 2 * s); cand[0] = Math.max(-3.0, Math.min(1.0, cand[0])); cand[1] = Math.max(-1.6, Math.min(1.6, cand[1])); cand[2] = Math.max(-1.0, Math.min(3.2, cand[2])); cand[3] = Math.max(-1.2, Math.min(1.2, cand[3])); const c2 = cost(cand, t); if (c2 < cc) { cc = c2; cur = cand; } if (i % 100 === 99) s *= 0.6; }
       if (cc < bc) { bc = cc; best = cur; } }
-    PREV = best.slice(); apply(best, t.ty, t.tx); const m = measure();
-    res[name] = { armX: +best[0].toFixed(2), armZ: +best[1].toFixed(2), swX: +best[2].toFixed(2), ty: +best[3].toFixed(2), tx: t.tx, gotTip: m.tip.map((x) => +x.toFixed(2)), wantTip: t.tip, cost: +bc.toFixed(3) };
+    PREV = best.slice(); apply(best, t.ty, t.tx); const m = measure(); const adj = [P.armR.rotation.x, P.armR.rotation.z, h.sword.rotation.x];   // S78: POST-clearance angles = what the game ends up with; store THESE as keys so solveArmClearance is a no-op in game
+    res[name] = { armX: +adj[0].toFixed(2), armZ: +adj[1].toFixed(2), swX: +adj[2].toFixed(2), rawX: +best[0].toFixed(2), rawZ: +best[1].toFixed(2), rawS: +best[2].toFixed(2), ty: +best[3].toFixed(2), tx: t.tx, gotTip: m.tip.map((x) => +x.toFixed(2)), wantTip: t.tip, cost: +bc.toFixed(3) };
   }
   return res;
 }, T);
