@@ -46,6 +46,7 @@ import { createTills, tillCap } from './systems/till.js';
 import { createBaronPier } from './systems/baronPier.js';   // 42D: the Baron collects the season's interest at the pier
 import { createScamNpc } from './systems/scamNpc.js';
 import { createNoveltyRegistry } from './systems/novelties/index.js';   // 43B
+import { createFocus, GAP_S as FOCUS_GAP_S } from './systems/focus.js';   // S67: Focus meter replaces the flat 5 s cooldown
 import { createBoons } from './systems/boons.js';   // S67: Boon Draft (pure)
 import { createSeasonScript } from './systems/seasonScript.js';   // 43A: data/seasons.json drives the scheduler marks + season lengths       // 42D: the Too-Good Deal is a Collector NPC you must TALK to
 
@@ -146,6 +147,7 @@ export function createSandbox(game, opts = {}) {
   sb.update = (dt, _g, dtReal) => {
     sb.island.update(dt);
     if (!headless) { const tw = game.realTime ?? game.time; swayAll(tw); swayDecor(tw); updateLandmarks(dt); }   // S18: wind keeps blowing on the (paused) title backdrop
+    sb.focusTick?.(dt);                                             // S67: Focus refills (+2/s × boons)
     sb.answerTick?.(dt);                                            // T2b: Magnet sum + Shield ring
     sb.autoWalkTick?.(dt);                                          // T1-B: tap a far jar → Pip walks over and deposits (steers hero.inputOverride)
     sb.hero.update(dt);
@@ -563,7 +565,7 @@ function countStalls(sb) { let n = 0; for (const e of sb.build.placed.values()) 
 //   shield   bubbleShield arms sb.shield (SHIELD_S seconds) → the next scheduled event is absorbed (see scheduler) instead of applied
 //   fog      fogSweep ctx.fog.push → eco.pushFog(strength) (−5 % fog per strength)
 //   ledger   ledgerFlash reveals the pending Too-Good Deal (true cost = amount·(1+rate)³ or cost with payout 0) → eco.refuseOffer()
-export const COIN_MAX = 32, TIP_PCT = 0.2, SHIELD_S = 30, COOLDOWN_S = 5, GROWTH_S = 12;
+export const COIN_MAX = 32, TIP_PCT = 0.2, SHIELD_S = 30, COOLDOWN_S = FOCUS_GAP_S, GROWTH_S = 12;   // S67: COOLDOWN_S is now just the 0.6 s gap between two presses; the real limiter is Focus (systems/focus.js)
 function wireAbilities(sb) {
   const { eco, hero, cust, vfx } = sb, bus = sb.game.bus, game = sb.game;
   // ---- tip coins: ONE InstancedMesh (1 dc), each coin = { position: Vector3, value, t } so 3B's targetPos(coin) works unchanged
@@ -577,7 +579,19 @@ function wireAbilities(sb) {
     vfx.pop?.show?.(c.position.clone().setY(0.9), `+${c.value}`, { color: '#FFD54F', dur: 0.6, size: 0.8 }); bus.emit('sandbox:tip', { value: c.value, how }); return c.value; };
   sb._offs.push(bus.on('cust:paid', (p) => { if (p?.paid > 0 && p.at) { const a = Math.random() * Math.PI * 2; sb.dropTip(p.at.x + Math.cos(a) * 0.5, p.at.z + Math.sin(a) * 0.5, p.paid * TIP_PCT); } }));
   // ---- sell wrapper (haggle charges per stall + growth pulse)
-  sb.haggle = new Map(); sb.growth = { mul: 1, until: -1 }; sb.shield = { until: -1 }; sb.cooldown = {};
+  sb.haggle = new Map(); sb.growth = { mul: 1, until: -1 }; sb.shield = { until: -1 };
+  // ---- S67 Focus: powers cost Focus (0..100), it refills by itself and from good money habits (fair sale / Save deposit / scam refused).
+  //   sb.cooldown is kept as a shim: assigning a fresh {} (old gates / debug) refills Focus + clears the 0.6 s gap.
+  sb.focus = createFocus(); let _cd = {};
+  Object.defineProperty(sb, 'cooldown', { configurable: true, get: () => _cd, set: (v) => { _cd = v || {}; sb.focus.refill(); sb._focusEmit(true); } });
+  let _fv = -1;
+  sb._focusEmit = (force) => { const v = sb.focus.view(); if (!force && v.value === _fv) return; _fv = v.value; bus.emit('focus:change', { value: v.value, max: v.max, frac: v.frac, costs: sb.focus.costs }); };
+  sb.focusTick = (dt) => { sb.focus.tick(dt, eco.mod('focusRegenMul', 1)); sb._focusEmit(false); };
+  const gainFocus = (why, mul) => { const add = sb.focus.gain(why, mul); if (add > 0) { bus.emit('focus:gain', { why, add }); sb._focusEmit(false); } };
+  sb._offs.push(bus.on('cust:paid', (p) => { if (p && p.paid > 0 && p.fair > 0 && p.price >= p.fair * 0.8 && p.price <= p.fair * 1.2) gainFocus('sale'); }));   // a FAIR price (±20 %), not a gouge or a giveaway
+  sb._offs.push(bus.on('game:allocated', (p) => { if (p && p.deltas && p.deltas.save > 0 && !p.auto) gainFocus('save'); }));
+  sb._offs.push(bus.on('eco:scamResult', (p) => { if (p && p.refused) gainFocus('scam'); }));
+  sb._offs.push(bus.on('eco:season', () => { sb.focus.newSeason(); }));
   const baseSell = eco.sell.bind(eco);
   eco.sell = (stallId, type, price, opts = {}) => {
     const key = String(stallId).replace(/^stall_/, ''); let baseMul = opts.baseMul || 1;
@@ -616,11 +630,12 @@ function wireAbilities(sb) {
   };
   sb.ability = (name) => {
     if (!CTX[name] || !ABILITY_NAMES().includes(name)) return null;
-    if ((sb.cooldown[name] || -1) > game.time) { bus.emit('sandbox:denied', { name, why: 'cooldown', secondsLeft: sb.cooldown[name] - game.time }); return null; }
+    const fc = sb.focus.check(name);   // S67: 0.6 s gap ('cooldown') or not enough Focus ('focus')
+    if (!fc.ok) { bus.emit('sandbox:denied', { name, why: fc.why === 'gap' ? 'cooldown' : 'focus', secondsLeft: fc.secondsLeft, need: fc.need, have: fc.have }); return null; }
     const ctx = CTX[name]();
     const seq = hero.playMove(name, ctx);
     if (seq) {
-      sb.cooldown[name] = game.time + COOLDOWN_S; bus.emit('sandbox:ability:start', { name, cooldown: COOLDOWN_S });   // S08: touch strip starts its sweep here
+      sb.focus.spend(name); sb._focusEmit(true); bus.emit('focus:spent', { name, cost: sb.focus.cost(name) }); bus.emit('sandbox:ability:start', { name, cooldown: COOLDOWN_S });   // S08: touch strip starts its sweep here
       // T2b: pressed with nothing to act on → say what to do instead (the move still plays); with a target the callbacks answer with the numbers
       const none = name === 'coinMagnetDash' ? !(ctx.coins && ctx.coins.length) : name === 'haggleShout' ? !(ctx.targets && ctx.targets.length) : name === 'ledgerFlash' ? ctx.text === 'no deal on the table'
         : name === 'growthStomp' ? !(sb.build?.stalls?.().length) : name === 'fogSweep' ? !(eco.state.fog01 > 0.001) : false;

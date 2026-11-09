@@ -106,12 +106,16 @@ export async function run({ resolve, pathToFileURL }) {
     ok(`T2b.2 all 6 answer a no-target press with ≤ 8 words [${ABILITY_ORDER.map((i) => `${i.slice(0, 5)}:${none[i].kind}`).join(' ')}] · Magnet with coins "${mg.text}" · Shield "${sh.text}" · Stomp "${st?.text}"`);
 
     // ---------------------------------------------------------------- T2b.3 denied: cooldown / busy / blocked
-    eq(DENIED_WHYS, ['cooldown', 'busy', 'blocked'], 'T2b.3 denied reasons the sandbox can emit');
+    eq(DENIED_WHYS, ['cooldown', 'busy', 'blocked', 'focus'], 'T2b.3 denied reasons the sandbox can emit');
     for (const why of DENIED_WHYS) { const t = deniedLine(why, { secondsLeft: 3.2, reason: 'tray' }); if (!t || t === 'Not now' || words(t) > 8) throw new Error(`T2b.3 ${why} → "${t}"`); }
     for (const r of ['tray', 'placing', 'modal', 'paused']) { const t = deniedLine('blocked', { reason: r }); if (!t || t === 'Not now' || words(t) > 8) throw new Error(`T2b.3 blocked/${r} → "${t}"`); }
-    runS(6); sb.cooldown = {}; reset(); lg.ability('fogSweep'); runS(2.5); reset(); lg.ability('fogSweep');   // second press while cooling
-    let d = last('sandbox:denied'); if (!d || d.why !== 'cooldown' || !(d.secondsLeft > 0)) throw new Error('T2b.3 cooldown press → ' + JSON.stringify(d));
-    eq(document.querySelector('.ll-pans-txt').textContent, deniedLine('cooldown', d), 'T2b.3 cooldown pill');
+    runS(6); sb.cooldown = {}; reset(); lg.ability('fogSweep'); runS(0.2); reset(); lg.ability('fogSweep');   // S67: second press inside the 0.6 s gap
+    let d = last('sandbox:denied'); if (!d || d.why !== 'cooldown' || !(d.secondsLeft > 0)) throw new Error('T2b.3 gap press → ' + JSON.stringify(d));
+    eq(document.querySelector('.ll-pans-txt').textContent, deniedLine('cooldown', d), 'T2b.3 gap pill');
+    // S67: not enough Focus → 'focus' denial with need/have, nothing spent, a line ≤ 8 words in the pill
+    runS(1); sb.focus.st.value = 10; sb.focus.st.gapLeft = 0; reset(); const refused = lg.ability('fogSweep');
+    d = last('sandbox:denied'); if (refused || !d || d.why !== 'focus' || d.need !== 45 || d.have !== 10) throw new Error('T2b.3 focus press → ' + JSON.stringify(d));
+    eq(document.querySelector('.ll-pans-txt').textContent, deniedLine('focus', d), 'T2b.3 focus pill'); eq(Math.floor(sb.focus.value), 10, 'T2b.3 refused press spends nothing');
     runS(6); sb.cooldown = {}; lg.ability('growthStomp'); reset(); sb.cooldown = {}; const busy = lg.ability('bubbleShield');   // Stomp still mid-move → hero.playMove refuses
     d = last('sandbox:denied'); if (!busy && (!d || d.why !== 'busy')) throw new Error('T2b.3 busy press → ' + JSON.stringify(d));
     if (!busy) eq(document.querySelector('.ll-pans-txt').textContent, 'Finish the swing first', 'T2b.3 busy pill'); runS(6);

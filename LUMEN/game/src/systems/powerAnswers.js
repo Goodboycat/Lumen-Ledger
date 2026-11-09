@@ -17,11 +17,12 @@ export const WHEN = {
 /** why ∈ 'cooldown' | 'busy' | 'blocked' (sandbox:denied) → the line. `o.secondsLeft` (cooldown) · `o.reason` ('tray' | 'placing' | 'modal' | 'paused') for blocked. */
 export function deniedLine(why, o = {}) {
   if (why === 'cooldown') return `Ready in ${Math.max(1, Math.ceil(+o.secondsLeft || 1))} s`;
+  if (why === 'focus') return `Need ${o.need | 0} Focus (have ${o.have | 0})`;
   if (why === 'busy') return 'Finish the swing first';
   if (why === 'blocked') return o.reason === 'modal' ? 'Finish the talk first' : o.reason === 'paused' ? 'Game is paused' : 'Close the tray first';
   return 'Not now';
 }
-export const DENIED_WHYS = ['cooldown', 'busy', 'blocked'];
+export const DENIED_WHYS = ['cooldown', 'busy', 'blocked', 'focus'];
 
 /** Locked chip: live ★ count. */
 export function lockedLine({ stars, have } = {}) { return stars > 0 ? `Locked. Earn ★ at the Ledger (have ${have | 0}/${stars})` : 'Locked. Earn ★ at the Ledger'; }
