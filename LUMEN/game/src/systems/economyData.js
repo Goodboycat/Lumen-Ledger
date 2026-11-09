@@ -114,6 +114,7 @@ export const UPGRADES = {
   helper_guardTortoise: { id: 'helper_guardTortoise', kind: 'helper', cost: 100, upkeep: 5, requires: ['season:3'], effect: { protectBonus: 0.5 }, text: 'Guard Tortoise: Protect jar absorbs 50 % more', lesson: 'insurance' },
   helper_scoutFox: { id: 'helper_scoutFox', kind: 'helper', cost: 110, upkeep: 5, requires: ['season:4'], effect: { revealScams: true }, text: 'Scout Fox: sniffs out Too-Good Deals (shows the tell)', lesson: 'scams' },
   helper_gardenerSnail: { id: 'helper_gardenerSnail', kind: 'helper', cost: 60, upkeep: 3, requires: [], effect: { reputationBonus: 0.01 }, text: 'Gardener Snail: reputation +0.01/season', lesson: 'delayedGratification' },
+  helper_cloud: { id: 'helper_cloud', kind: 'helper', cost: 75, upkeep: 3, requires: ['season:2'], effect: { coinFetch: true }, text: 'Cloud: floats beside Pip and carries dropped coins to you', lesson: 'budgeting' },
   // zone unlocks (Island v2: west, east, far/lighthouse)
   zone_west: { id: 'zone_west', kind: 'zone', cost: 250, requires: ['season:3'], effect: { zone: 1 }, text: 'Unlock the West Meadow (flower & tea trade)', lesson: 'planningForAGoal' },
   zone_east: { id: 'zone_east', kind: 'zone', cost: 350, requires: ['zone_west'], effect: { zone: 2 }, text: 'Unlock the East Shore (fish & pier)', lesson: 'planningForAGoal' },

@@ -48,7 +48,7 @@ import { Easing } from '../../anim/Easing.js';
 import { CreatureAnimator } from './animator.js';
 import { measureCreature } from './glimmers.js';
 
-export const HELPER_TYPES = ['tallyOwl', 'packMole', 'sparkBee', 'guardTortoise', 'scoutFox', 'gardenerSnail'];
+export const HELPER_TYPES = ['tallyOwl', 'packMole', 'sparkBee', 'guardTortoise', 'scoutFox', 'gardenerSnail', 'cloud'];
 export const HELPER_ANIMS = ['idle', 'work', 'carry', 'happy', 'walk'];
 
 /** Economy / UI facing data (4A, 5, 7A read these). wage = Spark per Season, effect = multiplier hint for 4A. */
@@ -58,6 +58,7 @@ export const HELPER_INFO = {
   sparkBee:      { name: 'Spark-Bee',      job: 'Collector',  color: 0xFFD54F, wage: 4,  effect: { autoCollect: 1 },     blurb: 'Buzzes around gathering dropped Spark for you.' },
   guardTortoise: { name: 'Guard-Tortoise', job: 'Insurance',  color: 0x81C784, wage: 7,  effect: { protectBonus: 0.25 }, blurb: 'Shell shield. Protect jar covers 25% more damage.' },
   scoutFox:      { name: 'Scout-Fox',      job: 'Scout',      color: 0xFF8A50, wage: 5,  effect: { scamWarn: 1 },        blurb: 'Points out Too-Good Deals before you fall for them.' },
+  cloud:         { name: 'Cloud',          job: 'Fetcher',    color: 0xFFFFFF, wage: 3,  effect: { coinFetch: 1 },       blurb: 'Floats beside Pip and carries dropped coins to you.' },
   gardenerSnail: { name: 'Gardener-Snail', job: 'Grower',     color: 0xC5E1A5, wage: 4,  effect: { investGrowth: 0.02 }, blurb: 'Tends glow-plants. Invest jar grows +2% per Season.' },
 };
 
@@ -219,6 +220,27 @@ const BUILD = {
     const ring = mesh(G.torus(0.24, 0.035, 5, 10), P.sparkGold, 0.17, -0.15, 0.05); ring.rotation.y = Math.PI / 2; o.add(ring);
     const boss = new THREE.Mesh(G.sphere(0.07, 7, 6), flatMat(P.sparkGold)); boss.position.set(0.19, -0.15, 0.05); o.add(boss);
     c.shadowR = 0.48;
+  },
+
+  // S78: the Cloud crew member - the baby cloud that teaches, now a pet. White puffs, sky-blue underside, curl, blush, floats (hover) beside Pip.
+  cloud(c) {
+    const white = 0xFFFFFF, sky = 0xB3E5FC, skyD = 0x81D4FA, pink = 0xF48FB1;
+    c.hover = 0.5;
+    const t = c.torsoRaw;
+    const base = mesh(G.sphere(0.34, 10, 8), sky, 0, 0.2, 0); base.scale.set(1.15, 0.7, 0.95); t.add(base);
+    for (const sx of [-1, 1]) { const p = mesh(G.sphere(0.2, 8, 6), white, sx * 0.34, 0.26, 0); p.scale.set(1, 0.9, 0.9); t.add(p); const lo = mesh(G.sphere(0.13, 7, 5), skyD, sx * 0.2, 0.08, 0.05); lo.scale.set(1, 0.6, 1); t.add(lo); }
+    t.add(mesh(G.sphere(0.2, 8, 6), white, 0, 0.38, -0.12));
+    c.headY = 0.42;
+    const h = c.headRaw;
+    const main = mesh(G.sphere(0.3, 10, 8), white, 0, 0.12, 0); main.scale.set(1.1, 0.95, 1); h.add(main);
+    for (const sx of [-1, 1]) { const p = mesh(G.sphere(0.17, 8, 6), white, sx * 0.25, 0.2, -0.02); h.add(p); const ch = new THREE.Mesh(G.sphere(0.06, 6, 5), flatMat(pink)); ch.position.set(sx * 0.2, 0.0, 0.25); ch.scale.set(1, 0.7, 0.4); h.add(ch); }
+    const curl = mesh(G.cone(0.05, 0.2, 5), sky, 0.02, 0.5, 0); curl.rotation.z = -0.5; h.add(curl);
+    h.add(mesh(G.sphere(0.06, 6, 5), sky, 0.1, 0.58, 0));
+    c.face = { y: 0.1, z: 0.28, gap: 0.12, r: 0.062, pupil: 0.04 };
+    // tool = a tiny puff "hand" (pivot at the side) that waves / pops when a coin is delivered
+    c.toolPos.set(0.4, 0.3, 0.1);
+    const o = c.toolRaw; o.add(mesh(G.sphere(0.1, 7, 5), white, 0, 0, 0.04));
+    c.shadowR = 0.3;
   },
 
   // Slim orange fox, white chest, blue bandana, big tail with white tip (live), pointing right paw.
@@ -383,6 +405,7 @@ export class HelperAnimator extends CreatureAnimator {
       case 'sparkBee':      hp.hover += Math.sin(t * 4 * Math.PI * 2) * 0.06; break;
       case 'scoutFox':      hp.tail += Math.sin(t * 2 * Math.PI * 2) * 0.35; break;
       case 'gardenerSnail': hp.yaw += Math.sin(t * 1 * Math.PI * 2) * 0.12; break;
+      case 'cloud':         hp.hover += Math.sin(t * 1.4 * Math.PI * 2) * 0.045; hp.tilt += Math.sin(t * 0.9 * Math.PI * 2) * 0.07; break;
       default: break; // tortoise: stoic
     }
     if (p.head) p.head.rotation.set(hp.nod, hp.yaw, hp.tilt);
@@ -451,6 +474,12 @@ function buildHelperClips(a) {
       .phase('point', 200, Easing.outBack, (e) => { pose.squash = lerp(0.9, 1.05, e); hp.trx = e * -1.4; pose.lean = e * 0.25; hp.tilt = e * 0.2; hp.tail = e * 0.6; }, { onEnter: () => a.beat() })
       .phase('hold', 250, Easing.linear, (e, c, t) => { pose.squash = 1.05; hp.trx = -1.4 + Math.sin(t * Math.PI * 4) * 0.08; pose.lean = 0.25; hp.tilt = 0.2; hp.tail = 0.6; })
       .phase('return', 200, Easing.inOutCubic, (e) => { pose.squash = lerp(1.05, 1, e); hp.trx = lerp(-1.4, 0, e); pose.lean = lerp(0.25, 0, e); hp.tilt = lerp(0.2, 0, e); hp.tail = lerp(0.6, 0, e); })
+      .setLoop(true),
+    // squish 120 -> puff 180 [beat] -> settle 200 (a coin was delivered)
+    cloud: () => new Sequence('work')
+      .phase('squish', 120, Easing.outCubic, (e) => { pose.squash = lerp(1, 0.86, e); hp.nod = e * 0.15; }, stopCarry)
+      .phase('puff', 180, Easing.outBack, (e) => { pose.squash = lerp(0.86, 1.18, e); hp.ts = 1 + e * 0.6; hp.trz = e * 0.5; hp.nod = lerp(0.15, -0.1, e); }, { onEnter: () => a.beat() })
+      .phase('settle', 200, Easing.inOutCubic, (e) => { pose.squash = lerp(1.18, 1, e); hp.ts = lerp(1.6, 1, e); hp.trz = lerp(0.5, 0, e); hp.nod = lerp(-0.1, 0, e); })
       .setLoop(true),
     // lean 250 → pour 300 [beat] → return 250
     gardenerSnail: () => new Sequence('work')
