@@ -1409,9 +1409,13 @@ if (doEnemies) {
     const E = sb.enemies; if (!E || sb.villains !== E.list) throw new Error('sb.enemies / sb.villains not wired');
     // 1. no enemies before day 0.7; wave of 1 at S1 — P62: not while the Baron's deal is open; the wave lands right after the refuse
     run(10); if (E.list.length) throw new Error('enemies before day 0.7');
-    { const raw = () => { game.time += dt; for (const s of game.systems) s.update?.(dt); }; sb.eco.state.day01 = 0.71; raw(); raw();
-      if (!sb.eco.pendingOffer) throw new Error('P62: S1 day 0.7 should open the Too-Good Deal'); if (E.list.length || sb.sched.wave) throw new Error('P62: wave spawned behind the deal dialogue');
-      sb.eco.refuseOffer(); raw(); if (E.list.length !== 1) throw new Error('P62: wave did not land after the deal closed ' + E.list.length); E.clear(); E.waveSeason = 0; sb.sched.wave = false; }
+    // S69: S1's wave mark is day 0.55 and the Baron's deal day 0.70 (seasons.json, 41C), so jumping day01 to 0.71 fires the wave BEFORE the offer exists - that is
+    //   not "behind the dialogue". The real invariant: while ANY offer is open the wave mark waits, and it lands right after the offer closes.
+    { const raw = () => { game.time += dt; for (const s of game.systems) s.update?.(dt); }; sb.eco.state.day01 = 0.50; raw(); raw();
+      if (E.list.length || sb.sched.wave) throw new Error('wave before its 0.55 mark');
+      sb.eco.offerScam(); if (!sb.eco.pendingOffer) throw new Error('P62: offerScam did not open a deal');
+      sb.eco.state.day01 = 0.56; raw(); raw(); if (E.list.length || sb.sched.wave) throw new Error('P62: wave spawned behind the deal dialogue');
+      sb.eco.refuseOffer(); raw(); if (E.list.length !== 1) throw new Error('P62: wave did not land after the deal closed ' + E.list.length); E.clear(); E.waveSeason = 0; sb.sched.wave = false; sb.sched.marks.forEach((m, i) => { if (m.kind === 'wave') sb.sched.fired.delete(i); }); }   // S69: re-arm the wave mark (it was consumed above)
     sb.eco.state.day01 = 0.71; step(); if (E.list.length !== 1 || E.list[0].kind !== 'collector' || !ev['enemy:wave'] || ev['enemy:wave'][0].season !== 1) throw new Error('S1 wave ' + E.list.length);
     if (!game.scene.children.includes(E.list[0].g)) throw new Error('enemy not in scene');
     // 2. chase: it closes in on Pip; contact costs 1 ✦ from the pouch, never below 0, never from jars
@@ -1471,13 +1475,13 @@ if (doEnemies) {
     for (const e of E.list) e.g.position.set(e.home.x, 0, e.home.z); run(ENEMY_RULES.homeTimeout + 1);
     const defEv = (ev['enemy:defeated'] || []).length; if (E.list.length !== 0 || E.stats.defeated !== defB || defEv !== 1 || !ev['enemy:gone'].some((g) => g.why === 'home')) throw new Error(`walk-home not finished: ${E.list.length} left, defeated ${E.stats.defeated}/${defB}`);   // (sb.coins also grows from customer tips while the clock runs → not compared)
     // 5b. the new season's wave still spawns normally after a walk-home
-    E.waveSeason = 0; sb.eco.state.season = 4; sb.sched.wave = false; sb.sched.season = 4; sb.eco.state.day01 = 0.71; step(); if (E.list.length !== 4) throw new Error('S4 wave after walk-home ' + E.list.length); E.clear();
+    E.waveSeason = 0; sb.eco.state.season = 4; sb.sched.wave = false; sb.sched.season = 4; sb.sched.marks = sb.seasons.marks(4); sb.sched.fired = new Set(); sb.eco.state.day01 = 0.71; step(); if (E.list.length !== 4) throw new Error('S4 wave after walk-home ' + E.list.length); E.clear();
     // 6. Season 6 (S20 revised): Baron Gilt = VERY SLOW CHASER (1.1 u/s) landing at the pier, 0 minions, power 'cannon' only.
     //    S9: Baron + 3 minions with cannon/puddle/stomp/minigun; S12: +5 (cap) and umbrella.  (clock frozen: a 30 s season would end mid-probe)
     sb.eco.config.seasonSeconds = 1e9; sb.eco.config.seasonSecondsOverride = 1e9;   // 41C: the curve ignores seasonSeconds; the override wins
     const RB = ENEMY_RULES.baron; const P = E._podium();   // a known land cell near the plaza used as the arena for the attack probes
     const dXZ = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
-    E.waveSeason = 0; sb.eco.state.season = 6; sb.sched.wave = false; sb.sched.season = 6; sb.eco.state.day01 = 0.71; step();
+    E.waveSeason = 0; sb.eco.state.season = 6; sb.sched.wave = false; sb.sched.season = 6; sb.sched.marks = sb.seasons.marks(6); sb.sched.fired = new Set(); sb.eco.state.day01 = 0.71; step();
     if (E.list.length !== 1 || E.list[0].kind !== 'baron' || E.list[0].powers.join() !== 'cannon' || !ev['enemy:wave'].at(-1).boss) throw new Error('S6 baron wave ' + (E.list[0]?.powers || []).join());
     const b = E.baron; if (!b || dXZ(b.home, E._exit) > 1e-6 || dXZ(b.g.position, E._exit) > 0.5) throw new Error('baron did not land at the pier');
     if (!(RB.speed < ENEMY_RULES.collector.speed && RB.speed < 2)) throw new Error('baron not slow ' + RB.speed);
@@ -1512,7 +1516,7 @@ if (doEnemies) {
     for (let i = 0; i < RB.hp; i++) E.hitEnemy(b, dir, 1); if (b.state !== 'flee' || E.stats.baronDefeats !== 1 || sb.coins.at(-1).value !== RB.reward) throw new Error('baron defeat');
     E.clear(); if (E.decals.active !== 0) throw new Error('clear left decals');
     // ---- S9: Baron + 3 minions · cannon, puddle, stomp, minigun
-    E.waveSeason = 0; sb.eco.state.season = 9; sb.sched.wave = false; sb.sched.season = 9; sb.eco.state.day01 = 0.71; step();
+    E.waveSeason = 0; sb.eco.state.season = 9; sb.sched.wave = false; sb.sched.season = 9; sb.sched.marks = sb.seasons.marks(9); sb.sched.fired = new Set(); sb.eco.state.day01 = 0.71; step();
     const b9 = E.baron; if (!b9 || E.list.length !== 4 || b9.powers.join() !== 'cannon,puddle,stomp,minigun') throw new Error('S9 wave ' + E.list.length + ' ' + (b9?.powers || []).join());
     if (baronPowersFor(12).length !== 5 || baronPowersFor(6).length !== 1 || baronPowersFor(10).join() !== 'cannon,puddle,stomp,minigun,umbrella') throw new Error('baronPowersFor');
     for (const m of E.list) if (m !== b9) { m.state = 'flee'; m.fleeT = 99; }   // park the minions so the pick is deterministic
@@ -1541,7 +1545,7 @@ if (doEnemies) {
     // S34 / P77: a sword interrupt is a CANCEL (enemy:baronInterrupted), never a DODGE credit
     if (b9.phase !== 'idle' || E.stats.attacksDodged !== dodged0 || !ev['enemy:baronInterrupted']?.length) throw new Error('minigun interrupt ' + b9.phase + ' ' + E.stats.attacksDodged);
     // ---- S12: Baron + 5 minions (cap), all 5 powers · umbrella dash
-    E.waveSeason = 0; E.clear(); sb.eco.state.season = 12; sb.sched.wave = false; sb.sched.season = 12; sb.eco.state.day01 = 0.71; step(); const b12 = E.baron; if (!b12 || E.list.length !== 6 || b12.powers.length !== 5) throw new Error('S12 cap');
+    E.waveSeason = 0; E.clear(); sb.eco.state.season = 12; sb.sched.wave = false; sb.sched.season = 12; sb.sched.marks = sb.seasons.marks(12); sb.sched.fired = new Set(); sb.eco.state.day01 = 0.71; step(); const b12 = E.baron; if (!b12 || E.list.length !== 6 || b12.powers.length !== 5) throw new Error('S12 cap');
     if (E.list.filter((e) => e.kind === 'collector').length !== ENEMY_RULES.minionCap) throw new Error('minion cap');
     for (const m of E.list) if (m !== b12) { m.state = 'flee'; m.fleeT = 99; }
     // umbrella: aim (ring tracks Pip) → dash 7 u/s along the line → Pip on the line: 2 ✦ + shove → he ends PARALYSED 4 s (not targetable while dashing, targetable while paralysed)
