@@ -15,6 +15,7 @@
 // shake 360 ms on denied/loss · "+N" float 900 ms outQuad · fog bar width 600 ms outExpo · spark count-up: exp damp k=9 (≈ 350 ms to settle).
 
 import { iconize, icon } from './icons.js';
+import { WANT_ICON } from './bark.js';   // S71: stall kind -> drawn icon for the 'nobody sells X' chip
 import { bus as defaultBus } from '../src/core/EventBus.js';
 
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = iconize(html); return e; };
@@ -185,7 +186,8 @@ export function mountHUD(root, opts = {}) {
       const k = Math.min((cx - 28) / Math.abs(dx || 1e-6), (cy - 28) / Math.abs(dy || 1e-6));
       raidArrow.style.left = (cx + dx * k) + 'px'; raidArrow.style.top = (cy + dy * k) + 'px'; raidArrow.style.transform = `translate(-50%,-50%) rotate(${Math.atan2(dy, dx)}rad)`; void L; }),
     bus.on('hud:new', (p) => { if (p?.text) api.newChip(p.text); }),                      // 43D: story.js fires once per novelty id (noveltiesSeen)
-    bus.on('hud:chip', (p) => { if (!p || !p.id) return; let c = [...chips.children].find((n) => n.dataset?.id === p.id) || null; if (p.on === false) { c?.remove(); return; } if (!c) { c = el('div', 'll-chip'); c.dataset.id = p.id; chips.appendChild(c); } c.innerHTML = (p.icon ? icon(p.icon, { cls: 'll-chip-ico' }) : '') + iconize(p.text || p.id); c.classList.toggle('ll-chip-alert', !!p.alert); }),   // S59-I: optional drawn `icon` (stormmark) + `alert` pulse
+    bus.on('hud:chip', (p) => { if (!p || !p.id) return; let c = [...chips.children].find((n) => n.dataset?.id === p.id) || null; if (p.on === false) { c?.remove(); return; } if (!c) { c = el('div', 'll-chip'); c.dataset.id = p.id; chips.appendChild(c); } const ic = p.icon || (p.want ? (WANT_ICON[p.want] || 'think') : ''); c.innerHTML = (ic ? icon(ic, { cls: 'll-chip-ico' }) : '') + iconize(p.text || p.id); c.classList.toggle('ll-chip-alert', !!p.alert); c.classList.toggle('ll-chip-want', !!p.want);
+      if (p.ttl > 0) { clearTimeout(c._ttl); c._ttl = setTimeout(() => c.remove(), p.ttl * 1000); (st._newTimers = st._newTimers || []).push(c._ttl); } }),   // S71: ttl = self-removing chip (want hint)   // S59-I: optional drawn `icon` (stormmark) + `alert` pulse
     bus.on('pier:due', (p) => { st.pier = { interest: p?.interest || 0, left: p?.waitCap ?? 20, repay: false, spark: p?.spark ?? 0, canPay: p?.canPay !== false }; pierChip.hidden = false; pierChip.classList.remove('repay'); pierChipDue(); }),
     bus.on('pier:tick', (p) => { if (!st.pier || st.pier.repay || !p) return; st.pier.left = p.left; pierChipDue(); }),
     bus.on('pier:paid', () => { if (!st.pier) return; st.pier.repay = true; pierChip.classList.add('repay'); const T = typeof document !== 'undefined' && document.body?.classList?.contains('is-touch'); pierChip.innerHTML = iconize(T ? '✓ PAID — tap the Baron again to repay debt (−20 ✦ each), walk away to leave' : '✓ PAID — tap E on him again to repay debt (−20 ✦ each), walk away to leave'); }),   // S70: touch wording (no E key on a phone)

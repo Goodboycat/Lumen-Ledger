@@ -9,7 +9,7 @@
 // their own pool of 2 and ignore the gap. Never pauses the game, pointer-events none, aria-live polite, clamps inside the viewport.
 import { icon } from './icons.js';
 // 44B: want bubble {kind:'want', icon:'stall_<kind>', ok} → stall kind → drawn icon (same names as ui/build.js ICONS via icons.js EMOJI map)
-const WANT_ICON = { fruit: 'apple', bread: 'bread', lantern: 'lantern', fish: 'fish', flower: 'tulip', tool: 'hammer', cloth: 'thread', pottery: 'vase', toy: 'teddy', tea: 'tea', book: 'books', sparkExchange: 'spark' };
+export const WANT_ICON = { fruit: 'apple', bread: 'bread', lantern: 'lantern', fish: 'fish', flower: 'tulip', tool: 'hammer', cloth: 'thread', pottery: 'vase', toy: 'teddy', tea: 'tea', book: 'books', sparkExchange: 'spark' };
 export const BARK_DEFAULTS = { max: 1, glyphMax: 2, gapS: 6, ttl: 3.2, lift: 2.1, fadeS: 0.22, pad: 8 };
 const NAMES = { pip: 'Pip', owl: 'Owl', baron: 'Baron Gilt', collector: 'Collector', stranger: 'Stranger', cloud: 'Cloud' };
 

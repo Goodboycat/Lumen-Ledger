@@ -41,6 +41,7 @@ export const MAX_ACTIVE_HARD = 40;
 const SEP_RADIUS = 0.7, SEP_FORCE = 1.6, ARRIVE_R = 0.35, BASE_SPEED = 1.9;
 const _v = new THREE.Vector3(), _d = { x: 0, z: 0 };
 
+const WANT_NAME = { fruit: 'fruit', bread: 'bread', lantern: 'lanterns', fish: 'fish', flower: 'flowers', tool: 'tools', cloth: 'cloth', pottery: 'pottery', toy: 'toys', tea: 'tea', book: 'books', sparkExchange: 'swaps' };   // S71
 /** Type → stall type preference weights (unlisted stall = 1). Mirrors GAME_BIBLE flavour text. */
 export const PREFS = {
   regular:   {},
@@ -266,6 +267,8 @@ export class CustomerSystem {
     const B = this.story?.barks, list = B?.wants; const tpl = (list?.length ? list[Math.floor(this.rng() * list.length)] : null)?.text || '{who} want {what}. Nobody sells {what}.';
     const who = B?.wantsWho?.[type] || (type.charAt(0).toUpperCase() + type.slice(1) + 's');
     this.bus.emit('story:bark', { speaker: 'owl', kind: 'wants', want, text: tpl.replace('{who}', who).replace(/\{what\}/g, want), anchor: 'owl', ttl: 3 });
+    // S71: the bark layer is not mounted (S58), so the line above draws nothing - a beginner never learnt WHY customers walk away. The HUD chip does render: drawn stall icon + one short line, self-removes after 7 s.
+    this.bus.emit('hud:chip', { id: 'want:' + want, want, text: `Nobody sells ${WANT_NAME[want] || want}! Build one.`, on: true, ttl: 7 });
   }
   _join(c, s) {
     const q = this._queue(s.entry); q.push(c);
