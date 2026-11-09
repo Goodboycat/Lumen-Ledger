@@ -165,7 +165,7 @@ export class CustomerSystem {
     const jx = (this.rng() - 0.5) * 0.6, jz = (this.rng() - 0.5) * 0.6;
     c.root.position.set(sp.x + jx, 0, sp.z + jz);
     c.root.visible = true; c.root.scale.setScalar(0.001);
-    c.state = 'spawn'; c.t = 0; c.waited = 0; c.stall = null; c.slot = -1; c.field = null; c.result = null; c.stuck = 0; c.stuckCount = 0; c.wanted = false;
+    c.state = 'spawn'; c.t = 0; c.waited = 0; c.stall = null; c.slot = -1; c.field = null; c.result = null; c.stuck = 0; c.stuckCount = 0; c.leaveStuck = 0; c.wanted = false;
     c.speed = BASE_SPEED * (0.85 + 0.3 * this.rng()) * c.speedMul;
     if (c.anim) { c.anim.moodTint(0.6); c.anim.play('idle'); }
     this.active.push(c); this.count = this.active.length; this.totals.spawned++;
@@ -372,9 +372,13 @@ export class CustomerSystem {
           break;
         case 'react': if (c.t >= 0.6) this._set(c, 'leave'); break;
         case 'leave': {
-          if (c.anim?.knocked) { c.field = null; break; }                   // S32: finish the slide before walking on
+          if (c.anim?.knocked) { c.field = null; c.leaveStuck = 0; break; }                   // S32: finish the slide before walking on
+          const lx = c.root.position.x, lz = c.root.position.z;
+          // S80: a leaver standing on a blocked cell (or boxed in by stalls) never reached the spawn point and held a maxActive slot for ever -> snap to the nearest walkable cell, and after 4 s without progress just despawn
+          if (!this.flow.walkable(lx, lz)) { const n = this.flow.nearestWalkable(lx, lz, 3); if (n) { c.root.position.x = n.x; c.root.position.z = n.z; c.field = null; } }
           const arrived = this._steer(c, dt);
-          if (arrived) { this._playLeave(c); }
+          if (!arrived && Math.hypot(c.root.position.x - lx, c.root.position.z - lz) < 0.25 * dt) c.leaveStuck = (c.leaveStuck || 0) + dt; else c.leaveStuck = 0;
+          if (arrived || c.leaveStuck > 4) { c.leaveStuck = 0; this._playLeave(c); }
           break;
         }
         case 'despawn': if (c.t >= 0.25) { this.totals.left++; this.bus.emit('cust:left', { id: c.id, type: c.type, result: c.result, want: c.result?.want, noStall: !!c.result?.noStall }); this._release(c); } break;

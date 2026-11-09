@@ -8,6 +8,7 @@ const r = await p.evaluate(({ WAVES, SEASON, ONLY }) => {
   const spots = []; for (let x = -9; x <= 9; x += 3) for (let z = -9; z <= 9; z += 3) spots.push([x, z]);
   for (const k of kinds) { const id = 'stall_' + k; if (B.owned?.(id)) continue; for (const [x, z] of spots) { if (B.canPlace(id, x, z, 0)) { if (B.place(id, x, z, 0, { animate: false, pay: false, silent: true })) break; } } }
   if (ONLY.length) for (const e of [...B.placed.values()]) if (e.category === 'stall' && !ONLY.includes(e.id.replace(/^stall_/, ''))) B.remove?.(e);
+  C.reroute();   // S80: silent placement emits no build:placed -> flow field + _usableSlots caches were stale (the real cause of the fruit 'stuck' picks)
   if (sb.eco?.state) sb.eco.state.season = SEASON; C.season = SEASON;
   const S = {}; const k = (id) => String(id).replace(/^stall_/, ''); const row = (x) => (S[x] = S[x] || { pick: 0, paid: 0, why: {} });
   const orig = C.pickStall.bind(C); C.pickStall = (c) => { const s = orig(c); if (s) row(k(s.id)).pick++; return s; };
