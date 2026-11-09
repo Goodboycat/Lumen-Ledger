@@ -499,7 +499,7 @@ function installJarsWorld(sb) {
   sb.interactRelease = () => { J.release(); sb.pier?.release?.(); const sh = sb._signHold; if (sh) { sb._signHold = null; if (!sh.fired) bus.emit('ui:price', { id: sh.id, delta: +1 }); } };
   // bark on an absorbed event at the Protect jar (P2): the spatial choice pays back visibly
   const protectBark = (title, amount) => { const m = J.get('protect'); if (m) bus.emit('story:bark', { speaker: 'owl', text: `The Protect jar ate the ${title || 'shock'}${amount ? ` (${amount} ✦)` : ''}. That is what it is for.`, anchor: { x: m.position.x, y: 1.2, z: m.position.z }, ttl: 3.4 }); };
-  sb._offs.push(bus.on('eco:absorbed', (p) => protectBark(eco.events?.[p?.id]?.title)));                                  // Bubble Shield path
+  sb._offs.push(bus.on('eco:absorbed', (p) => { if (!p?.boon) protectBark(eco.events?.[p?.id]?.title); }));   // S67: a boon absorb has its own bark (installSeasonLoop)                                  // Bubble Shield path
   sb._offs.push(bus.on('eco:event', (p) => { if (p?.effect?.absorbed > 0) protectBark(p.event?.title, p.effect.absorbed); }));   // the jar itself absorbed (4A rule)
   sb._offs.push(() => { J.destroy(); sb.jarsWorld = null; });
 }
@@ -647,7 +647,7 @@ function wireAbilities(sb) {
     else if (sb._ringOn) { sb._ringOn = false; b.visible = false; if (b.children[0]) b.children[0].visible = true; b.scale.setScalar(1); }
   };
   // T2b: a shield that eats an event says what it saved
-  sb._offs.push(bus.on('eco:absorbed', (p) => { const sp = eco.events?.[p?.id]?.effect?.spark; answer('bubbleShield', `🛡 ${typeof sp === 'number' && sp < 0 ? `−${-sp} ✦ ` : ''}absorbed`, 'absorbed'); }));
+  sb._offs.push(bus.on('eco:absorbed', (p) => { if (p?.boon) return; const sp = eco.events?.[p?.id]?.effect?.spark; answer('bubbleShield', `🛡 ${typeof sp === 'number' && sp < 0 ? `−${-sp} ✦ ` : ''}absorbed`, 'absorbed'); }));
 }
 // Debug keys (prompt P1): B build mode for the current pick · 1–9 pick a stall type · E end season (LedgerReport → console)
 // · H hire next helper (P3) · Z unlock next zone (buys the zone upgrade when affordable, else free in sandbox) · X demolish nearest
@@ -1355,6 +1355,8 @@ function installSeasonLoop(lg) {
     return ui.boons.show({ cards, families: lg.boons.families, season }, (id) => { lg.boons.apply(eco, id); lg.refreshBoons(); lg.save?.write?.(); proceed(); });
   };
   if (ui?.ledger) ui.ledger.beforeContinue = (proceed, r) => lg.draftBoon(proceed, r);
+  on('eco:absorbed', (p) => { if (p?.boon) bus.emit('story:bark', { speaker: 'owl', text: 'Your boon paid for that one. Cover has a price: you paid it up front.', anchor: 'hero', ttl: 3.6, kind: 'boon' }); });
+  on('eco:denied', (p) => { if (p?.reason === 'locked' && p.jar === 'invest') bus.emit('story:bark', { speaker: 'owl', text: `Index Fund money stays put ${p.seasonsLeft > 1 ? p.seasonsLeft + ' more seasons' : 'one more season'}. That is the deal you took.`, anchor: 'owl', ttl: 3.6, kind: 'boon' }); });
   on('game:state', () => lg.refreshBoons()); on('boon:picked', () => lg.refreshBoons()); on('boon:expired', () => lg.refreshBoons()); on('game:title', () => { ui?.boons?.setOwned?.([]); ui?.boons?.setVisible?.(false); });
   const showLedger = (report, o = {}) => { if (!report) return; lg.stats.reviews++; if (ui?.ledger?.show) ui.ledger.show(report, o); else bus.emit('ui:ledger:open', { season: report.season }); };
   lg.lastReport = null; lg.pendingOutcome = null;

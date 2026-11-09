@@ -43,6 +43,7 @@ const doPerf = args.includes('--perf');            // 11A src/systems/perf.js: B
 const doKnockback = args.includes('--knockback');  // S32 tools/gates/knockback.mjs: CreatureAnimator.hit slide/decay/stun/canStand clamp · customers knocked → walkable, re-path, sales continue, browsers walk back · helpers are sword targets (slide, helper:hit, walk back to seat)
 const doJars1 = args.includes('--jars1');           // T1 tools/gates/jars1.mjs: jars unlock one by one (tray lists 1 → 4 on bus rules) + tap a far jar → Pip auto-walks and deposits 10 ✦ (cancels: stick/pause/timeout) + 2-jar isolation
 const doCrew = args.includes('--crew');           // T3 tools/gates/crew.mjs: 6 crew arrive from the pier ≤ 3 s with 0 stalls, work + payoff pop in 80 s, Ledger Crew line = Σ pops, season totals = baseline ±2 %, +≤1 object, CONTINUE instant
+const doBoons = args.includes('--boons');          // S67 tools/gates/boons.mjs: Ledger CONTINUE → Boon Draft (3 cards, 3 families, modal) → pick → ui:continue ×1 · win/lose skip it · free event + Index Fund lock + Owl barks · save round-trip
 const doPowers = args.includes('--powers');       // T2b tools/gates/powers.mjs: hold = guide card (touch + desktop), every press answers ≤ 8 words, cooldown/busy/blocked lines, 6 touch chips (4 locked), Shield/Stomp drain bar, 0 meshes
 const doCuriosity = args.includes('--curiosity');   // T2 tools/gates/curiosity.mjs: tests/curiosity.test.mjs + real game on domshim — registry sees stall/sign, approach card ≤ 1.5 s, far Collector tap, counts persist, HUD data-guide taps, pause → GUIDE codex, coverage (T2.1/4/5/6/7/8)
 const doStrangers = args.includes('--strangers');   // T4 tools/gates/strangers.mjs: first stranger in S1 (fair, not a Collector) · 10 swings whiff · every deal id spawns with a bell/edge-arrow marker from 10 u · timeout leaves with no penalty/reward · 10-season run ≥ 10 strangers, ≥ 3 fair, ≥ 5 scam ids
@@ -2653,6 +2654,10 @@ if (doCuriosity) {
 if (doCrew) {
   try { const { run } = await import(pathToFileURL(resolve('tools/gates/crew.mjs')).href); bad += await run({ resolve, pathToFileURL }); }
   catch (err) { bad++; console.log('  crew gate FAIL →', err.message.split('\n')[0]); }
+}
+if (doBoons) {
+  try { const { run } = await import(pathToFileURL(resolve('tools/gates/boons.mjs')).href); bad += await run({ resolve, pathToFileURL }); }
+  catch (err) { bad++; console.log('  boons gate FAIL →', err.message.split('\n')[0]); }
 }
 if (doPowers) {
   try { const { run } = await import(pathToFileURL(resolve('tools/gates/powers.mjs')).href); bad += await run({ resolve, pathToFileURL }); }
