@@ -92,7 +92,7 @@ export function createCombat({ hero, game, targets, bus }) {
       S.start.copy(hero.root.position); S.reach = hero.landReach ? hero.landReach(S.dir, st.lunge + 0.06) : st.lunge;
       vfx().dust?.burst?.(hero.root.position, i === 2 ? 7 : 4, { size: 0.18, speed: 1.2, dur: 0.35 });
     };
-    const strikeEnter = () => { vfx().slash?.fire?.(hero.root.position, S.dir, { dur: i === 2 ? 0.2 : 0.12, scale: i === 2 ? 1.35 : 1.05, blade: hero.sword }); };
+    const strikeEnter = () => { vfx().slash?.fire?.(hero.root.position, S.dir, { dur: i === 2 ? 0.2 : 0.12, scale: i === 2 ? 1.2 : 1.0, blade: hero.sword }); };
     const lungeTo = (f) => hero.root.position.copy(S.start).addScaledVector(S.dir, Math.min(S.reach, st.lunge * Math.min(1.05, f)));
     if (i === 0 || i === 1 || variant === 'thrust') {
       // S77-SW: keyframed from tools/sword_solve.mjs (blade-tip targets in Pip's frame). The old poses snapped the blade through the body in 2 frames;

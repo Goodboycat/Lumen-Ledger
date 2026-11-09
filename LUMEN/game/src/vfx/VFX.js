@@ -132,8 +132,9 @@ export class SlashTrail {
     const put = (b, t, fade) => {
       // b/t are the smoothed guard/tip; stretch the tip slightly past the blade (scale) for a fuller ribbon
       const tx = b.x + (t.x - b.x) * sc, ty = b.y + (t.y - b.y) * sc, tz = b.z + (t.z - b.z) * sc;
-      P[v * 3] = b.x; P[v * 3 + 1] = b.y; P[v * 3 + 2] = b.z; C[v * 3] = c.r * fade * 0.35; C[v * 3 + 1] = c.g * fade * 0.35; C[v * 3 + 2] = c.b * fade * 0.35; v++;
-      P[v * 3] = tx; P[v * 3 + 1] = ty; P[v * 3 + 2] = tz; C[v * 3] = c.r * fade; C[v * 3 + 1] = c.g * fade; C[v * 3 + 2] = c.b * fade; v++;
+      const IN = 0.72, bx = b.x + (t.x - b.x) * IN, by = b.y + (t.y - b.y) * IN, bz = b.z + (t.z - b.z) * IN;   // S78-SW4: ribbon starts half-way up the blade (was at the guard) = a slim arc, not a wedge covering Pip
+      P[v * 3] = bx; P[v * 3 + 1] = by; P[v * 3 + 2] = bz; C[v * 3] = c.r * fade * 0.2; C[v * 3 + 1] = c.g * fade * 0.2; C[v * 3 + 2] = c.b * fade * 0.2; v++;
+      P[v * 3] = tx; P[v * 3 + 1] = ty; P[v * 3 + 2] = tz; C[v * 3] = c.r * fade * 0.7; C[v * 3 + 1] = c.g * fade * 0.7; C[v * 3 + 2] = c.b * fade * 0.7; v++;
     };
     const fadeOf = (s) => { const f = 1 - s.age / TRAIL_LIFE; return f * f; };
     if (n === 1) { put(S[0].b, S[0].t, fadeOf(S[0])); put(S[0].b, S[0].t, fadeOf(S[0])); }
