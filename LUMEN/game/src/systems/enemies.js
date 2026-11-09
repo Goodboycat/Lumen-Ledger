@@ -43,7 +43,7 @@ export const ENEMY_RULES = {
   // 41C: the Season-1 Collector is a first-sword lesson — one, hp 1, slow, pays 2 ✦, no contact damage for the first `grace` s after it lands.
   collectorS1: { hp: 1, speed: 1.6, radius: 0.75, hitSpark: 1, hitCooldown: 1.1, reward: 2, grace: 2 },
   // S20 (revised): very slow chaser. podium kept only as a fallback landing spot when there is no shore point.
-  baron:     { hp: 6, speed: 2.7, enrageAt: 3, enrageMul: 1.3, catchUpDist: 9, chargeFar: 5, catchUpMul: 1.5, grace: 2, homeSpeed: 2.4, radius: 0.95, hitSpark: 2, hitCooldown: 1.4, reward: 3, podium: { x: 0, z: -4.5 },   // P60: reward 5 → 3
+  baron:     { hp: 6, speed: 2.7, enrageAt: 3, enrageMul: 1.3, catchUpDist: 9, chargeFar: 5, maxSpeed: 4.6, catchUpMul: 1.5, grace: 2, homeSpeed: 2.4, radius: 0.95, hitSpark: 2, hitCooldown: 1.4, reward: 3, podium: { x: 0, z: -4.5 },   // P60: reward 5 → 3
                attackMin: 1.5, attackMax: 3, attackEvery: 3, telegraph: 0.8, cannonRadius: 1.3, cannonSpark: 1, puddleSeconds: 4, puddleMul: 0.6,
                stompRadius: 3.5, stompSpark: 2, stompKnock: 3.2, stompAir: 0.7, stompRange: 9, dazed: 2.5, fanSpread: 1.8,
                minigunSeconds: 2, minigunEvery: 0.25, minigunRadius: 0.8, minigunSpark: 1, minigunMercy: 0.5, aimLag: 4,
@@ -497,7 +497,7 @@ export class EnemySystem {
       e.anim.faceTo?.(hp);
       if (!e.enraged && e.hp <= R.enrageAt && e.hp < e.maxHp) { e.enraged = true; this.vfx?.pop?.show?.(_v.set(p.x, 2.2, p.z).clone(), 'ENOUGH!', { color: '#FF8A65', dur: 1.2 }); this.vfx?.sparks?.burst?.(_v.set(p.x, 0.8, p.z).clone(), 10, 4); this.bus?.emit('enemy:baronEnrage', { hp: e.hp }); }
       if (dist > ENEMY_RULES.approachMin) {   // S74: HUNT Pip — straight at him, bending around stalls / the shore, hurrying when he is far
-        const sp = R.speed * (e.enraged ? R.enrageMul : 1) * (dist > R.catchUpDist ? R.catchUpMul : 1);
+        const sp = Math.min(R.maxSpeed, R.speed * (e.enraged ? R.enrageMul : 1) * (dist > R.catchUpDist ? R.catchUpMul : 1));   // maxSpeed: never outruns Pip (5.2)
         this._huntStep(p, dist, sp * dt);
         e.hunting = true;
       }
