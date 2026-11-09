@@ -45,7 +45,7 @@ export function installCuriosity(lg) {
     if (J?.ids) for (const id of J.ids()) {
       const p = posOf(J.meshOf?.(id)); if (!p) continue;
       // approach → the jar's own card; linger → 'jar:withdraw' only when the jar holds ✦ (Spend IS the pouch, nothing to take back), else no second card
-      add('jar:' + id, p.x, p.z, 'jar:' + id, 2.2, 1.3, false, true, () => ((id !== 'spend' && (sb.eco?.state?.jars?.[id] || 0) > 0) ? 'jar:withdraw' : null));
+      add('jar:' + id, p.x, p.z, 'jar:' + id, 2.2, 1.3, false, true, () => ((id !== 'spend' && id !== 'invest' && (sb.eco?.state?.jars?.[id] || 0) > 0) ? 'jar:withdraw' : null));   // S76: Invest is locked mid-season (nothing to take back) - never point at an arrow for it
     }
     // stalls + their price signs
     const stalls = sb.build?.stalls?.() || [];

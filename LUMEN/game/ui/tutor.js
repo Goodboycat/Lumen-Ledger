@@ -99,6 +99,7 @@ export function mountTutor(root, opts = {}) {
     const out = [];
     const pt = c && c.point; for (const p of Array.isArray(pt) ? pt : pt ? [pt] : []) if (typeof p === 'string') out.push(p);
     const id = c ? String(c.id) : '';
+    if (id === 'jar:withdraw' && st.ptJar) out.unshift(`.ll-jars:not(.collapsed) .ll-jar.${st.ptJar}.has-bal .ll-jar-wd`);   // S76: the arrow of the jar Pip stands at, not the first jar with a balance (always Save)
     if (id.startsWith('power:')) { const n = id.slice(6); out.push(`.ll-touch-ab[data-ability="${n}"]`, `.ll-touch-btn[data-ability="${n}"]`, `.ll-abil-chip[data-id="${n}"]`); }   /* S65-A: Dash button = Magnet */
     if (c && (c.target || id.startsWith('hud:'))) out.push(`[data-guide="${c.target || id}"]`);
     if (world && Number.isFinite(world.x) && !isLive(c)) out.push({ world });                      // static things only (jar, stall, till …): last resort when locate() cannot find it
@@ -264,7 +265,9 @@ export function mountTutor(root, opts = {}) {
   for (const [ev, list] of byEvent) st.offs.push(bus.on(ev, (p) => { if (p && p.silent) return; for (const c of list) if (matches(c.match, p)) { api.show(c.id); return; } }));
   // T2: the world asks (curiosity.js) · the player asks (tap on a thing) · the player did it (doneOn retires the card)
   st.offs.push(bus.on('curious', (p) => {
-    if (!p || !p.hint || !cards.has(p.hint)) return; const w = Number.isFinite(p.x) && Number.isFinite(p.z) ? { x: p.x, z: p.z } : null;
+    if (!p || !p.hint || !cards.has(p.hint)) return;
+    if (p.hint === 'jar:withdraw') st.ptJar = String(p.id || '').startsWith('jar:') ? String(p.id).slice(4) : null;   // S76
+    const w = Number.isFinite(p.x) && Number.isFinite(p.z) ? { x: p.x, z: p.z } : null;
     if (p.why === 'tap' || p.why === 'hold') { const c = cards.get(p.hint); if (p.act && p.why === 'tap' && retired(c)) return; api.ask(p.hint, w); }   // a tap that also acts: card only until maxShows
     else api.offer(p.hint, w, typeof p.text === 'string' ? p.text : null);
   }));
