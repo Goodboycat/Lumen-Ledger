@@ -16,7 +16,9 @@
 //   • Wave size = min(5, season). S19: #0 (and the Baron) land at the pier, the others at different shore points ≥ 5 u apart and ≥ 6 u from Pip
 //     (island.landEdge in 12 directions, cached) with a fog-puff arrival; chasing enemies are pushed apart (separation 0.8 u). Only one wave per season.
 //   • Season ≥ 6: the five Collectors stay home; BARON GILT comes as the boss (hp 6, contact 2 ✦) plus (season − 6) minions, max 5.
-//     S20 (revised 2026-10-24): the Baron is a VERY SLOW chaser (speed 1.1 u/s — Pip 5.2) that lands at the pier and plods after Pip.
+//     S74 (2026-11-09): the Baron is now an active HUNTER: 2.7 u/s (Collector 2.9, Pip 5.2) straight at Pip around stalls, catches up (x1.5) when Pip is > 9 u away,
+//     ENRAGES at hp <= 3 (x1.3, 'ENOUGH!'), 2 s arrival grace, attacks every 1.5-3 s, and the Umbrella Dash is a charge he uses from S6 (more often when Pip is far).
+//     (S20 original: a VERY SLOW chaser, 1.1 u/s, that plodded after Pip.)
 //     Every `attackEvery` s (2–4 s, random) he picks ONE attack; each shows a ground decal (BaronDecalPool, red/purple ring) for ≥ `telegraph` s
 //     (0.8 s) BEFORE anything lands. He stops walking while winding up / recovering:
 //       cannon  (S6+)  Debt-Fog Cannon — a ring appears where Pip stands; when the fog ball lands, 1 ✦ if Pip is still inside (radius 1.3 u)
@@ -41,8 +43,8 @@ export const ENEMY_RULES = {
   // 41C: the Season-1 Collector is a first-sword lesson — one, hp 1, slow, pays 2 ✦, no contact damage for the first `grace` s after it lands.
   collectorS1: { hp: 1, speed: 1.6, radius: 0.75, hitSpark: 1, hitCooldown: 1.1, reward: 2, grace: 2 },
   // S20 (revised): very slow chaser. podium kept only as a fallback landing spot when there is no shore point.
-  baron:     { hp: 6, speed: 1.1, homeSpeed: 2.4, radius: 0.95, hitSpark: 2, hitCooldown: 1.4, reward: 3, podium: { x: 0, z: -4.5 },   // P60: reward 5 → 3
-               attackMin: 2, attackMax: 4, attackEvery: 3, telegraph: 0.8, cannonRadius: 1.3, cannonSpark: 1, puddleSeconds: 4, puddleMul: 0.6,
+  baron:     { hp: 6, speed: 2.7, enrageAt: 3, enrageMul: 1.3, catchUpDist: 9, chargeFar: 5, catchUpMul: 1.5, grace: 2, homeSpeed: 2.4, radius: 0.95, hitSpark: 2, hitCooldown: 1.4, reward: 3, podium: { x: 0, z: -4.5 },   // P60: reward 5 → 3
+               attackMin: 1.5, attackMax: 3, attackEvery: 3, telegraph: 0.8, cannonRadius: 1.3, cannonSpark: 1, puddleSeconds: 4, puddleMul: 0.6,
                stompRadius: 3.5, stompSpark: 2, stompKnock: 3.2, stompAir: 0.7, stompRange: 9, dazed: 2.5, fanSpread: 1.8,
                minigunSeconds: 2, minigunEvery: 0.25, minigunRadius: 0.8, minigunSpark: 1, minigunMercy: 0.5, aimLag: 4,
                umbrellaSpeed: 7, umbrellaRange: 8, umbrellaRadius: 1.1, umbrellaSpark: 2, umbrellaKnock: 2.5, umbrellaStun: 4 },
@@ -62,7 +64,7 @@ export const BARON_POWERS = [
   { season: 7,  id: 'puddle',   title: 'Fog Puddles',     text: 'Cannon puddles linger longer and Pip walks at 60 % inside them.', seconds: 7 },
   { season: 8,  id: 'stomp',    title: 'Big Stomp',       text: 'He crouches, a wide ring grows where you stood, he leaps there — 2 ✦ and a shove inside it. Dazed after: hit him!' },
   { season: 9,  id: 'minigun',  title: 'Fog Minigun',     text: 'Two seconds of fog pellets that follow you — keep moving, the aim lags behind.' },
-  { season: 10, id: 'umbrella', title: 'Umbrella Dash',   text: 'He aims his umbrella and dashes along the line. Sidestep — then hit him: he is paralysed for 4 s.' },
+  { season: 6,  id: 'umbrella', title: 'Umbrella Charge', text: 'He points his umbrella and CHARGES along the line. Sidestep — then hit him: he is paralysed for 4 s.' },
 ];
 export function baronPowersFor(season) { return BARON_POWERS.filter((p) => season >= p.season).map((p) => p.id); }
 
@@ -493,9 +495,11 @@ export class EnemySystem {
     }
     if (e.phase === 'idle') {
       e.anim.faceTo?.(hp);
-      if (dist > ENEMY_RULES.approachMin) {   // very slow plod toward Pip
-        const nx = p.x + _d.x * R.speed * dt, nz = p.z + _d.z * R.speed * dt;
-        if (!this._moveTo(p, nx, nz)) { this._moveTo(p, p.x + _d.x * R.speed * dt * 0.3, p.z + _d.z * R.speed * dt * 0.3); }   // S34 / P66 / P73
+      if (!e.enraged && e.hp <= R.enrageAt && e.hp < e.maxHp) { e.enraged = true; this.vfx?.pop?.show?.(_v.set(p.x, 2.2, p.z).clone(), 'ENOUGH!', { color: '#FF8A65', dur: 1.2 }); this.vfx?.sparks?.burst?.(_v.set(p.x, 0.8, p.z).clone(), 10, 4); this.bus?.emit('enemy:baronEnrage', { hp: e.hp }); }
+      if (dist > ENEMY_RULES.approachMin) {   // S74: HUNT Pip — straight at him, bending around stalls / the shore, hurrying when he is far
+        const sp = R.speed * (e.enraged ? R.enrageMul : 1) * (dist > R.catchUpDist ? R.catchUpMul : 1);
+        this._huntStep(p, dist, sp * dt);
+        e.hunting = true;
       }
       e.timers.attack += dt;
       if (e.timers.attack >= e.nextAttack) { e.timers.attack = 0; e.nextAttack = R.attackMin + (R.attackMax - R.attackMin) * this._rng(); this._baronPick(e, dist); }
@@ -534,14 +538,23 @@ export class EnemySystem {
       if (A.gone >= R.umbrellaRange) this._dashEnd(e, A);
     }
   }
+  /** S74: one hunting step of `len` u toward Pip (_d is the unit vector to Pip). Tries the straight line, then bends ±35° / ±70° / ±110° so a stall or the shore bends his path instead of pinning him. */
+  _huntStep(p, dist, len) {
+    const dx = _d.x, dz = _d.z;
+    for (const a of [0, 0.6, -0.6, 1.2, -1.2, 1.9, -1.9]) {
+      const c = Math.cos(a), sn = Math.sin(a), mx = dx * c - dz * sn, mz = dx * sn + dz * c;
+      if (this._canStand(p.x + mx * len, p.z + mz * len)) { p.x += mx * len; p.z += mz * len; return true; }
+    }
+    return this._moveTo(p, p.x + dx * len, p.z + dz * len);   // stranded off land → walk free (no soft-lock)
+  }
   /** Choose the next attack from the powers the Baron has this season (round-robin over a weighted pool; stomp/umbrella only in range). */
   _baronPick(e, dist) {
     const R = ENEMY_RULES.baron, has = (id) => e.powers.includes(id), hp = this.hero.root.position, p = e.g.position;
     const pool = ['cannon'];
     if (has('stomp') && dist <= R.stompRange) pool.push('stomp', 'stomp');
     if (has('minigun')) pool.push('minigun');
-    if (has('umbrella') && dist <= R.umbrellaRange) pool.push('umbrella', 'umbrella');
-    const kind = pool[(e._pick = (e._pick || 0) + 1) % pool.length];
+    if (has('umbrella') && dist <= R.umbrellaRange) { pool.push('umbrella', 'umbrella'); if (dist > R.chargeFar) pool.push('umbrella', 'umbrella'); }   // S74: the charge is how he closes the gap
+    const kind = e._force || pool[(e._pick = (e._pick || 0) + 1) % pool.length]; e._force = null;   // _force: tests / scripted fights pick the attack
     const A = { kind, t: 0, spots: [], from: { x: p.x, z: p.z } };
     if (kind === 'stomp') { A.spots.push({ x: hp.x, z: hp.z, r: R.stompRadius }); e.anim.play?.('taunt'); }                      // ring at Pip's LAST position
     else if (kind === 'cannon') { A.spots.push({ x: hp.x, z: hp.z, r: R.cannonRadius }); e.anim.play?.('offerDeal'); }

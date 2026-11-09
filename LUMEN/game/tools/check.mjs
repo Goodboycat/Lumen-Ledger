@@ -1476,19 +1476,23 @@ if (doEnemies) {
     const defEv = (ev['enemy:defeated'] || []).length; if (E.list.length !== 0 || E.stats.defeated !== defB || defEv !== 1 || !ev['enemy:gone'].some((g) => g.why === 'home')) throw new Error(`walk-home not finished: ${E.list.length} left, defeated ${E.stats.defeated}/${defB}`);   // (sb.coins also grows from customer tips while the clock runs → not compared)
     // 5b. the new season's wave still spawns normally after a walk-home
     E.waveSeason = 0; sb.eco.state.season = 4; sb.sched.wave = false; sb.sched.season = 4; sb.sched.marks = sb.seasons.marks(4); sb.sched.fired = new Set(); sb.eco.state.day01 = 0.71; step(); if (E.list.length !== 4) throw new Error('S4 wave after walk-home ' + E.list.length); E.clear();
-    // 6. Season 6 (S20 revised): Baron Gilt = VERY SLOW CHASER (1.1 u/s) landing at the pier, 0 minions, power 'cannon' only.
+    // 6. Season 6 (S74): Baron Gilt = active HUNTER (2.7 u/s, catches up x1.5 when far) landing at the pier, 0 minions, powers cannon + umbrella charge.
     //    S9: Baron + 3 minions with cannon/puddle/stomp/minigun; S12: +5 (cap) and umbrella.  (clock frozen: a 30 s season would end mid-probe)
     sb.eco.config.seasonSeconds = 1e9; sb.eco.config.seasonSecondsOverride = 1e9;   // 41C: the curve ignores seasonSeconds; the override wins
     const RB = ENEMY_RULES.baron; const P = E._podium();   // a known land cell near the plaza used as the arena for the attack probes
     const dXZ = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
     E.waveSeason = 0; sb.eco.state.season = 6; sb.sched.wave = false; sb.sched.season = 6; sb.sched.marks = sb.seasons.marks(6); sb.sched.fired = new Set(); sb.eco.state.day01 = 0.71; step();
-    if (E.list.length !== 1 || E.list[0].kind !== 'baron' || E.list[0].powers.join() !== 'cannon' || !ev['enemy:wave'].at(-1).boss) throw new Error('S6 baron wave ' + (E.list[0]?.powers || []).join());
+    if (E.list.length !== 1 || E.list[0].kind !== 'baron' || E.list[0].powers.join() !== 'cannon,umbrella' || !ev['enemy:wave'].at(-1).boss) throw new Error('S6 baron wave ' + (E.list[0]?.powers || []).join());
     const b = E.baron; if (!b || dXZ(b.home, E._exit) > 1e-6 || dXZ(b.g.position, E._exit) > 0.5) throw new Error('baron did not land at the pier');
-    if (!(RB.speed < ENEMY_RULES.collector.speed && RB.speed < 2)) throw new Error('baron not slow ' + RB.speed);
-    // slow chase: Pip 6 u away on the plaza, no attack for 3 s → he plods closer by ~1.1 u/s (never as fast as a Collector)
+    if (!(RB.speed <= ENEMY_RULES.collector.speed && RB.speed > 2 && RB.speed < 5.2)) throw new Error('baron hunt speed out of range ' + RB.speed);   // S74: hunter, but never faster than Pip (5.2)
+    // S74 hunt: Pip 6 u away on the plaza, no attack for 1.5 s → he closes at ~2.7 u/s (never faster than Pip; stops at approachMin)
     b.g.position.set(P.x, 0, P.z); sb.hero.root.position.set(P.x + 6, 0, P.z); b.timers.attack = -99; b.hitAt = 99;
-    const bd0 = dXZ(b.g.position, sb.hero.root.position); run(3); const bd1 = dXZ(b.g.position, sb.hero.root.position);
-    if (!(bd1 < bd0 - 2) || bd1 < bd0 - RB.speed * 3 - 0.3) throw new Error(`baron chase ${bd0.toFixed(2)} → ${bd1.toFixed(2)} (expected ≈ −${(RB.speed * 3).toFixed(1)})`);
+    const bd0 = dXZ(b.g.position, sb.hero.root.position); run(1.5); const bd1 = dXZ(b.g.position, sb.hero.root.position);
+    if (!(bd1 < bd0 - 2.5) || bd1 < bd0 - RB.speed * 1.5 - 0.3) throw new Error(`baron hunt ${bd0.toFixed(2)} → ${bd1.toFixed(2)} (expected ≈ −${(RB.speed * 1.5).toFixed(1)})`);
+    // far away (> catchUpDist) he hurries x1.5
+    b.g.position.set(P.x, 0, P.z); sb.hero.root.position.set(P.x + 12, 0, P.z); b.timers.attack = -99; b.hitAt = 99;
+    const bf0 = dXZ(b.g.position, sb.hero.root.position); run(1); const bf1 = dXZ(b.g.position, sb.hero.root.position);
+    if (!(bf0 - bf1 > RB.speed * 1.2)) throw new Error(`baron catch-up ${bf0.toFixed(2)} → ${bf1.toFixed(2)}`);
     if (b.phase !== 'idle' || E.decals.active !== 0) throw new Error('baron attacked while timer was off');
     // contact (Pip walks into him) still costs 2 ✦
     b.g.position.copy(sb.hero.root.position); b.hitAt = -99; b.phase = 'idle'; b.timers.attack = -99; sb.eco.state.spark = 10; run(0.2); if (sb.eco.state.spark !== 10 - RB.hitSpark) throw new Error('baron contact ' + sb.eco.state.spark);
@@ -1497,7 +1501,7 @@ if (doEnemies) {
     if (sb.eco.state.spark !== 0 || sb.eco.state.debt !== debtB + RB.hitSpark - 1 || !ev['enemy:heroHit'].at(-1).debt) throw new Error(`baron bill: spark ${sb.eco.state.spark} debt ${debtB} → ${sb.eco.state.debt}`);
     b.hitAt = -99; run(0.2); if (sb.eco.state.debt !== debtB + RB.hitSpark - 1 + RB.hitSpark) throw new Error('baron bill at 0 ✦ ' + sb.eco.state.debt);
     // S20 cannon: Pip 4 u away → warn decal at Pip's cell (enemy:baronWarn) → he STANDS STILL for the telegraph → fog ball: Pip stayed → −1 ✦ + puddle slows him (×0.6)
-    const arm = (e, pick, kind) => { e.hitAt = 99; e._pick = pick; e.phase = 'idle'; e.attack = null; e.timers.attack = RB.attackEvery; e.nextAttack = RB.attackMin; step(); if (ev['enemy:baronWarn'].at(-1).kind !== kind || e.phase !== 'warn') throw new Error(`${kind} warn → ${ev['enemy:baronWarn'].at(-1).kind} / ${e.phase}`); };
+    const arm = (e, pick, kind) => { e.hitAt = 99; e._pick = pick; e._force = kind;   /* S74: the pool grew (umbrella from S6) → pick the attack explicitly */ e.phase = 'idle'; e.attack = null; e.timers.attack = RB.attackEvery; e.nextAttack = RB.attackMin; step(); if (ev['enemy:baronWarn'].at(-1).kind !== kind || e.phase !== 'warn') throw new Error(`${kind} warn → ${ev['enemy:baronWarn'].at(-1).kind} / ${e.phase}`); };
     b.g.position.set(P.x, 0, P.z); sb.hero.root.position.set(P.x + 4, 0, P.z); sb.eco.state.spark = 10; arm(b, 0, 'cannon');
     if (E.decals.active !== 1) throw new Error('cannon decals ' + E.decals.active);
     const warnPos = b.g.position.clone(); run(RB.telegraph - 0.1); if (dXZ(b.g.position, warnPos) > 1e-6) throw new Error('baron walked during the telegraph');
@@ -1517,8 +1521,8 @@ if (doEnemies) {
     E.clear(); if (E.decals.active !== 0) throw new Error('clear left decals');
     // ---- S9: Baron + 3 minions · cannon, puddle, stomp, minigun
     E.waveSeason = 0; sb.eco.state.season = 9; sb.sched.wave = false; sb.sched.season = 9; sb.sched.marks = sb.seasons.marks(9); sb.sched.fired = new Set(); sb.eco.state.day01 = 0.71; step();
-    const b9 = E.baron; if (!b9 || E.list.length !== 4 || b9.powers.join() !== 'cannon,puddle,stomp,minigun') throw new Error('S9 wave ' + E.list.length + ' ' + (b9?.powers || []).join());
-    if (baronPowersFor(12).length !== 5 || baronPowersFor(6).length !== 1 || baronPowersFor(10).join() !== 'cannon,puddle,stomp,minigun,umbrella') throw new Error('baronPowersFor');
+    const b9 = E.baron; if (!b9 || E.list.length !== 4 || b9.powers.join() !== 'cannon,puddle,stomp,minigun,umbrella') throw new Error('S9 wave ' + E.list.length + ' ' + (b9?.powers || []).join());
+    if (baronPowersFor(12).length !== 5 || baronPowersFor(6).length !== 2 || baronPowersFor(10).join() !== 'cannon,puddle,stomp,minigun,umbrella') throw new Error('baronPowersFor');
     for (const m of E.list) if (m !== b9) { m.state = 'flee'; m.fleeT = 99; }   // park the minions so the pick is deterministic
     // S7 'puddle' power: cannon puddles linger 7 s instead of 4
     b9.g.position.set(P.x, 0, P.z); sb.hero.root.position.set(P.x + 4, 0, P.z); sb.eco.state.spark = 10; arm(b9, -1, 'cannon'); run(RB.telegraph + 0.1);
