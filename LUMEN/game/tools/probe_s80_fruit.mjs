@@ -14,11 +14,12 @@ const r = await p.evaluate(({ WAVES, SEASON }) => {
   const oSet = C._set.bind(C); C._set = (c, st) => { if (st === 'pickStall' && c.state === 'walk' && c._lastK) row(c._lastK).stuckRepick = (row(c._lastK).stuckRepick || 0) + 1; return oSet(c, st); };
   const oJoin = C._join.bind(C); C._join = (c, s) => { c._lastK = k(s.id); return oJoin(c, s); };
   const orig = C.pickStall.bind(C); C.pickStall = (c) => { const s = orig(c); if (s) { const r = row(k(s.id)); if (c._picked) r.re++; else r.first++; c._picked = true; } return s; };
+  const T = (globalThis.__T = {}); lg.bus.on('eco:sale', (o) => { const kk = k(o.stallId) + '/' + o.glimmerType; const r = (T[kk] = T[kk] || { n: 0, sold0: 0, mood: o.mood }); r.n++; if (!o.sold) r.sold0++; });
   const origR = C._react.bind(C); C._react = (c, reaction, why) => { const kk = c.stall ? k(c.stall.id) : '(none)'; const w = row(kk).why; w[why] = (w[why] || 0) + 1; if (c.stall) row(kk).resolved++; return origR(c, reaction, why); };
   const dt = 0.1; let t = 0; const endActive = []; const stalls = C._stallList().map((s) => k(s.id) + '@' + s.group.position.x.toFixed(0) + ',' + s.group.position.z.toFixed(0) + ' usable=' + C._usableSlots(s).length);
   for (let w = 0; w < WAVES; w++) { C.spawnWave(SEASON); let i = 0; for (; i < 6000; i++) { C.update(dt); t += dt; if (!C.active.length && !C.pendingSpawns.length) break; } endActive.push([i, C.active.length]); for (const c of C.active) { const kk = c.stall ? k(c.stall.id) : '(nostall)'; row(kk).unresolvedEnd++; (globalThis.__dump ??= []).push({ w, state: c.state, kind: kk, stuck: c.stuck, sc: c.stuckCount, x: +c.root.position.x.toFixed(1), z: +c.root.position.z.toFixed(1), tx: c.target.x, tz: c.target.z, waited: +c.waited.toFixed(1), slot: c.slot }); } }
-  return { dump: globalThis.__dump, S, endActive, stalls, totals: C.totals };
+  return { T: globalThis.__T, dump: globalThis.__dump, S, endActive, stalls, totals: C.totals };
 }, { WAVES, SEASON });
 console.log('totals', JSON.stringify(r.totals)); console.log('stalls', r.stalls.join(' | ')); console.log('waves[steps,active]', JSON.stringify(r.endActive));
 for (const [kk, v] of Object.entries(r.S)) console.log(kk.padEnd(14), 'first', String(v.first).padStart(3), 're', String(v.re).padStart(3), 'resolved', String(v.resolved).padStart(3), 'unresEnd', v.unresolvedEnd, 'stuckRepick', v.stuckRepick|0, JSON.stringify(v.why));
-console.log('stuck dump', JSON.stringify(r.dump)); console.log('errs', errs.slice(0, 3)); await b.close();
+console.log('stuck dump', JSON.stringify(r.dump)); console.log('sales by stall/type', JSON.stringify(r.T)); console.log('errs', errs.slice(0, 3)); await b.close();
