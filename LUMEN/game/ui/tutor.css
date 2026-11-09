@@ -121,3 +121,12 @@ body.tj-on .ll-joy-hint { opacity: 0 !important; }   /* S60-A: the drawn stick d
   body.is-touch:not(.ll-tray-open):not(.ll-placing):has(.ll-touch-abilities:not(.ll-staged):not(.hidden):not(.tray):not(.placing)) .ll-tutor.show {
     left: 122px; transform: none; bottom: calc(max(8px, env(safe-area-inset-bottom)) + 62px); max-width: max(190px, calc(100vw - 122px - 156px)); }
 }
+
+/* S80: 301-360 px tall phones (568x320, 640x360): the card wrapped "Drag the stick to move Pip." onto 2 lines and read as a block sitting on BUILD and the Cloud icon.
+   The little step icon is redundant here (the cloud hand points at the target), so it is hidden; the text gets its width back and the card stays one calm line.
+   The card is nudged right so the Cloud avatar keeps >= 24 px of air from the BUILD button (ends x=117). */
+@media (max-height: 360px) and (min-height: 301px) {
+  .ll-tutor-ico { display: none; }
+  .ll-tutor { font-size: 12.5px; max-width: min(60vw, 400px); }
+  .ll-tutor-bub { gap: 4px; padding: 6px 8px 6px 10px; }
+}

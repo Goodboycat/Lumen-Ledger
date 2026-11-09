@@ -159,3 +159,8 @@
 @keyframes ll-say-fade { 0%, 12% { opacity: 1; } 100% { opacity: 0; } }
 @media (max-height: 460px) { .ll-chips { gap: 3px; } .ll-chips .ll-say-av { width: 26px; height: 26px; } .ll-chips .ll-say-bub { padding: 2px 5px; min-height: 22px; border-width: 2px; } .ll-chips .ll-say-bub .ll-chip-ico { width: 18px; height: 18px; } }
 @media (prefers-reduced-motion: reduce) { .ll-chips .ll-chip.ll-chip { animation: ll-say-fade var(--say-ms, 5000ms) linear forwards; } .ll-chips .ll-chip-alert .ll-say-bub { animation: none; } }
+
+/* S80: beginner tap targets. The visible chips stay small and tidy, the HIT area grows to >= 40 px with an invisible pseudo-element (PAY was 50x16, the season pill 172x28). */
+.ll-spark-pay, .ll-season.is-tappable { position: relative; }
+.ll-spark-pay::after { content: ''; position: absolute; left: -6px; right: -6px; top: -20px; bottom: -20px; }
+.ll-season.is-tappable::after { content: ''; position: absolute; left: 0; right: 0; top: -9px; bottom: -11px; border-radius: 999px; }

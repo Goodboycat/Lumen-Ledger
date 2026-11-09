@@ -64,3 +64,6 @@
   .ll-hud .ll-mid { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; column-gap: 6px; }
   .ll-hud .ll-mid > .ll-fog { flex-basis: 100%; }
 }
+
+/* S80: the season banner buttons were 34 px tall on phones (tap target >= 40 px) */
+@media (max-height: 460px) { .ll-sb-row button { min-height: 40px; padding: 4px 14px; } }
