@@ -1,7 +1,7 @@
 /* LUMEN LEDGER — tutor card (S59: the baby-cloud tutor). Blue glass bubble + a cloud avatar on its left + a "got it" check on the right.
    One card, bottom-centre on phones / bottom-left on desktop. The card is PERSISTENT: moving never closes it (ui/tutor.js); only the ✓ button
    takes pointer events — a tap anywhere else goes straight through to the game. */
-:root { --tut-bg: #2A6CB0; --tut-ink: #FFFFFF; --tut-edge: #7FD3FF; }   /* S59-E: opaque blue (was 90 % glass) so the black border reads on the busy island */
+:root { --tut-bg: rgba(42,108,176,.86); --tut-ink: #FFFFFF; --tut-edge: #7FD3FF; }   /* S59-E: opaque blue (was 90 % glass) so the black border reads on the busy island */
 
 .ll-tutor { position: absolute; z-index: 33; left: 50%; bottom: calc(max(10px, env(safe-area-inset-bottom)) + 84px); transform: translateX(-50%) translateY(10px);
   display: flex; align-items: flex-end; gap: 6px; max-width: min(88vw, 400px, calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 24px));
