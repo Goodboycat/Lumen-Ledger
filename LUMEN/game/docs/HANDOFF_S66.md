@@ -92,3 +92,23 @@ All pushed to origin/main. Green: full `node tools/check.mjs` (ALL OK, 75 gates,
 - Icons for boons reuse `jar`, `sprout`, `coinbag`, `basket`, `boon`, `upgrade`, `warn` (all exist). No new icon sheet was needed this chat.
 - Then S68 (Wishes + Neighbours), S69 (Regions), S70 (cinematic polish + credits) as in the plan above.
 **Setup for next chat**: `bash LUMEN/game/tools/github.sh <TOKEN>`; browser: `cd LUMEN/game/tools && npm i playwright@1.47.0 && npx playwright install chromium` + the apt libs from rule 4 (libasound2t64); server `cd LUMEN/game && setsid -f python3 -m http.server 3000 --bind 0.0.0.0`. Note the sandbox repo root is /home/user/webapp (the old Hono template was moved to /home/user/webapp_template_old). Screens show the debug fps overlay because rigs load `?debug=1` - not a game bug.
+
+### CLOSING NOTE 4 (end of chat S67) - READ FIRST NEXT CHAT
+**Setup**: `bash LUMEN/game/tools/github.sh <TOKEN>`; browser rigs need `cd LUMEN/game/tools && npm i playwright@1.47.0 && npx playwright install chromium` (+ apt libs from rule 4). Static server: `cd LUMEN/game && setsid -f python3 -m http.server 3000 --bind 0.0.0.0`.
+
+**S67 DONE**
+- Boon Draft: data/boons.json, src/systems/boons.js, ui/boonDraft.*, ledger CONTINUE gate (season outcome only). Verified in a browser at 844x390, 568x320, 1280x720 with `tools/play_s67.mjs W H` (no errors). Gate: `node tools/check.mjs --boons` (6/6).
+- Focus meter: src/systems/focus.js (pure, 6 tests), wired in Game.js (`sb.focus`, `sb.cooldown` is now a shim: assigning `{}` refills Focus). Costs Dash 15, Shield 35, Stomp 30, Flash 20, Haggle 25, Sweep 45; 0.6 s global gap; regen 2/s x `eco.mod('focusRegenMul',1)`; habit gains (fair sale +4, Save +10, scam refused +15, capped per season). Denied line "Need N Focus (have M)" (`sandbox:denied why:'focus'`).
+- Focus UI: HUD pill (`.ll-focus`), price + `.nofocus` dim on desktop chips and touch chips/Dash, `hud:focus` tutor card. Powers gate updated (5/5).
+- Checked in screenshots (no debug flag): 568x320 and 844x390 HUD is clean. Focus pill sits at the top right beside the pause button with no collision; Spark pill wraps correctly. Dash button shows a tiny "15" price label (9px).
+
+**NOT done / TODO (in priority order)**
+1. `tools/hud_shot.mjs` with extra powers unlocked did NOT show the touch strip (strip rect 0x0). Unlocking via `sb.unlocks.abilities.add('ledgerFlash'...)` + `lg.syncAbilities()` didn't un-hide `.ll-touch-abilities`; check `setAbilitiesVisible`/`locked` class in ui/touch.js (~line 202/227). So strip-chip Focus prices and the low-Focus `.nofocus` look are still unseen on phone. Also unseen: 1280x720 desktop chips with prices.
+2. The Dash price label is 9px; consider 10-11px or a bigger bubble on phone.
+3. `--focus` gate (sale/save/scam refills, season caps, denial line, pill value == sb.focus, shim refill). Add `--boons` to the `--ui` flow.
+4. Optional boon using `focusRegenMul` (keep boons.json validation: >=3 cards per family, lessons <=10 words). Focus is not persisted (every load = full); decide.
+5. Add boons + Focus to the pause-menu Guide codex.
+6. PRE-EXISTING failure, not from S67: `node tools/check.mjs --till` gives sparkHandled/sparkTotal = 131/166 = 78.9 % < 80 % (also fails at commit 684102d). Opt-in flag, so earlier ALL OK runs skipped it. Either loosen the threshold to ~0.75 after confirming the scripted hero (collects every 10 s) is the cause, or investigate tip/till accounting.
+7. S66-F leftovers: 568x320 + 1280x720 shots of title/HUD/PAY card.
+8. Full `node tools/check.mjs` + each `node --test tests/*.mjs` one by one before the next push.
+- Then S68 Wishes + Neighbours, S69 Regions, S70 cinematic polish + credits screen (no credits after THE END yet). FinLit guard: each new system teaches or protects; no streak guilt; no new enemy types.
