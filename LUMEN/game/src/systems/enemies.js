@@ -236,9 +236,11 @@ export class EnemySystem {
       return out;
     }
     if (season >= ENEMY_RULES.bossFrom) {
-      out.push(this._spawnOne('baron', season));
+      const boss = this._spawnOne('baron', season); out.push(boss);
       const minions = Math.min(ENEMY_RULES.minionCap, season - ENEMY_RULES.bossFrom);
-      for (let i = 0; i < minions; i++) out.push(this._spawnOne('collector', season, i));
+      // S76: the Collectors used to take landing index 0 = the Baron's own shore point (same x,z), so the player saw only the boss OR only one pile of Collectors, and the rest
+      //   landed on far shores off camera. They now arrive as the Baron's ENTOURAGE: fanned in an arc 1.7 u behind him, so boss + debt collectors are on screen together.
+      for (let i = 0; i < minions; i++) out.push(this._spawnOne('collector', season, i + 1, { x: boss.g.position.x, z: boss.g.position.z, k: i, n: minions }));
     } else {
       const n = Math.min(ENEMY_RULES.waveCap, Math.max(1, season));
       for (let i = 0; i < n; i++) out.push(this._spawnOne('collector', season, i));
@@ -248,7 +250,7 @@ export class EnemySystem {
   }
   /** 41C: rules row for a live enemy (S1 Collector uses the gentler `collectorS1` row). */
   rulesFor(e) { return (e.kind === 'collector' && e.season === 1 && ENEMY_RULES.collectorS1) || ENEMY_RULES[e.kind]; }
-  _spawnOne(kind, season, i = 0) {
+  _spawnOne(kind, season, i = 0, ent = null) {
     const R = (kind === 'collector' && season === 1 && ENEMY_RULES.collectorS1) || ENEMY_RULES[kind]; let e_home = this._spawn;
     const g = kind === 'baron' ? (this.C.makeBaronGilt ? this.C.makeBaronGilt({ seed: season }) : stub()) : (this.C.makeFogCollector ? this.C.makeFogCollector(i % 3, { seed: season * 10 + i }) : stub());
     // S34 / P66: enemies manage their own knockback (e.knock, land + stall clamp) — the animator must NOT slide the root too (double knockback,
@@ -258,6 +260,12 @@ export class EnemySystem {
     const used = this._waveUsed || (this._waveUsed = []); const lp = this._landingPoint(i, used); used.push(lp); e_home = lp;
     const a = (i / Math.max(1, ENEMY_RULES.waveCap)) * Math.PI * 0.6 - Math.PI * 0.3;
     g.position.set(lp.x + Math.sin(a) * 0.3, 0, lp.z + Math.cos(a) * 0.3);
+    if (ent) {   // S76: entourage of the Baron - an arc behind him (away from the island centre), on walkable ground, never on top of him
+      const bx = ent.x, bz = ent.z, L = Math.hypot(bx, bz) || 1, ux = bx / L, uz = bz / L;   // outward = away from the island centre
+      const ang = (ent.n > 1 ? (ent.k / (ent.n - 1) - 0.5) * 2.2 : 0), c = Math.cos(ang), sn = Math.sin(ang);
+      for (const r of [1.9, 1.5, 1.1, 2.4]) { const dx = ux * c - uz * sn, dz = ux * sn + uz * c; const x = bx + dx * r * (1 + 0.15 * (ent.k % 2)), z = bz + dz * r * (1 + 0.15 * (ent.k % 2)); if (this.island?.isLand?.(x, z) ?? true) { g.position.set(x, 0, z); break; } }
+      e_home = { x: bx, z: bz };   // they walk home to the Baron's shore point (a COPY: lp is a cached shore point shared by every wave)
+    }
     let podium = null;
     if (kind === 'baron') { podium = this._podium(); if (!this.island?.isLand?.(lp.x, lp.z) && !this.island?.landEdge) g.position.set(podium.x, 0, podium.z); }   // S20 (revised): the boss lands at the pier like everyone else; podium only as a headless fallback
     this.game.scene?.add(g);
