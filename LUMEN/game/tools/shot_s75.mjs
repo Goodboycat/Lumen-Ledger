@@ -44,12 +44,24 @@ const b0 = await bal(); await tap(pp.x + 6, pp.y + 10); const b1 = await bal(); 
 console.log('2 tap RIGHT jar (protect): before', JSON.stringify(b0), 'after', JSON.stringify(b1));
 { const sp2 = await toScreen('save'); await tap(sp2.x - 4, sp2.y + 8); } const b2 = await bal();
 console.log('2 tap LEFT jar (save): after', JSON.stringify(b2));
-// 3 shop locked cards: open the tray with the Build button, read the cost text and the ::after content
-await p.evaluate(() => { lg.debug.grant?.(0); lg.sb.eco.state.spark = 5; ui.build.open(); });
-await p.waitForTimeout(700);
-out.lock = await p.evaluate(() => { const cards = [...document.querySelectorAll('.ll-card.poor')]; return { n: cards.length, txt: cards.slice(0, 3).map(c => c.querySelector('.ll-card-cost')?.textContent), after: cards[0] ? getComputedStyle(cards[0], '::after').content : null, lockImgs: document.querySelectorAll('.ll-card-cost img[alt*=lock i], .ll-card-cost .ll-ico-lock').length }; });
-console.log('3 poor cards', JSON.stringify(out.lock));
+// 3 shop: low pouch -> unaffordable cards must show "need N more" with NO lock glyph (text, ::after, icon)
+await p.evaluate(() => { const e = lg.sb.eco; e._addSpark(-(e.state.spark - 5), 'test'); ui.build.setCategory?.('stall'); ui.build.open(); });
+await p.waitForTimeout(900);
+out.lock = await p.evaluate(() => { const cards = [...document.querySelectorAll('.ll-card.poor')]; const all = document.querySelectorAll('.ll-card').length;
+  const c0 = cards[0]; const cost = c0?.querySelector('.ll-card-cost'); return { all, poor: cards.length, txt: cards.slice(0, 3).map(c => c.querySelector('.ll-card-cost')?.textContent), after: c0 ? getComputedStyle(c0, '::after').content : null, costHtmlHasLock: cards.some(c => /lock/i.test(c.querySelector('.ll-card-cost')?.innerHTML || '')) }; });
+console.log('3 shop', JSON.stringify(out.lock));
 await p.screenshot({ path: `tools/shots/s75_shop_${W}x${H}.png` });
 await p.evaluate(() => ui.build.close());
+await p.waitForTimeout(400);
+// 4 ledger: tap OUTSIDE the sheet closes it (after the count-up)
+await p.evaluate(() => { const e = lg.sb.eco; e._addSpark(300, 'test'); });
+await p.evaluate(() => { const r = lg.sb.eco.endSeason(); ui.ledger.show(r); });
+await p.waitForTimeout(3500);
+out.ledgerOpen = await p.evaluate(() => !!document.querySelector('.ll-ledger.open'));
+await p.screenshot({ path: `tools/shots/s75_ledger_${W}x${H}.png` });
+const sheetBox = await p.evaluate(() => { const r = document.querySelector('.ll-ledger-sheet')?.getBoundingClientRect(); return r && { l: r.left, r: r.right, t: r.top, b: r.bottom }; });
+console.log('4 ledger open', out.ledgerOpen, JSON.stringify(sheetBox));
+if (out.ledgerOpen && sheetBox) { await p.touchscreen.tap(Math.max(6, sheetBox.l / 2), H / 2); await p.waitForTimeout(900); }
+console.log('4 ledger still open after tapping OUTSIDE the sheet:', await p.evaluate(() => !!document.querySelector('.ll-ledger.open')), '(want false, or boon draft shown)', 'draft', await p.evaluate(() => !!document.querySelector('.ll-boon.open, .ll-draft.open, [class*=boon][class*=open]')));
 console.log('errs', JSON.stringify(errs.slice(0, 5)));
 await b.close();
