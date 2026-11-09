@@ -26,7 +26,7 @@
   {"id": "till:coins", "icon": "coinbag", "text": "Coins in the till. Walk over to collect.", "group": "market", "target": "till:coins", "doneOn": "till:collect", "priority": 3, "point": ["world:till"]},
   {"id": "sign:price", "icon": "magnify", "text": "Sign: E raises the price, hold E lowers it.", "group": "market", "target": "sign:price", "doneOn": "ui:price"},
   {"id": "stall:upgrade", "icon": "upgrade", "text": "Tap your stall, then press Upgrade.", "group": "market", "target": "stall:upgrade", "doneOn": "build:upgraded", "point": ["world:stall"]},
-  {"id": "cust:unserved", "on": "cust:unserved", "icon": "basket", "text": "Customers left empty-handed. Build the stalls they want.", "group": "market", "point": [".ll-build-toggle"], "follow": [{"on": "ui:build:open"}, {"on": "build:placed"}]},
+  {"id": "cust:unserved", "on": "cust:unserved", "urgent": true, "icon": "basket", "text": "Customers left empty-handed. Build the stalls they want.", "group": "market", "point": [".ll-build-toggle"], "follow": [{"on": "ui:build:open"}, {"on": "build:placed"}]},
   {"id": "cust:want", "icon": "heart", "text": "A bubble shows what a Glimmer wants. Build it.", "group": "market", "on": "story:bark", "match": {"kind": "want"}, "point": [".ll-build-toggle"], "follow": [{"on": "ui:build:open"}, {"on": "build:placed"}]},
   {"id": "hud:pouch", "icon": "coinbag", "text": "Pouch: your cash. Collectors can spill it.", "group": "money", "target": "hud:pouch", "teaches": "pouch"},
   {"id": "hud:debt", "icon": "anchor", "text": "Debt grows every Ledger. PAY lowers it.", "group": "money", "target": "hud:debt", "teaches": "pay"},

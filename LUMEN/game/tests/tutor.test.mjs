@@ -218,4 +218,13 @@ test('cust:unserved shows the BUILD card once, points at the build button, leave
   bus.emit('cust:unserved', { count: 6, season: 3, want: 'cloth' });
   assert.deepEqual(shown(), ['cust:unserved']); assert.equal(tutor.current, 'cust:unserved');
   bus.emit('ui:build:open', {}); assert.notEqual(tutor.current, 'cust:unserved', 'following it (opening Build) closes it');
+  tutor.destroy?.();
+});
+
+test('urgent card (cust:unserved) replaces the older want card instead of being dropped; never replaces a verb step', () => {
+  const a = mount(); a.bus.emit('story:bark', { kind: 'want', icon: 'stall_toy', text: 'toy' }); assert.equal(a.tutor.current, 'cust:want');
+  a.bus.emit('cust:unserved', { count: 6, season: 3, want: 'toy' }); assert.equal(a.tutor.current, 'cust:unserved'); assert.deepEqual(a.shown(), ['cust:want', 'cust:unserved']);
+  const v = mount(); v.tutor.show('verb:move'); assert.equal(v.tutor.current, 'verb:move');
+  v.bus.emit('cust:unserved', { count: 6, season: 3, want: 'toy' }); assert.equal(v.tutor.current, 'verb:move', 'verb step stays');
+  a.tutor.destroy?.(); v.tutor.destroy?.();
 });
