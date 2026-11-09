@@ -34,7 +34,7 @@ test('rollThree: small pool never throws', () => {
   assert.deepEqual(B.rollThree(rngOf(1), B.all.map((b) => b.id), 5), []);
 });
 test('every family appears across many drafts (variety)', () => {
-  const seen = new Set(); for (let s = 1; s < 80; s++) for (const c of B.rollThree(rngOf(s), [], 1)) seen.add(c.id);
+  const seen = new Set(); for (let s = 1; s < 400; s++) for (const c of B.rollThree(rngOf(s), [], 1)) seen.add(c.id);
   assert.equal(seen.size, B.all.length);
 });
 

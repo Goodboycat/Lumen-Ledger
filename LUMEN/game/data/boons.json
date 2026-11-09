@@ -19,6 +19,7 @@
       "up": "Stall upkeep is 15 % cheaper", "down": "Sales are 5 % lower",
       "lesson": "Cutting costs helps. Cutting too much hurts.",
       "fx": { "upkeepMul": 0.85, "baseMulAll": 0.95 } },
+    { "id": "steady_mind", "family": "saver", "name": "Steady Mind", "up": "Focus refills 50 % faster", "down": "Sales are 5 % lower", "lesson": "Calm habits help. Slow sales cost you.", "fx": { "focusRegenMul": 1.5, "baseMulAll": 0.95 } },
 
     { "id": "index_fund", "family": "invest", "name": "Index Fund",
       "up": "Invest jar earns +3 % more", "down": "Invest jar is locked for 2 seasons",
