@@ -235,6 +235,13 @@ const cloudBaby = (happy) => shadow(32, 60, 20)
   + On(18.5, 46, 4, C.pink, 0.7) + On(46.5, 46, 4, C.pink, 0.7)                                       // the CLOUD keeps its blush (S59: only the HAND lost its pink)
   + (happy ? P('M27 45Q32.5 56 38 45Z', C.redD) + Pn('M29.5 50.5Q32.5 54 35.5 50.5Q32.5 48.5 29.5 50.5Z', C.pink) : L('M28.5 46Q32.5 51 36.5 46', 3));
 def('cloudbaby', () => cloudBaby(false));
+// S78-D: cloudcrew = the buyable Cloud pet: a small happy cloud carrying a gold coin (the job it does). Same ink-union cloud as cloudbaby, smaller, shifted left, coin top-right.
+def('cloudcrew', () => shadow(30, 60, 18)
+  + cloudBlob([['c', 14, 42, 10], ['c', 40, 42, 10], ['c', 20, 32, 12], ['c', 33, 32, 12], ['c', 27, 42, 14], ['c', 27, 46, 10]], C.white, C.sky)
+  + hi(18, 27, 5, 3, 0.9) + eye(21, 40, 3) + eye(33, 40, 3)
+  + On(14.5, 46, 3.4, C.pink, 0.7) + On(39.5, 46, 3.4, C.pink, 0.7) + L('M23.5 46Q27 50 30.5 46', 2.6)
+  + O(48, 17, 11, C.gold) + O(48, 17, 6.6, C.goldD) + L('M48 12V22M45 14.5H51M45 19.5H51', 2.2, C.brownD) + hi(43, 11, 3, 1.8, 0.7));
+
 def('face_cloud', () => cloudBaby(false));                  // dialogue portrait of the Cloud (S59: says hello after the Owl)
 def('face_cloud_happy', () => cloudBaby(true));
 // S59 cloud HAND, redrawn on the SAME silhouette as the game's 'point' icon (proven thumb + index finger + curled fingers), in white, with a puffy CLOUD cuff.
@@ -319,6 +326,7 @@ export const faceIcon = (who, mood) => `face_${who}${mood && mood !== 'neutral' 
 
 // ---------- emoji → icon name (everything the game used to print) ----------
 export const EMOJI = {
+  '☁️': 'cloudcrew', '☁': 'cloudcrew',
   '📔': 'journal', '🎭': 'mask', '🏷': 'sticker', '🦉': 'owl', '🔨': 'hammer', '🫙': 'jar', '📒': 'ledger', '⬆️': 'upgrade', '⬆': 'upgrade', '✨': 'sparkle', '🏺': 'vase', '🌫️': 'fog', '🌫': 'fog',
   '👀': 'eyes', '⚡': 'bolt', '★': 'star', '⭐': 'star', '✦': 'spark', '✓': 'check', '✔': 'check', '✗': 'cross', '✕': 'cross', '✖': 'cross', '🔒': 'lock',
   '🚀': 'rocket', '💥': 'boom', '⟳': 'rotate', '⏸': 'pause', '▶': 'play', '⚙': 'gear', '📖': 'book', '📘': 'book', '⌂': 'home', 'ⓘ': 'info', 'ℹ': 'info',
