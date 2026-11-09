@@ -143,3 +143,21 @@ body.is-touch .ll-build-tab { min-height: 40px; padding: 4px 12px; font-size: 12
 body.is-touch .ll-build-foot .ll-btn { min-height: 40px; min-width: 40px; padding: 4px 12px; font-size: 12px; }
 body.is-touch .ll-build-demolishing .ll-btn { min-height: 40px; }
 @media (max-height: 340px) { body.is-touch .ll-build-tab { min-height: 40px; padding: 2px 10px; } body.is-touch .ll-build-tabs { gap: 4px; margin-bottom: 3px; } body.is-touch .ll-build-foot { margin-top: 3px; } }
+
+/* S79-F2: 568x320-class phones (301-340 px tall): even with a short grid the tray still reached 22 px into the Spark pill (it hid PAY). Compact cards so ONE row of the grid + a peek of the next fits, the foot buttons stay 40 px. */
+@media (max-height: 340px) and (min-height: 301px) {
+  body.is-touch .ll-build-grid { max-height: 70px; gap: 4px; }
+  body.is-touch .ll-card { padding: 2px 3px 3px; gap: 0; box-shadow: 0 2px 0 var(--ink); }
+  body.is-touch .ll-card-fp { display: none; }
+  body.is-touch .ll-card-icon { font-size: 16px; line-height: 1; }
+  body.is-touch .ll-card-icon img, body.is-touch .ll-card-icon svg, body.is-touch .ll-card-icon .ll-ico { width: 22px; height: 22px; }
+  body.is-touch .ll-card-name { min-height: 0; font-size: 9px; }
+  body.is-touch .ll-card-cost { font-size: 10px; padding: 0 5px; line-height: 14px; }
+  body.is-touch .ll-card.offer { min-height: 0; }
+  body.is-touch .ll-build.has-detail .ll-build-grid { max-height: 0; overflow: hidden; margin: 0; }
+  /* with a card selected the detail bar already has Deploy / Upgrade / Sell, so the foot (hint + upgrade/demolish) is hidden: it was what pushed the tray up over the Spark pill */
+  body.is-touch .ll-build.has-detail .ll-build-foot { display: none; }
+  body.is-touch .ll-build-detail { margin-top: 3px; padding: 3px 5px; gap: 4px; }
+  body.is-touch .ll-build-detail .ll-btn { min-height: 40px; padding: 3px 8px; font-size: 11px; }
+  body.is-touch .ll-build-detail .ll-btn.pm { min-width: 40px; }
+}

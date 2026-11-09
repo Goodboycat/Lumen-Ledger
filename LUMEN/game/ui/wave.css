@@ -17,4 +17,8 @@
 @media (max-width: 640px) { .ll-wave-banner { font-size: 15px; padding: 8px 16px 10px; } .ll-wave-chev { width: 24px; height: 24px; } }
 
 /* S78-F1: the banner used to sit at 38 % of the screen (over Pip and the fight). It now hangs under the top HUD row; short phones get a smaller, slimmer strip and the hazard stripes are shorter so they do not cross the HUD pills. */
-@media (max-height: 420px) { .ll-wave-banner { top: 52px; font-size: 14px; padding: 5px 14px 7px; } .ll-wave-banner::before { top: -6px; } .ll-wave-banner::after { bottom: -6px; } }
+@media (max-height: 420px) { .ll-wave-banner { top: 66px; font-size: 14px; padding: 5px 14px 7px; max-width: min(70vw, 460px); } .ll-wave-banner::before { top: -6px; } .ll-wave-banner::after { bottom: -6px; } }
+
+/* S79-F1: the hazard stripes used to run the full screen width (left/right -100vw) and crossed the Spark pill, the debt chip and PAY. They now stay inside the banner's own width, and on phones the banner sits below the tallest HUD pill (Spark pill with the PAY row wrapped = 71 px at 568x320). */
+.ll-wave-banner::before, .ll-wave-banner::after { left: 0; right: 0; }
+@media (max-height: 340px) { .ll-wave-banner { top: 78px; font-size: 13px; padding: 4px 12px 6px; max-width: min(66vw, 400px); } }
