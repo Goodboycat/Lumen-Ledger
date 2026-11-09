@@ -71,8 +71,8 @@ export async function run({ resolve, pathToFileURL }) {
       if (h.stall) throw new Error(`T3.1 ${t} has a till stall with 0 stalls built`);
       arrivalS[t] = +took.toFixed(2);
     }
-    eq(sb.helpers.length, 6, 'T3.1 six hired'); if (sb.build.placed && [...sb.build.placed.values()].some((e) => e.id.startsWith('stall_'))) throw new Error('stalls appeared');
-    ok(`T3.1 debug-hired all 6 with 0 stalls → each arrives from the pier and is at its post ≤ 3 s (${HELPER_ORDER.map((t) => `${NAMES[t]} ${arrivalS[t]}s`).join(' · ')}) · all on land`);
+    eq(sb.helpers.length, HELPER_ORDER.length, 'T3.1 all crew hired'); if (sb.build.placed && [...sb.build.placed.values()].some((e) => e.id.startsWith('stall_'))) throw new Error('stalls appeared');
+    ok(`T3.1 debug-hired all ${HELPER_ORDER.length} with 0 stalls → each arrives from the pier and is at its post ≤ 3 s (${HELPER_ORDER.map((t) => `${NAMES[t]} ${arrivalS[t]}s`).join(' · ')}) · all on land`);
 
     // posts: Owl/Tortoise fall back near the cottage with no jars; build the jars → they walk over; stalls → Mole / Bee follow
     const near = (h, a, r) => Math.hypot(h.g.position.x - a.x, h.g.position.z - a.z) <= r;
@@ -95,6 +95,7 @@ export async function run({ resolve, pathToFileURL }) {
     // S57: the gate's season is 3000 s, so Owl / Mole accrue ~0.1 ✦ in 80 s and (correctly) pop nothing — never a "+0". Show them at a real season length (150 s) for this window.
     { const real = eco.seasonSecondsFor?.bind(eco); eco.seasonSecondsFor = () => 150; cleanups.push(() => { if (real) eco.seasonSecondsFor = real; }); }
     const stranger = A.lg.debug.stranger(); void stranger;
+    { const hp = sb.hero.root.position; for (let k = 0; k < 3; k++) sb.dropTip(hp.x + 3 + k * 0.6, hp.z + 2, 4 + k); }   // S78-D: coins on the ground for the Cloud to carry
     for (let w = 0; w < 4; w++) { sb.cust.spawnWave(eco.state.season, 6); runS(10); }   // customers → sales → Bee pops
     A.lg.debug.event('festival'); eco.applyLoss(120, 'test:shock'); for (let w = 0; w < 4; w++) { sb.cust.spawnWave(eco.state.season, 6); runS(10); }
     const sum = {}, cnt = {}, work = {}; for (const t of HELPER_ORDER) { sum[t] = 0; cnt[t] = 0; work[t] = 0; }
@@ -114,7 +115,7 @@ export async function run({ resolve, pathToFileURL }) {
     eq(cr.rows.map((r) => r.type).sort(), [...HELPER_ORDER].sort(), 'T3.3 one row per hired helper');
     // the report rows cover the WHOLE season (incl. the pops from the 80 s above), so compare with every payoff since the season began
     if (!(cr.total >= 0)) throw new Error('T3.3 total ' + cr.total);
-    const rowSum = Math.round(cr.rows.reduce((a, r) => a + (['tallyOwl', 'packMole', 'sparkBee', 'guardTortoise'].includes(r.type) ? r.value : 0), 0) * 10) / 10;
+    const rowSum = Math.round(cr.rows.reduce((a, r) => a + (['tallyOwl', 'packMole', 'sparkBee', 'guardTortoise', 'cloud'].includes(r.type) ? r.value : 0), 0) * 10) / 10;
     if (Math.abs(rowSum - cr.total) > 1) throw new Error(`T3.3 rows sum ${rowSum} ≠ total ${cr.total}`);
     // payoff events since the sandbox started = what the report counted for the season (one season so far; the report resets at season end)
     if (!(popAll >= 0)) throw new Error('popAll');
@@ -123,9 +124,9 @@ export async function run({ resolve, pathToFileURL }) {
     const crewBox = (() => { const walk = (nd) => { for (const c of nd.children || []) { if (c.id === 'll-ledger-crew') return c; const r = walk(c); if (r) return r; } return null; }; return walk(A.root); })();
     if (!crewBox || crewBox.hidden) throw new Error('T3.3 Ledger has no visible Crew line');
     const chipEls = []; (function w(nd) { for (const c of nd.children || []) { if (String(c.className).includes('ll-crew-chip')) chipEls.push(c); w(c); } })(crewBox);
-    eq(chipEls.length, 6, 'T3.3 crew chips in the Ledger'); void chips;
+    eq(chipEls.length, HELPER_ORDER.length, 'T3.3 crew chips in the Ledger'); void chips;
     A.ui.ledger.hide();
-    ok(`T3.3 report.crew = ${cr.rows.length} rows, total ${cr.total} ✦ (= Σ rows ±1) · Ledger shows the Crew line with 6 chips: ${chipEls.map((c) => c.textContent).join(' | ')}`);
+    ok(`T3.3 report.crew = ${cr.rows.length} rows, total ${cr.total} ✦ (= Σ rows ±1) · Ledger shows the Crew line with ${chipEls.length} chips: ${chipEls.map((c) => c.textContent).join(' | ')}`);
 
     // ---- payoff-sum identity on a clean season (Owl + Mole + Bee + Tortoise pops == report.crew.total, ±1)
     { const B = await makeRun(true, 5); const e2 = B.ev; const s2 = B.sb; B.lg.debug.hire('tallyOwl'); B.lg.debug.hire('packMole'); B.lg.debug.hire('sparkBee'); B.lg.debug.hire('guardTortoise');
@@ -155,7 +156,7 @@ export async function run({ resolve, pathToFileURL }) {
     for (const R of [D0, D1]) { for (const t of HELPER_ORDER) R.lg.debug.hire(t); R.runS(60); }
     const dm = D1.meshes() - D0.meshes(); if (dm > 1) throw new Error(`T3.5 crew on adds ${dm} renderable objects vs baseline (budget +1)`);
     const m1 = D1.meshes(); for (let i = 0; i < 60; i++) D1.sb.crew.plant(i * 0.1, 0, 1); D1.runS(5); if (D1.meshes() !== m1) throw new Error(`T3.5 60 more flowers changed the object count ${m1} → ${D1.meshes()}`);
-    ok(`T3.5 all 6 hired: renderable objects ${D0.meshes()} (baseline) → ${D1.meshes()} (+${dm}: the ONE flower InstancedMesh) · 60 extra flowers + all pops add 0`);
+    ok(`T3.5 all ${HELPER_ORDER.length} hired: renderable objects ${D0.meshes()} (baseline) → ${D1.meshes()} (+${dm}: the ONE flower InstancedMesh) · 60 extra flowers + all pops add 0`);
 
     // ================================================================ T3.6 presentation only
     { const R = await makeRun(true, 11); const s = R.sb; R.lg.debug.hire('packMole'); const h = s.helpers[0];

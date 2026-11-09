@@ -391,7 +391,7 @@ function updateCoins(sb, dt) {
   // 42A: walk-over till collect — Pip within TILL_WALK u of a counter that holds money empties it into the pouch
   if (sb.till) { sb._tillT = (sb._tillT || 0) + dt; for (const t of sb.till.tills.values()) if (t.amount > 0 && Math.hypot(t.pos.x - hp.x, t.pos.z - hp.z) <= TILL_WALK) sb.till.collect(t.stallId, 'walk'); }
   if (!sb.coins.length) { if (sb.coinMesh.count !== (sb.tillCoins?.length || 0)) sb.syncCoins(); else if (sb.tillCoins?.length) sb.syncCoins(); return; }
-  for (let i = sb.coins.length - 1; i >= 0; i--) { const c = sb.coins[i]; c.t += dt; c.position.y = 0.12 + Math.sin(c.t * 4) * 0.04; if (Math.hypot(c.position.x - hp.x, c.position.z - hp.z) <= 0.7) sb.collectCoin(c, 'walk'); }
+  for (let i = sb.coins.length - 1; i >= 0; i--) { const c = sb.coins[i]; c.t += dt; if (c.carried) continue;   /* S78-D: the Cloud is carrying it */ c.position.y = 0.12 + Math.sin(c.t * 4) * 0.04; if (Math.hypot(c.position.x - hp.x, c.position.z - hp.z) <= 0.7) sb.collectCoin(c, 'walk'); }
   sb.syncCoins();
 }
 // 42A — tills. coinLayer = stacks of ≤ 8 coin instances on each counter, drawn by the SAME InstancedMesh as the ground tips
@@ -710,7 +710,7 @@ function hireHelper(sb, wantType = null, { free = false } = {}) {
   const u = free ? (sb.eco.grantUpgrade?.('helper_' + type) || sb.eco.upgrades?.['helper_' + type] || { cost: 0 }) : sb.eco.buyUpgrade('helper_' + type);
   if (!u) { sb.game.bus.emit('eco:denied', { why: 'cannot afford', id: 'helper_' + type }); return null; }
   const stalls = [...sb.build.placed.values()].filter((e) => e.id.startsWith('stall_'));
-  const stall = stalls[sb.helpers.length % Math.max(1, stalls.length)] || null;
+  const stall = type === 'cloud' ? null : (stalls[sb.helpers.length % Math.max(1, stalls.length)] || null);   // S78-D: the Cloud is a pet, never seated at a stall
   const g = makeHelper(type, { seed: sb.helpers.length + 1 });
   sb.game.scene.add(g);
   const anim = new HelperAnimator(g, type, { vfx: sb.vfx });
@@ -750,7 +750,7 @@ function helperTargets(sb) {
     sb.game.bus.emit('helper:hit', { type: h.type, count: h.hitCount });
   } }));
 }
-const HELPER_OUCH = { tallyOwl: 'Hoo-rude!', packMole: 'Oof!', sparkBee: 'Bzzt!', scoutFox: 'Yip!', gardenerSnail: 'Sloooow down!', guardTortoise: 'Hmph.' };
+const HELPER_OUCH = { cloud: 'Puff!', tallyOwl: 'Hoo-rude!', packMole: 'Oof!', sparkBee: 'Bzzt!', scoutFox: 'Yip!', gardenerSnail: 'Sloooow down!', guardTortoise: 'Hmph.' };
 const HELPER_WALK = 1.6;   // u/s walking back to the seat after a knockback
 /** S32: once the slide ends a knocked helper walks straight back to its seat (stalls are never between seat and shove point → no pathing). */
 function updateHelperKnock(sb, h, dt) {
@@ -770,6 +770,7 @@ function reseatHelpers(sb) {
   const alive = new Set(stalls);
   const load = (e) => sb.helpers.filter((o) => o.stall === e).length;
   for (const h of sb.helpers) {
+    if (h.type === 'cloud') continue;   // S78-D: the pet Cloud has no stall
     if (h.stall && alive.has(h.stall)) continue;
     if (!stalls.length) { if (h.stall) seatHelper(sb, h, null); continue; }
     const target = stalls.slice().sort((a, b) => load(a) - load(b))[0];
@@ -778,7 +779,7 @@ function reseatHelpers(sb) {
   // S34 / P81: rebalance — while some stall has nobody and another has 2+ (or a helper idles with no stall), move one over
   if (stalls.length) for (let guard = 0; guard < sb.helpers.length; guard++) {
     const empty = stalls.find((e) => load(e) === 0); if (!empty) break;
-    const mover = sb.helpers.find((h) => !h.stall) || sb.helpers.find((h) => load(h.stall) >= 2); if (!mover) break;
+    const mover = sb.helpers.find((h) => !h.stall && h.type !== 'cloud') || sb.helpers.find((h) => h.type !== 'cloud' && load(h.stall) >= 2); if (!mover) break;
     seatHelper(sb, mover, empty);
   }
 }
@@ -1098,7 +1099,7 @@ function installRunWires(lg) {
   // BUGFIX B24: player-facing hire / unlock / price. offers() feeds the tray's Crew & Land tab; buyOffer pays through the economy
   // (prereqs + cost enforced by buyUpgrade, C03) and then does the world side (helper creature / zone rise). ui:price nudges the per-type
   // price in CustomerSystem (±1 Spark, floor 1, ceiling 3× fair) and emits cust:price so the detail bar refreshes.
-  const HELPER_NAMES = { tallyOwl: 'Tally Owl', packMole: 'Pack Mole', sparkBee: 'Spark Bee', guardTortoise: 'Guard Tortoise', scoutFox: 'Scout Fox', gardenerSnail: 'Gardener Snail' };
+  const HELPER_NAMES = { tallyOwl: 'Tally Owl', packMole: 'Pack Mole', sparkBee: 'Spark Bee', guardTortoise: 'Guard Tortoise', scoutFox: 'Scout Fox', gardenerSnail: 'Gardener Snail', cloud: 'Cloud' };
   const ZONE_NAMES = { zone_west: 'West Meadow', zone_east: 'East Shore', zone_far: 'Far Point' };
   lg.offers = () => Object.values(eco.upgrades || UPGRADES).filter((u) => u.kind === 'helper' || u.kind === 'zone').map((u) => {
     const owned = eco.owns(u.id) || (u.kind === 'zone' && !!sb.island.zones[u.effect.zone]?.unlocked);

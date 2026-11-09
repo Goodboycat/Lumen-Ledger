@@ -19,7 +19,7 @@ import { createCuriosity } from './curiosity.js';
 
 /** Every hint id this file can answer. The coverage gate (tools/gates/curiosity.mjs, T2.8) checks each has a card in data/tutor.json. */
 export const GUIDE_HINTS = ['jar:save', 'jar:protect', 'jar:invest', 'jar:withdraw', 'stall:any', 'stall:upgrade', 'sign:price', 'till:coins', 'enemy:collector', 'enemy:baron', 'npc:stranger',
-  'crew:tallyOwl', 'crew:packMole', 'crew:sparkBee', 'crew:guardTortoise', 'crew:scoutFox', 'crew:gardenerSnail'];
+  'crew:tallyOwl', 'crew:packMole', 'crew:sparkBee', 'crew:guardTortoise', 'crew:scoutFox', 'crew:gardenerSnail', 'crew:cloud'];
 /** HUD things a tap can ask about (ui/hud.js puts data-guide on them). */
 export const HUD_GUIDES = ['hud:pouch', 'hud:debt', 'hud:season', 'hud:rep', 'hud:focus'];
 

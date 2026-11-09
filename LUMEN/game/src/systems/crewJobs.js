@@ -15,19 +15,20 @@
 // Draw calls: +1 (one InstancedMesh of flowers, hidden at 0 flowers). Allocation: none per frame (module temps).
 import * as THREE from '../../vendor/three.module.js';
 
-export const HELPER_ORDER = ['tallyOwl', 'packMole', 'sparkBee', 'guardTortoise', 'scoutFox', 'gardenerSnail'];
+export const HELPER_ORDER = ['tallyOwl', 'packMole', 'sparkBee', 'guardTortoise', 'scoutFox', 'gardenerSnail', 'cloud'];
 export const ARRIVE_S = 2.7;           // longest a hire walk may take (speed scales with distance), seconds
 export const WALK = { min: 2.2, max: 9 };
-export const NAMES = { tallyOwl: 'Owl', packMole: 'Mole', sparkBee: 'Bee', guardTortoise: 'Tortoise', scoutFox: 'Fox', gardenerSnail: 'Snail' };
-export const HELLO = { tallyOwl: 'Hoo!', packMole: 'Hi!', sparkBee: 'Bzz!', guardTortoise: 'Hm.', scoutFox: 'Yip!', gardenerSnail: 'Hi~' };
-export const COLOR = { tallyOwl: '#FFD54F', packMole: '#90CAF9', sparkBee: '#FFF176', guardTortoise: '#A5D6A7', scoutFox: '#FFAB91', gardenerSnail: '#F48FB1' };
+export const NAMES = { tallyOwl: 'Owl', packMole: 'Mole', sparkBee: 'Bee', guardTortoise: 'Tortoise', scoutFox: 'Fox', gardenerSnail: 'Snail', cloud: 'Cloud' };
+export const HELLO = { tallyOwl: 'Hoo!', packMole: 'Hi!', sparkBee: 'Bzz!', guardTortoise: 'Hm.', scoutFox: 'Yip!', gardenerSnail: 'Hi~', cloud: 'Pwuff!' };
+export const COLOR = { tallyOwl: '#FFD54F', packMole: '#90CAF9', sparkBee: '#FFF176', guardTortoise: '#A5D6A7', scoutFox: '#FFAB91', gardenerSnail: '#F48FB1', cloud: '#B3E5FC' };
 // [work seconds, idle seconds] of the loop (bees / snails move; their "work" is a bout of the zip / pour clip)
-export const CYCLE = { tallyOwl: [4.5, 3], packMole: [5, 3], sparkBee: [1.2, 8], guardTortoise: [2.4, 8], scoutFox: [2.2, 9], gardenerSnail: [1.4, 3.5] };
+export const CYCLE = { tallyOwl: [4.5, 3], packMole: [5, 3], sparkBee: [1.2, 8], guardTortoise: [2.4, 8], scoutFox: [2.2, 9], gardenerSnail: [1.4, 3.5], cloud: [0.4, 1] };
+const CLOUD = { fetchR: 10, flySpeed: 5.6, carrySpeed: 6.4, pickR: 0.45, giveR: 0.95, side: 1.0, follow: 4.5 };   // S78-D: pet Cloud tuning (units, u/s)
 const PATROL_S = 24, RETARGET_S = 1, TICK_POP_S = 2.5, FLOWER_CAP = 80, FLOWER_EVERY = 1.1, ORBIT_R = 1.5, ORBIT_W = 1.6, SNAIL_SPEED = 0.55, SNAIL_RADIUS = 3.2;
 
 const _a = new THREE.Vector3(), _p = new THREE.Vector3(), _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _c = new THREE.Color();
 const FLOWER_COLORS = [0xF48FB1, 0xFFF176, 0xFFFFFF, 0xCE93D8, 0xFFAB91];
-const fresh = () => ({ tallyOwl: 0, packMole: 0, sparkBee: 0, guardTortoise: 0, scoutFox: 0, gardenerSnail: 0 });
+const fresh = () => ({ tallyOwl: 0, packMole: 0, sparkBee: 0, guardTortoise: 0, scoutFox: 0, gardenerSnail: 0, cloud: 0 });
 const fmt = (v) => (v >= 10 ? String(Math.round(v)) : String(Math.round(v * 10) / 10));   // pops stay <= 4 chars: "+0.3" "-12" "+10%"
 
 export function installCrew(sb) {
@@ -65,6 +66,7 @@ export function installCrew(sb) {
       h.jobStall = best || null; const a = best ? { x: best.group.position.x, z: best.group.position.z } : cottage();
       h.orbit = a; return { x: a.x + ORBIT_R, z: a.z, fx: a.x, fz: a.z };
     }
+    if (t === 'cloud') { const hp = sb.hero.root.position; return { x: hp.x - CLOUD.side, z: hp.z + 0.3, fx: hp.x, fz: hp.z }; }   // S78-D: the pet floats beside Pip (the 'post' only matters for the hire walk-in)
     if (t === 'tallyOwl') { const a = jarAt('save') || cottage(); return { ...spotAround(h, a, 1.3), fx: a.x, fz: a.z }; }
     if (t === 'guardTortoise') { const a = jarAt('protect') || cottage(); return { ...spotAround(h, a, 1.4), fx: a.x, fz: a.z }; }
     if (t === 'scoutFox') { const p = pier(), d = Math.hypot(p.x, p.z) || 1; const a = { x: p.x - (p.x / d) * 2.4, z: p.z - (p.z / d) * 2.4 }; return { ...spotAround(h, a, 0.9), fx: p.x, fz: p.z }; }
@@ -155,7 +157,7 @@ export function installCrew(sb) {
     const next = postOf(h), old = h.post;
     if (!old || Math.hypot(next.x - old.x, next.z - old.z) > 0.6 || h.type === 'sparkBee') {
       setPost(h, next);
-      if (h.job.state !== 'arrive' && h.type !== 'sparkBee' && h.type !== 'gardenerSnail') { h.job.state = 'move'; goPost(h, 2.8); h.anim.play('walk'); }
+      if (h.job.state !== 'arrive' && h.type !== 'sparkBee' && h.type !== 'gardenerSnail' && h.type !== 'cloud') { h.job.state = 'move'; goPost(h, 2.8); h.anim.play('walk'); }
     }
   }
 
@@ -171,6 +173,48 @@ export function installCrew(sb) {
     im.count = Math.min(FLOWER_CAP, C.flowerCount); im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true;
   }
 
+  // ------------------------------------------------------------------ Cloud (S78-D): a pet that floats beside Pip and carries DROPPED COINS to him
+  //   follow -> (coin on the ground within CLOUD.fetchR) fetch -> grab (the coin rides on the cloud) -> carry back to Pip -> sb.collectCoin(c,'cloud') = the coin vanishes + is paid.
+  //   Pip walking over a coin still collects it himself; a coin taken by someone else mid-trip just ends the trip. Presentation + the same tip money Pip would pick up: no new income.
+  const nearestCoin = (h) => {
+    let best = null, bd = CLOUD.fetchR * CLOUD.fetchR; const p = h.g.position, hp = sb.hero.root.position;
+    for (const c of sb.coins || []) { if (c.carried && c.carried !== h) continue; const dx = c.position.x - p.x, dz = c.position.z - p.z, d = dx * dx + dz * dz; if (d >= bd) continue; if (Math.hypot(c.position.x - hp.x, c.position.z - hp.z) < 0.8) continue; bd = d; best = c; }
+    return best;
+  };
+  const flyTo = (h, tx, tz, speed, dt) => { const p = h.g.position, dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz); if (d < 1e-4) return 0; const s = Math.min(d, speed * dt); p.x += (dx / d) * s; p.z += (dz / d) * s; _a.set(tx, 0, tz); h.anim.faceTo(_a); return d - s; };
+  function dropCarried(h) { const c = h.job.coin; if (c && c.carried === h) c.carried = null; h.job.coin = null; }
+  function cloudTick(h, dt) {
+    const j = h.job, p = h.g.position, hp = sb.hero.root.position; h.seat.x = p.x; h.seat.z = p.z;
+    const hasCoin = () => j.coin && sb.coins.indexOf(j.coin) >= 0;
+    if (j.state === 'puff') { if ((j.puffT -= dt) <= 0) { j.state = 'follow'; h.anim.play('idle'); } }
+    else if (j.state === 'fetch') {
+      if (!hasCoin() || (j.coin.carried && j.coin.carried !== h)) { dropCarried(h); j.state = 'follow'; }
+      else if (flyTo(h, j.coin.position.x, j.coin.position.z, CLOUD.flySpeed, dt) <= CLOUD.pickR) { j.coin.carried = h; j.state = 'carry'; bus.emit('crew:grab', { type: 'cloud', value: j.coin.value }); }
+    } else if (j.state === 'carry') {
+      if (!hasCoin()) { dropCarried(h); j.state = 'follow'; }
+      else {
+        const fy = h.g.rotation.y, c = j.coin; const left = flyTo(h, hp.x, hp.z, CLOUD.carrySpeed, dt);
+        c.position.set(p.x + Math.sin(fy) * 0.38, 0.62 + Math.sin(C.t * 8) * 0.03, p.z + Math.cos(fy) * 0.38);
+        if (left <= CLOUD.giveR) {
+          const v = c.value; c.carried = null; j.coin = null; const got = sb.collectCoin(c, 'cloud');
+          if (got) { C.sum.cloud += got; C.cnt.cloud++; bus.emit('crew:payoff', { type: 'cloud', value: got, text: '+' + got }); bus.emit('crew:work', { type: 'cloud' }); }
+          j.state = 'puff'; j.puffT = 0.4; h.anim.play('work'); return;
+        }
+      }
+    }
+    if (j.state === 'follow' || j.state === 'idle') {
+      // lazy side-follow: float to the left of Pip (his sword is on the right), eased so it trails a little
+      const fy = sb.hero.facing || 0, rx = Math.cos(fy), rz = -Math.sin(fy), bob = Math.sin(C.t * 1.7) * 0.12;
+      const tx = hp.x - rx * CLOUD.side + Math.sin(fy) * -0.25 + bob * rx, tz = hp.z - rz * CLOUD.side + Math.cos(fy) * -0.25 + bob * rz;
+      const k = 1 - Math.exp(-CLOUD.follow * dt); const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
+      if (d > 14) { p.x = tx; p.z = tz; } else { p.x += dx * k; p.z += dz * k; }
+      _a.set(hp.x, 0, hp.z); h.anim.faceTo(_a);
+      if (j.state === 'idle') j.state = 'follow';
+      j.scanT = (j.scanT || 0) - dt;
+      if (j.scanT <= 0) { j.scanT = 0.25; const c = nearestCoin(h); if (c) { j.coin = c; j.state = 'fetch'; } }
+    }
+  }
+
   // ------------------------------------------------------------------ per-frame job loop
   function updateOne(h, dt) {
     const j = h.job; if (!j || h.returning || h.anim.knocked) return;
@@ -184,6 +228,7 @@ export function installCrew(sb) {
       return;
     }
     if (j.state === 'idle' && h.anim.current === 'work') h.anim.play('idle');   // a knocked helper's walk-back ends in 'work'
+    if (h.type === 'cloud') { cloudTick(h, dt); return; }   // S78-D
     if (h.type === 'sparkBee') {   // circles its stall: the position is the orbit, the clip is idle (hover) with a zip bout per sale
       const o = h.orbit || post; j.ang += ORBIT_W * dt; const nx = o.x + Math.cos(j.ang) * ORBIT_R, nz = o.z + Math.sin(j.ang) * ORBIT_R;
       if (isLand(nx, nz) || isLand(o.x, o.z)) { p.x = nx; p.z = nz; } _a.set(o.x + Math.cos(j.ang + 0.6) * ORBIT_R, 0, o.z + Math.sin(j.ang + 0.6) * ORBIT_R); h.anim.faceTo(_a);
@@ -268,6 +313,7 @@ export function installCrew(sb) {
       if (t === 'tallyOwl' || t === 'packMole') { const v = Math.round(C.sum[t] * 10) / 10; total += v; add(t, v, t === 'tallyOwl' ? `Owl +${fmt(v)} ✦ interest` : `Mole −${fmt(v)} ✦ upkeep`); }
       else if (t === 'sparkBee') { const v = Math.round(C.sum[t] * 10) / 10; total += v; add(t, v, `Bee +${v} ✦ sales`); }
       else if (t === 'guardTortoise') { const v = Math.round(C.sum[t] * 10) / 10; total += v; add(t, v, `Tortoise ${v} ✦ covered`); }
+      else if (t === 'cloud') { const v = Math.round(C.sum[t] * 10) / 10; total += v; add(t, v, `Cloud fetched +${fmt(v)} ✦ (${C.cnt[t]})`); }
       else if (t === 'scoutFox') add(t, C.cnt[t], `Fox spotted ${C.cnt[t]}`);
       else add(t, mod('reputationBonus', 0) * 100, `Snail trust +${Math.round(mod('reputationBonus', 0) * 100)} %`);
     }

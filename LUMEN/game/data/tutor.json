@@ -44,6 +44,7 @@
   {"id": "crew:guardTortoise", "icon": "shield", "text": "Guard Tortoise: Protect jar absorbs more.", "group": "crew", "target": "crew:guardTortoise", "on": "sandbox:hired", "match": {"type": "guardTortoise"}},
   {"id": "crew:scoutFox", "icon": "eyes", "text": "Scout Fox: sniffs out Too-Good Deals.", "group": "crew", "target": "crew:scoutFox", "on": "sandbox:hired", "match": {"type": "scoutFox"}},
   {"id": "crew:gardenerSnail", "icon": "sprout", "text": "Gardener Snail: reputation grows a bit.", "group": "crew", "target": "crew:gardenerSnail", "on": "sandbox:hired", "match": {"type": "gardenerSnail"}},
+  {"id": "crew:cloud", "icon": "cloudbaby", "text": "Cloud: carries dropped coins to you.", "group": "crew", "target": "crew:cloud", "on": "sandbox:hired", "match": {"type": "cloud"}},
   {"id": "power:coinMagnetDash", "icon": "dash", "text": "Dash to coins and tills. Pulls them in.", "whenHint": "No coins near. Dash to a till.", "group": "powers", "on": "sandbox:ability", "match": {"name": "coinMagnetDash"}},
   {"id": "power:bubbleShield", "icon": "shield", "text": "Next bad event costs 0. Lasts 30 s.", "whenHint": "Shield is ready. Use at the storm warning.", "group": "powers", "on": "sandbox:ability", "match": {"name": "bubbleShield"}},
   {"id": "power:growthStomp", "icon": "upgrade", "text": "Stalls sell more for 12 s. Use when busy.", "whenHint": "No stalls to boost. Build one.", "group": "powers", "on": "sandbox:ability", "match": {"name": "growthStomp"}},

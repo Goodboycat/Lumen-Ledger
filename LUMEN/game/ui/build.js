@@ -34,7 +34,7 @@ export const ICONS = {
 export const CATEGORY_LABELS = { jar: 'Jars', stall: 'Stalls', decor: 'Decor', nature: 'Nature', landmark: 'Landmarks', crew: 'Crew & Land' };
 // BUGFIX B24: helpers + zone unlocks were debug-key only (H/Z). The 'crew' tab lists what the integrator offers via api.offers()
 // → [{ id, name, icon, cost, text, kind:'helper'|'zone', owned, blocker }] and a tap emits ui:build { action:'buy', id }.
-export const OFFER_ICONS = { helper_tallyOwl: '🦉', helper_packMole: '🧺', helper_sparkBee: '⚡', helper_guardTortoise: '🛡', helper_scoutFox: '👀', helper_gardenerSnail: '🌱', zone_west: '🗺', zone_east: '⚓', zone_far: '🗼' };
+export const OFFER_ICONS = { helper_tallyOwl: '🦉', helper_packMole: '🧺', helper_sparkBee: '⚡', helper_guardTortoise: '🛡', helper_scoutFox: '👀', helper_gardenerSnail: '🌱', helper_cloud: '☁️', zone_west: '🗺', zone_east: '⚓', zone_far: '🗼' };
 
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = iconize(html); return e; };
 
