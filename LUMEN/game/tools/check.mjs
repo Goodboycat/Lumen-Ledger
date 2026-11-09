@@ -902,7 +902,7 @@ if (doStory) {
     }
     if (lessons.join() !== BALANCE.lessons.join()) throw new Error('lessons ' + lessons.join());
     if (reviews !== 10) throw new Error('reviews ' + reviews);
-    if (eco.state.ended === 'win' && !(ev['story:finale'] && ev['story:finale'][0].endless === true)) throw new Error('eco:win → story:finale missing');
+    if (eco.state.ended === 'win' && !(ev['story:finale'] && ev['story:finale'][0].endless === false && ev['story:finale'][0].outcome === 'win')) throw new Error('eco:win → story:finale {endless:false, outcome:win} missing');   // S68: S66-B removed Endless
     const bad2 = ev['story:line'].find((l) => !l.speaker || !l.text || (l.mood && !['happy', 'sad', 'angry', 'shout'].includes(l.mood)));
     if (bad2) throw new Error('bad line ' + JSON.stringify(bad2));
     const json = story.serialize(); const s2 = StorySystem.deserialize(JSON.stringify(json), eco, { data, bus: new EventBus() });
