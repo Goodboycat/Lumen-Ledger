@@ -31,13 +31,28 @@ export const BUFFER_MS = 350;
 export const LOCK_RANGE = 5, LOCK_COS = Math.cos((70 * Math.PI) / 180);
 const POINT_BLANK = 0.9;
 const lerp = (a, b, t) => a + (b - a) * t;
-const _d = new THREE.Vector3(), _c = new THREE.Vector3(), _t = new THREE.Vector3();
+const _dir0 = new THREE.Vector3(), _d = new THREE.Vector3(), _c = new THREE.Vector3(), _t = new THREE.Vector3();
+
+// S77-SW keyframes (hero frame; ty/tx = torso yaw/pitch, ax/az = right-arm x/z, sx = sword pitch). Solved with tools/sword_solve.mjs so the BLADE TIP lands where the move says:
+//   s1 forehand : tip high behind the sword shoulder -> sweeps through the front at head height -> ends low across the body (left)
+//   s2 backhand : starts low-left where s1 ended -> sweeps through the front at chest height -> finishes wide on the sword side
+//   th thrust   : elbow back, blade level beside the hip -> arm straight, point forward at chest height (a lunge; picked when the target is > 1.6 u away)
+export const KF = {
+  s1: [{ ty: 1.06, tx: -0.05, ax: -0.7, az: -0.66, sx: 1.27 }, { ty: -0.27, tx: 0.15, ax: -0.47, az: -0.27, sx: 1.49 }, { ty: -0.41, tx: 0.25, ax: 0.01, az: -1.6, sx: 2.64 }],
+  s2: [{ ty: -1.2, tx: 0.1, ax: -0.12, az: -0.48, sx: 1.41 }, { ty: -0.3, tx: 0.15, ax: -0.63, az: -0.58, sx: 1.85 }, { ty: 1.2, tx: 0.2, ax: -0.1, az: -1.33, sx: 2.14 }],
+  th: [{ ty: 0.35, tx: 0.1, ax: 0.35, az: -0.2, sx: 1.45 }, { ty: -0.2, tx: 0.2, ax: -1.45, az: -0.15, sx: 2.95 }],
+};
+const REST_K = { ty: 0, tx: 0, ax: -0.15, az: -0.35, sx: 0.35 };
+const mixK = (a, b, e) => ({ ty: a.ty + (b.ty - a.ty) * e, tx: a.tx + (b.tx - a.tx) * e, ax: a.ax + (b.ax - a.ax) * e, az: a.az + (b.az - a.az) * e, sx: a.sx + (b.sx - a.sx) * e });
+export const THRUST_STEP = { name: 'thrust', ant: 140, strike: 110, recover: 280, power: 1, range: 3.1, cone: 0.55, lunge: 1.0, hitstop: 60, shake: 0.3 };
 
 export function createCombat({ hero, game, targets, bus }) {
   const p = hero.p; const vfx = () => hero.deps.vfx || {};
   const C = { hero, combo: 0, step: -1, target: null, targetId: null, buffered: false, playing: false, seqs: [], stats: { hits: 0, misses: 0, combos3: 0 }, lockEnabled: true };
   const S = { dir: new THREE.Vector3(0, 0, 1), start: new THREE.Vector3(), reach: 0.46, hitDone: false, hitSet: new Set(), step: null, spin0: 0 };
   const allTargets = () => (targets ? targets() : (hero.deps.targets ? hero.deps.targets() : []));
+  const capK = () => ({ ty: p.torso.rotation.y, tx: p.torso.rotation.x, ax: p.armR.rotation.x, az: p.armR.rotation.z, sx: hero.sword.rotation.x });
+  const putK = (k) => { p.torso.rotation.y = k.ty; p.torso.rotation.x = k.tx; p.armR.rotation.set(k.ax, 0, k.az); hero.sword.rotation.set(k.sx, 0, 0); };
   const idOf = (t) => t?.enemy ? (t.enemy.id ?? `${t.enemy.kind}${t.enemy.i ?? ''}`) : (t?.cust ? `cust${t.cust.id ?? ''}` : null);
 
   // ---- aiming: lock target first, else nearest target within 2.6 u (16A behaviour), else keep facing
@@ -69,8 +84,8 @@ export function createCombat({ hero, game, targets, bus }) {
   }
 
   // ---- shared phase scaffolding (anticipate → strike → recovery); the pose fns differ per step
-  function build(i) {
-    const st = COMBO_STEPS[i], seq = new Sequence(st.name); seq.ctx = S;
+  function build(i, variant) {
+    const st = variant === 'thrust' ? THRUST_STEP : COMBO_STEPS[i], seq = new Sequence(st.name); seq.ctx = S;
     const enter = () => {
       S.hitDone = false; S.hitSet.clear(); S.step = st;
       aim(S.dir); hero.root.rotation.y = Math.atan2(S.dir.x, S.dir.z); hero.facing = hero.root.rotation.y; S.spin0 = hero.facing;
@@ -79,15 +94,16 @@ export function createCombat({ hero, game, targets, bus }) {
     };
     const strikeEnter = () => { vfx().slash?.fire?.(hero.root.position, S.dir, { dur: i === 2 ? 0.2 : 0.12, scale: i === 2 ? 1.35 : 1.05, blade: hero.sword }); };
     const lungeTo = (f) => hero.root.position.copy(S.start).addScaledVector(S.dir, Math.min(S.reach, st.lunge * Math.min(1.05, f)));
-    if (i === 0) {
-      seq.phase('anticipation', st.ant, Easing.outCubic, (e) => { p.body.scale.set(lerp(1, 1.1, e), lerp(1, 0.85, e), lerp(1, 1.1, e)); p.armR.rotation.set(lerp(-0.15, -1.6, e), 0, lerp(-0.35, 0.9, e)); hero.sword.rotation.set(lerp(0.35, -1.1, e), 0, lerp(0, 0.2, e)); p.torso.rotation.y = lerp(0, 0.95, e); p.torso.rotation.x = lerp(0, 0.05, e); p.head.rotation.y = lerp(0, -0.6, e); p.armL.rotation.set(lerp(0.1, -0.5, e), 0, lerp(0.35, 0.6, e)); }, { onEnter: enter });
-      seq.phase('strike', st.strike, Easing.strike, (e, _, t) => { const al = lerp(1.08, 1.2, Math.min(1, e)), ac = lerp(0.88, 0.9, Math.min(1, e)); p.body.scale.set(ac, ac, al); lungeTo(e); p.torso.rotation.y = lerp(0.95, -0.75, e); p.torso.rotation.x = lerp(0.05, 0.35, e); p.armR.rotation.set(lerp(-1.6, -1.35, e), 0, lerp(0.9, -1.1, e)); hero.sword.rotation.set(lerp(-1.1, 0.55, e), 0, lerp(0.2, -0.3, e)); p.armL.rotation.set(lerp(-0.5, 0.6, e), 0, lerp(0.6, 0.9, e)); p.head.rotation.y = lerp(-0.6, 0.15, e); if (!S.hitDone && t >= 0.55) { S.hitDone = true; impact(st); } vfx().slash?.track?.(); }, { onEnter: strikeEnter });
-      seq.phase('recovery', st.recover, Easing.outCubic, (e) => { p.body.scale.set(lerp(0.9, 1, e), lerp(0.9, 1, e), lerp(1.2, 1, e)); p.torso.rotation.y = lerp(-0.75, -0.2, e); p.torso.rotation.x = lerp(0.35, 0, e); p.armR.rotation.set(lerp(-1.35, -0.3, e), 0, lerp(-1.1, -0.6, e)); hero.sword.rotation.set(lerp(0.55, 0.4, e), 0, lerp(-0.3, 0, e)); p.armL.rotation.set(lerp(0.6, 0.1, e), 0, lerp(0.9, 0.35, e)); p.head.rotation.y = lerp(0.15, 0, e); if (e < 0.3) vfx().slash?.track?.(); else vfx().slash?.release?.(); }, { onEnter: () => { hero.spring?.set?.(0.08); hero.spring?.kick?.(-1.1); recoverEnter(); }, cancellable: true });
-    } else if (i === 1) {
-      // backhand: torso/arm start on the LEFT (where slash1 ended) and sweep to the right, blade flat
-      seq.phase('anticipation', st.ant, Easing.outCubic, (e) => { p.body.scale.set(lerp(1, 1.08, e), lerp(1, 0.9, e), lerp(1, 1.08, e)); p.torso.rotation.y = lerp(-0.2, -1.0, e); p.torso.rotation.x = lerp(0, 0.1, e); p.armR.rotation.set(lerp(-0.3, -1.2, e), 0, lerp(-0.6, -1.4, e)); hero.sword.rotation.set(lerp(0.4, 0.2, e), lerp(0, 1.3, e), lerp(0, -0.5, e)); p.armL.rotation.set(lerp(0.1, -0.3, e), 0, lerp(0.35, 0.3, e)); p.head.rotation.y = lerp(0, 0.4, e); }, { onEnter: enter });
-      seq.phase('strike', st.strike, Easing.strike, (e, _, t) => { const al = lerp(1.08, 1.18, Math.min(1, e)), ac = lerp(0.9, 0.92, Math.min(1, e)); p.body.scale.set(ac, ac, al); lungeTo(e); p.torso.rotation.y = lerp(-1.0, 0.9, e); p.torso.rotation.x = lerp(0.1, 0.25, e); p.armR.rotation.set(lerp(-1.2, -1.4, e), 0, lerp(-1.4, 1.0, e)); hero.sword.rotation.set(lerp(0.2, 0.3, e), lerp(1.3, -0.4, e), lerp(-0.5, 0.4, e)); p.armL.rotation.set(lerp(-0.3, 0.5, e), 0, lerp(0.3, 1.0, e)); p.head.rotation.y = lerp(0.4, -0.2, e); if (!S.hitDone && t >= 0.55) { S.hitDone = true; impact(st); } vfx().slash?.track?.(); }, { onEnter: strikeEnter });
-      seq.phase('recovery', st.recover, Easing.outCubic, (e) => { p.body.scale.set(lerp(0.92, 1, e), lerp(0.92, 1, e), lerp(1.18, 1, e)); p.torso.rotation.y = lerp(0.9, 0.15, e); p.torso.rotation.x = lerp(0.25, 0, e); p.armR.rotation.set(lerp(-1.4, -0.3, e), 0, lerp(1.0, -0.3, e)); hero.sword.rotation.set(lerp(0.3, 0.4, e), lerp(-0.4, 0, e), lerp(0.4, 0, e)); p.armL.rotation.set(lerp(0.5, 0.1, e), 0, lerp(1.0, 0.35, e)); p.head.rotation.y = lerp(-0.2, 0, e); if (e < 0.3) vfx().slash?.track?.(); else vfx().slash?.release?.(); }, { onEnter: () => { hero.spring?.set?.(0.08); hero.spring?.kick?.(-1.0); recoverEnter(); }, cancellable: true });
+    if (i === 0 || i === 1 || variant === 'thrust') {
+      // S77-SW: keyframed from tools/sword_solve.mjs (blade-tip targets in Pip's frame). The old poses snapped the blade through the body in 2 frames;
+      // now: wind-up (from WHATEVER pose Pip is in, so chains flow) -> strike through 3 keys (ease in-out, hit when the blade is in front) -> settle.
+      const K = variant === 'thrust' ? KF.th : i === 0 ? KF.s1 : KF.s2, wind = K[0], mid = K.length > 2 ? K[1] : null, end = K[K.length - 1];
+      const at = (e) => (mid ? (e < 0.5 ? mixK(wind, mid, e * 2) : mixK(mid, end, (e - 0.5) * 2)) : mixK(wind, end, e));
+      const squash = (a0, a1, e) => p.body.scale.set(lerp(a0[0], a1[0], e), lerp(a0[1], a1[1], e), lerp(a0[2], a1[2], e));
+      const thr = variant === 'thrust';
+      seq.phase('anticipation', st.ant, Easing.outCubic, (e) => { putK(mixK(S.from || wind, wind, e)); squash([1, 1, 1], thr ? [0.95, 0.9, 1.12] : [1.08, 0.88, 1.08], e); p.head.rotation.y = lerp(0, thr ? 0.1 : -0.35 * Math.sign(wind.ty || 1), e); p.armL.rotation.set(lerp(0.1, thr ? 0.5 : -0.4, e), 0, lerp(0.35, 0.6, e)); }, { onEnter: () => { enter(); S.from = capK(); } });
+      seq.phase('strike', st.strike, Easing.inOutCubic, (e, _, t) => { putK(at(e)); squash(thr ? [0.95, 0.9, 1.12] : [1.08, 0.88, 1.08], thr ? [0.88, 0.92, 1.28] : [0.9, 0.92, 1.2], e); lungeTo(thr ? Math.min(1, e * 1.4) : e); p.armL.rotation.set(lerp(thr ? 0.5 : -0.4, 0.6, e), 0, lerp(0.6, 0.9, e)); p.head.rotation.y = lerp(thr ? 0.1 : -0.35 * Math.sign(wind.ty || 1), 0.1, e); if (!S.hitDone && t >= (thr ? 0.6 : 0.48)) { S.hitDone = true; impact(st); } vfx().slash?.track?.(); }, { onEnter: strikeEnter });
+      seq.phase('recovery', st.recover, Easing.outCubic, (e) => { putK(mixK(end, REST_K, e)); squash(thr ? [0.88, 0.92, 1.28] : [0.9, 0.92, 1.2], [1, 1, 1], e); p.armL.rotation.set(lerp(0.6, 0.1, e), 0, lerp(0.9, 0.35, e)); p.head.rotation.y = lerp(0.1, 0, e); if (e < 0.3) vfx().slash?.track?.(); else vfx().slash?.release?.(); }, { onEnter: () => { hero.spring?.set?.(0.08); hero.spring?.kick?.(thr ? -1.3 : -1.1); recoverEnter(); }, cancellable: true });
     } else {
       // spin: deep crouch, then the whole root turns 360° with the blade held out flat; hop on the way round
       seq.phase('anticipation', st.ant, Easing.outCubic, (e) => { p.body.scale.set(lerp(1, 1.15, e), lerp(1, 0.78, e), lerp(1, 1.15, e)); p.torso.rotation.y = lerp(0.15, 1.1, e); p.torso.rotation.x = lerp(0, 0.2, e); p.armR.rotation.set(lerp(-0.3, -1.5, e), 0, lerp(-0.3, 1.2, e)); hero.sword.rotation.set(lerp(0.4, -0.2, e), 0, lerp(0, 0.6, e)); p.armL.rotation.set(lerp(0.1, -0.8, e), 0, lerp(0.35, 0.8, e)); p.head.rotation.y = lerp(0, -0.5, e); }, { onEnter: enter });
@@ -106,6 +122,7 @@ export function createCombat({ hero, game, targets, bus }) {
     hero.state = 'idle'; hero.attack = hero._swordAttack || hero.attack; hero._restPose?.(); vfx().slash?.release?.();
   }
   function start(i) {
+    if (i === 0) { const tgt = aim(_dir0); const d = tgt ? _t.copy(tgt.root.position).sub(hero.root.position).setY(0).length() : 0; C.seqs[0] = tgt && d > 1.6 ? C.thrustSeq : C.slashSeq; }   // S77-SW: a target farther than 1.6 u = lunge THRUST, closer = forehand SLASH
     const seq = C.seqs[i]; C.step = i; C.combo = i + 1; C.playing = true; C.buffered = false; C._chainNext = false;
     if (hero.state !== 'attack') hero.recoverToLand?.();
     hero.state = 'attack'; hero.attack = seq;                 // HeroController reads attack.currentName / canCancel for its spring layer
@@ -114,6 +131,7 @@ export function createCombat({ hero, game, targets, bus }) {
     return true;
   }
   for (let i = 0; i < 3; i++) C.seqs.push(build(i));
+  C.slashSeq = C.seqs[0]; C.thrustSeq = build(0, 'thrust');
 
   /** Attack press. idle → slash1 · during anticipate/strike → buffered · during recovery → cancel into next step · after slash3 → nothing until it ends. */
   C.attack = function attack() {
