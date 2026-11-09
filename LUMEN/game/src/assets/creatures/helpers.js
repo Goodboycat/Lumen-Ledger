@@ -42,7 +42,7 @@ import * as THREE from '../../../vendor/three.module.js';
 import { G, mesh, rng, vary } from '../geo.js';
 import { PALETTE as P, flatMat, toonMat } from '../../core/Toon.js';
 import { addOutline } from '../../core/Outline.js';
-import { mergeGroup } from '../props/merge.js';
+import { mergeGroup, toonVertexMat } from '../props/merge.js';
 import { Sequence } from '../../anim/Sequencer.js';
 import { Easing } from '../../anim/Easing.js';
 import { CreatureAnimator } from './animator.js';
@@ -222,25 +222,30 @@ const BUILD = {
     c.shadowR = 0.48;
   },
 
-  // S78: the Cloud crew member - the baby cloud that teaches, now a pet. White puffs, sky-blue underside, curl, blush, floats (hover) beside Pip.
+  // S78/S79: the Cloud crew member - the baby cloud that teaches, now a pet. S79: the toon ramp turned the white puffs grey from the iso camera, so the
+  // puffs use an EMISSIVE toon material (white lit side, only a hint of blue-grey in the shade), the face is ~1.6x bigger (big eyes, smile, cheeks) and
+  // the head puff sits forward so the face is not hidden by the body.
   cloud(c) {
-    const white = 0xFFFFFF, sky = 0xB3E5FC, skyD = 0x81D4FA, pink = 0xF48FB1;
-    c.hover = 0.5;
+    const W = toonMat(0xFFFFFF, { emissive: 0x6E6E6E }), SKY = toonMat(0xCFEEFF, { emissive: 0x555B60 }), SKYD = toonMat(0xA9DDF8, { emissive: 0x4A5258 }), pink = 0xFF8FB1;
+    c.hover = 0.55;
     const t = c.torsoRaw;
-    const base = mesh(G.sphere(0.34, 10, 8), sky, 0, 0.2, 0); base.scale.set(1.15, 0.7, 0.95); t.add(base);
-    for (const sx of [-1, 1]) { const p = mesh(G.sphere(0.2, 8, 6), white, sx * 0.34, 0.26, 0); p.scale.set(1, 0.9, 0.9); t.add(p); const lo = mesh(G.sphere(0.13, 7, 5), skyD, sx * 0.2, 0.08, 0.05); lo.scale.set(1, 0.6, 1); t.add(lo); }
-    t.add(mesh(G.sphere(0.2, 8, 6), white, 0, 0.38, -0.12));
-    c.headY = 0.42;
+    const base = mesh(G.sphere(0.36, 10, 8), SKY, 0, 0.18, 0); base.scale.set(1.2, 0.62, 1.0); t.add(base);
+    for (const sx of [-1, 1]) { const p = mesh(G.sphere(0.23, 8, 6), W, sx * 0.36, 0.28, 0.02); p.scale.set(1, 0.92, 0.95); t.add(p); const lo = mesh(G.sphere(0.14, 7, 5), SKYD, sx * 0.22, 0.06, 0.06); lo.scale.set(1, 0.55, 1); t.add(lo); }
+    t.add(mesh(G.sphere(0.22, 8, 6), W, 0, 0.4, -0.14));
+    c.headY = 0.4;
     const h = c.headRaw;
-    const main = mesh(G.sphere(0.3, 10, 8), white, 0, 0.12, 0); main.scale.set(1.1, 0.95, 1); h.add(main);
-    for (const sx of [-1, 1]) { const p = mesh(G.sphere(0.17, 8, 6), white, sx * 0.25, 0.2, -0.02); h.add(p); const ch = new THREE.Mesh(G.sphere(0.06, 6, 5), flatMat(pink)); ch.position.set(sx * 0.2, 0.0, 0.25); ch.scale.set(1, 0.7, 0.4); h.add(ch); }
-    const curl = mesh(G.cone(0.05, 0.2, 5), sky, 0.02, 0.5, 0); curl.rotation.z = -0.5; h.add(curl);
-    h.add(mesh(G.sphere(0.06, 6, 5), sky, 0.1, 0.58, 0));
-    c.face = { y: 0.1, z: 0.28, gap: 0.12, r: 0.062, pupil: 0.04 };
+    const main = mesh(G.sphere(0.34, 10, 8), W, 0, 0.12, 0.04); main.scale.set(1.12, 0.98, 1); h.add(main);
+    for (const sx of [-1, 1]) { const p = mesh(G.sphere(0.19, 8, 6), W, sx * 0.29, 0.22, -0.02); h.add(p); const ch = new THREE.Mesh(G.sphere(0.075, 6, 5), flatMat(pink)); ch.position.set(sx * 0.25, -0.02, 0.29); ch.scale.set(1, 0.65, 0.4); h.add(ch); }
+    h.add(mesh(G.sphere(0.2, 8, 6), W, 0, 0.42, -0.04));
+    const curl = mesh(G.cone(0.055, 0.22, 5), SKY, 0.02, 0.62, 0); curl.rotation.z = -0.5; h.add(curl);
+    h.add(mesh(G.sphere(0.065, 6, 5), SKY, 0.11, 0.7, 0));
+    // smile: a flat dark crescent under the eyes (flat bits are baked un-outlined)
+    const smile = new THREE.Mesh(G.torus(0.07, 0.016, 4, 8, Math.PI), flatMat(0x37474F)); smile.position.set(0, -0.02, 0.325); smile.rotation.z = Math.PI; smile.scale.set(1, 0.8, 0.5); h.add(smile);
+    c.face = { y: 0.13, z: 0.33, gap: 0.145, r: 0.098, pupil: 0.062 };
     // tool = a tiny puff "hand" (pivot at the side) that waves / pops when a coin is delivered
-    c.toolPos.set(0.4, 0.3, 0.1);
-    const o = c.toolRaw; o.add(mesh(G.sphere(0.1, 7, 5), white, 0, 0, 0.04));
-    c.shadowR = 0.3;
+    c.toolPos.set(0.44, 0.3, 0.1);
+    const o = c.toolRaw; o.add(mesh(G.sphere(0.12, 7, 5), W, 0, 0, 0.04));
+    c.shadowR = 0.32;
   },
 
   // Slim orange fox, white chest, blue bandana, big tail with white tip (live), pointing right paw.
@@ -323,6 +328,10 @@ export function makeHelper(type = 'tallyOwl', opts = {}) {
   const face = makeFace(head, c.face);
   const tool = new THREE.Group(); tool.name = 'tool'; tool.position.copy(c.toolPos); body.add(tool);
   const toolMesh = bake(tool, c.toolRaw, 'toolMesh');
+  if (type === 'cloud') {   // S79: the shared vertex-colour toon material renders white puffs grey (ramp 35 %/67 %/100 %); the Cloud gets its own copy with a strong emissive floor
+    const cm = toonVertexMat().clone(); cm.emissive = new THREE.Color(0x8A8A8A);
+    for (const root of [torso, headMesh, toolMesh]) root.traverse((o) => { if (o.isMesh && !o.userData.isOutline && o.material && o.material.isMeshToonMaterial) o.material = cm; });
+  }
   const held = makeHeldCrate(body, Math.max(0.9, c.headY + 0.42), r);
   const parts = { root, body, torso, head, headMesh, face, tool, toolMesh, held, shell: torso.children.find((m) => m.name === 'merged_toon') || torso.children[0] };
   if (c.wings) {
