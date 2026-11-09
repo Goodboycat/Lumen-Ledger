@@ -214,7 +214,7 @@ export function mountBuildMenu(root, opts = {}) {
     el: wrap, state: st, cards,
     get isOpen() { return st.open; },
     open() { if (st.open || (typeof api.canOpen === 'function' && !api.canOpen())) return api; st.open = true; document.body?.classList?.add('ll-tray-open');   /* S64-D: the tutor card lifts above the tray on desktop (ui/tutor.css) */   // S59-B: refused while a dialogue line is on screen
-      wrap.classList.remove('closing'); wrap.classList.add('open'); renderGrid(); if (st.demolish) footTxt.textContent = 'demolish: tap a building (50 % refund)'; else if (!st.selected && document.body?.classList?.contains('is-touch')) footTxt.textContent = 'pick a card, then tap Deploy';   /* S63-D: no keyboard letters (B / R) on a phone */ syncDemolishPill(); bus.emit('ui:build:open', {}); return api; },
+      wrap.classList.remove('closing'); wrap.classList.add('open'); api.ensureFilledTab(); renderGrid(); /* S69: never open on an empty tab (a new game has no jar to build yet) */ if (st.demolish) footTxt.textContent = 'demolish: tap a building (50 % refund)'; else if (!st.selected && document.body?.classList?.contains('is-touch')) footTxt.textContent = 'pick a card, then tap Deploy';   /* S63-D: no keyboard letters (B / R) on a phone */ syncDemolishPill(); bus.emit('ui:build:open', {}); return api; },
     // BUGFIX P13: close() keeps st.demolish (the player closes the tray to tap a stall on the island) — the 💥 button stays `.on` and
     // the integrator keeps lg.demolishMode; Esc / a card pick / 💥 again / cancel() end it in both layers.
     close() {
@@ -283,6 +283,9 @@ export function mountBuildMenu(root, opts = {}) {
     // T1-A (FUN_PASS §4 T1): hidden ids are not listed in any tab (locked jars). Re-renders the grid when open. `hidden()` = current list (gates).
     setHidden(ids) { st.hidden = new Set(Array.isArray(ids) ? ids : []); if (st.selected && st.hidden.has(st.selected)) st.selected = null; if (st.open) renderGrid(); return api; },
     hidden() { return [...st.hidden]; },
+    /** S69: a fresh game lists no jar (Spend = pouch, the rest unlock later) but the Jars tab is first -> the tray used to open on an EMPTY tab while the tutor said "Tap a stall".
+     *  Move to the first tab that has at least one card (crew counts as filled). Called on open(); a player who taps an empty tab on purpose still gets it. */
+    ensureFilledTab() { const filled = (c) => c === 'crew' || api.listed(c).length > 0; if (!filled(st.cat)) { const next = cats.find(filled); if (next) st.cat = next; } return api; },
     /** ids listed in a category right now (what the player would see) — gates assert T1.1/T1.2 on this. */
     listed(cat = st.cat) { return Object.entries(catalog).filter(([id, e]) => e && e.category === cat && (opts.showAll || !(e.category === 'landmark' && !e.cost)) && !st.hidden.has(id)).map(([id]) => id); },
     /** NEW tag on a card until it is first placed (build:placed clears it). */
