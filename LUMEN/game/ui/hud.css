@@ -121,3 +121,11 @@
 @media (prefers-reduced-motion: reduce) { .ll-chip-alert { animation: none; } }
 @keyframes ll-new-pop { from { opacity: 0; transform: scale(.7) translateX(-10px); } to { opacity: 1; transform: none; } }
 @media (max-width: 640px) { .ll-chips { top: 112px; } .ll-chips .ll-chip { font-size: 12px; padding: 4px 9px; } }
+
+/* S67: phone landscape — the Spark pill's chips (debt / on counters / PAY) wrap onto a 2nd row instead of sliding under the Season pill */
+@media (max-width: 640px) and (orientation: landscape) {
+  .ll-hud > .ll-spark { flex-wrap: wrap; row-gap: 3px; max-width: 214px; min-width: 0; align-content: center; }
+  .ll-spark .ll-spark-debt, .ll-spark .ll-spark-till, .ll-spark .ll-spark-pay { margin-left: 0; white-space: nowrap; font-size: 9px; padding: 1px 5px; }
+  .ll-spark .ll-spark-col { flex: 1 1 auto; }
+  .ll-spark-debt, .ll-spark-till { order: 2; } .ll-spark-pay { order: 3; }
+}
