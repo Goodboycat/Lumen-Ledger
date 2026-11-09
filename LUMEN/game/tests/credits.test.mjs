@@ -13,3 +13,14 @@ test('Enter closes it (once) and a second Enter does nothing', () => { const { b
 test('BACK TO TITLE button closes; game:start also closes', () => { const { bus, cr } = mk(); bus.emit('game:won', { season: 10, stars: 9 }); cr.el.querySelector('.ll-credits-back').click(); assert.equal(cr.isOpen, false); bus.emit('game:won', { season: 10, stars: 9 }); bus.emit('game:start', {}); assert.equal(cr.isOpen, false); cr.destroy(); });
 test('missing stars shows 0 and never NaN', () => { const { bus, cr } = mk(); bus.emit('game:won', {}); assert.doesNotMatch(cr.el.textContent, /NaN/); cr.destroy(); });
 test('destroy removes the node', () => { const { root, cr } = mk(); cr.destroy(); assert.equal(root.children.length, 0); });
+
+// S73: scrolling roll + music cue
+test('roll lists every credit line and the title opening underneath re-sends the music cue', () => {
+  const { bus, cr } = mk(); const cues = []; bus.on('ui:credits:music', () => cues.push(1));
+  const rl = cr.el.querySelectorAll ? cr.el.querySelectorAll('.ll-credits-rl') : [];
+  assert.match(cr.el.textContent, /Goodboycat/); assert.match(cr.el.textContent, /Thank you for playing/);
+  bus.emit('game:won', { season: 10, stars: 12 }); assert.equal(cues.length, 1);
+  bus.emit('ui:title:open', {}); assert.equal(cues.length, 2, 'title music must not win over the credits loop');
+  cr.hide(); bus.emit('ui:title:open', {}); assert.equal(cues.length, 2, 'closed credits never send the cue');
+  cr.destroy();
+});

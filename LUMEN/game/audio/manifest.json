@@ -868,6 +868,37 @@
           ]
         ]
       }
+    },
+    "credits": {
+      "file": "music/victory.ogg",
+      "vol": 0.55,
+      "loop": true,
+      "synth": {
+        "root": 329.6,
+        "bpm": 110,
+        "chords": [
+          [
+            0,
+            4,
+            7
+          ],
+          [
+            5,
+            9,
+            12
+          ],
+          [
+            0,
+            4,
+            7
+          ],
+          [
+            7,
+            11,
+            14
+          ]
+        ]
+      }
     }
   },
   "_voices": "Character voice blurbs (cartoon hums, Zelda-style) — played by Audio.js on ui:dialogue:say when the dialogue box starts a line; speaker → voice_<speaker>, narrator → dlg_blip. solo:\"voice\" cuts the previous blurb; preload:true decodes them on unlock().",

@@ -55,6 +55,8 @@ export const DEFAULT_EVENTS = {
   'ui:pause:open':     { sfx: 'tray_open',   cooldown: 0.2, duck: true },
   'ui:pause:close':    { sfx: 'tray_close',  cooldown: 0.2, duck: false },
   'ui:title:open':     { music: 'title' },
+  'ui:credits:music':  { music: 'credits' },                                                       // S73: credits roll (victory.ogg as a loop); ui/credits.js re-sends it when the title opens underneath
+  'ui:credits:close':  { music: 'title' },
   'game:endless':      { music: 'island_endless' },
   'sandbox:ability':   { sfx: 'ability',     cooldown: 0.2, pick: (p) => ({ sfx: ABILITY_SFX[p?.name] || 'ability' }) },
   'sandbox:hired':     { sfx: 'hire',        cooldown: 0.5 },

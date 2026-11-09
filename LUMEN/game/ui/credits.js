@@ -7,12 +7,17 @@
 // Opens by itself on `game:won` {season, stars} (Game.finishRun: ledger THE END ▸ -> game:won -> title). The title is already coming back
 // underneath; this card sits above it (z 60) until the player taps BACK TO TITLE (Enter / Space / Esc / tap anywhere on the button).
 // Shows: trophy + "You lit the Lighthouse", the star total, the ten lessons the player learnt (one drawn rosette each), a thank-you line.
-// Emits: ui:credits:open / ui:credits:close.   Swallows Enter / Space / Esc while open so the title behind never starts a game.
+// Emits: ui:credits:open / ui:credits:close, and ui:credits:music (core/Audio.js plays the 'credits' loop; re-sent when the title opens underneath).
+// S73: the thank-you line is now a scrolling roll (ROLL, CSS only).   Swallows Enter / Space / Esc while open so the title behind never starts a game.
 import { bus as defaultBus } from '../src/core/EventBus.js';
 import { icon, iconize } from './icons.js';
 
 const FALLBACK = [['budgeting', 'Budgeting'], ['needsVsWants', 'Needs vs Wants'], ['emergencyFund', 'Emergency Fund'], ['goodVsBadInterest', 'Good vs Bad Interest'], ['scams', 'Too-Good Deals'],
   ['compoundGrowth', 'Compound Growth'], ['insurance', 'Insurance'], ['diversification', 'Diversification'], ['delayedGratification', 'Delayed Gratification'], ['planningForAGoal', 'Planning for a Goal']];
+
+// S73: the roll. One line per credit, scrolls under the lessons (CSS only, loops). Truthful: same facts as docs/ITCH_PAGE.md Credits.
+export const ROLL = ['Made for the Zoud GameLab jam “Make FinLit Fun”', 'Design · code · art · writing: Goodboycat', 'Built with the LUMEN chat pipeline (Genspark)', 'Engine: Three.js r160 (MIT)',
+  'All 3D is drawn in code · music and sounds by Ludo.ai', 'Thanks to every Glimmer who overpaid for a lantern', 'Thank you for playing ✦ Lumen Ledger'];
 
 export function mountCredits(root, opts = {}) {
   const bus = opts.bus || defaultBus;
@@ -33,7 +38,9 @@ export function mountCredits(root, opts = {}) {
   const head = el('h3', 'll-credits-head', 'What you learnt');
   const grid = el('ul', 'll-credits-lessons');
   list.forEach((L, i) => { const li = el('li', 'll-credits-les', `<span class="n">${icon('rosette')}</span><span class="t"></span>`); li.querySelector('.t').textContent = L.title; li.style.setProperty('--i', i); grid.append(li); });
-  const thanks = el('p', 'll-credits-thanks', iconize('Thank you for playing ✦ Lumen Ledger · made for the Zoud GameLab jam, “Make FinLit Fun”'));
+  const thanks = el('div', 'll-credits-roll'); thanks.setAttribute('aria-label', 'Credits roll');
+  const rollIn = el('div', 'll-credits-rollin'); rollIn.style.setProperty('--n', ROLL.length);
+  ROLL.forEach((t) => rollIn.append(el('p', 'll-credits-rl', iconize(t)))); thanks.append(rollIn);
   const btn = el('button', 'll-btn ll-credits-back', iconize('▸ BACK TO TITLE')); btn.type = 'button';
   colR.append(head, grid, thanks, btn);
   card.append(colL, colR); wrap.append(bg, confetti, card); root.appendChild(wrap);
@@ -45,7 +52,7 @@ export function mountCredits(root, opts = {}) {
     show(p = {}) {
       const stars = Math.max(0, p.stars | 0), seasons = Math.max(1, p.seasons | 0 || list.length), max = seasons * 3;
       stat.innerHTML = `<span class="ll-credits-stars">${icon('star')}<b>${stars}</b><i>/ ${max}</i></span><span class="ll-credits-statlab">stars earned in ${seasons} seasons</span>`;
-      st.open = true; st.shown++; wrap.classList.remove('closing'); wrap.classList.add('open'); bus.emit('ui:credits:open', { stars, seasons }); return api;
+      st.open = true; st.shown++; wrap.classList.remove('closing'); wrap.classList.add('open'); bus.emit('ui:credits:open', { stars, seasons }); bus.emit('ui:credits:music', {}); return api;
     },
     hide() { if (!st.open) return api; st.open = false; wrap.classList.remove('open'); wrap.classList.add('closing'); setTimeout(() => wrap.classList.remove('closing'), 220); bus.emit('ui:credits:close', {}); return api; },
     destroy() { offs.forEach((f) => f && f()); window.removeEventListener('keydown', onKey, true); wrap.remove(); },
@@ -54,7 +61,8 @@ export function mountCredits(root, opts = {}) {
   btn.addEventListener('pointerdown', (e) => e.stopPropagation && e.stopPropagation());
   const onKey = (e) => { if (!st.open) return; if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') { e.preventDefault?.(); e.stopImmediatePropagation?.(); e.stopPropagation?.(); api.hide(); } };
   window.addEventListener('keydown', onKey, true);   // capture: runs before the title's own Enter handler
-  const offs = [bus.on('game:won', (p) => api.show({ stars: p?.stars, seasons: p?.season })), bus.on('game:start', () => { if (st.open) api.hide(); })];
+  const offs = [bus.on('game:won', (p) => api.show({ stars: p?.stars, seasons: p?.season })), bus.on('game:start', () => { if (st.open) api.hide(); }),
+    bus.on('ui:title:open', () => { if (st.open) bus.emit('ui:credits:music', {}); })];   // S73: the title comes back right after game:won and would start its own music over ours
   return api;
 }
 export default mountCredits;
