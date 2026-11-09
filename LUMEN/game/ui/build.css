@@ -131,3 +131,15 @@ body.is-touch .ll-build-hint { font-size: 12px; color: #333; font-weight: 800; }
 
 /* S65-B: <= 260 px tall (360x240): tabs scroll sideways instead of wrapping to a 2nd line, the hint line is dropped (the cards say it), card grid is shorter. */
 @media (max-height: 260px) { .ll-build-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } .ll-build-tabs::-webkit-scrollbar { display: none; } .ll-build-tab { flex: none; } .ll-build-hint { display: none; } .ll-build-grid { max-height: 62px; } .ll-card-name { min-height: 0; } }
+
+/* S78-F2: scroll hint for the shop tray. The card grid scrolls but nothing said so: a soft fade + a bobbing chevron at the bottom edge while more cards are below (build.js toggles .more). */
+.ll-build-gridwrap { position: relative; }
+.ll-build-gridwrap.more::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 26px; pointer-events: none; background: linear-gradient(to bottom, rgba(255,248,231,0), rgba(255,248,231,.96)); border-radius: 0 0 10px 10px; }
+.ll-build-gridwrap.more::before { content: ''; position: absolute; left: 50%; bottom: 3px; width: 10px; height: 10px; margin-left: -5px; border-right: 3px solid var(--ink); border-bottom: 3px solid var(--ink); transform: rotate(45deg); z-index: 2; pointer-events: none; animation: ll-more-bob 1s ease-in-out infinite; }
+@keyframes ll-more-bob { 0%, 100% { translate: 0 0; opacity: .55; } 50% { translate: 0 3px; opacity: 1; } }
+
+/* S78-F3: touch targets >= 40 px on phones (568x320 had ~22-25 px tabs / upgrade / demolish). Visual pill stays; the hit area grows with min-height + padding. */
+body.is-touch .ll-build-tab { min-height: 40px; padding: 4px 12px; font-size: 12px; display: inline-flex; align-items: center; }
+body.is-touch .ll-build-foot .ll-btn { min-height: 40px; min-width: 40px; padding: 4px 12px; font-size: 12px; }
+body.is-touch .ll-build-demolishing .ll-btn { min-height: 40px; }
+@media (max-height: 340px) { body.is-touch .ll-build-tab { min-height: 40px; padding: 2px 10px; } body.is-touch .ll-build-tabs { gap: 4px; margin-bottom: 3px; } body.is-touch .ll-build-foot { margin-top: 3px; } }

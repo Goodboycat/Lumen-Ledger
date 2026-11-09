@@ -83,7 +83,12 @@ export function mountBuildMenu(root, opts = {}) {
   priceDown.type = priceUp.type = 'button'; priceDown.title = 'lower the price (more buyers, less per sale)'; priceUp.title = 'raise the price (fewer buyers, more per sale)';
   priceBox.append(el('small', null, 'price'), priceDown, priceVal, priceUp); priceBox.style.display = 'none';
   detail.append(detIcon, detInfo, priceBox, deployBtn, upBtn, sellBtn, detClose);
-  tray.append(tabs, grid, detail, foot);
+  // S78-F2: the grid sits in a wrapper whose ::after fade + chevron (.more) show while more cards are below the fold
+  const gridWrap = el('div', 'll-build-gridwrap'); gridWrap.append(grid);
+  const syncMore = () => gridWrap.classList.toggle('more', grid.scrollHeight - grid.scrollTop - grid.clientHeight > 6);
+  grid.addEventListener('scroll', syncMore, { passive: true }); try { new MutationObserver(() => requestAnimationFrame(syncMore)).observe(grid, { childList: true }); } catch { /* headless shim */ }
+  setTimeout(syncMore, 60); setTimeout(syncMore, 400);
+  tray.append(tabs, gridWrap, detail, foot);
   wrap.append(placing, demolishPill, tray, toggle);
   // S64-D: publish the build block's height so the tutor card can sit just above the open tray (desktop) instead of on top of it
   if (typeof ResizeObserver === 'function') { try { new ResizeObserver(() => document.body?.style?.setProperty('--ll-build-h', wrap.offsetHeight + 'px')).observe(wrap); } catch (e) { /* no RO in the node shim */ } }

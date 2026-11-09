@@ -1,4 +1,4 @@
-# HANDOFF S78 (2026-11-09) - sword fixed, Cloud crew shipped, SFX list retitled. Leftovers F1-F3 + E remain.
+# HANDOFF S78 (2026-11-09) - sword fixed, Cloud crew shipped, SFX list retitled, F1-F3 coded (NOT yet verified in screenshots). E remains.
 
 Setup (same as S77): clone repo, `mv` to /home/user/webapp, `bash LUMEN/game/tools/github.sh <TOKEN>`; `cd LUMEN/game/tools && npm i playwright@1.47.0 && npx playwright install chromium` (apt libs from HANDOFF_S75 first). Server: `cd LUMEN/game && setsid -f python3 -m http.server 3000 --bind 0.0.0.0`. Run checks FROM `LUMEN/game` (`node tools/check.mjs --combat --crew --curiosity`), not from tools/.
 
@@ -13,10 +13,12 @@ Setup (same as S77): clone repo, `mv` to /home/user/webapp, `bash LUMEN/game/too
 - **Cloud icon** `cloudcrew` (procedural: happy cloud + gold coin) in `ui/icons.js`, emoji map `☁️ -> cloudcrew`, made through the side-by-side pipeline `node tools/icons_shot.mjs cloudcrew cloudbaby coinbag spark owl basket` -> `ui/icons/cloudcrew.png` + manifest. Sheet: `tools/shots/icons_t4_sheet.png`.
 - Gate `tools/gates/crew.mjs` updated for 7 crew (HELPER_ORDER.length, a dropTip for the Cloud, `cloud` in the row-sum list). `check.mjs --crew` 8/8, `--curiosity`, `--combat`, all 19 unit tests pass.
 
+- **S77-F1/F2/F3 coded, UNVERIFIED visually** (units + --combat --crew --curiosity pass): F1 `ui/wave.css` banner now `top:58px` (52px at height<=420), anchored top, no longer at 38 % of the screen. F2 `ui/build.js` wraps the grid in `.ll-build-gridwrap`, toggles `.more` on scroll/mutation; `ui/build.css` draws a bottom fade + bobbing chevron. F3 `ui/build.css` `body.is-touch` tabs, upgrade/demolish buttons min-height 40px. CHECK at 844x390 and 568x320: banner does not hit the HUD pills / PAY, tray with 40px tabs does not reach the Spark pill (S69 problem), the chevron appears only when cards overflow.
+
 ## NOT DONE
 - **S77-D-MODEL (MCP)**: the Cloud's 3D model is built procedurally in code (like the other helpers), NOT with MCP modelling/rig/animation. The in-game cloud reads as a grey-white lump from the iso camera: the sky-blue underside/puffs are too dark under toon lighting. Next: brighten (use 0xFFFFFF + emissive-ish flatMat for the main puffs), make the face bigger, and try MCP if available.
 - **Cloud**: it ignores coins while Pip stands within 0.8 u of them (by design) - confirm that feels right; coin fetch range 10 u may take coins from enemies' drop zones (check with the Baron wave); no sfx (add `cloud_hello` / `crew_payoff` when Ludo files land).
-- **S77-F1** Baron banner over the screen centre -> move to the top, out of the play area. **S77-F2** shop tray scroll hint (fade at the bottom of `.ll-card` grid in ui/build.css). **S77-F3** tap targets >= 40 px at 568x320 (shop tabs, upgrade, demolish are ~20-25 px). Details in HANDOFF_S75 "Image review".
+- F1-F3 need the screenshot verification described above (details of the original problems: HANDOFF_S75 "Image review").
 - **S77-E** beta pass + final screenshots at 844x390 and 568x320 analysed for beginner-friendliness (only the Cloud scene at 844x390 was looked at: HUD readable, Cloud visible next to Pip, tutor bubble bottom-centre is fine).
 - **S77-A2** fruit price vs fair (economyData.js) - fruit is picked ~12x, sells ~1x.
 - **S77-B2** chip icon choice review with beginners.

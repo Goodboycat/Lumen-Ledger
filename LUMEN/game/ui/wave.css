@@ -1,9 +1,9 @@
 /* LUMEN LEDGER — S41/15D: Collector wave banner + edge arrows (ui/wave.js) */
 .ll-wave-layer { position: absolute; inset: 0; pointer-events: none; z-index: 28; overflow: hidden; }
-.ll-wave-banner { position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%); transform-origin: center; padding: 10px 28px 12px; font: 800 20px/1.1 var(--font); letter-spacing: .5px; color: #fff; text-align: center; text-shadow: 0 2px 0 rgba(0,0,0,.35); background: #c62828; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 5px 0 var(--ink); opacity: 0; transition: opacity .2s; max-width: min(92vw, 560px); white-space: normal; }
+.ll-wave-banner { position: absolute; left: 50%; top: 58px; transform: translate(-50%, 0); transform-origin: center top; padding: 10px 28px 12px; font: 800 20px/1.1 var(--font); letter-spacing: .5px; color: #fff; text-align: center; text-shadow: 0 2px 0 rgba(0,0,0,.35); background: #c62828; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 5px 0 var(--ink); opacity: 0; transition: opacity .2s; max-width: min(92vw, 560px); white-space: normal; }
 .ll-wave-banner::before, .ll-wave-banner::after { content: ''; position: absolute; left: -100vw; right: -100vw; height: 3px; background: repeating-linear-gradient(90deg, #ffeb3b 0 18px, #c62828 18px 36px); top: -9px; opacity: .9; }
 .ll-wave-banner::after { top: auto; bottom: -9px; }
-.ll-wave-banner.show { transform: translate(-50%, -50%) scaleX(1); opacity: .55; animation: none; }   /* 48C HUSH: semi-transparent, no pulse, no slide */
+.ll-wave-banner.show { transform: translate(-50%, 0) scaleX(1); opacity: .55; animation: none; }   /* 48C HUSH: semi-transparent, no pulse, no slide */
 .ll-wave-banner { pointer-events: none; }
 .ll-wave-banner .ll-ico { width: 1.1em; height: 1.1em; vertical-align: -0.18em; }
 .ll-wave-banner.boss { background: #4a148c; } .ll-wave-banner.good { background: #2e7d32; } .ll-wave-banner.good::before, .ll-wave-banner.good::after { display: none; }
@@ -15,3 +15,6 @@
 .ll-wave-dist { font: 800 10px/1 var(--font); color: #fff; background: var(--ink); border-radius: 6px; padding: 2px 5px; margin-top: 2px; }
 @keyframes ll-wave-blink { from { opacity: .7; } to { opacity: 1; } }
 @media (max-width: 640px) { .ll-wave-banner { font-size: 15px; padding: 8px 16px 10px; } .ll-wave-chev { width: 24px; height: 24px; } }
+
+/* S78-F1: the banner used to sit at 38 % of the screen (over Pip and the fight). It now hangs under the top HUD row; short phones get a smaller, slimmer strip and the hazard stripes are shorter so they do not cross the HUD pills. */
+@media (max-height: 420px) { .ll-wave-banner { top: 52px; font-size: 14px; padding: 5px 14px 7px; } .ll-wave-banner::before { top: -6px; } .ll-wave-banner::after { bottom: -6px; } }

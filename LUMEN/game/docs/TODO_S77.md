@@ -34,3 +34,4 @@ Mobile landscape (844x390, 568x320) has priority over desktop. MCP tools for any
 
 ## S78 status
 SW-1 slash1+slash2 DONE, SW-2 spin DONE, SW-3 thrust DONE, SW-4 ribbon DONE, S77-D DONE (icon via icons_shot, model procedural, MCP model still TODO), SFX list retitled DONE. Open: F1, F2, F3, E, A2, B2. See docs/HANDOFF_S78.md.
+F1/F2/F3 coded in S78, awaiting screenshot verification at 844x390 + 568x320.
