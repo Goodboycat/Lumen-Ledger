@@ -107,6 +107,9 @@ export async function run({ resolve, pathToFileURL }) {
     ok('T1.3 a cinematic-owned hero is never hijacked');
 
     // empty land tap still opens the tray, water tap does nothing
+    // S64-A tap grace: a land tap right after a modal closed (0.7 s real time) is swallowed on purpose → prove it, then let the window expire (the gate's drain() just closed a dialogue)
+    lg.modalClosedAt = performance.now(); { const before = (ev['ui:tap:land'] || []).length; if (lg.landTap({ x: 0, z: 0 }) !== false || ui.build.isOpen || (ev['ui:tap:land'] || []).length !== before) throw new Error('S64-A: a land tap inside the 0.7 s grace window must be swallowed'); }
+    lg.modalClosedAt = 0;
     farAgain(); const emptyCell = sb.island.gridCells().find((c) => Math.hypot(c.x - jp.x, c.z - jp.z) > 3 && Math.hypot(c.x - hp.x, c.z - hp.z) > 2); const tapsBefore = (ev['ui:tap:land'] || []).length;
     const h2 = lg.landTap({ x: emptyCell.x, z: emptyCell.z }); if (h2 !== true || (ev['ui:tap:land'] || []).length !== tapsBefore + 1 || !ui.build.isOpen) throw new Error('empty-land tap no longer opens the tray');
     ui.build.close(); if (sb.autoWalk) throw new Error('land tap started a walk');
@@ -146,7 +149,7 @@ export async function run({ resolve, pathToFileURL }) {
       const evBefore = (ev['jars:unlocked'] || []).length;
       lg.toTitle?.('check'); storage.setItem(Save.SAVE_KEY, JSON.stringify(snap)); const resumed = lg.resume(parsed); if (!resumed) throw new Error('resume failed'); step(); drain(); game.paused = false;
       const sb2 = lg.sb; if (!sb2 || sb2.jarUnlocks === sb.jarUnlocks) throw new Error('resume did not build a new sandbox'); if (sb2.enemies) sb2.enemies.enabled = false;
-      eq(sb2.jarUnlocks.serialize(), unl, 'T1.5 unlocks after resume'); eq(sb2.jarsWorld.ids().slice().sort(), placed, 'T1.5 placed jars after resume'); eq(ui.build.listed('jar').slice().sort(), unl.map((k) => 'jar_' + k).sort(), 'T1.5 tray after resume');
+      eq(sb2.jarUnlocks.serialize(), unl, 'T1.5 unlocks after resume'); eq(sb2.jarsWorld.ids().slice().sort(), placed, 'T1.5 placed jars after resume'); eq(ui.build.listed('jar').slice().sort(), unl.filter((k) => k !== 'spend').map((k) => 'jar_' + k).sort(), 'T1.5 tray after resume (S66-A: Spend = pouch, never a tray card)');
       eq((ev['jars:unlocked'] || []).slice(evBefore).filter((e) => e.how !== 'restore').length, 0, 'T1.5 resume must not replay NEW reveals');
       // legacy: same snapshot without the field, v3 → the placed jars + season progress count
       const legacy = JSON.parse(JSON.stringify(snap)); delete legacy.jarsUnlocked; legacy.v = 3; const lp = Save.parseSnapshot(JSON.stringify(legacy)); if (!lp) throw new Error('legacy v3 snapshot rejected');
