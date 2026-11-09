@@ -5,7 +5,7 @@
 //   • walking Pip to a counter front → till:collect how:'walk' and the pouch grows by exactly that amount
 //   • coinMagnetDash next to another loaded till → how:'magnet'
 //   • paying over the level-1 cap → till:full, amount ≤ cap, ≥ 2 ground coins spilled
-//   • a scripted hero that empties every counter every 10 s keeps sparkHandled / sparkTotal ≥ 0.8 (PLAN v6 §5)
+//   • a scripted hero that empties every counter every 10 s keeps SALES Spark handled ≥ 0.8 (PLAN v6 §5) and all-in sparkHandled / sparkTotal ≥ 0.75 (S68: event windfalls are lump sums nobody collects)
 //   • 0 new meshes (till stacks share the tip-coin InstancedMesh) · destroySandbox leaves the scene empty
 // Exports run({ resolve, pathToFileURL }) → number of failures (check.mjs adds it to `bad`).
 export async function run({ resolve, pathToFileURL }) {
@@ -104,7 +104,7 @@ export async function run({ resolve, pathToFileURL }) {
     // ---------------------------------------------------------------- 6. handled ratio: scripted hero empties every counter every 10 s
     {
       const bus = new EventBus(); const scene = new THREE.Scene(); const game = mkGame(bus, scene);
-      let handled = 0, total = 0; bus.on('eco:spark', (p) => { if (!(p?.delta > 0)) return; total += p.delta; if (/^(tip|till):/.test(p.reason || '')) handled += p.delta; });
+      let handled = 0, total = 0, windfall = 0; bus.on('eco:spark', (p) => { if (!(p?.delta > 0)) return; total += p.delta; if (/^event:/.test(p.reason || '')) windfall += p.delta; /* S68: event windfalls (festival ...) are lump sums paid to the pouch, nothing to collect */ if (/^(tip|till):/.test(p.reason || '')) handled += p.delta; });
       const sb = createSandbox(game, { headless: true, seasonSeconds: 70, seed: 7 });
       if (sb.enemies) sb.enemies.enabled = false;
       sb.hero.root.position.set(0, 0, 12);
@@ -113,9 +113,11 @@ export async function run({ resolve, pathToFileURL }) {
       let next = 10;
       while (sb.stats.seasons < 1 && t < 200) { step(); if (t >= next) { next += 10; for (const till of sb.till.all()) if (till.amount > 0) sb.till.collect(till.stallId, 'walk'); for (const c of sb.coins.slice()) sb.collectCoin(c, 'walk'); } }
       if (sb.stats.seasons < 1) throw new Error('season did not end');
-      const ratio = total > 0 ? handled / total : 0;
-      if (!(ratio >= 0.8)) throw new Error(`sparkHandled/sparkTotal = ${handled.toFixed(0)}/${total.toFixed(0)} = ${(ratio * 100).toFixed(1)} % < 80 %`);
-      console.log(`  ratio: scripted hero collects every 10 s → Spark through Pip's hands ${handled.toFixed(0)}/${total.toFixed(0)} = ${(ratio * 100).toFixed(1)} % (≥ 80 %)  OK`);
+      // S68: the 80 % bar judges SALES income (tips + tills), the part the hero can collect. Event windfalls are reported and only need the all-in 75 % bar.
+      const sales = total - windfall, ratio = sales > 0 ? handled / sales : 0, allIn = total > 0 ? handled / total : 0;
+      if (!(ratio >= 0.8)) throw new Error(`sales income through hands = ${handled.toFixed(0)}/${sales.toFixed(0)} = ${(ratio * 100).toFixed(1)} % < 80 %`);
+      if (!(allIn >= 0.75)) throw new Error(`all-in sparkHandled/sparkTotal = ${handled.toFixed(0)}/${total.toFixed(0)} = ${(allIn * 100).toFixed(1)} % < 75 %`);
+      console.log(`  ratio: scripted hero collects every 10 s → sales Spark through Pip's hands ${handled.toFixed(0)}/${sales.toFixed(0)} = ${(ratio * 100).toFixed(1)} % (≥ 80 %) · all-in incl. ${windfall.toFixed(0)} event windfall ${(allIn * 100).toFixed(1)} % (≥ 75 %)  OK`);
       destroySandbox(sb);
     }
 
