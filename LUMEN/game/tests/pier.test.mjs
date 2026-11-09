@@ -63,3 +63,11 @@ test('HUD want chip: "Nobody sells X! Build one." with a drawn icon, ttl removes
   const c = box.children.find((n) => n.dataset?.id === 'want:tea'); assert.ok(c, 'chip exists'); assert.match(c.textContent, /Nobody sells tea! Build one\./); assert.ok(c.classList.contains('ll-chip-want')); assert.match(c.innerHTML, /ll-ico-/);
   return new Promise((res) => setTimeout(() => { assert.equal(box.children.find((n) => n.dataset?.id === 'want:tea') || null, null, 'self-removed'); hud.destroy(); res(); }, 120));
 });
+test('HUD want chips: at most 2 at once (a passive S3 player met 4); other chips untouched', () => {
+  const { bus, root, hud } = mkHud(); const box = root.querySelectorAll('.ll-chips')[0];
+  bus.emit('hud:chip', { id: 'storm', text: 'STORM COMING', on: true });
+  for (const w of ['cloth', 'toy', 'pottery', 'lantern']) bus.emit('hud:chip', { id: 'want:' + w, want: w, text: `Nobody sells ${w}! Build one.`, on: true, ttl: 5 });
+  const ids = box.children.map((n) => n.dataset?.id); assert.deepEqual(ids.filter((x) => x.startsWith('want:')), ['want:pottery', 'want:lantern'], 'oldest want chips dropped'); assert.ok(ids.includes('storm'), 'storm chip kept');
+  bus.emit('hud:chip', { id: 'want:lantern', want: 'lantern', text: 'again', on: true, ttl: 5 }); assert.equal(box.children.filter((n) => n.dataset?.id === 'want:lantern').length, 1, 'same id reuses its chip');
+  hud.destroy();
+});
