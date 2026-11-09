@@ -6,7 +6,7 @@ Mobile landscape (844x390, 568x320) has priority over desktop. MCP tools for any
 
 | ID | Item | Status |
 |----|------|--------|
-| S77-A | Glimmers never visit some shops: browser probe builds all 12 stall types, counts visits per type over 2 seasons; fix `customers.js` picking (_pickStall / WANT map / unserved / queue slots / flowfield) | TODO |
+| S77-A | Glimmers never visit some shops: browser probe builds all 12 stall types, counts visits per type over 2 seasons; fix `customers.js` picking (_pickStall / WANT map / unserved / queue slots / flowfield) | DONE: pickStall now has wanted-kind bonus x2.5, visit-debt up to x2.5, reachability filter; probes tools/probe_s77_fast.mjs (all 12 kinds, virtual time), probe_s77_stuck.mjs. Result S6 10 waves: every kind picked 3-24x, 0 never-visited. Fruit picked but pays rarely = PRICE refusals not visits (next chat: look at fruit price vs fair) |
 | S77-B | HUD purple chips (`.ll-chips .ll-chip`, `ui/hud.js` `hud:chip`) -> the Cloud (drawn `cloudbaby`) saying ICON-ONLY messages; each new one stacks BELOW the previous; each fades to transparent over 5 s then is removed | DONE (cloudSay in ui/hud.js, probe tools/probe_s77_chips.mjs) |
 | S77-C | Cloud blue tutor box `.ll-tutor-bub` (`ui/tutor.css`) slightly transparent (bg alpha ~0.85, text opaque) | DONE |
 | S77-D | Cloud as a buyable crew member: `helper_cloud` in Crew tab + `economyData.js`; behaviour = picks up dropped coins, carries to Pip, coin vanishes on delivery (`sb.collectCoin`); a tiny cloud floats beside Pip like a pet. New art: icon (procedural -> side-by-side shot -> sliced PNG) + model (MCP) | TODO |

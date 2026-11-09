@@ -232,17 +232,31 @@ export class CustomerSystem {
   /** Weighted stall pick: preference × 1/(1+queue) × 1/(1+dist/12). Returns a stalls() record or null. */
   pickStall(c) {
     const stalls = this._stallList(); if (!stalls.length) return null;
-    let best = null, bw = -1;
+    let best = null, bw = -1, bestAny = null, bwAny = -1;
     for (const s of stalls) {
       const q = this._queue(s.entry);
       if (q.length >= this._usableSlots(s).length) continue;             // full (only WALKABLE slots count, P47) → not an option
       const kind = String(s.id).replace(/^stall_/, '');
       const pref = this.prefOf(c, kind);                                   // 44C: PREFS × season demand
       const d = Math.hypot(s.slots.counter.x - c.root.position.x, s.slots.counter.z - c.root.position.z);
-      const w = pref / (1 + q.length) / (1 + d / 12) * (0.85 + 0.3 * this.rng());
-      if (w > bw) { bw = w; best = s; }
+      // S77-A: two fairness terms so NO built shop is ignored. (1) wanted-kind bonus: the customer's own top want (the very thing the 'found' promise in _want() relies on) x2.5;
+      // (2) visit debt: a stall nobody picked for a while gets up to x2.5 (never-visited = counted from placement/first sight), so far corners and low-demand stalls (tea in S6) still get their share.
+      const lastAt = s.entry._lastPickAt ?? (s.entry._lastPickAt = this.time);
+      const debt = 1 + Math.min(1.5, Math.max(0, this.time - lastAt) / 25);
+      const wantB = c.wantKind && c.wantKind === kind ? 2.5 : 1;
+      const w = pref * wantB * debt / (1 + q.length) / (1 + d / 20) * (0.85 + 0.3 * this.rng());
+      if (w > bwAny) { bwAny = w; bestAny = s; }
+      if (w > bw && this._reachable(c, s)) { bw = w; best = s; }         // S77-A: a stall walled in by other stalls used to be picked, the Glimmer then stood stuck and gave up ('blocked')
     }
+    if (!best) best = bestAny;   // nothing reachable by the flow field (e.g. standing on a blocked cell) → old behaviour
+    if (best) best.entry._lastPickAt = this.time;
     return best;
+  }
+  /** S77-A: true when the first usable queue slot of `s` has a walkable route from where customer `c` stands (flow field is cached per target cell). */
+  _reachable(c, s) {
+    const us = this._usableSlots(s); if (!us.length) return false;
+    const f = this.flow.get(us[0].x, us[0].z);
+    return this.flow.distance(f, c.root.position.x, c.root.position.z) !== Infinity;
   }
   /** 44B: the stall kind this customer wants most (top PREFS weight; ties → rng). null when the type has no preferences (regular). */
   wantOf(c) {
@@ -253,6 +267,7 @@ export class CustomerSystem {
   /** 44B: emit cust:want (+ want bubble S≥2, 1 in 3 customers, always when not found). Returns true when the customer leaves (noStall). */
   _want(c) {
     const want = this.wantOf(c); if (!want) return false;
+    c.wantKind = want;   // S77-A: pickStall gives this kind a x2.5 bonus
     const prefs = PREFS[c.type], stalls = this._stallList();
     const found = stalls.length === 0 || stalls.some((s) => { const k = String(s.id).replace(/^stall_/, ''); return prefs[k] != null && this.prefOf(c, k) >= 1; });   // 44C: COLD can drop a liked stall below 1 → not "found"   // no stalls at all → the old 3 s "no stall" path
     this.bus.emit('cust:want', { id: c.id, type: c.type, want, found });
