@@ -77,3 +77,8 @@
   .ll-title-ch { font-size: clamp(30px, 7vw, 56px); } .ll-title-word:nth-child(2) .ll-title-ch { font-size: clamp(24px, 5.5vw, 44px); }
   .ll-title-foot { display: none; } .ll-title-isle { display: none; }
 }
+
+/* S76: while the main menu is open NOTHING from the run may show through (HUD, focus bar, tutor card + cloud hand, joystick demo, touch pad, chips, jars...).
+   The title is transparent over the 3D island, so the old in-game DOM leaked into the menu after "back to menu". */
+body.ll-title-open #game-root > :not(#ll-title):not(#game-container):not(#debug-stats):not(#boot-error):not(#boot-loading):not(.ll-credits):not(#ll-pause) { visibility: hidden !important; pointer-events: none !important; }
+body.ll-title-open .ll-tutor, body.ll-title-open .ll-tutor-hand, body.ll-title-open .ll-tutor-joy { display: none !important; }

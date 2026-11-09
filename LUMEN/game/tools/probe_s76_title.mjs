@@ -1,0 +1,10 @@
+import { launch, startStory, shot } from './rig76.mjs';
+const { p, b, errs } = await launch(844, 390);
+await startStory(p);
+await shot(p, 's76_ingame');
+await p.evaluate(() => lg.toTitle('menu'));
+await p.waitForTimeout(6000);
+await shot(p, 's76_title_after');
+const vis = await p.evaluate(() => [...document.querySelectorAll('body *')].filter(e => { const r = e.getBoundingClientRect(); const cs = getComputedStyle(e); return r.width > 4 && r.height > 4 && cs.display !== 'none' && cs.visibility !== 'hidden' && +cs.opacity > 0.05 && r.bottom > 0 && r.top < innerHeight && e.className && typeof e.className === 'string' && /ll-/.test(e.className) && !/ll-title/.test(e.className); }).map(e => e.className.slice(0, 60) + ' ' + e.tagName).slice(0, 40));
+console.log(JSON.stringify(vis, null, 1)); console.log('errs', errs);
+await b.close();
