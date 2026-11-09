@@ -764,7 +764,7 @@ if (doCustomers) {
     // 3. wave + cap + queues + leave
     try {
       ev['cust:paid'] = []; ev['cust:left'] = []; ev['cust:angry'] = [];
-      const q = cust.spawnWave(3, 20); run(0.45 * 20 + 1);
+      const q = cust.spawnWave(1, 20); run(0.45 * 20 + 1);   // S69: S1 mix (regular/newbie/kid/saver) - every want is met by fruit/bread/tea. The S3 mix wants cloth/toy/lantern and leaves 'noStall' BY DESIGN since S44B (tools/gates/wants.mjs)
       const n0 = cust.count; if (q !== 20 || n0 < 10) throw new Error('wave spawned ' + n0);
       const extra = cust.spawnOne('kid'); if (cust.count > 20 || (n0 === 20 && extra)) throw new Error('maxActive cap');
       let maxQ = 0; for (const [, list] of cust.queues) maxQ = Math.max(maxQ, list.length); if (maxQ > 4) throw new Error('queue > 4 slots: ' + maxQ);
@@ -774,7 +774,7 @@ if (doCustomers) {
       if (ev['cust:paid'].length < 16) throw new Error('paid ' + ev['cust:paid'].length + '/20');
       if (cust.totals.spawned < 20) throw new Error('spawned ' + cust.totals.spawned);
       const stallsUsed = new Set(ev['cust:paid'].map((p) => p.stallId)); if (stallsUsed.size < 2) throw new Error('all customers picked one stall');
-      console.log(`  wave(S3,20): ${cust.totals.spawned} spawned (cap ${cust.maxActive}), ${ev['cust:paid'].length} paid at ${stallsUsed.size} stalls (max queue ${maxQ}), ${ev['cust:left'].length} left, ${ev['cust:angry'].length} angry, all pooled (${[...cust.pool.values()].reduce((a, b) => a + b.length, 0)}), never in water / in a stall  OK`);
+      console.log(`  wave(S1,20): ${cust.totals.spawned} spawned (cap ${cust.maxActive}), ${ev['cust:paid'].length} paid at ${stallsUsed.size} stalls (max queue ${maxQ}), ${ev['cust:left'].length} left, ${ev['cust:angry'].length} angry, all pooled (${[...cust.pool.values()].reduce((a, b) => a + b.length, 0)}), never in water / in a stall  OK`);
     } catch (err) { bad++; console.log('  wave FAIL →', err.message); }
     // 4. price → mood: cheap=happy(1.0) · fair=happy(.75) · +30 %=sad · ×2=angry (cust:angry)
     try {
@@ -799,9 +799,9 @@ if (doCustomers) {
       const kid = cust.spawnOne('kid'), elder = cust.spawnOne('elder'); if (!(kid.speed > elder.speed)) throw new Error('kid should be faster than elder');
       if (PREFS.kid.toy !== 3 || WAVES.length < 6) throw new Error('prefs/waves tables'); cust.clear();
       // demolish the stall a walker is heading to → it must re-pick, not freeze
-      const c = cust.spawnOne('spender'); run(1.2); if (!c.stall) throw new Error('did not pick a stall'); const target = c.stall.entry;
+      const c = cust.spawnOne('saver'); run(1.2); if (!c.stall) throw new Error('did not pick a stall'); const target = c.stall.entry;   // S69: saver likes fruit/bread/tea (a spender wants cloth/toy → noStall leave since S44B)
       build.demolish(target); run(1); if (c.state === 'pooled' || !c.stall || c.stall.entry === target) throw new Error('did not re-pick after demolish: ' + c.state);
-      run(40); if (cust.count !== 0) throw new Error('spender stuck in ' + c.state);
+      run(40); if (cust.count !== 0) throw new Error('saver stuck in ' + c.state);
       // no stalls at all → angry give-up after 3 s, leaves
       const snap = build.serialize(); build.clear(); ev['cust:angry'] = [];
       const lone = cust.spawnOne('tourist'); run(6); if (!ev['cust:angry'].length || ev['cust:angry'][0].why !== 'no stall') throw new Error('no give-up');
