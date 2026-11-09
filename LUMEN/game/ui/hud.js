@@ -48,9 +48,11 @@ export function mountHUD(root, opts = {}) {
   // enough in the pouch -> 'pay it all = ★' ; not enough -> how many more ✦ they would need (they can still walk off and sell? no: clock is held, so be honest).
   const pierChipDue = () => { const P = st.pier; if (!P) return; const sec = Math.ceil(P.left), cant = P.interest > 0 && !P.canPay;
     const need = Math.max(0, Math.ceil(P.need ?? (P.interest - (P.spark || 0))));
-    const hint = P.interest <= 0 ? 'repay? ' : cant ? ` · need ${need} more ✦${(P.jar | 0) > 0 ? ' · take some out of a jar ↩' : ''}` : ' · pay it all = ★';   // S72: live 'need N more' - the season sweep already emptied the tills, so the fix is a jar withdraw (↩) or a tip coin
+    const hint = P.interest <= 0 ? 'repay? ' : cant ? ` · need ${need} more${(P.jar | 0) > 0 ? ' · jar ↩ helps' : ''}` : ' · pay it all = ★';   // S72: live 'need N more' - the season sweep already emptied the tills, so the fix is a jar withdraw (↩) or a tip coin
     pierChip.classList.toggle('short', cant);
-    pierChip.innerHTML = iconize(P.interest > 0 ? `⚓ BARON AT THE PIER — ${P.interest} ✦ due${hint} · ${sec} s` : `⚓ BARON AT THE PIER — repay? · ${sec} s`); };
+    pierChip.innerHTML = iconize(P.interest > 0 ? `⚓ BARON AT THE PIER — ${P.interest} ✦ due${hint} · ${sec} s` : `⚓ BARON AT THE PIER — repay? · ${sec} s`); placeChips(); };
+  // S72: the generic chip stack (want hint, storm, NEW) sits at a fixed top; a wrapped pier chip used to be drawn over it. Push the stack below the pier chip while it shows.
+  const placeChips = () => { try { if (typeof pierChip.getBoundingClientRect !== 'function') return; if (pierChip.hidden) { chips.style.top = ''; return; } const r = pierChip.getBoundingClientRect(); if (r && r.bottom > 0) chips.style.top = Math.ceil(r.bottom + 8) + 'px'; } catch { /* layout not available (tests) */ } };
   const raidArrow = el('div', 'll-raid-arrow'); raidArrow.hidden = true; raidArrow.textContent = '➤';
   payBtn.addEventListener('click', (e) => { e.stopPropagation && e.stopPropagation(); api.pay(); });
 
@@ -192,12 +194,12 @@ export function mountHUD(root, opts = {}) {
     bus.on('pier:due', (p) => { st.pier = { interest: p?.interest || 0, left: p?.waitCap ?? 20, repay: false, spark: p?.spark ?? 0, canPay: p?.canPay !== false, jar: p?.jar || 0 }; pierChip.hidden = false; pierChip.classList.remove('repay'); pierChipDue(); }),
     bus.on('pier:pouch', (p) => { if (!st.pier || st.pier.repay || !p) return; st.pier.canPay = !!p.canPay; st.pier.need = p.need; st.pier.spark = p.spark; st.pier.jar = p.jar || 0; pierChipDue(); }),   // S72
     bus.on('pier:tick', (p) => { if (!st.pier || st.pier.repay || !p) return; st.pier.left = p.left; pierChipDue(); }),
-    bus.on('pier:paid', () => { if (!st.pier) return; st.pier.repay = true; pierChip.classList.add('repay'); const T = typeof document !== 'undefined' && document.body?.classList?.contains('is-touch'); pierChip.innerHTML = iconize(T ? '✓ PAID — tap the Baron again to repay debt (−20 ✦ each), walk away to leave' : '✓ PAID — tap E on him again to repay debt (−20 ✦ each), walk away to leave'); }),   // S70: touch wording (no E key on a phone)
-    bus.on('pier:short', (p) => { if (!st.pier) return; st.pier.repay = true; pierChip.classList.add('repay'); pierChip.innerHTML = iconize(`✗ SHORT — ${p?.shortfall || 0} ✦ added to the debt`); }),
-    bus.on('pier:repaid', (p) => { if (!st.pier) return; pierChip.innerHTML = iconize(`✓ REPAID ${p?.total || p?.amount || 0} ✦ — debt ${p?.debt ?? '?'} ✦ · ${typeof document !== 'undefined' && document.body?.classList?.contains('is-touch') ? 'tap him again' : 'tap E again'} or walk away`); }),
-    bus.on('pier:done', () => { st.pier = null; pierChip.hidden = true; }),
-    bus.on('pier:skip', () => { st.pier = null; pierChip.hidden = true; }),
-    bus.on('game:start', () => { st.pier = null; pierChip.hidden = true; }),
+    bus.on('pier:paid', () => { if (!st.pier) return; st.pier.repay = true; pierChip.classList.add('repay'); const T = typeof document !== 'undefined' && document.body?.classList?.contains('is-touch'); pierChip.innerHTML = iconize(T ? '✓ PAID — tap the Baron again to repay debt (−20 ✦ each), walk away to leave' : '✓ PAID — tap E on him again to repay debt (−20 ✦ each), walk away to leave');  placeChips(); }),   // S70: touch wording (no E key on a phone)
+    bus.on('pier:short', (p) => { if (!st.pier) return; st.pier.repay = true; pierChip.classList.add('repay'); pierChip.innerHTML = iconize(`✗ SHORT — ${p?.shortfall || 0} ✦ added to the debt`);  placeChips(); }),
+    bus.on('pier:repaid', (p) => { if (!st.pier) return; pierChip.innerHTML = iconize(`✓ REPAID ${p?.total || p?.amount || 0} ✦ — debt ${p?.debt ?? '?'} ✦ · ${typeof document !== 'undefined' && document.body?.classList?.contains('is-touch') ? 'tap him again' : 'tap E again'} or walk away`);  placeChips(); }),
+    bus.on('pier:done', () => { st.pier = null; pierChip.hidden = true; placeChips(); }),
+    bus.on('pier:skip', () => { st.pier = null; pierChip.hidden = true; placeChips(); }),
+    bus.on('game:start', () => { st.pier = null; pierChip.hidden = true; placeChips(); }),
     bus.on('raid:end', (p) => { if (st.raids && p) delete st.raids[p.enemyId]; if (!st.raids || !Object.keys(st.raids).length) { raidChip.hidden = true; raidArrow.hidden = true; } }),
     bus.on('enemy:gone', () => { st.raids = {}; raidChip.hidden = true; raidArrow.hidden = true; }),
     bus.on('game:start', () => { st.raids = {}; raidChip.hidden = true; raidArrow.hidden = true; }),

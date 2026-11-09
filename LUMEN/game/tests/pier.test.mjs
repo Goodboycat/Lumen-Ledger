@@ -48,7 +48,7 @@ const mkHud = () => { const bus = new EventBus(); const root = document.createEl
 test('HUD pier chip: short = salmon + need N more; flips to pay-it-all on pier:pouch', () => {
   const { bus, chip, hud } = mkHud(); bus.emit('pier:due', { interest: 15, spark: 3, canPay: false, waitCap: 20 });
   assert.ok(chip().classList.contains('short')); assert.match(chip().textContent, /15/); assert.match(chip().textContent, /need 12 more/); assert.doesNotMatch(chip().textContent, /jar/, 'empty jars: no jar advice');
-  bus.emit('pier:pouch', { canPay: false, jar: 30, need: 4, spark: 11, interest: 15 }); assert.match(chip().textContent, /need 4 more/); assert.match(chip().textContent, /out of a jar/);
+  bus.emit('pier:pouch', { canPay: false, jar: 30, need: 4, spark: 11, interest: 15 }); assert.match(chip().textContent, /need 4 more/); assert.match(chip().textContent, /jar .{1,3}helps/);
   bus.emit('pier:pouch', { canPay: true, need: 0, spark: 15, interest: 15 }); assert.ok(!chip().classList.contains('short')); assert.match(chip().textContent, /pay it all/); assert.doesNotMatch(chip().textContent, /need/);
   bus.emit('pier:done', {}); assert.equal(chip().hidden, true); hud.destroy();
 });
