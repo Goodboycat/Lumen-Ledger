@@ -21,7 +21,7 @@ import { createCuriosity } from './curiosity.js';
 export const GUIDE_HINTS = ['jar:save', 'jar:protect', 'jar:invest', 'jar:withdraw', 'stall:any', 'stall:upgrade', 'sign:price', 'till:coins', 'enemy:collector', 'enemy:baron', 'npc:stranger',
   'crew:tallyOwl', 'crew:packMole', 'crew:sparkBee', 'crew:guardTortoise', 'crew:scoutFox', 'crew:gardenerSnail'];
 /** HUD things a tap can ask about (ui/hud.js puts data-guide on them). */
-export const HUD_GUIDES = ['hud:pouch', 'hud:debt', 'hud:season', 'hud:rep'];
+export const HUD_GUIDES = ['hud:pouch', 'hud:debt', 'hud:season', 'hud:rep', 'hud:focus'];
 
 export function installCuriosity(lg) {
   const { sb, ui, bus } = lg; const offs = lg._runOffs || (lg._runOffs = []);

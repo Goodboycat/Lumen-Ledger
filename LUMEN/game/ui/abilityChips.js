@@ -6,6 +6,7 @@
 // DOM only, 0 meshes. Owned by 41D.
 import { bus as defaultBus } from '../src/core/EventBus.js';
 import { ABILITY_ORDER, starsFor } from '../src/systems/unlocks.js';
+import { FOCUS_COST } from '../src/systems/focus.js';
 
 const KEYS = { coinMagnetDash: 'Q', bubbleShield: 'W', growthStomp: 'E', ledgerFlash: 'R', haggleShout: 'F', fogSweep: 'G' };
 const HOLD_MS = 350;
@@ -23,6 +24,7 @@ export function mountAbilityChips(root, opts = {}) {
     c.append(el('b', 'll-abil-key', KEYS[id]), el('span', 'll-abil-name', SHORT[id]));
     const cost = starsFor(id); if (cost) c.append(el('small', 'll-abil-cost', '★' + cost));
     c.title = SHORT[id] + ' [' + KEYS[id] + ']' + (cost ? ' — earn ' + cost + ' ★ in ledgers' : '');
+    const fc = el('em', 'll-abil-fc', String(FOCUS_COST[id] ?? '')); c.append(fc); c._fc = fc; c.dataset.fc = String(FOCUS_COST[id] ?? 0);   // S67: Focus price (drawn as a small blue number)
     const fx = el('i', 'll-abil-fx'); c.append(fx); c._fx = fx;   // T2b: thin bar that drains while Shield (30 s) / Stomp (12 s) is active
     // T2b: HOLD ≥ 350 ms = ask the guide (ui:power:ask, the press is NOT fired); a release before that = the normal press (ui:ability).
     // Locked chips are NOT `disabled` any more: a press answers "Locked. Earn ★ …" instead of nothing.
@@ -45,6 +47,8 @@ export function mountAbilityChips(root, opts = {}) {
     },
     unlock(id) { const c = chips[id]; if (!c) return; c.classList.remove('locked'); c.setAttribute('aria-disabled', 'false'); retrigger(c, 'pop'); },
     shake(id) { const c = chips[id]; if (c) retrigger(c, 'shake'); },
+    /** S67: dim every chip whose Focus price is above the bar (the chip stays pressable: a press says what is missing). */
+    focus(value, costs) { for (const id of ABILITY_ORDER) { const c = chips[id], need = (costs && costs[id]) ?? FOCUS_COST[id] ?? 0; c.classList.toggle('nofocus', value < need); c._fc.textContent = String(need); } },
     cooldown(id, s) { const c = chips[id]; if (!c) return; c.style.setProperty('--cd', (s || 5) + 's'); retrigger(c, 'cooling'); },
     /** T2b: drain bar (frac 1 → 0) for the timed powers. */
     fx(id, frac) { const c = chips[id]; if (!c) return; const f = Math.max(0, Math.min(1, +frac || 0)); c._fx.style.setProperty('--fx', String(f)); c.classList.toggle('fx', f > 0); },
@@ -56,6 +60,7 @@ export function mountAbilityChips(root, opts = {}) {
     bus.on('sandbox:ability:start', (e) => e?.name && api.cooldown(e.name, e.cooldown)),
     bus.on('sandbox:denied', (e) => e?.name && api.shake(e.name)),
     bus.on('ability:fx', (e) => e?.name && api.fx(e.name, e.frac)),
+    bus.on('focus:change', (e) => e && api.focus(e.value, e.costs)),
     bus.on('ui:abilities', (e) => api.sync(e?.abilities, e?.starsTotal)),
   ];
   if (opts.abilities) api.sync(opts.abilities, opts.starsTotal);

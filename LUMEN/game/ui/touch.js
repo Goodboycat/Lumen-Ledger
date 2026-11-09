@@ -25,6 +25,7 @@
 import { iconize, icon } from './icons.js';
 import { bus as defaultBus } from '../src/core/EventBus.js';
 import { starsFor } from '../src/systems/unlocks.js';   // T2b: locked chips stay visible on touch and show their ★ cost
+import { FOCUS_COST } from '../src/systems/focus.js';
 
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = iconize(html); return e; };
 
@@ -86,16 +87,17 @@ export function mountTouch(root, input, opts = {}) {
     const b = el('button', 'll-touch-ab'); b.type = 'button'; b.dataset.ability = a.name; b.setAttribute('aria-label', a.label);
     const cd = el('i', 'll-touch-ab-cd'); const ic = el('span', 'll-touch-ab-ico', a.icon); const lab = el('span', 'll-touch-ab-lab', a.label);
     const fx = el('i', 'll-touch-ab-fx'); const cost = starsFor(a.name); const cs = el('small', 'll-touch-ab-cost', cost ? '★' + cost : '');   // T2b: effect bar (Shield / Stomp drain) + ★ cost while locked
-    b.append(cd, fx, ic, lab, cs); strip.appendChild(b);
-    abilities[a.name] = { el: b, cd, fx, def: a, until: 0, total: 0, timer: 0, hold: 0, held: false };
+    const fcl = el('em', 'll-touch-ab-fc', String(FOCUS_COST[a.name] ?? ''));   // S67: Focus price
+    b.append(cd, fx, ic, lab, cs, fcl); strip.appendChild(b);
+    abilities[a.name] = { el: b, cd, fx, fc: fcl, def: a, until: 0, total: 0, timer: 0, hold: 0, held: false };
   }
   // S65-A: the green Dash button is the Magnet power. It used to call input.press('dash'), which nothing listens to (the dead button the player
   //   found in the tutorial) while the white Magnet chip did the work. Now it joins `abilities` under 'coinMagnetDash': same tap / hold-for-guide /
   //   cooldown sweep / shake as the chips, no second control.
   if (buttons.dash) {
     const db = buttons.dash.el; db.dataset.ability = 'coinMagnetDash';
-    const cd = el('i', 'll-touch-ab-cd'); const fx = el('i', 'll-touch-ab-fx'); db.append(cd, fx);
-    abilities.coinMagnetDash = { el: db, cd, fx, def: { name: 'coinMagnetDash', label: 'Dash', key: 'Q' }, until: 0, total: 0, timer: 0, hold: 0, held: false };
+    const cd = el('i', 'll-touch-ab-cd'); const fx = el('i', 'll-touch-ab-fx'); const fcd = el('em', 'll-touch-ab-fc', String(FOCUS_COST.coinMagnetDash)); db.append(cd, fx, fcd);
+    abilities.coinMagnetDash = { el: db, cd, fx, fc: fcd, def: { name: 'coinMagnetDash', label: 'Dash', key: 'Q' }, until: 0, total: 0, timer: 0, hold: 0, held: false };
   }
   wrap.append(zone, strip, pad);
   root.appendChild(wrap);
@@ -225,6 +227,7 @@ export function mountTouch(root, input, opts = {}) {
     bus.on('ui:abilities', (p) => { const set = p?.abilities; for (const [n, a] of Object.entries(abilities)) a.el.classList.toggle('locked', !!set && !set.has(n)); }),
     bus.on('ability:unlock', (p) => { const a = p?.id && abilities[p.id]; if (a) { a.el.classList.remove('locked'); a.el.classList.add('pop'); setTimeout(() => a.el.classList.remove('pop'), 500); } }),
     bus.on('ability:locked', (p) => { if (p?.name && abilities[p.name]) api.flashDenied(p.name); }),
+    bus.on('focus:change', (p) => { if (!p) return; for (const [n, a] of Object.entries(abilities)) { const need = (p.costs && p.costs[n]) ?? FOCUS_COST[n] ?? 0; a.el.classList.toggle('nofocus', p.value < need); if (a.fc) a.fc.textContent = String(need); } }),   // S67
     bus.on('ability:fx', (p) => { const a = p?.name && abilities[p.name]; if (!a) return; const f = Math.max(0, Math.min(1, +p.frac || 0)); a.fx.style.setProperty('--fx', String(f)); a.el.classList.toggle('fx', f > 0); }),   // T2b: Shield 30 s / Stomp 12 s drain (game time)
     bus.on('sandbox:denied', (p) => { if (p?.name && abilities[p.name]) api.flashDenied(p.name); }),
     bus.on('ui:build:open', () => strip.classList.add('tray')), bus.on('ui:build:close', () => strip.classList.remove('tray')),

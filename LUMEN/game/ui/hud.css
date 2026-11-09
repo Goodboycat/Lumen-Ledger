@@ -129,3 +129,15 @@
   .ll-spark .ll-spark-col { flex: 1 1 auto; }
   .ll-spark-debt, .ll-spark-till { order: 2; } .ll-spark-pay { order: 3; }
 }
+
+/* S67: Focus pill (under the reputation stars) */
+.ll-focus { display: flex; align-items: center; gap: 4px; background: var(--paper); border: 3px solid var(--ink); border-radius: 999px; padding: 1px 8px 1px 3px; box-shadow: var(--shadow); font-weight: 900; font-size: 11px; cursor: help; }
+.ll-focus .ll-ico { width: 18px; height: 18px; flex: none; }
+.ll-focus-bar { width: 38px; height: 8px; border: 2px solid var(--ink); border-radius: 6px; background: #fff; overflow: hidden; }
+.ll-focus-bar > i { display: block; height: 100%; width: 100%; background: linear-gradient(#7fe0ff, #4FC3F7); transition: width .2s linear; }
+.ll-focus-num { min-width: 22px; text-align: right; font-variant-numeric: tabular-nums; }
+.ll-focus.low .ll-focus-bar > i { background: linear-gradient(#ffb74d, #ff8a65); }
+.ll-focus.low .ll-focus-num { color: #b71c1c; }
+.ll-focus.gain { animation: ll-pulse .4s cubic-bezier(.34,1.56,.64,1); }
+.ll-focus.shake { animation: ll-shake .36s linear; }
+@media (max-width: 640px) { .ll-focus { padding-right: 6px; } .ll-focus-bar { width: 28px; } }

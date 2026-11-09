@@ -68,7 +68,11 @@ export function mountHUD(root, opts = {}) {
   const stats = el('div', 'll-stats', 'fps — · calls —');
   const rep = el('div', 'll-rep'); rep.dataset.guide = 'hud:rep';
   const repStars = []; for (let i = 0; i < 5; i++) { const s = el('i', null, '★'); rep.append(s); repStars.push(s); }
-  right.append(stats, rep);
+  // S67 Focus: powers cost Focus. Small pill under the stars: drawn lens icon + bar + number. Tap = guide card (hud:focus).
+  const focusPill = el('div', 'll-focus'); focusPill.dataset.guide = 'hud:focus'; focusPill.title = 'Focus: powers spend it. It refills by itself, faster with fair sales, Save deposits and refused scams.';
+  const focusBar = el('span', 'll-focus-bar'); const focusFill = el('i'); focusBar.append(focusFill); const focusNum = el('b', 'll-focus-num', '100');
+  focusPill.innerHTML = icon('focus'); focusPill.append(focusBar, focusNum);
+  right.append(stats, rep, focusPill);
   if (!statsFn) stats.style.display = 'none';
 
   hud.append(spark, mid, right);
@@ -129,6 +133,7 @@ export function mountHUD(root, opts = {}) {
       if (flash || st.fog01 > prev + 0.02) retrigger(fog, 'flash');
       return api;
     },
+    setFocus(value, max = 100) { const v = Math.max(0, Math.min(max, Math.round(+value || 0))); st.focus = v; focusFill.style.width = (max ? (v / max) * 100 : 0) + '%'; focusNum.textContent = String(v); focusPill.classList.toggle('low', v < 20); return api; },
     setReputation(r01) { st.rep = clamp01(+r01 || 0); const on = Math.round(st.rep * 5); repStars.forEach((s, i) => s.classList.toggle('on', i < on)); rep.title = 'reputation ' + Math.round(st.rep * 100) + '%'; return api; },
     sync(state, { silent = true } = {}) {
       if (!state) return api;
@@ -191,6 +196,9 @@ export function mountHUD(root, opts = {}) {
     bus.on('eco:fog', (p) => { if (p && p.fog01 != null) api.setFog(p.fog01); }),
     bus.on('eco:loan', (p) => { if (p && p.debt != null) api.setDebt(p.debt); }),
     bus.on('eco:denied', () => { retrigger(spark, 'shake'); }),
+    bus.on('focus:change', (p) => { if (p && p.value != null) api.setFocus(p.value, p.max); }),                   // S67
+    bus.on('focus:gain', () => { focusPill.classList.remove('gain'); void focusPill.offsetWidth; focusPill.classList.add('gain'); }),
+    bus.on('sandbox:denied', (p) => { if (p && p.why === 'focus') { focusPill.classList.remove('shake'); void focusPill.offsetWidth; focusPill.classList.add('shake'); } }),
     bus.on('eco:tick', (p) => { if (p && p.day01 != null) api.setDay(p.day01); if (p && p.season != null && p.season !== st.season) api.setSeason(p.season); }),
     bus.on('game:start', (p) => { if (p && p.seasonSeconds) api.setSeasonSeconds(p.seasonSeconds); }),   // 41C
     bus.on('eco:win', () => { api.setFog(0); seasonTxt.innerHTML = iconize('✦ Lighthouse lit!'); }),

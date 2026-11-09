@@ -21,3 +21,10 @@ body.ll-dlg-open .ll-abil, body.ll-modal .ll-abil { opacity: .25; }
 .ll-abil-chip.down { transform: translateY(2px) scale(.96); }
 .ll-abil-fx { position: absolute; left: 0; top: 0; height: 3px; width: 100%; background: #9dff9d; transform-origin: left; transform: scaleX(var(--fx, 0)); opacity: 0; transition: transform .25s linear, opacity .2s; pointer-events: none; }
 .ll-abil-chip.fx .ll-abil-fx { opacity: 1; }
+
+/* S67: Focus price on each chip; dim when the bar is below it */
+.ll-abil-fc { font-style: normal; font-size: 9px; font-weight: 900; color: #7fe0ff; margin-top: 1px; letter-spacing: .2px; }
+.ll-abil-fc::before { content: '\25CE'; margin-right: 1px; }
+.ll-abil-chip.nofocus:not(.locked) { opacity: .6; filter: saturate(.4); }
+.ll-abil-chip.nofocus:not(.locked) .ll-abil-fc { color: #ff8a80; }
+.ll-abil-chip.locked .ll-abil-fc { display: none; }
