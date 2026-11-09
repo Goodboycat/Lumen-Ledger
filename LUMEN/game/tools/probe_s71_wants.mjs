@@ -31,6 +31,7 @@ for (let i = 0; i < N; i++) {
     if (ui.ledger.isOpen) { ui.ledger.skip(); ui.ledger.continue(); step(); drain(); }
     if (season0() !== s) { const r = eco.history.at(-1); log.push({ season: r.season, income: r.income, stars: r.stars, debt: r.debt, sold: sold() - last.sold, spark: Math.round(eco.state.spark), swept: r.tillSwept, noStall: lg.sb.cust.totals.noStall || 0, pier: r.pier ? { paid: r.pier.paid, short: r.pier.shortfall } : null }); last.sold = sold(); }
   }
+  for (const l of log) { const r = eco.history.find((h) => h.season === l.season); l.stars = r?.stars ?? l.stars; l.pier = r?.pier ? { paid: r.pier.paid, short: r.pier.shortfall } : null; }   // settled values (the report object is updated by closePier after the pier visit)
   rows.push({ seed: 100 + i, log, wants: wants.length, wantKinds: [...new Set(wants.map((w) => w.want))], chips: chips.map((c) => `S${c.s}: ${c.text}`) });
   lg.destroy(); ui.destroy();
 }
