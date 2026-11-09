@@ -32,7 +32,7 @@ export function mountCredits(root, opts = {}) {
   colL.append(trophy, title, sub, stat);
   const head = el('h3', 'll-credits-head', 'What you learnt');
   const grid = el('ul', 'll-credits-lessons');
-  list.forEach((L, i) => { const li = el('li', 'll-credits-les', `<span class="n">${icon('rosette')}<b>${i + 1}</b></span><span class="t"></span>`); li.querySelector('.t').textContent = L.title; li.style.setProperty('--i', i); grid.append(li); });
+  list.forEach((L, i) => { const li = el('li', 'll-credits-les', `<span class="n">${icon('rosette')}</span><span class="t"></span>`); li.querySelector('.t').textContent = L.title; li.style.setProperty('--i', i); grid.append(li); });
   const thanks = el('p', 'll-credits-thanks', iconize('Thank you for playing ✦ Lumen Ledger · made for the Zoud GameLab jam, “Make FinLit Fun”'));
   const btn = el('button', 'll-btn ll-credits-back', iconize('▸ BACK TO TITLE')); btn.type = 'button';
   colR.append(head, grid, thanks, btn);
