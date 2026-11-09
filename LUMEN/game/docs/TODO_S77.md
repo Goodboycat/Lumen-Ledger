@@ -9,7 +9,7 @@ Mobile landscape (844x390, 568x320) has priority over desktop. MCP tools for any
 | S77-A | Glimmers never visit some shops: browser probe builds all 12 stall types, counts visits per type over 2 seasons; fix `customers.js` picking (_pickStall / WANT map / unserved / queue slots / flowfield) | DONE: pickStall now has wanted-kind bonus x2.5, visit-debt up to x2.5, reachability filter; probes tools/probe_s77_fast.mjs (all 12 kinds, virtual time), probe_s77_stuck.mjs. Result S6 10 waves: every kind picked 3-24x, 0 never-visited. Fruit picked but pays rarely = PRICE refusals not visits (next chat: look at fruit price vs fair) |
 | S77-B | HUD purple chips (`.ll-chips .ll-chip`, `ui/hud.js` `hud:chip`) -> the Cloud (drawn `cloudbaby`) saying ICON-ONLY messages; each new one stacks BELOW the previous; each fades to transparent over 5 s then is removed | DONE (cloudSay in ui/hud.js, probe tools/probe_s77_chips.mjs) |
 | S77-C | Cloud blue tutor box `.ll-tutor-bub` (`ui/tutor.css`) slightly transparent (bg alpha ~0.85, text opaque) | DONE |
-| S77-D | Cloud as a buyable crew member: `helper_cloud` in Crew tab + `economyData.js`; behaviour = picks up dropped coins, carries to Pip, coin vanishes on delivery (`sb.collectCoin`); a tiny cloud floats beside Pip like a pet. New art: icon (procedural -> side-by-side shot -> sliced PNG) + model (MCP) | TODO |
+| S77-D | (S78: DONE except MCP model - see HANDOFF_S78) Cloud as a buyable crew member: `helper_cloud` in Crew tab + `economyData.js`; behaviour = picks up dropped coins, carries to Pip, coin vanishes on delivery (`sb.collectCoin`); a tiny cloud floats beside Pip like a pet. New art: icon (procedural -> side-by-side shot -> sliced PNG) + model (MCP) | TODO |
 | S77-SW | Player sword attack looks bad: inspect FRAME BY FRAME and correct the sword motion: slash1 forehand, slash2 backhand, slash3 spin; thrust where intended | PARTIAL: slash1/slash2 + new lunge THRUST re-keyed in `src/combat/Combat.js` (KF table, solved with `tools/sword_solve.mjs`), frames via `tools/sword_frames.mjs <step> 16 <tag>` + `tools/sheet.py`. Only slash1 was verified frame by frame. See SW-1..SW-4 below |
 | S77-E | Beta pass over every feature + FINAL screenshot review (844x390, 568x320) analysed for beginner-friendliness | TODO |
 | S77-F1 | Baron banner sits over the screen centre -> move out of the play area | TODO |
@@ -30,3 +30,7 @@ Mobile landscape (844x390, 568x320) has priority over desktop. MCP tools for any
 | S77-E | Beta pass + final 844x390 / 568x320 screenshot analysis NOT done (only the chips screenshot `tools/shots/s77_chips_844x390.png` was reviewed: Cloud speech bubbles stack under each other, icons readable) |
 | S77-F1/F2/F3 | NOT STARTED |
 | S77-B2 | Chips: confirm icon choice per chip (storm = stormmark+jar, night = lantern+coinbag, want = sad glimmer + stall icon + hammer) reads well with beginners; stalls' want icons need `ll-ico` PNGs if icon mode is png |
+
+
+## S78 status
+SW-1 slash1+slash2 DONE, SW-2 spin DONE, SW-3 thrust DONE, SW-4 ribbon DONE, S77-D DONE (icon via icons_shot, model procedural, MCP model still TODO), SFX list retitled DONE. Open: F1, F2, F3, E, A2, B2. See docs/HANDOFF_S78.md.

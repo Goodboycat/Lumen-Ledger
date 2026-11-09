@@ -1,0 +1,23 @@
+# HANDOFF S78 (2026-11-09) - sword fixed, Cloud crew shipped, SFX list retitled. Leftovers F1-F3 + E remain.
+
+Setup (same as S77): clone repo, `mv` to /home/user/webapp, `bash LUMEN/game/tools/github.sh <TOKEN>`; `cd LUMEN/game/tools && npm i playwright@1.47.0 && npx playwright install chromium` (apt libs from HANDOFF_S75 first). Server: `cd LUMEN/game && setsid -f python3 -m http.server 3000 --bind 0.0.0.0`. Run checks FROM `LUMEN/game` (`node tools/check.mjs --combat --crew --curiosity`), not from tools/.
+
+## DONE (all pushed)
+- **SFX list** `docs/SFX_LUDO_S64.md`: every prompt cell now starts with a TITLE ("Jar Deposit: ...") and ends with its length in "(0.5 s)". 39 rows + the boss-music prompt.
+- **SW-1 slash1 / slash2**: both re-keyed with 5 chained keys (`KF.s1`, `KF.s2` in `src/combat/Combat.js`). `at(e)` is now piecewise over ANY number of keys. `tools/sword_solve.mjs` got a `"chain":1` mode (each key starts from the previous solution + a smoothness penalty) and now prints the POST-`solveArmClearance` angles (`armX/armZ/swX`) - store THOSE, not `rawX/rawZ/rawS`, or the clearance solver pops the pose between frames. Frame logs: slash1 tip height falls monotonically 2.0 -> 0.44 (no ground dip); slash2 holds chest height (up 0.85-0.93) sweeping side -1.03 -> +1.2.
+- Recovery now blends from `S.endPose = capK()` (the pose the player SEES) instead of the raw last key.
+- **SW-2 spin slash**: blade held flat out to the side through the turn (tip side 2.05 -> 1.6, solver `sp_out2`: ax -0.78, az -0.4, sx 2.25).
+- **SW-3 thrust** verified: tip hip -> fwd 2.5 at chest height. `check.mjs --combat` passes.
+- **SW-4 slash ribbon** (`src/vfx/VFX.js` `_build`): ribbon starts 72 % up the blade (`IN = 0.72`), dimmer (0.2 / 0.7). Combat scale 1.05/1.35 -> 1.0/1.2. No longer a wedge over Pip's head.
+- **S77-D Cloud crew** (`helper_cloud`, cost 75, upkeep 3, requires season 2, effect `coinFetch`): `economyData.js`; model `cloud(c)` + `work` clip + idle bob in `assets/creatures/helpers.js` (HELPER_TYPES now has 7); behaviour in `systems/crewJobs.js` `cloudTick` (follow Pip's left side -> fly to nearest dropped coin within 10 u -> carry on top of the cloud -> `sb.collectCoin(c,'cloud')` = coin vanishes + paid -> puff). Pip walking over a coin still collects it himself. No new income: the same tip money. `Game.js`: Cloud is never seated at a stall (`hireHelper`, `reseatHelpers`), coins carried skip the bob/pickup in `updateCoins`. Crew tab card via `OFFER_ICONS helper_cloud`, tutor card `crew:cloud` (data/tutor.json + curiosityWire GUIDE_HINTS). Ledger crew line: "Cloud fetched +N (count)".
+- **Cloud icon** `cloudcrew` (procedural: happy cloud + gold coin) in `ui/icons.js`, emoji map `☁️ -> cloudcrew`, made through the side-by-side pipeline `node tools/icons_shot.mjs cloudcrew cloudbaby coinbag spark owl basket` -> `ui/icons/cloudcrew.png` + manifest. Sheet: `tools/shots/icons_t4_sheet.png`.
+- Gate `tools/gates/crew.mjs` updated for 7 crew (HELPER_ORDER.length, a dropTip for the Cloud, `cloud` in the row-sum list). `check.mjs --crew` 8/8, `--curiosity`, `--combat`, all 19 unit tests pass.
+
+## NOT DONE
+- **S77-D-MODEL (MCP)**: the Cloud's 3D model is built procedurally in code (like the other helpers), NOT with MCP modelling/rig/animation. The in-game cloud reads as a grey-white lump from the iso camera: the sky-blue underside/puffs are too dark under toon lighting. Next: brighten (use 0xFFFFFF + emissive-ish flatMat for the main puffs), make the face bigger, and try MCP if available.
+- **Cloud**: it ignores coins while Pip stands within 0.8 u of them (by design) - confirm that feels right; coin fetch range 10 u may take coins from enemies' drop zones (check with the Baron wave); no sfx (add `cloud_hello` / `crew_payoff` when Ludo files land).
+- **S77-F1** Baron banner over the screen centre -> move to the top, out of the play area. **S77-F2** shop tray scroll hint (fade at the bottom of `.ll-card` grid in ui/build.css). **S77-F3** tap targets >= 40 px at 568x320 (shop tabs, upgrade, demolish are ~20-25 px). Details in HANDOFF_S75 "Image review".
+- **S77-E** beta pass + final screenshots at 844x390 and 568x320 analysed for beginner-friendliness (only the Cloud scene at 844x390 was looked at: HUD readable, Cloud visible next to Pip, tutor bubble bottom-centre is fine).
+- **S77-A2** fruit price vs fair (economyData.js) - fruit is picked ~12x, sells ~1x.
+- **S77-B2** chip icon choice review with beginners.
+- SW: the first frames of slash1 (anticipation) still start from wherever Pip's arm was; chains look fine but check slash1 -> slash2 -> spin in real time on a phone.
