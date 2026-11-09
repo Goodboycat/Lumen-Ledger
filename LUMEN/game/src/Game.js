@@ -1406,7 +1406,7 @@ function installSeasonLoop(lg) {
   });
   // S66-B: win -> the story is finished and STAYS finished (Endless mode was removed). The save slot is cleared (a finished run has nothing to continue)
   //   and the title comes back; 'game:won' lets credits / audio hook in later.
-  lg.finishRun = () => { lg.stats.finales++; lg.save?.clear?.(); bus.emit('game:won', { season: lg.sb?.eco?.state?.season ?? 0 }); lg.toTitle('win'); };
+  lg.finishRun = () => { lg.stats.finales++; lg.save?.clear?.(); bus.emit('game:won', { season: lg.sb?.eco?.state?.season ?? 0, stars: lg.sb?.eco?.state?.starsTotal ?? lg.sb?.unlocks?.starsTotal ?? 0 }); lg.toTitle('win'); };
   lg.toTitle = (why = 'menu') => { lg.teardown(); lg.setState('title'); if (ui?.title && !ui.title.isOpen) ui.title.show?.(); lg.pause('title', true); bus.emit('game:title', { why }); };
   function finale(lg2, outcome) { lg2.stats.finales++; showLedger(lg2.lastReport || lg2.sb?.eco.history.at(-1), { outcome }); }
 }

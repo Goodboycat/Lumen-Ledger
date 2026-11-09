@@ -27,9 +27,10 @@ import { mountTitle } from './title.js';
 import { mountPause } from './pause.js';
 import { mountTouch } from './touch.js';
 import { mountSeasonInfo } from './seasons.js';
+import { mountCredits } from './credits.js';   // S71: THE END -> credits card (game:won)
 
 export const UI_VERSION = 'S57';
-export const UI_CSS = ['ui/base.css', 'ui/hud.css', 'ui/jars.css', 'ui/build.css', 'ui/ledger.css', 'ui/boonDraft.css', 'ui/dialogue.css', 'ui/wave.css', 'ui/stranger.css', 'ui/bark.css', 'ui/title.css', 'ui/pause.css', 'ui/guideCodex.css', 'ui/journal.css', 'ui/scamReveal.css', 'ui/touch.css', 'ui/seasons.css', 'ui/tutor.css'];   // 46B: ui/tutorial.css deleted (old overlay tutorial gone)
+export const UI_CSS = ['ui/base.css', 'ui/hud.css', 'ui/jars.css', 'ui/build.css', 'ui/ledger.css', 'ui/boonDraft.css', 'ui/dialogue.css', 'ui/wave.css', 'ui/stranger.css', 'ui/bark.css', 'ui/title.css', 'ui/pause.css', 'ui/guideCodex.css', 'ui/journal.css', 'ui/scamReveal.css', 'ui/touch.css', 'ui/seasons.css', 'ui/tutor.css', 'ui/credits.css'];   // 46B: ui/tutorial.css deleted (old overlay tutorial gone)
 
 /**
  * @param {HTMLElement} root  overlay root (#game-root). Panels append themselves; the canvas stays underneath.
@@ -96,12 +97,13 @@ export function mountUI(root, opts = {}) {
   if (opts.touch !== false && opts.input) add('touch', mountTouch(root, opts.input, { bus, force: opts.forceTouch }));
   // 46B: the 11-step overlay tutorial (ui/tutorial.js, ?oldtutorial) is deleted — the verb chain (src/systems/verbChain.js) is the tutorial.
   // S41/15A: progressive HUD — jars collapsed on every new game; skippers get jars → fog → rep → speed → powers revealed one at a time (opts.reveal === false turns it off)
+  if (opts.credits !== false) add('credits', mountCredits(root, { bus, lessons: opts.storyData?.lessons }));   // S71: opens on game:won, above the title
   if (opts.reveal !== false) add('reveal', mountReveal(ui, { bus, storageKey: opts.tutorialKey }));
 
   /** One clock for every panel (count-ups, typewriter, fps readout). */
   ui.update = (dt) => { ui.hud.update(dt); ui.ledger.update(dt); ui.dialogue.update(dt); if (ui.wave) { if (ui.isModal()) ui.wave.setVisible(false); else { ui.wave.setVisible(true); ui.wave.update(dt); } } if (ui.stranger) { if (ui.isModal()) ui.stranger.setVisible(false); else { ui.stranger.setVisible(true); ui.stranger.update(dt); } } if (ui.reveal?.staged && !ui.isModal()) ui.reveal.update(dt); if (ui.nudge) { if (ui.isModal()) ui.nudge.hide('modal'); else ui.nudge.update(dt); } if (ui.barks) ui.barks.update(dt); if (ui.powerAnswer) ui.powerAnswer.update(dt); if (ui.scamReveal) ui.scamReveal.update(dt); if (ui.tutor && !ui.isModal()) ui.tutor.update(dt); };
   /** True when any modal owns the screen (title / ledger / dialogue / pause / season card) → the game loop should be paused. */
-  ui.isModal = () => !!(ui.title?.isOpen || ui.ledger?.isOpen || ui.boons?.isOpen || ui.dialogue?.isOpen || ui.pause?.isOpen || ui.seasons?.isOpen);
+  ui.isModal = () => !!(ui.credits?.isOpen || ui.title?.isOpen || ui.ledger?.isOpen || ui.boons?.isOpen || ui.dialogue?.isOpen || ui.pause?.isOpen || ui.seasons?.isOpen);
   // B = build tray toggle, only when no modal owns the screen and not while placing (Esc cancels placing — 7A handles that one itself).
   let offKey = null;
   if (!opts.noBuildHotkey && typeof window !== 'undefined' && window.addEventListener) {

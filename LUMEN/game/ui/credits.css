@@ -1,0 +1,35 @@
+/* LUMEN LEDGER — S71 credits after THE END (ui/credits.js). Phone landscape first: two columns (trophy | lessons), compact at <= 340 px tall. */
+.ll-credits { position: absolute; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; pointer-events: none; }
+.ll-credits.open, .ll-credits.closing { display: flex; }
+.ll-credits.open { pointer-events: auto; }
+.ll-credits-bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, rgba(255,236,160,.55), rgba(38,50,56,.72) 70%); backdrop-filter: blur(3px); animation: ll-fade-in .3s ease-out both; }
+.ll-credits.closing .ll-credits-bg { animation: ll-fade-out .2s ease-in both; }
+.ll-credits-confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.ll-credits-c { position: absolute; top: -50px; left: var(--x); width: var(--s); height: var(--s); animation: ll-conf 5.5s linear var(--d) infinite; }
+.ll-credits-c .ll-ico { width: 100%; height: 100%; display: block; }
+@keyframes ll-conf { 0% { transform: translateY(0) rotate(0deg); opacity: 0; } 8% { opacity: 1; } 100% { transform: translateY(115vh) rotate(300deg); opacity: .9; } }
+.ll-credits-card { position: relative; display: flex; gap: 18px; align-items: center; width: min(720px, calc(100vw - 28px)); max-height: calc(100vh - 20px); overflow: auto; padding: 18px 22px; background: var(--paper); border: 4px solid var(--ink); border-radius: 22px; box-shadow: 0 8px 0 var(--ink); animation: ll-sheet-in .42s cubic-bezier(.34,1.56,.64,1) both; }
+.ll-credits-l { flex: 0 0 38%; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; }
+.ll-credits-r { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.ll-credits-trophy .ll-ico { width: 84px; height: 84px; display: block; filter: drop-shadow(0 0 14px rgba(255,213,79,.8)); animation: ll-cr-bob 2.2s ease-in-out infinite; }
+@keyframes ll-cr-bob { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-5px) rotate(3deg); } }
+.ll-credits-title { margin: 0; font-size: 34px; font-weight: 900; letter-spacing: 2px; color: var(--gold); -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; text-shadow: 0 4px 0 var(--ink); }
+.ll-credits-sub { margin: 0; font-size: 15px; font-weight: 800; }
+.ll-credits-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-top: 4px; }
+.ll-credits-stars { display: inline-flex; align-items: center; gap: 6px; background: var(--gold); border: 3px solid var(--ink); border-radius: 999px; padding: 2px 14px 2px 8px; box-shadow: 0 3px 0 var(--ink); font-weight: 900; font-size: 22px; }
+.ll-credits-stars .ll-ico { width: 26px; height: 26px; } .ll-credits-stars i { font-style: normal; font-size: 13px; opacity: .65; }
+.ll-credits-statlab { font-size: 11px; font-weight: 800; opacity: .7; }
+.ll-credits-head { margin: 0; font-size: 15px; font-weight: 900; letter-spacing: .5px; }
+.ll-credits-lessons { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; }
+.ll-credits-les { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; line-height: 1.1; opacity: 0; transform: translateX(10px); animation: ll-cr-in .35s ease-out calc(.35s + var(--i) * .09s) both; }
+@keyframes ll-cr-in { to { opacity: 1; transform: none; } }
+.ll-credits-les .n { position: relative; flex: none; width: 28px; height: 28px; } .ll-credits-les .n .ll-ico { width: 28px; height: 28px; display: block; }
+.ll-credits-les .n b { position: absolute; left: 0; right: 0; top: 4px; text-align: center; font-size: 11px; font-weight: 900; color: var(--ink); text-shadow: 0 1px 0 #fff8; }
+.ll-credits-thanks { margin: 2px 0 0; font-size: 11px; font-weight: 700; opacity: .75; }
+.ll-credits-thanks .ll-ico { width: 1.1em; height: 1.1em; vertical-align: -.2em; }
+.ll-credits-back { align-self: flex-start; min-height: 44px; padding: 6px 20px; font-size: 16px; font-weight: 900; }
+@media (max-height: 340px) { .ll-credits-card { padding: 8px 14px; gap: 12px; border-radius: 16px; } .ll-credits-trophy .ll-ico { width: 54px; height: 54px; } .ll-credits-title { font-size: 24px; -webkit-text-stroke: 2px var(--ink); } .ll-credits-sub { font-size: 12px; }
+  .ll-credits-stars { font-size: 17px; } .ll-credits-stars .ll-ico { width: 20px; height: 20px; } .ll-credits-head { font-size: 12px; } .ll-credits-les { font-size: 10.5px; gap: 4px; } .ll-credits-les .n, .ll-credits-les .n .ll-ico { width: 22px; height: 22px; } .ll-credits-les .n b { font-size: 9px; top: 3px; }
+  .ll-credits-thanks { font-size: 9.5px; } .ll-credits-back { min-height: 38px; font-size: 14px; padding: 4px 14px; } .ll-credits-lessons { gap: 2px 8px; } .ll-credits-r { gap: 5px; } }
+@media (max-width: 520px) and (min-height: 341px) { .ll-credits-card { flex-direction: column; } .ll-credits-l { flex-basis: auto; } }
+body.ll-reduce-motion .ll-credits-c, body.ll-reduce-motion .ll-credits-trophy .ll-ico { animation: none; }
