@@ -208,7 +208,7 @@ export function installCrew(sb) {
       const tx = hp.x - rx * CLOUD.side + Math.sin(fy) * -0.25 + bob * rx, tz = hp.z - rz * CLOUD.side + Math.cos(fy) * -0.25 + bob * rz;
       const k = 1 - Math.exp(-CLOUD.follow * dt); const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
       if (d > 14) { p.x = tx; p.z = tz; } else { p.x += dx * k; p.z += dz * k; }
-      _a.set(hp.x, 0, hp.z); h.anim.faceTo(_a);
+      _a.set(p.x + (hp.x - p.x) * 0.3, 0, p.z + 3); h.anim.faceTo(_a);   // S79: face the iso camera (+z) with a slight lean toward Pip, so the face is always readable
       if (j.state === 'idle') j.state = 'follow';
       j.scanT = (j.scanT || 0) - dt;
       if (j.scanT <= 0) { j.scanT = 0.25; const c = nearestCoin(h); if (c) { j.coin = c; j.state = 'fetch'; } }
