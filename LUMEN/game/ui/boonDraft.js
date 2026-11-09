@@ -26,7 +26,7 @@ export function mountBoonDraft(root, opts = {}) {
   sheet.append(head, list, foot); wrap.append(backdrop, sheet); root.appendChild(wrap);
 
   // owned badges (always mounted; hidden while empty / off-play)
-  const row = el('nav', 'll-boon-row'); row.id = 'll-boon-row'; row.hidden = true; row.setAttribute('aria-label', 'Your boons');
+  const row = el('nav', 'll-boon-row'); row.id = 'll-boon-row'; row.hidden = true; row.dataset.guide = 'hud:boons';   /* S68: tap the badge row -> guide card */ row.setAttribute('aria-label', 'Your boons');
   const pop = el('div', 'll-boon-pop'); pop.hidden = true;
   root.append(row, pop);
 
