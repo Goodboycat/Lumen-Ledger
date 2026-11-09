@@ -21,7 +21,7 @@
 import * as THREE from '../../vendor/three.module.js';
 import { DEPOSIT_STEP } from './jarsWorld.js';
 
-export const PIER = { walkSec: 2.5, waitCap: 20, repayIdle: 10, tauntEvery: 3.4, standIn: 1.1, near: 3.4, leaveSec: 2.2 };
+export const PIER = { walkSec: 2.5, waitCap: 20, repayIdle: 10, tauntEvery: 3.4, standIn: 1.1, near: 3.4, leaveSec: 2.2, graceMax: 12, graceStep: 4 };   // S72: graceMax/Step = extra seconds a SHORT player earns by getting ✦ into the pouch while he waits
 
 const FALLBACK = {
   paid:  { t1: ['Interest, on time. How… dull of you.', 'Every coin counted. The fog will have to wait.'],
@@ -37,7 +37,7 @@ const tierOf = (s) => (s <= 3 ? 't1' : s <= 6 ? 't2' : 't3');
 export function createBaronPier(deps = {}) {
   const { bus, eco, world = {}, hero, vfx, creatures = {}, scene = null, game = null, story = null } = deps;
   const B = { active: false, phase: 'off', g: null, anim: null, t: 0, idle: 0, tauntT: 0, from: null, to: null, season: 0,
-    interest: 0, paid: 0, shortfall: 0, repaid: 0, settled: false, stats: { visits: 0, paid: 0, short: 0, repaid: 0, timeouts: 0, skips: 0 } };
+    interest: 0, paid: 0, shortfall: 0, repaid: 0, settled: false, canPay: true, grace: 0, stats: { visits: 0, paid: 0, short: 0, repaid: 0, timeouts: 0, skips: 0 } };
   const offs = [];
   const heroPos = () => hero?.root?.position || hero?.position || { x: 0, z: 0 };
   const spawn = () => world.pierSpawn || { x: 0, z: -10 };
@@ -66,7 +66,7 @@ export function createBaronPier(deps = {}) {
     g.position.set(B.from.x, 0, B.from.z); (scene || game?.scene)?.add?.(g);
     anim.faceTo?.(new THREE.Vector3(B.to.x, 0, B.to.z)); anim.play?.('strut');
     B.active = true; B.phase = 'arrive'; B.t = 0; B.lastTick = -1; B.idle = 0; B.tauntT = 1.2; B.settled = false; B.season = s.season;
-    B.interest = owed; B.paid = 0; B.shortfall = 0; B.repaid = 0; B.stats.visits++;
+    B.interest = owed; B.canPay = (s.spark || 0) + 1e-9 >= owed; B.grace = PIER.graceMax; B.paid = 0; B.shortfall = 0; B.repaid = 0; B.stats.visits++;
     bus.emit('pier:due', { interest: owed, debt: s.debt, pos: { ...B.to }, season: s.season, waitCap: PIER.waitCap, spark: Math.round(s.spark || 0), canPay: (s.spark || 0) + 1e-9 >= owed });   // S71: canPay → the HUD hint 'pay it all = ★' / 'need N more'
     return true;
   };
@@ -134,6 +134,15 @@ export function createBaronPier(deps = {}) {
 
   // the season closes → the Baron comes to collect (only in pierPays mode; win/lose go their own way)
   offs.push(bus.on('eco:season', () => { if (eco.pierPays && !eco.state.ended) B.begin(); }));
+  // S72: a short player who gets Spark into the pouch while he waits (till walk-over, tip coin, jar withdraw) sees the chip update live
+  // ('need N more' -> 'pay it all = star'), and each gain buys a few extra seconds (graceMax in total) so the fix is not a race against the countdown.
+  offs.push(bus.on('eco:spark', (p) => {
+    if (!B.active || B.settled || B.phase !== 'wait' || !(B.interest > 0)) return;
+    const spark = Math.round(eco.state.spark || 0), can = eco.state.spark + 1e-9 >= B.interest;
+    if (!B.canPay && p?.delta > 0 && B.grace > 0) { const add = Math.min(PIER.graceStep, B.grace); B.grace -= add; B.t = Math.max(0, B.t - add); bus.emit('pier:grace', { added: add, left: B.grace }); }
+    B.canPay = can;
+    bus.emit('pier:pouch', { spark, interest: B.interest, canPay: can, need: Math.max(0, Math.ceil(B.interest - eco.state.spark - 1e-9)) });
+  }));
   offs.push(bus.on('eco:win', () => B.destroyVisit())); offs.push(bus.on('eco:lose', () => B.destroyVisit()));
   B.destroyVisit = () => { B.active = false; B.phase = 'off'; remove(); };
   B.destroy = () => { for (const f of offs) f?.(); offs.length = 0; B.destroyVisit(); };
