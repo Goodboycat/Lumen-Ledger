@@ -176,9 +176,11 @@ export function installCrew(sb) {
   // ------------------------------------------------------------------ Cloud (S78-D): a pet that floats beside Pip and carries DROPPED COINS to him
   //   follow -> (coin on the ground within CLOUD.fetchR) fetch -> grab (the coin rides on the cloud) -> carry back to Pip -> sb.collectCoin(c,'cloud') = the coin vanishes + is paid.
   //   Pip walking over a coin still collects it himself; a coin taken by someone else mid-trip just ends the trip. Presentation + the same tip money Pip would pick up: no new income.
+  // S79: a coin lying within 3 u of a live Collector / the Baron is left alone (the Cloud would fly into the fight); it is fetched once the enemy walks off or dies
+  const nearEnemy = (x, z) => { const l = sb.enemies?.active; if (!l || !l.length) return false; for (const e of l) { const q = e.g?.position; if (q && Math.hypot(q.x - x, q.z - z) < 3) return true; } return false; };
   const nearestCoin = (h) => {
     let best = null, bd = CLOUD.fetchR * CLOUD.fetchR; const p = h.g.position, hp = sb.hero.root.position;
-    for (const c of sb.coins || []) { if (c.carried && c.carried !== h) continue; const dx = c.position.x - p.x, dz = c.position.z - p.z, d = dx * dx + dz * dz; if (d >= bd) continue; if (Math.hypot(c.position.x - hp.x, c.position.z - hp.z) < 0.8) continue; bd = d; best = c; }
+    for (const c of sb.coins || []) { if (c.carried && c.carried !== h) continue; const dx = c.position.x - p.x, dz = c.position.z - p.z, d = dx * dx + dz * dz; if (d >= bd) continue; if (Math.hypot(c.position.x - hp.x, c.position.z - hp.z) < 0.8) continue; if (nearEnemy(c.position.x, c.position.z)) continue; bd = d; best = c; }
     return best;
   };
   const flyTo = (h, tx, tz, speed, dt) => { const p = h.g.position, dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz); if (d < 1e-4) return 0; const s = Math.min(d, speed * dt); p.x += (dx / d) * s; p.z += (dz / d) * s; _a.set(tx, 0, tz); h.anim.faceTo(_a); return d - s; };

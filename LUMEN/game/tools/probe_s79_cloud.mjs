@@ -22,9 +22,10 @@ await p.waitForTimeout(1500);
 const bar = await ev(() => { const B = lg.sb.enemies.baron; if (!B) return null; return { x: B.g.position.x, z: B.g.position.z, enemies: lg.sb.enemies.active.length }; });
 console.log('T4 baron', JSON.stringify(bar));
 if (bar) {
-  await ev((bar) => { lg.sb.dropTip(bar.x + 1, bar.z, 5); }, bar);
+  // Pip + Cloud walk to 5 u from the Baron, then a coin drops 1 u from him (inside fetch range, inside the 3 u enemy zone)
+  await ev((bar) => { lg.sb.coins.length = 0; lg.sb.hero.root.position.set(bar.x - 5, 0, bar.z); __c.g.position.set(bar.x - 6, 0, bar.z); __c.job.state = 'follow'; __c.job.coin = null; const B = lg.sb.enemies.baron; B.g.position.set(bar.x, 0, bar.z); lg.sb.dropTip(B.g.position.x + 1, B.g.position.z, 5); window.__bc = lg.sb.coins[0]; }, bar);
   const log = [];
-  for (let i = 0; i < 14; i++) { await p.waitForTimeout(500); log.push(await ev(() => { const h = __c; const B = lg.sb.enemies.baron; const d = B ? Math.hypot(h.g.position.x - B.g.position.x, h.g.position.z - B.g.position.z).toFixed(1) : '-'; return [h.job.state, h.anim.knocked ? 'KO' : '', 'coins' + lg.sb.coins.length, 'dBaron' + d, 'hp' + (B ? B.hp : '-')].join('/'); })); }
-  console.log('T4 cloud near baron (state/ko/coins/enemies):', log.join('  '));
+  for (let i = 0; i < 10; i++) { await p.waitForTimeout(500); log.push(await ev(() => { const h = __c, B = lg.sb.enemies.baron; const d = B ? Math.hypot(h.g.position.x - B.g.position.x, h.g.position.z - B.g.position.z).toFixed(1) : '-'; return [h.job.state, 'coinLeft' + (lg.sb.coins.indexOf(__bc) >= 0 ? 1 : 0), 'dBaron' + d, 'baronState:' + (B ? B.state : '-')].join('/'); })); }
+  console.log('T4 (coin next to the Baron):', log.join('  '));
 }
 console.log('errs', JSON.stringify(errs.slice(0, 4))); await b.close();
