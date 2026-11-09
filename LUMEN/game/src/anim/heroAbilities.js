@@ -207,12 +207,12 @@ function buildBubbleShield(M) {
     onExit: (M) => { M.hero.root.position.y = 0; } });
   tw(seq, 'absorb', 120, Easing.outCubic, BUB_HIT, { onEnter: (M) => {
     hitstop(M, 40); shake(M, 0.14); M.hero.spring.kick(-0.8); const name = typeof M.event === 'string' ? M.event : (M.event && M.event.name) || null;
-    _b.copy(M.hero.root.position).setY(1.6); sparks(M, _b, 6, 5); if (name) pop(M, _b, name, { color: '#7B5EA7', dur: 0.7, size: 0.9 });
+    _b.copy(M.hero.root.position).setY(1.6); sparks(M, _b, 6, 5);   // S76: no event-name pop (the shield has not met any event yet)
     hook(M, 'debtPulse', 'pulse', M.hero.root.position, 0.5); if (M.onAbsorb) M.onAbsorb(M.event);
   }, fn: (e, M) => { M.spin += dtOf(M) * 4; setBubble(M.hero, lerp(1.0, 1.22, e), M.spin); } });
   tw(seq, 'burst', 140, Easing.outCubic, BUB_OUT, { onEnter: (M) => {
     const hero = M.hero; _b.copy(hero.root.position).setY(1.0); sparks(M, _b, 12, 4); dustRing(M, hero.root.position, 8, 0.2);
-    pop(M, hero.root.position, 'ABSORBED!', { color: '#4FC3F7', dur: 0.9, size: 1.1 });
+    // S76: no 'ABSORBED!' pop - casting only ARMS the shield, nothing has been absorbed yet (it was a false message)
   }, fn: (e, M) => { setBubble(M.hero, lerp(1.22, 0.001, e), M.spin); }, onExit: (M) => { M.hero.props.bubble.visible = false; setBubble(M.hero, 1, 0); } });
   tw(seq, 'settle', 200, Easing.outBack, REST, { cancellable: true, onEnter: (M) => { M.jellyOn = true; M.hero.spring.kick(-0.6); } });
   seq.moveUpdate = (dt, M) => { M.dtLast = dt; };

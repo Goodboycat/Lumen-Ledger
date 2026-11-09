@@ -662,8 +662,7 @@ function wireAbilities(sb) {
     if (armed) { sb._ringOn = true; b.visible = true; if (b.children[0]) b.children[0].visible = false; b.scale.setScalar(0.92 + 0.03 * Math.sin(game.time * 3)); }
     else if (sb._ringOn) { sb._ringOn = false; b.visible = false; if (b.children[0]) b.children[0].visible = true; b.scale.setScalar(1); }
   };
-  // T2b: a shield that eats an event says what it saved
-  sb._offs.push(bus.on('eco:absorbed', (p) => { if (p?.boon) return; const sp = eco.events?.[p?.id]?.effect?.spark; answer('bubbleShield', `🛡 ${typeof sp === 'number' && sp < 0 ? `−${-sp} ✦ ` : ''}absorbed`, 'absorbed'); }));
+  // S76: a shield that eats an event shows NO text/emoji (the old '🛡 absorbed' pill was removed on request); the Protect bark + storm clearing already show it
 }
 // Debug keys (prompt P1): B build mode for the current pick · 1–9 pick a stall type · E end season (LedgerReport → console)
 // · H hire next helper (P3) · Z unlock next zone (buys the zone upgrade when affordable, else free in sandbox) · X demolish nearest
