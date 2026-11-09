@@ -64,18 +64,19 @@ export const DEFAULT_EVENTS = {
   'cust:state':        { sfx: 'cust_happy',  cooldown: 0.25, vol: 0.5, pick: (p) => p?.state !== 'react' ? { sfx: null } : p?.reaction === 'happy' ? { sfx: 'cust_happy' } : { sfx: 'cust_grumble' } },
   'ui:touch':          { sfx: 'click',       cooldown: 0.08, vol: 0.4 },
   // S16–S20 enemies (2026-10-24): Collectors + Baron Gilt. Every Baron attack is telegraphed → the warn sting IS the audio cue (GAME_BIBLE §2: always a sound before damage).
-  'enemy:wave':        { sfx: 'enemy_wave',  cooldown: 1, pick: (p) => p?.boss ? { sfx: 'baron_arrive' } : null },
+  'enemy:wave':        { sfx: 'enemy_wave',  cooldown: 1, pick: (p) => p?.boss ? { sfx: 'baron_arrive', layer: 'boss_fight' } : null },   // S74: Baron on the island → boss stem on top of the island theme
   'enemy:hit':         { sfx: 'enemy_hit',   cooldown: 0.08 },
   'enemy:heroHit':     { sfx: 'hero_hit',    cooldown: 0.2, pick: (p) => p?.debt ? { sfx: 'loan_stamp' } : null },
   'enemy:blocked':     { sfx: 'hit_shield',  cooldown: 0.2, vol: 0.8 },
-  'enemy:defeated':    { sfx: 'enemy_flee',  cooldown: 0.2, pick: (p) => p?.kind === 'baron' ? { sfx: 'baron_defeated', vol: 0.9 } : null },
-  'enemy:home':        { sfx: 'toast',       cooldown: 1, vol: 0.5 },
+  'enemy:defeated':    { sfx: 'enemy_flee',  cooldown: 0.2, pick: (p) => p?.kind === 'baron' ? { sfx: 'baron_defeated', vol: 0.9, layer: null, layerFade: 1.6 } : null },   // S74: beaten → the stem fades out
+  'enemy:home':        { sfx: 'toast',       cooldown: 1, vol: 0.5, layer: null, layerFade: 1.5 },   // S74: season over, he leaves → stem off
   'enemy:baronWarn':   { sfx: 'baron_warn',  cooldown: 0.3, pick: (p) => p?.kind === 'stomp' ? { sfx: 'baron_warn', pitch: 0.7 } : p?.kind === 'umbrella' ? { sfx: 'baron_warn', pitch: 1.3 } : null },
   'enemy:cannon':      { sfx: 'fog_cannon',  cooldown: 0.2, pick: (p) => p?.hit ? { sfx: 'fog_impact' } : null },
   'enemy:stomp':       { sfx: 'baron_stomp', cooldown: 0.3 },
   'enemy:minigun':     { sfx: 'fog_minigun', cooldown: 0.5 },
   'enemy:dash':        { sfx: 'baron_dash',  cooldown: 0.5 },
   'enemy:dashEnd':     { sfx: 'crumble',     cooldown: 0.5, vol: 0.7, pick: (p) => p?.hit ? { sfx: 'hero_hit', vol: 0.8 } : null },
+  'enemy:baronEnrage': { sfx: 'baron_warn',  cooldown: 1, pitch: 0.6, vol: 0.9 },   // S74: 'ENOUGH!' at hp <= 3
   'enemy:baronInterrupted': { sfx: 'deny',   cooldown: 0.2, vol: 0.5, pitch: 0.8 },
   // S17 storm weather
   'storm:warn':        { sfx: 'storm_warn',  cooldown: 2 },
@@ -84,8 +85,8 @@ export const DEFAULT_EVENTS = {
   // Ambience beds (2026-10-24 user pack): surf + island birds always on while a run is live; everything off on the title.
   'game:start':        { sfx: 'start',       cooldown: 1, music: 'island_day', ambience: 'always' },
   'game:resumed':      { ambience: 'always' },
-  'game:title':        { ambience: 'off' },
-  'eco:lose':          { sfx: 'lose_sting',  cooldown: 2, music: 'fog_lose', ambience: 'off' },
+  'game:title':        { ambience: 'off', layer: null, layerFade: 0.3 },
+  'eco:lose':          { sfx: 'lose_sting',  cooldown: 2, music: 'fog_lose', ambience: 'off', layer: null, layerFade: 0.3 },
   // S18 cinematics: a soft chime when a shot begins (not the title orbit), the lighthouse lamp lighting on the victory shot
   'cine:begin':        { sfx: 'cine_sting',  cooldown: 1, vol: 0.7, pick: (p) => p?.shot === 'title' ? { sfx: null } : null },
   'cine:lamp':         { sfx: 'lamp_light',  cooldown: 2 },
@@ -99,6 +100,7 @@ export function createAudio(opts = {}) {
     unlocked: false, silent: !AC, ctx: null, manifest: null, buffers: new Map(), missing: new Set(),
     volumes: { sfx: +(opts.settings?.sfx ?? DEFAULT_VOLUMES.sfx), music: +(opts.settings?.music ?? DEFAULT_VOLUMES.music) },
     played: {}, lastPlay: {}, currentMusic: null, musicNode: null, ducked: false, log: [], solo: {},
+    currentLayer: null, layerNode: null, pendingLayer: null,   // S74: boss-fight stem that plays ON TOP of the main music (layer())
     // ambience beds (manifest "ambience"): mode 'off' | 'always' | 'storm' | 'calm' (= back to always). `beds` = id → { s, g, vol } live loops.
     ambMode: 'off', ambOn: {}, beds: {}, ambLog: [],
   };
@@ -127,13 +129,17 @@ export function createAudio(opts = {}) {
       ensureGraph(); state.unlocked = true;
       for (const id of Object.keys(state.manifest?.sfx || {})) if (state.manifest.sfx[id].preload) buffer('sfx', id);   // voice blurbs: decode now so the first line is not a synth blip
       if (state.pendingMusic) { const m = state.pendingMusic; state.pendingMusic = null; api.music(m); }
+      if (state.pendingLayer) { const m = state.pendingLayer; state.pendingLayer = null; api.layer(m); }
       return true;
     },
     /** load a manifest (object or URL). Decodes every file it can; failures are recorded in state.missing (synth fallback). Never throws. */
     async load(manifest) { state.manifest = typeof manifest === 'string' ? await fetchJson(manifest, state) : (manifest || {}); if (bus) wireBus(); return api; },
     play(id, o = {}) { return playSfx(id, o); },
     music(id) { return playMusic(id); },
-    stopMusic(fade = 0.4) { return stopMusic(fade); },
+    stopMusic(fade = 0.4) { return stopLayer(0.3), stopMusic(fade); },
+    /** S74: play a music STEM on top of the current track (boss fight). Starts on the next bar line of the main loop, ducks the main track a little, fades out with stopLayer(). */
+    layer(id) { return playLayer(id); },
+    stopLayer(fade = 1.2) { return stopLayer(fade); },
     setVolume(v = {}) {
       if (Number.isFinite(+v.sfx)) state.volumes.sfx = clamp01(+v.sfx);
       if (Number.isFinite(+v.music)) state.volumes.music = clamp01(+v.music);
@@ -150,7 +156,7 @@ export function createAudio(opts = {}) {
     /** Ambience beds. mode: 'off' (title / lose) · 'always' (surf + birds) · 'storm' (+ rain + wind, birds ducked) · 'calm' (storm → always).
      *  Headless-safe: state.ambMode / state.ambOn record the intent so check.mjs can gate the bus wiring without an AudioContext. */
     ambience(mode = 'always', fade = 1.5) { return setAmbience(mode, fade); },
-    destroy() { for (const off of offs) off(); offs.length = 0; stopMusic(0); setAmbience('off', 0); if (state.ctx && typeof window !== 'undefined' && state.ctx !== window.lumenAudioCtx) state.ctx.close?.(); },
+    destroy() { for (const off of offs) off(); offs.length = 0; stopLayer(0); stopMusic(0); setAmbience('off', 0); if (state.ctx && typeof window !== 'undefined' && state.ctx !== window.lumenAudioCtx) state.ctx.close?.(); },
     _now: null,
   };
 
@@ -187,15 +193,42 @@ export function createAudio(opts = {}) {
   function playMusic(id) {
     if (id === state.currentMusic && state.musicNode) return true;
     const d = def('music', id); if (!d) { state.currentMusic = null; return false; }
+    if (state.currentLayer) stopLayer(0.4);   // S74: victory / lose / title / credits never keep a boss stem running
     state.currentMusic = id; if (!state.ctx || !state.unlocked) { state.pendingMusic = id; return true; }
     stopMusic(0.5);
     const start = (node) => { state.musicNode = node; };
     buffer('music', id).then((b) => {
       if (state.currentMusic !== id) return;
-      if (b) { const s = state.ctx.createBufferSource(); s.buffer = b; s.loop = d.loop !== false; const g = state.ctx.createGain(); g.gain.value = d.vol ?? 1; s.connect(g); g.connect(musicGain); s.start(); start({ stop: () => { try { s.stop(); } catch {} }, gain: g }); }
+      if (b) { const s = state.ctx.createBufferSource(); s.buffer = b; s.loop = d.loop !== false; const g = state.ctx.createGain(); g.gain.value = d.vol ?? 1; s.connect(g); g.connect(musicGain); s.start(); start({ stop: () => { try { s.stop(); } catch {} }, gain: g, t0: state.ctx.currentTime, base: d.vol ?? 1, loopLen: b.duration }); }
       else if (d.synth) start(synthMusic(state.ctx, musicGain, d.synth, d.vol ?? 0.5));
     });
     return true;
+  }
+  // ---- S74 boss layer: a second looping stem on musicGain, bar-aligned to the main loop (main node carries t0 + the bar length from the manifest `bpm`) ----
+  function playLayer(id) {
+    let d = def('music', id); if (!d) return false;
+    const alt = d.alt && d.alt[state.currentMusic]; if (alt && def('music', alt)) { id = alt; d = def('music', alt); }   // endless run → the D-key stem
+    if (id === state.currentLayer && (state.layerNode || !state.unlocked)) return true;
+    if (state.currentLayer && state.currentLayer !== id) stopLayer(0.3);
+    state.currentLayer = id; if (!state.ctx || !state.unlocked) { state.pendingLayer = id; return true; }
+    const mainDef = def('music', state.currentMusic) || {};
+    buffer('music', id).then((b) => {
+      if (state.currentLayer !== id || state.layerNode) return;
+      const ctx = state.ctx, mn = state.musicNode;
+      let when = ctx.currentTime;
+      if (mn && mn.t0 != null && d.bar) { const bar = d.bar, k = Math.ceil((when - mn.t0) / bar - 1e-6); when = mn.t0 + Math.max(0, k) * bar; if (when - ctx.currentTime > 2.2) when = ctx.currentTime; }   // wait at most one bar so the fight music is not late
+      let node = null;
+      if (b) { const src = ctx.createBufferSource(); src.buffer = b; src.loop = d.loop !== false; const g = ctx.createGain(); g.gain.value = 0; g.connect(musicGain); src.connect(g); src.start(when); ramp2(g.gain, d.vol ?? 0.6, when, 0.5); node = { stop: () => { try { src.stop(); } catch {} }, gain: g }; }
+      else if (d.synth) node = synthMusic(ctx, musicGain, d.synth, d.vol ?? 0.5);
+      state.layerNode = node;
+      if (mn?.gain) ramp(mn.gain.gain, (mn.base ?? 1) * (d.duckMain ?? 0.7), 0.6);   // the island theme steps back, the fight stem leads
+    });
+    return true;
+  }
+  function stopLayer(fade = 1.2) {
+    const n = state.layerNode; state.layerNode = null; state.currentLayer = null; state.pendingLayer = null;
+    const mn = state.musicNode; if (mn?.gain && mn.base != null) ramp(mn.gain.gain, mn.base, Math.max(0.2, fade * 0.8));   // main theme comes back up
+    if (!n) return; if (fade > 0 && n.gain) { ramp(n.gain.gain, 0, fade); setTimeout(() => n.stop(), fade * 1000 + 50); } else n.stop();
   }
   function stopMusic(fade = 0.4) {
     const n = state.musicNode; state.musicNode = null; state.currentMusic = state.currentMusic && fade === 0 ? null : state.currentMusic;
@@ -263,6 +296,7 @@ export function createAudio(opts = {}) {
         const r = typeof rule.pick === 'function' ? rule.pick(payload) || rule : rule;        // per-payload variant (e.g. win vs lose ledger)
         if (r.duck !== undefined) api.duck(!!r.duck);
         if (r.music !== undefined) { if (r.music) api.music(r.music); else api.stopMusic(); }
+        if (r.layer !== undefined) { if (r.layer) api.layer(r.layer); else api.stopLayer(r.layerFade ?? 1.2); }   // S74: boss stem on / off
         if (r.ambience) setAmbience(r.ambience, r.ambience === 'off' ? 1 : r.ambience === 'storm' ? 2 : 2.5);
         if (!r.sfx) return;
         const cd = r.cooldown ?? 0.05, last = state.lastFire[ev] ?? -1e9, t = now();
@@ -324,4 +358,5 @@ export function synthMusic(ctx, out, s, vol = 0.5) {
   return { gain: { gain: gain.gain }, stop: () => { alive = false; clearTimeout(timer); voices.forEach((v) => { try { v.o.stop(); } catch {} }); try { gain.disconnect(); } catch {} } };
 }
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
+function ramp2(param, to, at, sec) { try { param.cancelScheduledValues(0); param.setValueAtTime(0.0001, at); param.linearRampToValueAtTime(to, at + sec); } catch { param.value = to; } }   // S74: scheduled fade-in
 function ramp(param, to, sec) { try { const t = param.context ? param.context.currentTime : 0; param.cancelScheduledValues(t); param.setValueAtTime(param.value, t); param.linearRampToValueAtTime(to, t + sec); } catch { param.value = to; } }

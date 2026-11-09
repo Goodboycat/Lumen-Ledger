@@ -899,6 +899,77 @@
           ]
         ]
       }
+    },
+    "boss_fight": {
+      "file": "music/boss_fight.ogg",
+      "vol": 0.5,
+      "loop": true,
+      "layer": true,
+      "bar": 2.8571,
+      "duckMain": 0.7,
+      "alt": {
+        "island_endless": "boss_fight_endless"
+      },
+      "synth": {
+        "root": 130.8,
+        "bpm": 84,
+        "chords": [
+          [
+            0,
+            3,
+            7
+          ],
+          [
+            0,
+            3,
+            8
+          ],
+          [
+            -4,
+            0,
+            3
+          ],
+          [
+            -2,
+            2,
+            5
+          ]
+        ]
+      }
+    },
+    "boss_fight_endless": {
+      "file": "music/boss_fight_endless.ogg",
+      "vol": 0.5,
+      "loop": true,
+      "layer": true,
+      "bar": 2.5,
+      "duckMain": 0.7,
+      "synth": {
+        "root": 146.8,
+        "bpm": 96,
+        "chords": [
+          [
+            0,
+            3,
+            7
+          ],
+          [
+            0,
+            3,
+            8
+          ],
+          [
+            -4,
+            0,
+            3
+          ],
+          [
+            -2,
+            2,
+            5
+          ]
+        ]
+      }
     }
   },
   "_voices": "Character voice blurbs (cartoon hums, Zelda-style) — played by Audio.js on ui:dialogue:say when the dialogue box starts a line; speaker → voice_<speaker>, narrator → dlg_blip. solo:\"voice\" cuts the previous blurb; preload:true decodes them on unlock().",
