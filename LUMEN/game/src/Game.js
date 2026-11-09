@@ -438,6 +438,7 @@ function installJarsWorld(sb) {
     return null;
   };
   // S63-A: a TAP on a jar is ONE deposit: press + release in the same call. Only a real held key (E down) or a held pointer keeps `holding` alive.
+  sb.tapJarId = (id) => { if (!id || !J.isNear(id)) return null; const r = J.pressJar(id); J.release(); return r || 'jar'; };   // S75: deposit into the jar that was TOUCHED
   sb.tapJar = () => { if (!J.near()) return null; const r = J.press(); J.release(); return r || 'jar'; };
   sb.interact = () => {
     if (J.near()) return J.press() || 'jar';
@@ -457,7 +458,7 @@ function installJarsWorld(sb) {
   const awEnd = (why, extra = {}) => { const a = sb.autoWalk; if (!a) return; sb.autoWalk = null; if (hero.inputOverride === a.ov) hero.inputOverride = null; bus.emit('jars:autowalk', { jar: a.jar, done: why === 'arrived', why, ...extra }); };
   sb.startAutoWalk = (jar) => {
     const m = J.get(jar); if (!m || !hero?.root) return false;
-    if (J.near() === jar) return false;                                  // already there — caller deposits
+    if (J.isNear(jar)) return false;                                     // already there — caller deposits
     if (sb.autoWalk) awEnd('retarget'); else if (hero.inputOverride) return false;   // a cinematic owns Pip
     const ov = { move: { x: 0, y: 0 } }; hero.inputOverride = ov; sb.autoWalk = { jar, ov, t: 0 };
     bus.emit('jars:autowalk', { jar, done: false, why: 'start' }); return true;
@@ -489,7 +490,7 @@ function installJarsWorld(sb) {
     if (sb.game.paused || sb.build?.mode !== 'idle') return awEnd('blocked');   // modals: lg.update cancels (it owns ui)
     if (inp && inp.x * inp.x + inp.y * inp.y > AW_STICK * AW_STICK) return awEnd('input');   // the player grabbed the stick
     a.t += dt; if (a.t > AW_TIMEOUT) return awEnd('timeout');
-    if (J.near() === a.jar) { a.ov.move.x = 0; a.ov.move.y = 0; const r = J.press(); J.release(); return awEnd('arrived', { result: r }); }
+    if (J.isNear(a.jar)) { a.ov.move.x = 0; a.ov.move.y = 0; const r = J.pressJar(a.jar); J.release(); return awEnd('arrived', { result: r }); }
     const h = hero.root.position, p = J.get(a.jar).position; let dx = p.x - h.x, dz = p.z - h.z; const d = Math.hypot(dx, dz) || 1;
     a.ov.move.x = dx / d; a.ov.move.y = -dz / d;                          // screen up = −z world
   };
@@ -1214,6 +1215,7 @@ function installRunWires(lg) {
     if (build.mode === 'place') { if (ui?.isModal?.()) return; build.moveTo(world.x, world.z); if (ev?.pointerType === 'mouse') build.confirm(); return; }
     // BUGFIX P17: prefer the prop under the cursor in 3D (roof / sign / awning) — the ground-plane point sits ~1.9 u behind a 2.2 u tall stall
     if (lg.demolishMode) { const e = build.pick(lg.game.input?._ray?.ray) || build.nearest(world.x, world.z, 1.2); if (e && !e.scenery) build.demolish(e); else if (e && e.scenery) return; }   // P23: explain instead of silent refusal
+    { const jid = lg.pickJar?.(world); const jm = jid && lg.sb?.jarsWorld?.meshOf?.(jid); const jp = jm?.position || jm; if (jp) world = { x: jp.x, z: jp.z, y: world.y }; }   // S75: a tap that hits a jar mesh = that jar's position (guide card + deposit agree)
     if (lg.guideTap?.(world, ev)) return;   // T2: tap a guideable thing → its card (any distance, every tap); a tap that has no game action is consumed here
     if (lg.selectTap?.(world, ev)) return;
     if (lg.landTap?.(world, ev)) return;   // 48D: tap a jar → use it · tap empty ground → the build tray opens on that cell
@@ -1236,22 +1238,29 @@ function installRunWires(lg) {
     const hint = C.tap(world); if (!hint) return false;
     return !C.lastTap?.act;                                                              // tools with a game action (jar, stall) go on to act; the rest are answered, not turned into a build tap
   };
+  // S75 (user: "I touch a jar (right) beside another jar (left) and it counts the left one"): two bugs. (1) the tap point on the ground sat behind the jar
+  //   (camera tilt) and the FIRST jar within 1.2 u won; (2) deposit used J.near() = the jar nearest PIP, not the one tapped. Now the 3D ray picks the jar mesh
+  //   under the finger (nearest hit), the ground point (nearest jar within 1.2 u) is only the fallback, and the deposit goes to THAT jar id.
+  const _jrc = new THREE.Raycaster();
+  lg.pickJar = (world) => {
+    const J = lg.sb?.jarsWorld; if (!J) return null; const ids = J.ids?.() || []; if (!ids.length) return null;
+    const ray = lg.game.input?._ray?.ray;
+    if (ray && _jrc?.ray) { _jrc.ray.copy(ray); let best = null, bd = Infinity;
+      for (const id of ids) { const m = J.meshOf?.(id); if (!m?.isObject3D) continue; let hit = null; try { hit = _jrc.intersectObject(m, true)[0]; } catch { hit = null; } if (hit && hit.distance < bd) { bd = hit.distance; best = id; } }
+      if (best) return best; }
+    if (!world) return null; let best = null, bd = 1.2;
+    for (const id of ids) { const m = J.meshOf?.(id); const p = m?.position || m; if (!p) continue; const d = Math.hypot(p.x - world.x, p.z - world.z); if (d <= bd) { bd = d; best = id; } }
+    return best;
+  };
   lg.landTap = (world) => {
     if (!lg.sb || lg.game.paused || ui?.isModal?.() || build.mode === 'place' || build.mode === 'drag' || lg.demolishMode || !world) return false;
-    const J = lg.sb.jarsWorld; const ids = J?.ids?.() || [];
-    for (const id of ids) { const m = J.meshOf?.(id); const p = m?.position || m; if (p && Math.hypot(p.x - world.x, p.z - world.z) <= 1.2) { if (J.near() !== id && lg.sb.startAutoWalk?.(id)) return true; lg.interact({ tap: true }); return true; } }   // T1-B: far jar → auto-walk, then deposit · S63-A: a tap = ONE deposit, never a hold
+    { const id = lg.pickJar?.(world); if (id) { const J = lg.sb.jarsWorld; if (!J.isNear(id) && lg.sb.startAutoWalk?.(id)) return true; lg.sb.tapJarId?.(id); return true; } }   // T1-B: far jar → auto-walk, then deposit · S63-A: a tap = ONE deposit · S75: the jar you TOUCHED, never just the one nearest Pip
     { const N = lg.sb.scamNpc; const gp = N?.active && (N.state === 'pitch' || N.state === 'arrive') ? N.g?.position : null;   // S58: tap on the stranger → walk there + talk
       if (gp && Math.hypot(gp.x - world.x, gp.z - world.z) <= 2.2 && lg.sb.startWalkToStranger?.()) return true; }
     if ((lg.sb.pier?.near?.() || lg.sb.scamNpc?.near?.() || lg.sb.novelty?.near?.()) && hero?.root && Math.hypot(hero.root.position.x - world.x, hero.root.position.z - world.z) <= 4.5) { if (lg.sb.talk?.()) return true; }   // S63-B: tap near them talks at once (NPC only; a tap never touches a jar)
-    if (ui?.build?.isOpen) return false;                                                   // open tray: a land tap is handled by the tray / placement
-    if (lg.sb.island?.isLand && !lg.sb.island.isLand(world.x, world.z)) return false;     // water: nothing to build on
-    // S64-A: a ground tap never opens the tray by itself while the tutorial is still on Move / Coin / Sword (verbs step 0-2) or right after a dialogue closed.
-    //   The Build button + the 'Tap empty ground, pick a stall' card (step 3) are how the player meets the tray, never an accident.
-    if (lg.tapGrace?.() || (lg.verbs && lg.verbs.step >= 0 && lg.verbs.step < 3)) return false;
-    lg.tapCell = { x: world.x, z: world.z, at: lg.game.time };
-    bus.emit('ui:tap:land', { x: world.x, z: world.z });
-    ui?.build?.open?.();
-    return true;
+    // S75 (user: "make that tapping the ground doesn't open the shop"): a tap on empty ground NEVER opens the build tray any more.
+    //   The Build button (and tapping one of YOUR stalls to inspect it) are the only ways in. The tap falls through to the walk-to-point handler.
+    return false;
   };
   offs.push(bus.on('ui:build:close', () => { lg.tapCell = null; }));
   offs.push(bus.on('build:enter', () => { const c = lg.tapCell; lg.tapCell = null; if (c && lg.game.time - c.at < 20 && build.mode === 'place') build.moveTo(c.x, c.z); }));

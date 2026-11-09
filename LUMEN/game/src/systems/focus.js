@@ -1,12 +1,12 @@
 // S67 Focus meter — pure, no DOM, no three. Replaces the flat 5 s ability cooldown.
 //   import { createFocus, FOCUS_COST, GAP_S } from './focus.js';
-// Powers cost Focus (0..100). It refills by itself (+2/s) and faster when the player does money things well:
+// Powers cost Focus (0..100). It refills by itself (+0.67/s, S75: 3x slower) and faster when the player does money things well:
 //   a fair-priced sale, a deposit in the Save jar, a scam refused.  (FinLit: good habits buy you attention.)
 // A 0.6 s global gap stops double-fires. Refunds are capped per season so regen stays the main source.
 export const FOCUS_MAX = 100;
 export const FOCUS_COST = { coinMagnetDash: 15, bubbleShield: 35, growthStomp: 30, ledgerFlash: 20, haggleShout: 25, fogSweep: 45 };
 export const GAP_S = 0.6;
-export const REGEN_PER_S = 2;
+export const REGEN_PER_S = 2 / 3;   // S75 (user: "focus meter fills three times slower"): was 2/s, now ~0.67/s (full bar from empty in 150 s). Good habits (GAINS) still refill it faster.
 export const GAINS = { sale: 4, save: 10, scam: 15 };
 export const GAIN_CAP = { sale: 40, save: 30, scam: 30 };   // per season
 

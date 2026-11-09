@@ -189,6 +189,7 @@ export function mountLedger(root, opts = {}) {
       // button
       btn.classList.remove('in'); btn.disabled = true; later(rowsEnd() + STAR_GAP * 3 + 420, () => { btn.classList.add('in'); btn.disabled = false; });
       btn.innerHTML = (st.outcome === 'win' ? icon('laurel') + ' ' : '') + iconize(st.outcome === 'win' ? 'THE END ▸' : st.outcome === 'lose' ? 'TRY AGAIN ▸' : 'CONTINUE ▸');
+      st.openedAt = Date.now();
       bus.emit('ui:ledger:open', { season, stars: starsN });
       return api;
     },
@@ -234,10 +235,15 @@ export function mountLedger(root, opts = {}) {
     destroy() { clearTimers(); offs.forEach((f) => f()); offUnlock?.(); if (st.raf) cancelAnimationFrame(st.raf); window.removeEventListener('keydown', onKey); wrap.remove(); },
   };
 
+  const tapAnywhere = () => { if (!st.open) return; if (btn.disabled) api.skip(); else if (Date.now() - (st.openedAt || 0) > 500) api.continue(); };
   btn.addEventListener('click', () => { if (!btn.disabled) api.continue(); });
   // BUGFIX P08: clicking the disabled CONTINUE button (or any child of sheet) before the 1.2s stagger finishes now skips the reveal animation
   // instead of silently ignoring the click.
-  sheet.addEventListener('click', (e) => { if (btn.disabled) api.skip(); });
+  // S75 (user: "I touch outside the whole container ... it doesn't close. Make that it also close if I tap anywhere"): a tap ANYWHERE (backdrop, sheet, text)
+  //   = skip the count-up while it plays, then CONTINUE. A short guard stops the tap that ended the season from closing it at once.
+  sheet.addEventListener('click', (e) => { if (btn.disabled) api.skip(); else if (e.target !== btn && !btn.contains(e.target)) tapAnywhere(); });
+  backdrop.addEventListener('click', () => tapAnywhere());
+  wrap.addEventListener('click', (e) => { if (e.target === wrap) tapAnywhere(); });
   const onKey = (e) => { if (!st.open) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault && e.preventDefault(); btn.disabled ? api.skip() : api.continue(); } };
   window.addEventListener('keydown', onKey);
 

@@ -151,12 +151,12 @@ export function mountBuildMenu(root, opts = {}) {
   }
   function refreshCards() {
     sparkEl.innerHTML = iconize(`✦ ${st.spark}`);
-    if (st.cat === 'crew') { for (const [, card] of cards) { const o = card._offer; if (o && !o.owned && (!o.blocker || o.blocker === 'cost')) { o.blocker = o.cost > st.spark ? 'cost' : null; card.classList.toggle('poor', o.blocker === 'cost'); const cEl = card.querySelector && card.querySelector('.ll-card-cost'); if (cEl) cEl.innerHTML = iconize(o.blocker === 'cost' ? `🔒 need ${o.cost - st.spark} more` : `${o.cost} ✦`); } } refreshDetail(); return; }   // offers re-render on eco:upgrade / sandbox:hired
+    if (st.cat === 'crew') { for (const [, card] of cards) { const o = card._offer; if (o && !o.owned && (!o.blocker || o.blocker === 'cost')) { o.blocker = o.cost > st.spark ? 'cost' : null; card.classList.toggle('poor', o.blocker === 'cost'); const cEl = card.querySelector && card.querySelector('.ll-card-cost'); if (cEl) cEl.innerHTML = iconize(o.blocker === 'cost' ? `need ${o.cost - st.spark} more` : `${o.cost} ✦`); } } refreshDetail(); return; }   // offers re-render on eco:upgrade / sandbox:hired
     for (const [id, card] of cards) {
       const locked = st.locked.has(id); const cost = costOf(id);
       card.classList.toggle('poor', !locked && !affordable(cost));
       // S41/15C: unaffordable cards say so BEFORE the tap — lock glyph + the shortfall ("need 40 more") replaces the plain price
-      const cEl = card.querySelector && card.querySelector('.ll-card-cost'); if (cEl) cEl.innerHTML = iconize(cost ? (!locked && !affordable(cost) ? `🔒 need ${cost - st.spark} more` : `${cost} ✦`) : 'free');
+      const cEl = card.querySelector && card.querySelector('.ll-card-cost'); if (cEl) cEl.innerHTML = iconize(cost ? (!locked && !affordable(cost) ? `need ${cost - st.spark} more` : `${cost} ✦`) : 'free');
       card.classList.toggle('locked', locked);
       card.classList.toggle('selected', st.selected === id);
       const n = countOf(id); const lvl = ownedLevel(id);

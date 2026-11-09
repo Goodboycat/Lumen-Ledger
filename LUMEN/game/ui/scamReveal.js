@@ -23,7 +23,7 @@ export function mountScamReveal(root, opts = {}) {
     /** Render one reveal. p = story:scamEnd payload. Returns the kind shown ('fell' | 'spotted' | 'took' | null). */
     show(p) {
       if (!p) return null; let kind = null;
-      if (!p.fair && p.accepted) kind = 'fell'; else if (!p.fair && !p.accepted && p.looked) kind = 'spotted'; else if (p.fair && p.accepted) kind = 'took';
+      if (!p.fair && p.accepted) kind = 'fell'; else if (!p.fair && !p.accepted && p.looked) kind = 'spotted'; /* S75 (user: "eliminate the notification that appears when completing a good debt, with the face of the owl"): a fair deal taken shows NO card any more; the pop / HUD numbers already say it. */
       if (!kind) return null;
       card.className = 'll-reveal ' + kind; card.hidden = false; st.kind = kind; st.last = p; st.on = true; st.t = 0; st.shownAt = Date.now();
       if (kind === 'fell') {

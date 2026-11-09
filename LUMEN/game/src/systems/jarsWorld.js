@@ -52,6 +52,7 @@ export function createJarsWorld(opts = {}) {
   };
   J.ids = () => [...jars.keys()]; J.meshOf = (id) => jars.get(id) || null;   // 48D: Game.js landTap routes a tap on a jar mesh to sb.interact()
   J.near = () => { let best = null, bd = NEAR_R; for (const [id, m] of jars) { const d = dist(m); if (d <= bd) { bd = d; best = id; } } return best; };
+  J.isNear = (id) => { const m = jars.get(id); return !!m && dist(m) <= NEAR_R; };   // S75: is THIS jar in reach (not just the nearest one)
   J.fill01 = (id) => { const j = eco.state.jars; const tot = Math.max(1, Object.values(j).reduce((a, v) => a + v, 0)); return Math.min(1, (j[id] || 0) / tot); };
 
   const fx = (id, from, to, amount, dir) => {
@@ -87,6 +88,12 @@ export function createJarsWorld(opts = {}) {
     const jar = J.near(); if (!jar) return null;
     J.holding = true; J.hold = 0; J.heldJar = jar; J.withdrew = false; J.repeatT = 0;
     return J.deposit(jar) > 0 ? 'deposit' : 'empty';
+  };
+  // S75: same as press() but for a named jar (tap on a jar standing beside another one)
+  J.pressJar = (id) => {
+    if (!id || !J.isNear(id)) return null;
+    J.holding = true; J.hold = 0; J.heldJar = id; J.withdrew = false; J.repeatT = 0;
+    return J.deposit(id) > 0 ? 'deposit' : 'empty';
   };
   J.release = () => { J.holding = false; J.hold = 0; J.heldJar = null; J.withdrew = false; };
 

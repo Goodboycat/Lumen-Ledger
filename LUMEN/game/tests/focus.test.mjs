@@ -9,8 +9,8 @@ test('starts full, spend drops it, gap blocks a second press', () => {
 test('not enough focus says need/have and costs nothing', () => {
   const f = createFocus({ start: 10 }); const r = f.spend('fogSweep'); assert.equal(r.ok, false); assert.equal(r.why, 'focus'); assert.equal(r.need, 45); assert.equal(r.have, 10); assert.equal(f.value, 10);
 });
-test('regen +2/s, capped at max, boon multiplier', () => {
-  const f = createFocus({ start: 0 }); f.tick(10); assert.equal(Math.round(f.value), 20); f.tick(10, 1.5); assert.equal(Math.round(f.value), 50); f.tick(999); assert.equal(f.value, 100);
+test('regen +0.67/s (S75: 3x slower), capped at max, boon multiplier', () => {
+  const f = createFocus({ start: 0 }); f.tick(30); assert.equal(Math.round(f.value), 20); f.tick(30, 1.5); assert.equal(Math.round(f.value), 50); f.tick(999); assert.equal(f.value, 100);
 });
 test('good habits refill, each source capped per season, newSeason resets', () => {
   const f = createFocus({ start: 0 }); let sum = 0; for (let i = 0; i < 50; i++) sum += f.gain('sale'); assert.equal(sum, GAIN_CAP.sale);
@@ -23,5 +23,5 @@ test('gain never overfills; refill() restores', () => {
 });
 test('every ability has a cost and the full bar affords at most 3 big powers', () => {
   assert.equal(Object.keys(FOCUS_COST).length, 6); const f = createFocus(); let n = 0; for (const k of ['fogSweep', 'bubbleShield', 'growthStomp', 'haggleShout']) { f.tick(1); if (f.spend(k).ok) n++; }
-  assert.equal(n, 3);
+  assert.ok(n >= 2 && n <= 3, 'S75: regen is 3x slower, so a full bar affords 2-3 big powers in a row, never 4 (got ' + n + ')');
 });
