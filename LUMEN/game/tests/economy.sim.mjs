@@ -17,7 +17,7 @@ const seasons70 = args.includes('--seasons70');   // 41C: per-season income/expe
 const seed = +(args.find((a) => !a.startsWith('--')) ?? 1);
 const types = Object.keys(BALANCE.glimmers);
 const pad = (v, n = 7) => String(v).padStart(n);
-const REPAY_BIG = +(process.env.REPAY_BIG || 0.85);
+const REPAY_BIG = +(process.env.REPAY_BIG || 0.95);
 const stallsToBuild = ['fruit', 'tea', 'bread', 'flower', 'fish', 'toy'];
 
 let overrideBalance = null;   // set by the tuner (tools) to try candidate BALANCE values

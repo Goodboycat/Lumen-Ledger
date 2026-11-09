@@ -51,10 +51,10 @@ export const STRANGER_VARIANTS = ['coral', 'butter', 'rose'];   // T4 (S57): the
 
 /** Story / economy facing data (4B scams, 8A story, 7B dialogue read these). */
 export const VILLAIN_INFO = {
-  baron:      { name: 'Baron Gilt',   title: 'Lord of the Debt Fog', color: 0x7B5EA7, loanRate: 0.20, blurb: 'Offers loans at 20% a Season — compounding. Tips his hat while your Spark drains.' },
-  collector0: { name: 'Ledgerworth',  title: 'Fog Collector (Senior)', color: 0x9575CD, loanRate: 0.20, blurb: 'Wide, slow, carries the biggest sack. Slips on coins.' },
-  collector1: { name: 'Quillsby',     title: 'Fog Collector (Clerk)',  color: 0x9575CD, loanRate: 0.20, blurb: 'Tall and twitchy. Waves the clipboard. Flees from Haggle Shouts.' },
-  collector2: { name: 'Pennywhistle', title: 'Fog Collector (Junior)', color: 0x9575CD, loanRate: 0.20, blurb: 'Tiny, eager, always first to run.' },
+  baron:      { name: 'Baron Gilt',   title: 'Lord of the Debt Fog', color: 0x7B5EA7, loanRate: 0.06, blurb: 'Offers loans at 6% a Season — compounding. Tips his hat while your Spark drains.' },
+  collector0: { name: 'Ledgerworth',  title: 'Fog Collector (Senior)', color: 0x9575CD, loanRate: 0.06, blurb: 'Wide, slow, carries the biggest sack. Slips on coins.' },
+  collector1: { name: 'Quillsby',     title: 'Fog Collector (Clerk)',  color: 0x9575CD, loanRate: 0.06, blurb: 'Tall and twitchy. Waves the clipboard. Flees from Haggle Shouts.' },
+  collector2: { name: 'Pennywhistle', title: 'Fog Collector (Junior)', color: 0x9575CD, loanRate: 0.06, blurb: 'Tiny, eager, always first to run.' },
   stranger0:  { name: 'Marigold',  title: 'Friendly Stranger', color: 0xFFAB91, loanRate: 0, blurb: 'Warm, chatty, always smiling. Has a deal for you.' },
   stranger1:  { name: 'Butterbur', title: 'Friendly Stranger', color: 0xFFE082, loanRate: 0, blurb: 'Round and cheerful. Hums while he walks.' },
   stranger2:  { name: 'Rosalind',  title: 'Friendly Stranger', color: 0xF48FB1, loanRate: 0, blurb: 'Tall, graceful, waves with the whole arm.' },

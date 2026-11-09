@@ -71,7 +71,7 @@
       "id": "goodVsBadInterest",
       "season": 4,
       "title": "Good vs Bad Interest",
-      "lesson": "Save pays YOU 5 % every season. The Baron charges 20 %, and his interest grows interest of its own. Same word, opposite direction.",
+      "lesson": "Save pays YOU 5 % every season. The Baron charges 6 % on a mountain of debt, and his interest grows interest of its own. Same word, opposite direction.",
       "tip": "Repay the Baron before you buy anything shiny."
     },
     "scams": {
@@ -778,7 +778,7 @@
         },
         {
           "speaker": "collector",
-          "text": "Most folk pay the Baron 20 %. This is zero*. Just initial here to show you read it. Then we talk.",
+          "text": "Most folk pay the Baron 6 %. This is zero*. Just initial here to show you read it. Then we talk.",
           "choices": [
             {
               "id": "sign",

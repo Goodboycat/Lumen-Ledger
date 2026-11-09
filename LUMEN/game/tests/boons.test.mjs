@@ -121,7 +121,7 @@ test('balance: sensible play with a random boon every season keeps winning-ish, 
   // light version of tests/economy.sim.mjs: 8 seasons, boons at random; a boon never makes net worth explode or go below the no-boon baseline by a lot
   const nw = (useBoon, seed) => { const e = eco(seed), rng = rngOf(seed * 7); const owned = [];
     for (let s = 1; s <= 8; s++) { e.addStall(Math.min(3, s)); for (let i = 0; i < 25; i++) e.sell('fruit', 'regular', e.stallInfo('fruit').fair); if (e.state.debt > 0) e.repay(Math.floor(e.state.spark * 0.5)); e.allocate({ save: Math.floor(e.state.spark * 0.3) }); e.endSeason(); if (useBoon) { const p = B.randomPick(rng, owned, e.state.season); if (p) { B.apply(e, p.id); owned.push(p.id); } } }
-    return e.netWorth(); };
+    return e.netWorth() + e.config.startDebt; };   // S74: net worth GAINED since day 1 (the inherited debt is now 1300, so raw net worth is negative and a ratio check is meaningless)
   let a = 0, b = 0; for (let s = 1; s <= 20; s++) { a += nw(false, s); b += nw(true, s); }
   assert.ok(b > a * 0.5 && b < a * 2.5, `boons ${Math.round(b / 20)} vs base ${Math.round(a / 20)}`);
 });

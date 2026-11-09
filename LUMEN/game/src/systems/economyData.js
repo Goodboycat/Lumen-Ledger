@@ -125,8 +125,13 @@ export const BALANCE_TUNED = {
   ...BALANCE,
   startSpark: 150,           // S01 (2026-10-23): 100 → 150. Recording run 2 showed S1 income 66 vs expenses 221 — a first-time kid lost ground in the tutorial
                              //   season. Debt/interest stay (the Baron's scam core); the pouch gets 1 stall + a buffer instead. Sweep: sensible win@10 ×20/20.
-  startDebt: 300,            // 41C (2026-11-02): 260 → 300. Upkeep now scales with the 70/90/110/130 s season curve, which let the hoarder survive (4/10 lose); 300 restores hoarder lose 10/10, sensible still win@10 ×20, borrow lose ×20
-  season1RateMul: 0.75,      // S01/P03 (2026-10-23): Season 1 interest 52 → 39 ✦ (15 %). Recording run 2: S1 income 66 vs expenses 221 (interest 52 + upkeep 49)
+  startDebt: 1300,           // S74 (2026-11-09): 300 → 1300. The player asked for a debt that cannot be cleared before ~S10 ('a thousand or two'). With loanRate 6 % + net-paydown fog relief the sensible
+                             //   sim (repay 95 % when debt > 300) clears it at S8–S11 and wins @10 ×10 / @11 ×10 (20 seeds); borrow-everything + hoarder still lose. (old S41C note: 260 → 300 …)
+  loanRate: 0.06,            // S74: Baron interest 20 % → 6 %/season (compounding). 20 % on 1300 = 260/season is unpayable (sim: sensible loses 20/20). Still > Save 5 %, and it compounds.
+  fogPaydown: 0.07,          // S74: a season that ENDS with less debt than it began (net paydown >= fogPaydownMin of the opening debt) pushes the fog back 0.07 instead of +0.07 → a 1300 debt is a climb, not a death sentence
+  fogPaydownMin: 0.05,
+  // (41C) (2026-11-02): 260 → 300. Upkeep now scales with the 70/90/110/130 s season curve, which let the hoarder survive (4/10 lose); 300 restores hoarder lose 10/10, sensible still win@10 ×20, borrow lose ×20
+  season1RateMul: 0.5,      // S01/P03 (2026-10-23): Season 1 interest 52 → 39 ✦ (15 %). Recording run 2: S1 income 66 vs expenses 221 (interest 52 + upkeep 49)
                              //   → debt 260 → 315 even with careful play. 0.5 broke the 'hoarder loses ≥ 8/10' gate (never repays → S1 interest is its clock);
                              //   0.75 keeps every sweep gate (sensible win@10 ×20/20, borrow lose S3–5, hoarder lose 8/10) and still softens the tutorial season.
   startFog: 0.40,
@@ -135,7 +140,7 @@ export const BALANCE_TUNED = {
   saveThreshold: 200,        // ≈ 3 seasons of upkeep with 6 stalls (14 + 6×7 = 56) + one more stall
   baseUpkeep: 14,
   upkeepPerStall: 7,
-  maxLoan: 500,
+  maxLoan: 1800,             // S74: 500 → 1800 (lose at debt > 2 × maxLoan = 3600)
   stalls: {
     ...BALANCE.stalls,
     fruit:         { fair: 6,  base: 1.6, cost: 60  },

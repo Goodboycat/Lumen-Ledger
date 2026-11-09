@@ -24,7 +24,7 @@ export const LESSONS = {
   budgeting:            { title: 'Budgeting',             lesson: 'A budget is a plan for your Spark before you spend it. Every coin gets a jar.',                        tip: 'Fill the jars first, then spend what is left in Spend.' },
   needsVsWants:         { title: 'Needs vs Wants',        lesson: 'Needs keep the market running (upkeep, repairs). Wants are nice — but they wait their turn.',          tip: 'Ask: if I skip this, does anything break?' },
   emergencyFund:        { title: 'Emergency Fund',        lesson: 'Shocks happen. Spark set aside in Protect means a storm is a bill, not a loan.',                      tip: 'Keep ~3 seasons of upkeep in Protect.' },
-  goodVsBadInterest:    { title: 'Good vs Bad Interest',  lesson: 'Save pays YOU 5 % a season. The Baron charges 20 % — and his interest compounds on itself.',          tip: 'Repay debt before buying anything shiny.' },
+  goodVsBadInterest:    { title: 'Good vs Bad Interest',  lesson: 'Save pays YOU 5 % a season. The Baron charges 6 % on a big debt — and his interest compounds on itself.',          tip: 'Repay debt before buying anything shiny.' },
   scams:                { title: 'Too-Good Deals',        lesson: 'If a deal is secret, urgent and guaranteed, it is a scam. Real offers survive a night of thinking.',  tip: 'Spot the tells: hurry, secrecy, "guaranteed".' },
   compoundGrowth:       { title: 'Compound Growth',       lesson: 'Interest earns interest. Small amounts left alone become big amounts — time does the work.',          tip: 'Start saving early, even tiny amounts.' },
   insurance:            { title: 'Insurance',             lesson: 'The Protect jar absorbs shocks so one bad day does not undo a good season.',                           tip: 'Insurance feels wasted — until it is not.' },
@@ -43,7 +43,7 @@ export const LEDGER_ROWS = [
   ['interestEarned', 'Save interest  +5 %', +1],
   ['investReturn',   'Invest return',       +1],
   ['expenses',       'Expenses & upkeep',   -1],
-  ['interestPaid',   'Loan interest  20 %', -1],
+  ['interestPaid',   'Loan interest  6 %', -1],
   ['tillTax',        'Left on counters  −10 % (Collector tax)', -1],   // 42A: unswept till money at season end
   ['raided',         'Raided  (Collectors ran off with it)',    -1],   // 42C: carried off the island — shown leaving, never silently deducted
   ['recovered',      'Recovered  (dropped by bonked raiders)',  +1],   // 42C: knocked out of a carrier's hands, picked up again
@@ -147,7 +147,7 @@ export function mountLedger(root, opts = {}) {
         r.row.classList.remove('in', 'hidden-zero'); r.row.style.setProperty('--i', i); netSum += r.target;
         if (key === 'tillTax' && v <= 0) r.row.classList.add('hidden-zero');   // 42A: the Collector-tax row only appears when money was left on the counters
         if ((key === 'raided' || key === 'recovered') && v <= 0) r.row.classList.add('hidden-zero');   // 42C: raid rows only when a raid happened
-        if (key === 'interestPaid') { const pct = report.debtBefore > 0 && v > 0 ? Math.round(v / report.debtBefore * 100) : null; r.row.firstChild.textContent = pct != null ? `Loan interest  ${pct} %` : (season === 1 ? 'Loan interest  15 %' : 'Loan interest  20 %'); }   // S01: S1 shows the real (half) rate
+        if (key === 'interestPaid') { const pct = report.debtBefore > 0 && v > 0 ? Math.round(v / report.debtBefore * 100) : null; r.row.firstChild.textContent = pct != null ? `Loan interest  ${pct} %` : (season === 1 ? 'Loan interest  15 %' : 'Loan interest  6 %'); }   // S01: S1 shows the real (half) rate
         later(ROW_STAGGER * i, () => { r.row.classList.add('in'); r.t = 0; });
       });
       rows.net.target = netSum; rows.net.shown = 0; rows.net.t = -1; rows.net.val.textContent = '0'; rows.net.row.classList.remove('in', 'pos', 'neg');
