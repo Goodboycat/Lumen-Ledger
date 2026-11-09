@@ -323,7 +323,7 @@ function wireEconomy(sb) {
   off.push(bus.on('eco:jar', () => { const j = eco.state.jars, tot = Math.max(1, j.spend + j.save + j.invest + j.protect); ['spend', 'save', 'invest', 'protect'].forEach((k) => sb.jarsWorld?.get?.(k)?.userData.setFill?.(Math.min(1, j[k] / tot))); }));   // 48E: placed jars only
   off.push(bus.on('eco:season', (r) => {
     sb.stats.seasons++; sb.stats.reports.push(r);
-    const spot = sb.hero.root.position.clone().setY(2); vfx.pop?.show?.(spot, `Season ${r.season} ★${r.stars}`, { color: '#FFD54F', dur: 1.6, size: 1.1 });
+    const spot = sb.hero.root.position.clone().setY(2); vfx.pop?.show?.(spot, (r.pier?.pending ? `Season ${r.season}` : `Season ${r.season} ★${r.stars}`), { color: '#FFD54F', dur: 1.6, size: 1.1 });
     world.lanterns.forEach((l) => l.userData.setLit?.(r.season % 2 === 0));                      // alternate day/night feel per season
     if (!eco.state.ended) sb.cust.spawnWave(eco.state.season);
     if (sb.enemies?.active.length) { const n = sb.enemies.sendHome(); sb.log.push(`S${r.season} collectors walk home (${n})`); }   // S16b: season over → they turn and walk back to the pier (not a defeat)

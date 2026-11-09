@@ -40,7 +40,8 @@ export function installUnlocks(sb, bus, opts = {}) {
     return ev;
   };
   u.addStars = (n) => { u.starsTotal += Math.max(0, n | 0); if (sb.eco?.state) sb.eco.state.starsTotal = u.starsTotal; return u.tryUnlock(); };
-  u._offs.push(bus.on('eco:season', (r) => { u.pending = null; u.addStars(r?.stars ?? r?.report?.stars ?? 0); }));
+  u._offs.push(bus.on('eco:season', (r) => { u.pending = null; if (r?.pier?.pending) return; u.addStars(r?.stars ?? r?.report?.stars ?? 0); }));   // S70: with the Baron still to be paid the stars are provisional → counted at eco:stars
+  u._offs.push(bus.on('eco:stars', (e) => { u.addStars(e?.stars ?? 0); }));
   u._offs.push(bus.on('eco:win', () => { for (const id of ABILITY_ORDER) u.abilities.add(id); }));   // P3: endless = playground
 
   /** Restore from a save snapshot (v2 fields; v1 → starters + 0). */

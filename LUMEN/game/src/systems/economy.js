@@ -377,6 +377,7 @@ export class Economy {
     if (paid > 0) this._addSpark(-paid, 'interest');
     if (shortfall > 0) s.debt += shortfall;
     s.interestOwed = 0;
+    const pr = this._pierReport(); if (pr) { pr.pier.paid += paid; pr.pier.shortfall += shortfall; }   // S70: closePier() re-scores the stars with this
     this.bus.emit('eco:interest', { owed, paid, shortfall, debt: s.debt });
     if (shortfall > 0) this.bus.emit('eco:loan', { debt: s.debt, delta: shortfall, kind: 'interest' });
     return { paid, shortfall };
@@ -392,7 +393,8 @@ export class Economy {
   repay(amount) {
     amount = round(Math.min(+amount || 0, this.state.debt, this.state.spark));
     if (this.state.ended === 'lose' || amount <= 0) { this.bus.emit('eco:denied', { reason: this.state.debt <= 0 ? 'no debt to repay' : 'nothing to repay with', cost: 0, spark: this.state.spark }); return 0; }
-    this.state.debt -= amount; this.ledger.repaid += amount;
+    this.state.debt -= amount;
+    const pr = this._pierReport(); if (pr) { pr.repaid += amount; pr.pier.repaid += amount; } else this.ledger.repaid += amount;   // S70 fix: repaid AT THE PIER counts for the season that just closed (it used to land in the next season's ledger)
     // BUGFIX C04: the scam's hidden rate died with the scam debt. Without this a later HONEST loan still compounded at trueRate.
     if (this.state.debt <= 0) { this.state.debt = 0; this.state.scamRate = 0; }
     this._addSpark(-amount, 'repay');
@@ -550,6 +552,7 @@ export class Economy {
    */
   endSeason() {
     if (this.state.ended) return this.history[this.history.length - 1] || null;
+    this.closePier('next');   // S70: a pier report left open (no pier system / skipped) is closed before the next one is written
     const c = this.config, s = this.state, L = this.ledger;
     const season = s.season;
     const debtBefore = s.debt, fogBefore = s.fog01;
@@ -581,19 +584,14 @@ export class Economy {
     // stars
     const income = L.income + interestEarned + Math.max(0, investReturn);
     const expenses = L.expenses + interestPaid;
-    let stars = 0;
-    if (income >= expenses * c.starIncomeGood) stars++;
-    if (L.saved >= c.starSaveMin || (debtBefore > 0 && s.debt < debtBefore)) stars++;
     // S66-C: fair 3rd star. Old rule (fog flat) was unreachable while ANY debt stood: the fog grows each season you end with debt.
     // Now: the debt did not go up AND you either held the fog or repaid at least the interest the Baron charged this season.
     const debtStart = L.debtStart ?? (debtBefore + L.repaid - L.loansTaken);   // debt when the season began (debtBefore is read AFTER this season's repayments)
-    const debtHeld = s.debt <= debtStart + 1e-9, fogHeld = s.fog01 <= fogBefore + 1e-9, paidInterest = L.repaid + 1e-9 >= interestPaid;
-    const goals = [
-      { id: 'income', ok: income >= expenses * c.starIncomeGood },
-      { id: 'save', ok: L.saved >= c.starSaveMin || (debtBefore > 0 && s.debt < debtBefore) },
-      { id: 'debt', ok: debtHeld && (fogHeld || paidInterest), debtHeld, fogHeld, paidInterest, debtStart, interest: interestPaid, repaid: L.repaid },
-    ];
-    if (goals[2].ok) stars++;
+    const fogHeld = s.fog01 <= fogBefore + 1e-9;
+    const { stars, goals } = this._scoreSeason({ income, expenses, saved: L.saved, debtBefore, debtNow: s.debt, debtStart, fogHeld, repaid: L.repaid, interest: interestPaid, interestCleared: false });
+    // S70: with the Baron at the pier the interest is still unpaid HERE. Mark the report open: pier payments (settleInterest / repay) are added to it
+    // and closePier() re-scores the stars (before pier:done, so the ledger the player sees is final). Provisional stars = the old rule.
+    const pierPending = this.pierPays && (s.debt > 0 || (s.interestOwed || 0) > 0);
     const report = {
       season, income, expenses, interestEarned, interestPaid, investReturn, investRate: +investRate.toFixed(3), upkeep, wages, tillTax: L.tillTax || 0, tillSwept: L.tillSwept || 0,   // 42A
       upkeepDebt: upkeepRes.debt, saved: L.saved, invested: L.invested, protected: L.protected, absorbed: L.absorbed,
@@ -602,6 +600,7 @@ export class Economy {
       debt: s.debt, debtBefore, interestOwed: s.interestOwed || 0, fog01: s.fog01, fogDelta: +(s.fog01 - fogBefore).toFixed(4), spark: s.spark, jars: { ...s.jars },
       netWorth: this.netWorth(), reputation: +s.reputation.toFixed(3),
       lessonId: c.lessons[(season - 1) % c.lessons.length], stars, goals, starSaveMin: c.starSaveMin, starIncomeGood: c.starIncomeGood,
+      debtStart, fogHeld, ...(pierPending ? { pier: { pending: true, paid: 0, shortfall: 0, repaid: 0 } } : {}),
     };
     this.history.push(report);
     this.ledger = this._freshLedger();
@@ -610,9 +609,43 @@ export class Economy {
     report.seasonSeconds = this.seasonSecondsFor(s.season);   // 41C: NEXT season's length so the HUD day bar scales
     this.bus.emit('eco:season', report);
     // win / lose
+    if (this.isLose() || this.isWin()) this.closePier('end');   // S70: win / lose → no Baron visit follows, the report is final before eco:win / eco:lose
     if (this.isLose()) { s.ended = 'lose'; this.bus.emit('eco:lose', { season, reason: s.fog01 >= c.fogLoseAt ? 'fog' : 'debt' }); }
     else if (this.isWin()) { s.ended = 'win'; s.lighthouseLit = true; s.storyWon = true; this.bus.emit('eco:win', { season }); }
     return report;
+  }
+  /** S70: the three star goals. Pure (no state). `interestCleared` = the Baron's interest for the season was paid in full at the pier.
+   *  Used by endSeason (provisional while the Baron still waits) and closePier (final). */
+  _scoreSeason({ income, expenses, saved, debtBefore, debtNow, debtStart, fogHeld, repaid, interest, interestCleared = false }) {
+    const c = this.config;
+    const debtHeld = debtNow <= debtStart + 1e-9, paidInterest = repaid + 1e-9 >= interest || !!interestCleared;
+    const goals = [
+      { id: 'income', ok: income >= expenses * c.starIncomeGood },
+      { id: 'save', ok: saved >= c.starSaveMin || (debtBefore > 0 && debtNow < debtBefore) },
+      { id: 'debt', ok: debtHeld && (fogHeld || paidInterest), debtHeld, fogHeld, paidInterest, debtStart, interest, repaid },
+    ];
+    return { stars: goals.filter((g) => g.ok).length, goals };
+  }
+  /** S70: the report of the season the Baron is still collecting for (pierPays) — null when none is open. */
+  _pierReport() {
+    const r = this.history[this.history.length - 1];
+    return r && r.pier && r.pier.pending && !this.state.ended ? r : null;
+  }
+  /** S70 BUGFIX: "I paid the Baron 45 and it did not count as a star". With pierPays the stars were scored the instant the clock ended, BEFORE the
+   *  Baron was paid, so the interest you then paid at the pier (and any debt you repaid there) never counted. The Baron's visit is part of the
+   *  season: baronPier calls this just before `pier:done`; the report is re-scored in place (stars, goals, debt, pouch, net worth) and
+   *  `eco:stars {season, stars, from, report}` is emitted (unlocks add the stars here, the story swaps its ledger variant). Idempotent.
+   *  why: 'done' | 'idle' | 'timeout' | … (re-reads the live state) · 'next' (stale report: scores it, does not touch its money snapshot). */
+  closePier(why = 'done') {
+    const r = this.history[this.history.length - 1];
+    if (!r || !r.pier || !r.pier.pending) return null;
+    const s = this.state, p = r.pier, from = r.stars; p.pending = false; p.why = why;
+    if (why !== 'next') { r.debt = s.debt; r.spark = s.spark; r.jars = { ...s.jars }; r.interestOwed = s.interestOwed || 0; r.netWorth = this.netWorth(); }
+    const cleared = p.shortfall <= 0 && p.paid + 1e-9 >= r.interestPaid;
+    const { stars, goals } = this._scoreSeason({ income: r.income, expenses: r.expenses, saved: r.saved, debtBefore: r.debtBefore, debtNow: r.debt, debtStart: r.debtStart, fogHeld: r.fogHeld, repaid: r.repaid, interest: r.interestPaid, interestCleared: cleared });
+    r.stars = stars; r.goals = goals; r.pier.cleared = cleared;
+    this.bus.emit('eco:stars', { season: r.season, stars, from, report: r, why });
+    return r;
   }
   isWin() {
     const c = this.config, s = this.state;

@@ -117,6 +117,34 @@ ok(typeof Economy === 'function' && BALANCE && EVENTS && SCAMS && UPGRADES, 'exp
   const z = mk({ startDebt: 300, startFog: 0.5 }); const rz = z.endSeason(); ok(rz.stars === 0, `idle season with debt → 0 stars (got ${rz.stars})`);
 }
 
+// ---- S70: paying the Baron AT THE PIER counts for the season's stars ("I paid 45 and it did not count as a star")
+{
+  const mkp = (cfg = {}) => { const e = mk({ startDebt: 300, startFog: 0.4, startSpark: 400, ...cfg }, { pierPays: true }); for (let i = 0; i < 20; i++) e.sell('fruit', 'regular', 5); e.allocate({ save: 30 }); return e; };
+  const seen = []; 
+  // paid in full -> the debt star is earned (it was NOT before: stars were scored before the Baron was paid)
+  const a = mkp(); a.bus.on('eco:stars', (x) => seen.push(x));
+  const ra = a.endSeason(); const st0 = ra.stars;
+  ok(ra.pier && ra.pier.pending === true && ra.interestOwed > 0 && !ra.goals[2].ok, 'S70: pierPays → report is OPEN (pier.pending), interest still owed, debt goal not met yet');
+  const due = a.state.interestOwed; const pr = a.settleInterest();
+  ok(pr.paid === due && pr.shortfall === 0, 'S70: Baron paid in full from the pouch');
+  const done = a.closePier('done');
+  ok(done === ra && ra.pier.pending === false && ra.goals[2].ok && ra.goals[2].paidInterest && ra.stars === st0 + 1, `S70: paying the Baron's interest earns the debt star (${st0} -> ${ra.stars})`);
+  ok(seen.length === 1 && seen[0].stars === ra.stars && seen[0].from === st0, 'S70: eco:stars {stars, from} emitted once');
+  ok(a.closePier('again') === null && seen.length === 1, 'S70: closePier is idempotent');
+  ok(ra.debt === a.state.debt && ra.spark === a.state.spark, 'S70: report money snapshot refreshed after the pier');
+  // repay AT the pier belongs to the season that closed, not the next ledger
+  const b = mkp(); const rb = b.endSeason(); b.settleInterest(); const before = b.ledger.repaid; b.repay(40);
+  ok(rb.repaid >= 40 && b.ledger.repaid === before, 'S70: repay at the pier is written to the CLOSED season (next ledger stays clean)');
+  b.closePier('done');
+  // short at the pier -> debt went up -> no debt star
+  const c = mkp({ startSpark: 0 }); c.state.spark = 0; const rc = c.endSeason(); const shortR = c.settleInterest(); c.closePier('done');
+  ok(shortR.shortfall > 0 && !rc.goals[2].ok && rc.goals[2].debtHeld === false, 'S70: not paying (shortfall -> debt) keeps the debt star OFF');
+  // a stale open report is closed by the next endSeason
+  const d = mkp(); const rd = d.endSeason(); d.endSeason(); ok(rd.pier.pending === false, 'S70: an open pier report is closed by the next endSeason (no stuck report)');
+  // pierPays:false (headless/auto path) keeps the old, immediate scoring
+  const n = mk({ startDebt: 300, startFog: 0.4, startSpark: 400 }); for (let i = 0; i < 20; i++) n.sell('fruit', 'regular', 5); const rn = n.endSeason(); ok(!rn.pier, 'S70: auto path has no pier block');
+}
+
 // ---- loans / repay
 {
   const e = mk({ startDebt: 0 }); let loanEv = null; e.bus.on('eco:loan', (l) => { loanEv = l; });

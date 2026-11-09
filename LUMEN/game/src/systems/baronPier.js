@@ -92,6 +92,7 @@ export function createBaronPier(deps = {}) {
     if (!B.settled) settleInterest(why);
     B.phase = 'leave'; B.t = 0;
     B.anim?.faceTo?.(new THREE.Vector3(B.from.x, 0, B.from.z)); B.anim?.play?.('strut');
+    eco.closePier?.(why);   // S70: what was paid / repaid at the pier counts for the season that just closed → final stars, BEFORE the ledger opens
     bus.emit('pier:done', { interest: B.interest, paid: B.paid, repaid: B.repaid, shortfall: B.shortfall, debt: eco.state.debt, why, season: B.season });
   }
 

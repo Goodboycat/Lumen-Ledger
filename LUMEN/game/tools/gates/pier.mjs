@@ -127,6 +127,10 @@ export async function run({ resolve, pathToFileURL }) {
     if (ev['story:review'].length !== 1 || ev['pier:done'].length !== 1) throw new Error(`story:review ${ev['story:review'].length} pier:done ${ev['pier:done'].length}`);
     const row = eco.history.at(-1); if (row.interestPaid !== dueExp || ev['pier:due'][0].interest !== dueExp) throw new Error(`ledger interest ${row.interestPaid} vs due ${dueExp}`);
     if (lg.stats.piers !== 1) throw new Error('stats.piers ' + lg.stats.piers);
+    // S70: what the player paid at the pier is IN the ledger they see: report closed, debt goal knows the interest was paid, unlock stars counted once
+    if (row.pier?.pending !== false) throw new Error('S70: report still open when the ledger opened ' + JSON.stringify(row.pier));
+    if (r === 'paid' && !(row.goals[2].paidInterest && row.pier.cleared)) throw new Error('S70: interest paid at the pier did not count: ' + JSON.stringify(row.goals[2]));
+    if (sb.unlocks.starsTotal !== row.stars) throw new Error(`S70: starsTotal ${sb.unlocks.starsTotal} != ledger stars ${row.stars}`);
     ui.ledger.skip(); ui.ledger.continue(); if (lg.state !== 'playing' || eco.state.season !== 2) throw new Error(`continue → ${lg.state} S${eco.state.season}`);
     lg.destroy(); ui.destroy?.();
     console.log(`  5. full game pierPays: S1 clock end → state 'pier' (clock held, no ledger, no story:review) · ${snapOK ? 'snapshot.state=pier' : 'snapshot n/a'} · walk + E → ${r} → pier:done → 'review' ledger interest ${row.interestPaid} = due · CONTINUE → S2 playing  OK`);

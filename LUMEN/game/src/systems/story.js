@@ -270,6 +270,9 @@ export class StorySystem {
   _listen() {
     const on = (n, f) => this._offs.push(this.bus.on(n, f));
     on('eco:season', (report) => { this.onSeasonEnd(report); });                         // opening of the NEXT season comes from update() (economy.state.season advanced) or ui:continue
+    // S70: stars are re-scored when the Baron's pier visit closes (eco.closePier) — swap the not-yet-played ledger lines to the final variant
+    on('eco:stars', (e) => { const n = e?.season; if (!n) return; const variant = pickLedgerVariant(e.stars); const lines = linesFor(this.data, 'ledger', n, variant);
+      const it = this.queue.find((q) => q.group === 'ledger' && q.meta?.season === n); if (it && lines.length) { it.lines = lines; it.meta = { ...it.meta, variant, report: e.report }; } });
     on('ui:continue', (p) => { if (p?.outcome === 'season' && this.economy && !this.state.finale) this.onSeasonStart(this.economy.state.season); });
     on('eco:event', (p) => { this.onEvent(p?.id || p?.event?.id); });
     on('eco:scam', (offer) => { this.onScam(offer); });
