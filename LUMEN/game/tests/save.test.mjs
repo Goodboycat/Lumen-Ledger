@@ -124,3 +124,11 @@ test('S66-A old save with a jar_spend build entry: entry dropped, balance kept, 
   assert.deepEqual(JSON.parse(d.eco).state.jars, { spend: 0, save: 40, invest: 20, protect: 10 });
   assert.ok(d.jarsUnlocked.includes('spend'), 'spend still counts as unlocked (the pouch)');
 });
+
+// S70: Focus meter is persisted (additive field) and an old save without it loads without error
+import { snapshot as _snapS70 } from '../src/systems/save.js';
+test('S70 snapshot carries the Focus value; absent focus stays undefined-safe', () => {
+  const lg = { sb: { eco: { serialize: () => '{}', state: {}, config: {} }, focus: { value: 42.26 }, build: { serialize: () => [] }, helpers: [], hero: { root: { position: { x: 0, z: 0 } } } }, state: 'playing', ui: {}, mode: 'story' };
+  const s = _snapS70(lg); assert.equal(s.focus, 42.3);
+  delete lg.sb.focus; assert.equal(_snapS70(lg).focus, undefined);
+});

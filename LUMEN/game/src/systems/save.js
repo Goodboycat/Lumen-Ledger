@@ -86,6 +86,7 @@ export function snapshot(lg) {
     noveltiesSeen: lg.story?.state?.noveltiesSeen ? [...lg.story.state.noveltiesSeen] : [],   // 43D (v3): mirror of story.state (also inside `story`), kept top-level for describe()/tools
     scamJournal: sb.journal ? sb.journal.serialize() : undefined,                       // T5 (additive v4 field): { v:1, e:{ dealId:{ r, n, s } }, stars } — which deals were met and how they ended
     jarsUnlocked: sb.jarUnlocks ? sb.jarUnlocks.serialize() : undefined,                 // T1-C (additive v4 field): jar keys revealed so far (data/jars.json rules)
+    focus: sb.focus ? Math.round(sb.focus.value * 10) / 10 : undefined,                  // S70 (additive v4 field): Focus meter 0..100 survives CONTINUE (it used to refill to 100 on every load)
     tutorCounts: lg.ui?.tutor?.counts ? { ...lg.ui.tutor.counts } : (lg.tutorCounts || {}),   // T2 (additive v4 field): {cardId: times shown, 99 = retired by doing it}
     tutorSeen: Array.isArray(lg.ui?.tutor?.seen) ? [...lg.ui.tutor.seen] : (Array.isArray(lg.tutorSeen) ? [...lg.tutorSeen] : []),   // 48F (v4 field): curiosity-card ids shown once per profile (ui/tutor.js)
   };

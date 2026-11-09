@@ -1577,6 +1577,7 @@ function applySnapshot(lg, sb, snap) {
   if (snap.jars) { lg.jarPct = { ...snap.jars }; lg.ui?.jars?.setPct?.(snap.jars); }
   if (snap.autoApply != null) { lg.autoApply = !!snap.autoApply; lg.ui?.jars?.setAuto?.(lg.autoApply, 'restore'); }   // S03
   if (snap.cust && sb.cust?.load) sb.cust.load(snap.cust);                               // BUGFIX B16: per-stall prices (+ sale totals) survive CONTINUE
+  if (Number.isFinite(+snap.focus) && sb.focus) { sb.focus.st.value = Math.max(0, Math.min(sb.focus.max, +snap.focus)); sb._focusEmit?.(true); }   // S70: Focus persisted (missing in old saves -> stays full)
   sb.unlocks?.restore?.(snap);                                                           // 41D: v2 abilities/starsTotal (v1 → starters)
   if (sb.journal) sb.journal.restore(snap.scamJournal);                                  // T5: tolerant — missing / malformed → empty journal (old saves load)
   if (Array.isArray(snap.jarsUnlocked) && sb.jarUnlocks) { sb.jarUnlocks.restore(snap.jarsUnlocked); lg.ui?.build?.setHidden?.(sb.jarUnlocks.hiddenIds()); sb.game.bus.emit('jars:unlocked', { jar: null, how: 'restore', unlocked: sb.jarUnlocks.unlocked() }); }   // T1-C: silent restore (how 'restore' → no NEW tag / pulse)
