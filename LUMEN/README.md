@@ -22,6 +22,9 @@ LUMEN/
 > Everything from update 17 onward in the old plan (regions/biomes/World v3, 13B, 14) is **stopped**. Next IDs: `40A 40B 41A–41D 42A–42D 43Z 44Z 45Z`
 > (see `LUMEN_extras/README_pipeline.md` "## Next"; `game/tools/next.sh` prints the one to do).
 
+## S73 (2026-11-09) — version shown in the title menu: `S73 · jam build`
+S3 passive players (17-20 customers leaving because nobody sells cloth / toys / pottery / lanterns) now get ONE blue card after the 6th walk-away: *Customers want other stalls. Tap BUILD.* (`cust:unserved`, tutor `urgent` cards replace an info card or wait behind a verb step). The credits card has a looping scrolling roll and its own music cue (`credits` = victory.ogg loop). Handoff `game/docs/HANDOFF_S73.md`; rig `tools/shot_s73_unserved.mjs`.
+
 ## Touch fixes (S63, 2026-11-07) — version shown in the title menu: `S63 · jam build`
 User report: on a phone a jar tap kept extracting (the tap pressed the jar but never released), and Strangers / the Baron needed a very close, long stand-still. Now **a tap = one deposit** (`sb.tapJar`), the **talk range is 3.4 u** and needs **0.25 s** of standing still (Baron's visit included, `sb.talk()` never touches a jar), the jar tag and tray hint use touch wording (no E / B / R letters), the 'drag to move' label fades on the first step. IDs S63-A..I in `game/docs/HANDOFF_S59.md`; rigs `tools/play_s63.mjs`, `tools/play_s63c.mjs`.
 
