@@ -88,6 +88,21 @@ export function mountHUD(root, opts = {}) {
   hud.append(spark, mid, right);
   root.appendChild(hud); root.appendChild(raidChip); root.appendChild(raidArrow); root.appendChild(pierChip);
   const chips = el('div', 'll-chips'); chips.setAttribute('role', 'status'); root.appendChild(chips);   // 43C: generic hud:chip {id, text, on} (nightMarket, 43D rotation NEW chip)   // 42C: chip + arrow live outside the header so the arrow can sit at any screen edge
+  // S77-B: every HUD chip is now the CLOUD speaking in drawn icons (no words). New ones stack BELOW the older ones; each fades to transparent over 5 s, then is removed.
+  const CHIP_ICONS = { storm: ['stormmark', 'jar'], night: ['lantern', 'coinbag'] };
+  const NEW_ICONS = { stormWarning: ['stormmark', 'shield'], nightMarket: ['lantern', 'coinbag'], baronVisit: ['face_baron'], pickyGlimmer: ['face_glimmer', 'think'], raidDouble: ['face_collector', 'face_collector'] };
+  const SAY_MS = 5000;
+  const cloudSay = (id, icons, o = {}) => {
+    let c = [...chips.children].find((n) => n.dataset?.id === id) || null;
+    if (!c) { c = el('div', 'll-chip'); c.dataset.id = id; chips.appendChild(c); } else { clearTimeout(c._ttl); }
+    c.className = 'll-chip ' + (o.cls || '').trim();
+    c.setAttribute('aria-label', o.text || id);
+    c.innerHTML = '<div class="ll-say">' + icon('cloudbaby', { cls: 'll-say-av' }) + '<div class="ll-say-bub">' + icons.map((n) => icon(n, { cls: 'll-chip-ico' })).join('') + '</div></div><span class="ll-sr">' + String(o.text || id).replace(/[&<>]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch])) + '</span>';
+    c.style.animation = 'none'; void c.offsetWidth; c.style.animation = '';   // restart the 5 s fade when the same id speaks again
+    const ms = o.ms || SAY_MS; c.style.setProperty('--say-ms', ms + 'ms');
+    c._ttl = setTimeout(() => c.remove(), ms); (st._newTimers = st._newTimers || []).push(c._ttl);
+    return c;
+  };
 
   // ---------------------------------------------------------------- state
   const st = { spark: 0, shown: 0, season: 1, day01: 0, fog01: 0.35, debt: 0, rep: 0.5, fpsT: 0 };
@@ -103,7 +118,7 @@ export function mountHUD(root, opts = {}) {
   // ---------------------------------------------------------------- API
   const api = {
     // 43D: non-modal "NEW: Night market" chip, DOM only, auto-removes after `ms` (default 4 s). Returns the element.
-    newChip(text, ms = 4000) { const c = el('div', 'll-chip ll-chip-new'); c.dataset.id = 'new'; c.innerHTML = iconize(String(text)); chips.appendChild(c); st.newChips = (st.newChips || 0) + 1; const t = setTimeout(() => { c.classList.add('out'); setTimeout(() => c.remove(), 320); }, ms); st._newTimers = (st._newTimers || []).concat(t); return c; },
+    newChip(text, ms = 5000, id = '') { return cloudSay('new:' + (id || text), NEW_ICONS[id] || ['sparkle'], { text: String(text), cls: 'll-chip-new', ms }); },   // S77-B: the Cloud says a NEW thing with drawn icons only
     el: hud, state: st,
     setSpark(n, { silent } = {}) {
       n = Math.round(+n || 0);
@@ -188,9 +203,11 @@ export function mountHUD(root, opts = {}) {
       const cx = W / 2, cy = H / 2, dx = (sc.behind ? -1 : 1) * (sc.x - cx), dy = (sc.behind ? -1 : 1) * (sc.y - cy), L = Math.hypot(dx, dy) || 1;
       const k = Math.min((cx - 28) / Math.abs(dx || 1e-6), (cy - 28) / Math.abs(dy || 1e-6));
       raidArrow.style.left = (cx + dx * k) + 'px'; raidArrow.style.top = (cy + dy * k) + 'px'; raidArrow.style.transform = `translate(-50%,-50%) rotate(${Math.atan2(dy, dx)}rad)`; void L; }),
-    bus.on('hud:new', (p) => { if (p?.text) api.newChip(p.text); }),                      // 43D: story.js fires once per novelty id (noveltiesSeen)
-    bus.on('hud:chip', (p) => { if (!p || !p.id) return; let c = [...chips.children].find((n) => n.dataset?.id === p.id) || null; if (p.on === false) { c?.remove(); return; } if (!c) { c = el('div', 'll-chip'); c.dataset.id = p.id; chips.appendChild(c); if (p.want) { const ws = [...chips.children].filter((n) => n.classList?.contains('ll-chip-want') || n === c); while (ws.length > 2) { const o = ws.shift(); if (o !== c) o.remove(); } } } const ic = p.icon || (p.want ? (WANT_ICON[p.want] || 'think') : ''); c.innerHTML = (ic ? icon(ic, { cls: 'll-chip-ico' }) : '') + iconize(p.text || p.id); c.classList.toggle('ll-chip-alert', !!p.alert); c.classList.toggle('ll-chip-want', !!p.want);
-      if (p.ttl > 0) { clearTimeout(c._ttl); c._ttl = setTimeout(() => c.remove(), p.ttl * 1000); (st._newTimers = st._newTimers || []).push(c._ttl); } }),   // S71: ttl = self-removing chip (want hint)   // S59-I: optional drawn `icon` (stormmark) + `alert` pulse
+    bus.on('hud:new', (p) => { if (p?.text) api.newChip(p.text, 5000, p.id); }),                      // 43D: story.js fires once per novelty id (noveltiesSeen)
+    bus.on('hud:chip', (p) => { if (!p || !p.id) return; const old = [...chips.children].find((n) => n.dataset?.id === p.id) || null; if (p.on === false) { if (old) { clearTimeout(old._ttl); old.remove(); } return; }
+      if (p.want) { const ws = [...chips.children].filter((n) => n.classList?.contains('ll-chip-want') && n !== old); while (ws.length > 1) ws.shift().remove(); }   // at most 2 want chips at once (the new one + the newest old one)
+      const icons = p.icons || (p.want ? ['face_glimmer_sad', WANT_ICON[p.want] || 'think', 'hammer'] : CHIP_ICONS[p.id] || (p.icon ? [p.icon] : ['chat']));   // S77-B: ICON-ONLY speech (the words stay as a screen-reader label)
+      cloudSay(p.id, icons, { text: p.text || p.id, cls: (p.want ? 'll-chip-want ' : '') + (p.alert ? 'll-chip-alert' : ''), ms: Math.min(5000, p.ttl > 0 ? p.ttl * 1000 : 5000) }); }),   // S71: ttl = self-removing chip (want hint) · S59-I: `alert` glow
     bus.on('pier:due', (p) => { st.pier = { interest: p?.interest || 0, left: p?.waitCap ?? 20, repay: false, spark: p?.spark ?? 0, canPay: p?.canPay !== false, jar: p?.jar || 0 }; pierChip.hidden = false; pierChip.classList.remove('repay'); pierChipDue(); }),
     bus.on('pier:pouch', (p) => { if (!st.pier || st.pier.repay || !p) return; st.pier.canPay = !!p.canPay; st.pier.need = p.need; st.pier.spark = p.spark; st.pier.jar = p.jar || 0; pierChipDue(); }),   // S72
     bus.on('pier:tick', (p) => { if (!st.pier || st.pier.repay || !p) return; st.pier.left = p.left; pierChipDue(); }),

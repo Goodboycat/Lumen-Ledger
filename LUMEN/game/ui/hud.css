@@ -142,3 +142,20 @@
 .ll-focus.shake { animation: ll-shake .36s linear; }
 @media (max-width: 640px) { .ll-focus { padding-right: 6px; } .ll-focus-bar { width: 28px; } }
 .ll-pier-chip.short { background: #ff9e80; }   /* S71: pouch cannot cover the interest -> no star */
+
+/* S77-B: HUD chips = the CLOUD speaking in drawn icons only. Each new one stacks BELOW the older ones and fades to transparent over its 5 s (--say-ms), then hud.js removes it. */
+.ll-chips .ll-chip.ll-chip { background: none; border: 0; box-shadow: none; padding: 0; border-radius: 0; color: inherit; display: block; animation: ll-say-in .28s cubic-bezier(.2,1.4,.4,1) both, ll-say-fade var(--say-ms, 5000ms) linear forwards; }
+.ll-chips .ll-say { display: flex; align-items: flex-end; gap: 3px; }
+.ll-chips .ll-say-av { width: 34px; height: 34px; flex: none; filter: drop-shadow(0 2px 0 rgba(0,0,0,.25)); }
+.ll-chips .ll-say-bub { position: relative; display: flex; align-items: center; gap: 3px; background: #fff; border: 3px solid var(--ink, #2b1d14); border-radius: 14px 14px 14px 4px; padding: 3px 7px; box-shadow: 0 3px 0 rgba(0,0,0,.25); min-height: 28px; }
+.ll-chips .ll-say-bub::before { content: ''; position: absolute; left: -9px; bottom: 5px; width: 0; height: 0; border: 6px solid transparent; border-right-color: var(--ink, #2b1d14); border-left: 0; }
+.ll-chips .ll-say-bub::after { content: ''; position: absolute; left: -5px; bottom: 7px; width: 0; height: 0; border: 4px solid transparent; border-right-color: #fff; border-left: 0; }
+.ll-chips .ll-chip-new .ll-say-bub { background: #ffe58a; }
+.ll-chips .ll-chip-want .ll-say-bub { background: #efe3ff; }
+.ll-chips .ll-chip-alert .ll-say-bub { background: #e6d4ff; animation: ll-chip-alert 1.1s ease-in-out infinite alternate; }
+.ll-chips .ll-say-bub .ll-chip-ico { width: 24px; height: 24px; flex: none; filter: drop-shadow(0 1px 0 rgba(0,0,0,.2)); }
+.ll-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+@keyframes ll-say-in { from { opacity: 0; transform: translateX(-14px) scale(.8); } to { opacity: 1; transform: none; } }
+@keyframes ll-say-fade { 0%, 12% { opacity: 1; } 100% { opacity: 0; } }
+@media (max-height: 460px) { .ll-chips { gap: 3px; } .ll-chips .ll-say-av { width: 26px; height: 26px; } .ll-chips .ll-say-bub { padding: 2px 5px; min-height: 22px; border-width: 2px; } .ll-chips .ll-say-bub .ll-chip-ico { width: 18px; height: 18px; } }
+@media (prefers-reduced-motion: reduce) { .ll-chips .ll-chip.ll-chip { animation: ll-say-fade var(--say-ms, 5000ms) linear forwards; } .ll-chips .ll-chip-alert .ll-say-bub { animation: none; } }
