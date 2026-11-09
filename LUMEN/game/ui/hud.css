@@ -141,3 +141,4 @@
 .ll-focus.gain { animation: ll-pulse .4s cubic-bezier(.34,1.56,.64,1); }
 .ll-focus.shake { animation: ll-shake .36s linear; }
 @media (max-width: 640px) { .ll-focus { padding-right: 6px; } .ll-focus-bar { width: 28px; } }
+.ll-pier-chip.short { background: #ff9e80; }   /* S71: pouch cannot cover the interest -> no star */

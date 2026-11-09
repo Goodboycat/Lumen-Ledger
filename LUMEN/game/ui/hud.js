@@ -43,6 +43,12 @@ export function mountHUD(root, opts = {}) {
   // 42C: raid readability — a red chip under the pouch ("RAID — Fruit stand" / "CARRYING 7 ✦") + a screen-edge arrow toward the raider when it is off-screen.
   const raidChip = el('div', 'll-raid-chip'); raidChip.hidden = true; raidChip.setAttribute('role', 'status');
   const pierChip = el('div', 'll-pier-chip'); pierChip.hidden = true; pierChip.setAttribute('role', 'status');   // 42D P2: Baron at the pier — interest due + countdown, then the repay hint
+  // S71: the 'due' text. Beginners lose the star silently when the pouch is short (it cannot be fixed after the visit), so say it BEFORE:
+  // enough in the pouch -> 'pay it all = ★' ; not enough -> how many more ✦ they would need (they can still walk off and sell? no: clock is held, so be honest).
+  const pierChipDue = () => { const P = st.pier; if (!P) return; const sec = Math.ceil(P.left), cant = P.interest > 0 && !P.canPay;
+    const hint = P.interest <= 0 ? 'repay? ' : cant ? ' · short = no ★' : ' · pay it all = ★';
+    pierChip.classList.toggle('short', cant);
+    pierChip.innerHTML = iconize(P.interest > 0 ? `⚓ BARON AT THE PIER — ${P.interest} ✦ due${hint} · ${sec} s` : `⚓ BARON AT THE PIER — repay? · ${sec} s`); };
   const raidArrow = el('div', 'll-raid-arrow'); raidArrow.hidden = true; raidArrow.textContent = '➤';
   payBtn.addEventListener('click', (e) => { e.stopPropagation && e.stopPropagation(); api.pay(); });
 
@@ -180,8 +186,8 @@ export function mountHUD(root, opts = {}) {
       raidArrow.style.left = (cx + dx * k) + 'px'; raidArrow.style.top = (cy + dy * k) + 'px'; raidArrow.style.transform = `translate(-50%,-50%) rotate(${Math.atan2(dy, dx)}rad)`; void L; }),
     bus.on('hud:new', (p) => { if (p?.text) api.newChip(p.text); }),                      // 43D: story.js fires once per novelty id (noveltiesSeen)
     bus.on('hud:chip', (p) => { if (!p || !p.id) return; let c = [...chips.children].find((n) => n.dataset?.id === p.id) || null; if (p.on === false) { c?.remove(); return; } if (!c) { c = el('div', 'll-chip'); c.dataset.id = p.id; chips.appendChild(c); } c.innerHTML = (p.icon ? icon(p.icon, { cls: 'll-chip-ico' }) : '') + iconize(p.text || p.id); c.classList.toggle('ll-chip-alert', !!p.alert); }),   // S59-I: optional drawn `icon` (stormmark) + `alert` pulse
-    bus.on('pier:due', (p) => { st.pier = { interest: p?.interest || 0, left: p?.waitCap ?? 20, repay: false }; pierChip.innerHTML = iconize(`⚓ BARON AT THE PIER — ${st.pier.interest} ✦ due · ${Math.ceil(st.pier.left)} s`); pierChip.hidden = false; pierChip.classList.remove('repay'); }),
-    bus.on('pier:tick', (p) => { if (!st.pier || st.pier.repay || !p) return; st.pier.left = p.left; pierChip.innerHTML = iconize(st.pier.interest > 0 ? `⚓ BARON AT THE PIER — ${st.pier.interest} ✦ due · ${Math.ceil(p.left)} s` : `⚓ BARON AT THE PIER — repay? · ${Math.ceil(p.left)} s`); }),
+    bus.on('pier:due', (p) => { st.pier = { interest: p?.interest || 0, left: p?.waitCap ?? 20, repay: false, spark: p?.spark ?? 0, canPay: p?.canPay !== false }; pierChip.hidden = false; pierChip.classList.remove('repay'); pierChipDue(); }),
+    bus.on('pier:tick', (p) => { if (!st.pier || st.pier.repay || !p) return; st.pier.left = p.left; pierChipDue(); }),
     bus.on('pier:paid', () => { if (!st.pier) return; st.pier.repay = true; pierChip.classList.add('repay'); const T = typeof document !== 'undefined' && document.body?.classList?.contains('is-touch'); pierChip.innerHTML = iconize(T ? '✓ PAID — tap the Baron again to repay debt (−20 ✦ each), walk away to leave' : '✓ PAID — tap E on him again to repay debt (−20 ✦ each), walk away to leave'); }),   // S70: touch wording (no E key on a phone)
     bus.on('pier:short', (p) => { if (!st.pier) return; st.pier.repay = true; pierChip.classList.add('repay'); pierChip.innerHTML = iconize(`✗ SHORT — ${p?.shortfall || 0} ✦ added to the debt`); }),
     bus.on('pier:repaid', (p) => { if (!st.pier) return; pierChip.innerHTML = iconize(`✓ REPAID ${p?.total || p?.amount || 0} ✦ — debt ${p?.debt ?? '?'} ✦ · ${typeof document !== 'undefined' && document.body?.classList?.contains('is-touch') ? 'tap him again' : 'tap E again'} or walk away`); }),

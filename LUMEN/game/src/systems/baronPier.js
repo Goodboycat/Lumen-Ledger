@@ -67,7 +67,7 @@ export function createBaronPier(deps = {}) {
     anim.faceTo?.(new THREE.Vector3(B.to.x, 0, B.to.z)); anim.play?.('strut');
     B.active = true; B.phase = 'arrive'; B.t = 0; B.lastTick = -1; B.idle = 0; B.tauntT = 1.2; B.settled = false; B.season = s.season;
     B.interest = owed; B.paid = 0; B.shortfall = 0; B.repaid = 0; B.stats.visits++;
-    bus.emit('pier:due', { interest: owed, debt: s.debt, pos: { ...B.to }, season: s.season, waitCap: PIER.waitCap });
+    bus.emit('pier:due', { interest: owed, debt: s.debt, pos: { ...B.to }, season: s.season, waitCap: PIER.waitCap, spark: Math.round(s.spark || 0), canPay: (s.spark || 0) + 1e-9 >= owed });   // S71: canPay → the HUD hint 'pay it all = ★' / 'need N more'
     return true;
   };
 
@@ -118,7 +118,7 @@ export function createBaronPier(deps = {}) {
     if (B.phase === 'arrive') {
       const k = Math.min(1, B.t / PIER.walkSec), e = 1 - (1 - k) * (1 - k);
       g.position.set(B.from.x + (B.to.x - B.from.x) * e, 0, B.from.z + (B.to.z - B.from.z) * e);
-      if (k >= 1) { B.phase = 'wait'; B.t = 0; B.anim?.play?.('idle'); B.anim?.faceTo?.(new THREE.Vector3(0, 0, 0)); say(B.interest > 0 ? `Interest due: ${B.interest} ✦. Come here and pay, keeper.` : `No interest… yet. Anything to repay while I am here?`, 4); }
+      if (k >= 1) { B.phase = 'wait'; B.t = 0; B.anim?.play?.('idle'); B.anim?.faceTo?.(new THREE.Vector3(0, 0, 0)); say(B.interest > 0 ? `Interest due: ${B.interest} ✦. Come here and pay, keeper.${eco.state.spark + 1e-9 >= B.interest && eco.state.season <= 3 ? ' (Pay it all = ★.)' : ''}` : `No interest… yet. Anything to repay while I am here?`, 4); }
     } else if (B.phase === 'wait' || B.phase === 'repay') {
       const h = heroPos(); if (Math.hypot(h.x - g.position.x, h.z - g.position.z) < 6) B.anim?.faceTo?.(new THREE.Vector3(h.x, 0, h.z));
       B.tauntT -= dt; if (B.tauntT <= 0 && B.phase === 'wait') { B.tauntT = PIER.tauntEvery; B.anim?.play?.('taunt'); }
