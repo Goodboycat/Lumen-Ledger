@@ -157,7 +157,19 @@ body.is-touch .ll-build-demolishing .ll-btn { min-height: 40px; }
   body.is-touch .ll-build.has-detail .ll-build-grid { max-height: 0; overflow: hidden; margin: 0; }
   /* with a card selected the detail bar already has Deploy / Upgrade / Sell, so the foot (hint + upgrade/demolish) is hidden: it was what pushed the tray up over the Spark pill */
   body.is-touch .ll-build.has-detail .ll-build-foot { display: none; }
+  body.is-touch .ll-build.has-detail .ll-build-tabs { display: none; }   /* the X in the detail bar returns to the tabs + cards */
+  body.is-touch .ll-build.has-detail .ll-det-info small { display: none; }
   body.is-touch .ll-build-detail { margin-top: 3px; padding: 3px 5px; gap: 4px; }
   body.is-touch .ll-build-detail .ll-btn { min-height: 40px; padding: 3px 8px; font-size: 11px; }
+  body.is-touch .ll-build-detail .ll-btn.pm { min-width: 40px; }
+}
+
+/* S79-F2b: 341-420 px tall phones (844x390): with a card selected the tray was 362 px tall and its top sat at y=-38 (cut off). Same rule as the 568x320 block: the detail bar replaces tabs, grid and foot until the X is tapped. */
+@media (max-height: 420px) and (min-height: 341px) {
+  body.is-touch .ll-build.has-detail .ll-build-tabs, body.is-touch .ll-build.has-detail .ll-build-foot { display: none; }
+  body.is-touch .ll-build.has-detail .ll-build-grid { max-height: 0; overflow: hidden; margin: 0; }
+  body.is-touch .ll-build.has-detail .ll-det-info small { display: none; }
+  body.is-touch .ll-build-detail { margin-top: 3px; }
+  body.is-touch .ll-build-detail .ll-btn { min-height: 40px; }
   body.is-touch .ll-build-detail .ll-btn.pm { min-width: 40px; }
 }
