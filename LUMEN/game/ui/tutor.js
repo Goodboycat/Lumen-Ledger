@@ -193,6 +193,7 @@ export function mountTutor(root, opts = {}) {
       if (blockedNow()) { if (isVerb(c)) st.pendingVerb = id; else enqueue(c); return false; }   // S59-A: NOTHING shows during a cinematic / dialogue; a verb step waits, an event card queues, both appear after it ends (was: event cards ignored the block)
       if (st.cur && isVerb(st.cur) && isVerb(c) && st.cur.id !== c.id) api.dismiss('followed');   // S59: next verb step = the last one was followed
       if (st.cur && c.urgent && !isVerb(st.cur)) { const o = st.cur; st.cur = null; bus.emit('tutor:dismissed', { id: o.id, ms: Math.round(now() - st.at), why: 'replaced' }); }   // S73: an `urgent` card (customers left empty-handed) replaces an info card instead of being dropped; never a verb step
+      if (st.cur && c.urgent) { enqueue(c); return false; }   // S73: the event fires once (6th walk-away) - behind a verb step it WAITS instead of being lost
       if (st.cur) return false;
       display(c, 'event'); return true;
     },

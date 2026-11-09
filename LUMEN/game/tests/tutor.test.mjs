@@ -225,6 +225,6 @@ test('urgent card (cust:unserved) replaces the older want card instead of being 
   const a = mount(); a.bus.emit('story:bark', { kind: 'want', icon: 'stall_toy', text: 'toy' }); assert.equal(a.tutor.current, 'cust:want');
   a.bus.emit('cust:unserved', { count: 6, season: 3, want: 'toy' }); assert.equal(a.tutor.current, 'cust:unserved'); assert.deepEqual(a.shown(), ['cust:want', 'cust:unserved']);
   const v = mount(); v.tutor.show('verb:move'); assert.equal(v.tutor.current, 'verb:move');
-  v.bus.emit('cust:unserved', { count: 6, season: 3, want: 'toy' }); assert.equal(v.tutor.current, 'verb:move', 'verb step stays');
+  v.bus.emit('cust:unserved', { count: 6, season: 3, want: 'toy' }); assert.equal(v.tutor.current, 'verb:move', 'verb step stays'); assert.deepEqual(v.tutor.queued, ['cust:unserved'], 'the one-shot event waits in the queue, never lost');
   a.tutor.destroy?.(); v.tutor.destroy?.();
 });
