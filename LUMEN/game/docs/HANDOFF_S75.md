@@ -1,0 +1,24 @@
+# HANDOFF S75 (2026-11-09) - six player-reported fixes (touch / phone landscape)
+
+**Setup**: clone straight into /home/user (NOT /tmp, 493 MB tmpfs), move to /home/user/webapp, `bash LUMEN/game/tools/github.sh <TOKEN>` (it now left NO staged deletions). Browser: `cd LUMEN/game/tools && npm i playwright@1.47.0 && npx playwright install chromium` + apt libs (`libatk1.0-0t64 libatk-bridge2.0-0t64 libatspi2.0-0t64 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libxkbcommon0 libpango-1.0-0 libcairo2 libasound2t64 libnss3 libcups2t64 libxfixes3` on Debian 13). Server: `cd LUMEN/game && setsid -f python3 -m http.server 3000 --bind 0.0.0.0`. Real-browser rig for this chat: `node tools/shot_s75.mjs 844 390` (and `568 320`).
+
+## Done (user requests)
+1. **Tapping the ground no longer opens the shop.** `Game.js lg.landTap` now ends with `return false` (no `ui:tap:land`, no `ui.build.open()`). Entry points to the tray: the BUILD button, tapping one of YOUR stalls (selectTap). Gate `jars1` T1.3 updated to assert "no tray, no walk".
+2. **Focus fills 3x slower.** `systems/focus.js REGEN_PER_S` 2 -> 2/3 per s (empty -> full in 150 s). Good-habit refills (sale +4 / save +10 / scam refused +15, per-season caps) unchanged, so they now matter more. `tests/focus.test.mjs` + `tools/gates/focus.mjs` F.6 updated; a full bar now affords 2-3 big powers in a row (test relaxed from exactly 3).
+3. **Owl-face card after a fair deal removed.** That was the Scam Reveal card's `took` kind (`ui/scamReveal.js`: green check + "+N" + owl line "Checked first, paid fair."). `show()` now returns null for fair+accepted. `fell` (scam) and `spotted` cards are unchanged. ASSUMPTION: "completing a good debt" = taking a FAIR stranger deal. If the user meant paying the Baron's debt to 0 or another owl popup, look at `ui/dialogue.js` owl portrait + `story.json` pier lines (`repaid`, `debtfree`).
+4. **Lock emoji on unaffordable shop stalls removed.** `ui/build.js` cost text is now "need N more" (no glyph); `ui/build.css` `.ll-card.poor:not(.locked)::after` is `content:none`. (Cards locked by progression still use the drawn lock via `.ll-card.locked::after`; unchanged.) Verified in browser: `::after` = none, no lock in cost HTML.
+5. **Tapping the right jar next to the left jar used the LEFT jar.** Two causes: (a) landTap took the FIRST jar within 1.2 u of the ground point (the ground point sits behind a tall jar because of camera tilt); (b) the deposit used `J.near()` = the jar nearest PIP. New `lg.pickJar(world, ev)`: 1) screen space, project each jar body centre, nearest to the finger within 40 px; 2) 3D ray on meshes; 3) nearest jar to the ground point within 1.2 u. New `J.isNear(id)`, `J.pressJar(id)`, `sb.tapJarId(id)`; auto-walk now arrives at and deposits into the TARGET jar (`J.isNear(a.jar)`). The guide-card tap also snaps to the picked jar. Browser (844x390 and 568x320, jars 45-56 px apart, finger off-centre): right tap -> protect +10, left tap -> save +10.
+6. **Ledger closes on a tap anywhere.** `ui/ledger.js`: `tapAnywhere()` = skip the count-up while it plays, then CONTINUE; wired to backdrop, wrap, and the sheet (not the button's own handler, not scrolling). 0.5 s guard after open (`st.openedAt`) so the tap that ended the season cannot close it. Verified: tap outside the sheet -> closed (boon draft/next step follows as with CONTINUE).
+
+Version string `S75`. Tests: 19 node test files all pass; `check.mjs --enemies --audio --economy --jars1 --focus --curiosity --powers` ALL OK.
+
+## Image review (844x390 and 568x320, debug overlay ON in the rig = ignore the fps text bottom-left)
+- Shop tray: the card grid scrolls, so the bottom row is cut by the footer ("pick a card, then tap Deploy" / upgrade / demolish). It is a scroll area but nothing says so: MEDIUM, add a fade or a scroll hint. The tray still covers most of the jars panel (not new).
+- 568x320: shop tabs / upgrade / demolish buttons ~20-25 px tall (tight for thumbs); ledger text is small but readable, CONTINUE is large.
+- Jar tags: the jars sit ~45-56 px apart on a phone; the 40 px pick radius is fine, but a pulse on the tapped jar would confirm which one took the coins (the jar-tag text already updates).
+- Not looked at this chat: title screen, credits, boss banner fix from S74 (still HIGH there: the Baron banner sits over the centre).
+
+## Not done / next
+- S74 items remain (Baron banner placement, crowded top-left pill, boss music never heard, 568x320 boss shots).
+- No new procedural icons / MCP model / rig work was needed this chat (all six were logic or text/CSS). Nothing was added to `ui/icons`.
+- A human should confirm on a phone: ground tap while building is the ONLY thing that moves the ghost (placing mode still uses ground taps to move the ghost, unchanged); and that the Focus bar pace feels right (consider showing "Focus +N" pops when a good habit refills it).
