@@ -1,5 +1,5 @@
 // LUMEN LEDGER — Economy content & balance (Chat 4B). PURE JS, no Three, no DOM.
-// Exports the FULL content maps the game uses: EVENTS (10), SCAMS (6 Too-Good Deals), UPGRADES tree, tuned BALANCE_TUNED,
+// Exports the FULL content maps the game uses: EVENTS (10), SCAMS (11 Too-Good Deals), UPGRADES tree, tuned BALANCE_TUNED,
 // plus `makeEconomy(opts)` which returns a 4A Economy wired with all of it. The 4A maps in economy.js stay as a 4-line skeleton.
 //
 // Lesson ids match BALANCE.lessons (8A/8B own the long-form story text; these short lines are for toasts / the Ledger card).
@@ -53,33 +53,54 @@ export const EVENTS = {
     finlit: 'Big goals are reached by many small, boring deposits. The lighthouse is lit by patience.' },
 };
 
-// ---------------------------------------------------------------- SCAMS — 6 "Too-Good Deals", each with a tell-tale sign
+// ---------------------------------------------------------------- SCAMS — 11 "Too-Good Deals" (6 + 5 new in S85), each with a tell-tale sign
 // 4A acceptOffer: `cost` is lost (payout usually 0), `amount` is a loan at hidden `trueRate`. `tell` is what Ledger Flash reveals.
 export const SCAMS = {
-  zeroInterestLoan: { id: 'zeroInterestLoan', title: 'Zero-Interest* Loan', lesson: 'scams', amount: 150, trueRate: 0.35,
+  zeroInterestLoan: { id: 'zeroInterestLoan', title: 'Zero-Interest* Loan', lesson: 'scams', minSeason: 2, baron: true, amount: 150, trueRate: 0.35,
     pitch: 'Baron Gilt, beaming: "150 Spark, zero interest!* Sign here."',
     tell: 'The asterisk. *Zero for one season, then 35 % per season — compounding.',
     text: '150 Spark now at "zero" interest. The fine print says 35 %/season from Season 2.' },
-  doubleSpark: { id: 'doubleSpark', title: 'Double Your Spark!', lesson: 'scams', cost: 80, payout: 0,
+  doubleSpark: { id: 'doubleSpark', title: 'Double Your Spark!', lesson: 'scams', minSeason: 3, cost: 80, payout: 0,
     pitch: 'A glittering Collector: "Hand me 80 Spark, get 160 back next season. GUARANTEED."',
     tell: '"Guaranteed" returns do not exist. Anyone who guarantees growth is selling something else.',
     text: 'Give 80 Spark, receive nothing. Ever.' },
-  luckyLantern: { id: 'luckyLantern', title: 'Lucky Lantern Raffle', lesson: 'scams', cost: 40, payout: 0,
+  luckyLantern: { id: 'luckyLantern', title: 'Lucky Lantern Raffle', lesson: 'scams', minSeason: 2, cost: 40, payout: 0,
     pitch: '"Only 40 Spark a ticket! Someone has to win the golden lantern!"',
     tell: 'Urgency + a prize you cannot inspect. If you must act NOW, the deal is built for you to not think.',
     text: '40 Spark for a ticket to a raffle with no draw date.' },
-  foggyInsurance: { id: 'foggyInsurance', title: 'Fog-Proof Insurance', lesson: 'insurance', cost: 60, payout: 0,
+  foggyInsurance: { id: 'foggyInsurance', title: 'Fog-Proof Insurance', lesson: 'insurance', minSeason: 4, cost: 60, payout: 0,
     pitch: '"Pay 60 Spark once and the fog can never touch your stalls. Trust me."',
     tell: 'No written terms, no claims process. Real insurance names exactly what it covers and how to claim.',
     text: '60 Spark for a "policy" that is one sentence long.' },
-  premiumStallKit: { id: 'premiumStallKit', title: 'Premium Stall Kit', lesson: 'needsVsWants', cost: 120, payout: 0,
+  premiumStallKit: { id: 'premiumStallKit', title: 'Premium Stall Kit', lesson: 'needsVsWants', minSeason: 2, cost: 120, payout: 0,
     pitch: '"Upgrade ALL your stalls at once with this kit. Normally 400, today only 120!"',
     tell: 'A fake "normal" price. Compare against what the Tool Smith actually charges (L2 = 90).',
     text: '120 Spark for a crate of painted sticks.' },
-  quickFlip: { id: 'quickFlip', title: 'Quick-Flip Spark Notes', lesson: 'diversification', cost: 100, payout: 30,
+  quickFlip: { id: 'quickFlip', title: 'Quick-Flip Spark Notes', lesson: 'diversification', minSeason: 5, baron: true, cost: 100, payout: 30,
     pitch: '"Buy these Spark Notes for 100, I personally know they flip for 300 by sunset."',
     tell: '"I personally know" is not a plan. Insider tips from strangers are the oldest Too-Good Deal.',
     text: 'Pay 100 Spark, the notes are worth 30 by sunset. −70 net.' },
+  // S85: five more tricks, each a DIFFERENT lever (user: "the scams repeat too often"). minSeason = first season the deal may show up; baron = the Baron's own visit may pitch it.
+  parcelFee: { id: 'parcelFee', title: 'Grand Glow Parcel', lesson: 'scams', minSeason: 2, cost: 35, payout: 0,
+    pitch: '\"You WON the Grand Glow Parcel, worth 300! Just 35 Spark handling and it flies to your door.\"',
+    tell: 'A prize you never entered for, with a fee to collect it. A real prize never asks you to pay first.',
+    text: '35 Spark in \"handling\" for a prize that was never yours. The parcel never comes.' },
+  fakeCharity: { id: 'fakeCharity', title: 'Glow Relief Fund', lesson: 'scams', minSeason: 3, cost: 50, payout: 0,
+    pitch: '\"Fifty Spark helps the lighthouse children. Every coin, every one! No names, no lists.\"',
+    tell: 'A good cause with no name, no books and a deadline. Pressure through pity is the oldest tin on the sea.',
+    text: '50 Spark into a tin nobody can trace. The children never hear of it.' },
+  freeTrial: { id: 'freeTrial', title: 'Free Week Spark Pass', lesson: 'scams', minSeason: 4, cost: 10, payout: 0, recurring: { amount: 20, seasons: 3 },
+    pitch: '\"A FREE week of Spark Tips! Just 10 Spark to start, cancel any time.* Sign the card!\"',
+    tell: 'A \"free\" start that renews by itself. Ask what it costs AFTER the trial, and how you cancel.',
+    text: '10 Spark now, then 20 Spark every season for three seasons. The card says so in tiny print.' },
+  fogLevy: { id: 'fogLevy', title: 'Fog Office Levy', lesson: 'scams', minSeason: 5, baron: true, cost: 60, payout: 0,
+    pitch: '\"Official Fog Office notice: you owe a back-levy of 60 Spark. Pay the inspector now or face fines.\"',
+    tell: 'A \"notice\" with a threat and a deadline, paid in cash to the person at your door. Real offices send letters.',
+    text: '60 Spark to a \"Fog Office\" that does not exist.' },
+  bringAFriend: { id: 'bringAFriend', title: 'Bring-a-Friend Club', lesson: 'scams', minSeason: 6, cost: 70, payout: 0,
+    pitch: '\"Join the Glow Club for 70 Spark, then earn 30 for every friend you bring. Easy money!\"',
+    tell: 'Pay comes from new members, not from selling anything. When recruits run out, the latest ones lose.',
+    text: '70 Spark to join a club that only pays if you find more members. You do not.' },
 };
 
 // ---------------------------------------------------------------- FAIRS — T4 (S57): genuinely GOOD deals from friendly strangers (contrast for the scams)
