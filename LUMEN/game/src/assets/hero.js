@@ -12,6 +12,7 @@ import * as THREE from '../../vendor/three.module.js';
 import { G, mesh, group } from './geo.js';
 import { PALETTE as P, toonMat, flatMat } from '../core/Toon.js';
 import { addOutline } from '../core/Outline.js';
+import { buildHeroFace } from './heroFace.js';
 
 export function makeHero(opts = {}) {
   const C = { shirt: P.heroOrange, skin: P.heroSkin, hair: P.heroHair, pants: P.heroPants, boots: P.woodDark, ...opts.colors };
@@ -50,16 +51,8 @@ export function makeHero(opts = {}) {
     spike.rotation.x = 0.5; spike.rotation.z = (i - 1.5) * -0.25; head.add(spike);
   }
   const tuft = mesh(G.cone(0.12, 0.36, 5), C.hair, 0.1, 0.86, -0.1); tuft.rotation.z = -0.4; head.add(tuft);
-  // eyes: big toon eyes (white + pupil) on front face
-  const eyeMat = flatMat(P.white), pupilMat = flatMat(P.black);
-  const eyes = new THREE.Group(); eyes.name = 'eyes'; eyes.position.set(0, 0.34, 0.36); head.add(eyes);
-  for (const sx of [-1, 1]) {
-    const w = new THREE.Mesh(G.sphere(0.1, 8, 6), eyeMat); w.position.set(sx * 0.17, 0, 0); w.scale.set(1, 1.3, 0.5); w.userData.noOutline = true; eyes.add(w);
-    const p = new THREE.Mesh(G.sphere(0.055, 6, 5), pupilMat); p.position.set(sx * 0.17, -0.01, 0.05); p.scale.set(1, 1.2, 0.6); p.userData.noOutline = true; eyes.add(p);
-  }
-  const blush = flatMat(0xff8a80, { transparent: true, opacity: 0.6 });
-  for (const sx of [-1, 1]) { const b = new THREE.Mesh(G.sphere(0.06, 6, 4), blush); b.position.set(sx * 0.3, 0.2, 0.34); b.scale.set(1.2, 0.7, 0.3); b.userData.noOutline = true; head.add(b); }
-  const mouth = new THREE.Mesh(G.box(0.12, 0.03, 0.02), pupilMat); mouth.position.set(0, 0.17, 0.37); mouth.name = 'mouth'; mouth.userData.noOutline = true; head.add(mouth);
+  // S82: face rig (eyes + brows + mouth + blush, expression-driven by src/anim/heroFace.js). The old eyes sat at z 0.36 = inside the skull (front plane z 0.52).
+  const faceRig = buildHeroFace(head);
 
   // scarf (channeler's mark) — accent
   const scarf = mesh(G.torus(0.3, 0.09, 6, 10), P.glimmerBlue, 0, 0.68, 0); scarf.rotation.x = Math.PI / 2; torso.add(scarf);
@@ -72,7 +65,7 @@ export function makeHero(opts = {}) {
   addOutline(body);
 
   // Expose parts
-  const parts = { root, body, hips, legL, legR, torso, chest, armL, armR, head, eyes, mouth,
+  const parts = { root, body, hips, legL, legR, torso, chest, armL, armR, head, face: faceRig, eyes: faceRig.group, mouth: faceRig.mouth,
     handL: armL.getObjectByName('hand'), handR: armR.getObjectByName('hand'),
     weaponSlot: armR.getObjectByName('weaponSlot'), shadow, scarfTail };
   root.userData.parts = parts;

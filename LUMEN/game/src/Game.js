@@ -15,6 +15,7 @@ import { installPack2 } from './vfx/pack2.js';
 import { HeroController } from './entities/HeroController.js';
 import { installCombat } from './combat/Combat.js';
 import { attachMoves } from './anim/heroAnims.js';
+import { attachHeroFace } from './anim/heroFace.js';
 import { attachAbilities, ABILITY_NAMES, FINLIT } from './anim/heroAbilities.js';
 import { installVerbChain } from './systems/verbChain.js';
 import { installCrew } from './systems/crewJobs.js';   // T3: crew do visible jobs (arrival, post, idle/work loop, payoff pops, Ledger crew line)
@@ -116,6 +117,7 @@ export function createSandbox(game, opts = {}) {
   // S17: storm weather look (sky/fog slate, dim lights, wind ×3, streaks, DOM rain). Scheduler: warn at day 0.30 when the pre-rolled event is a storm, hit at 0.45, clear 3 s later.
   sb.storm = new StormWeather(game, { lights: game.lights, container: game.container, headless, reduceMotion: () => !!sb.reduceMotion });
   attachMoves(sb.hero); attachAbilities(sb.hero);
+  attachHeroFace(sb.hero, game.bus, { threat: () => sb.enemies?.list?.some((e) => e.state === 'chase' || e.state === 'seek' || e.state === 'raid') && sb.enemies.list.some((e) => e.g && e.g.position.distanceToSquared(sb.hero.root.position) < 36) });   // S82: Pip's face
   installCombat(sb, game);                                       // S43/16B: 3-hit sword combo + soft lock-on (hero.doAttack → combat.attack)
   game.followTarget = sb.hero.root.position;
   if (game.camera?.snapTo) { game.camera.zoom = 1.25; game.camera.snapTo(sb.hero.root.position); }
