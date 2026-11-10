@@ -44,10 +44,10 @@ export function buildHeroFace(head, C = {}) {
     const eye = new THREE.Group(); eye.position.set(sx * 0.2, 0, 0); face.add(eye);
     const oval = flat(G.sphere(0.5, 10, 8), inkM); oval.scale.set(0.19, 0.25, 0.06); eye.add(oval);
     const glint = flat(G.sphere(0.5, 6, 5), whiteM, sx * 0.012 + 0.012, 0.045, 0.026); glint.scale.set(0.06, 0.07, 0.03); eye.add(glint);
-    const arc = new Ribbon(inkM, 8, true); arc.set(0.085, -0.9, 0.034); arc.group.position.set(0, -0.01, 0.01); arc.group.visible = false; eye.add(arc.group);
+    const arc = new Ribbon(inkM, 8, false); arc.set(0.085, -0.9, 0.034); arc.group.position.set(0, -0.01, 0.01); arc.group.visible = false; eye.add(arc.group);
     eyes.push({ g: eye, oval, glint, arc, sx });
     const brow = new THREE.Group(); brow.position.set(sx * 0.2, 0.21, 0.004); face.add(brow);
-    const bm = flat(G.box(0.22, 0.065, 0.03), browM); brow.add(bm);
+    const bm = flat(G.box(0.23, 0.08, 0.03), browM); brow.add(bm);
     brows.push({ g: brow, sx });
     const b = flat(G.sphere(0.5, 6, 4), blushM, sx * 0.335, -0.13, -0.005); b.scale.set(0.14, 0.08, 0.03); face.add(b); blush.push(b);
   }
@@ -75,17 +75,17 @@ export function buildHeroFace(head, C = {}) {
         const sy = Math.max(0.012, 0.25 * Q.esy * asy);
         e.oval.scale.set(0.19 * Q.esx, sy, 0.06);
         e.glint.visible = !shut && Q.esy * asy > 0.45;
-        if (shut) e.arc.set(0.09, Q.ac, 0.045);
+        if (shut) e.arc.set(0.085, Q.ac, 0.06);
       }
       for (const b of brows) { b.g.position.set(b.sx * 0.2 * Q.espread + Q.lx * 0.4, 0.21 + Q.bl, 0.004); b.g.rotation.z = b.sx * Q.ba; b.g.scale.x = Q.bsx; }
       const useOpen = Q.op > 0.3, o = Math.min(1, Q.op);
       rib.group.visible = !useOpen; open.visible = useOpen;
-      if (!useOpen) rib.set(Q.mw, Q.mc, 0.05);
+      if (!useOpen) rib.set(Q.mw, Q.mc, 0.062);
       else {
         const w = Q.ow, h = Math.max(0.02, Q.oh * o);
-        hole.scale.set(w, h, 1);
-        tongue.visible = Q.teeth < 0.5; tongue.scale.set(w * 0.62, h * 0.4, 1); tongue.position.y = -h * 0.28;
-        teeth.visible = Q.teeth >= 0.5; teeth.scale.set(w * 0.86, h * 0.4, 1); teeth.position.y = h * 0.26;
+        hole.scale.set(w, h, 0.05);
+        tongue.visible = Q.teeth < 0.5; tongue.scale.set(w * 0.62, h * 0.4, 0.04); tongue.position.y = -h * 0.28;
+        teeth.visible = Q.teeth >= 0.5; teeth.scale.set(w * 0.86, h * 0.4, 0.15); teeth.position.y = h * 0.26;
       }
       tongueOut.visible = Q.tg > 0.5 && !useOpen; tongueOut.position.set(Q.mw * 0.5, -0.055, 0.006);
       blushM.opacity = Math.max(0, Math.min(1, Q.blush));

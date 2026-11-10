@@ -13,17 +13,17 @@ const E = (o) => Object.freeze({ ...BASE, ...o });
 export const EXPRESSIONS = Object.freeze({
   neutral: BASE,
   happy: E({ happy: 1, ac: -0.85, mw: 0.16, mc: 1.0, bl: 0.03, blush: 0.9 }),
-  cheer: E({ happy: 1, ac: -0.95, bl: 0.05, op: 1, ow: 0.24, oh: 0.2, blush: 0.95 }),
-  angry: E({ esy: 0.55, esx: 1.05, ey: -0.02, ba: 0.6, bl: -0.045, bsx: 1.08, op: 1, ow: 0.25, oh: 0.15, teeth: 1, blush: 0 }),
+  cheer: E({ happy: 1, ac: -0.95, bl: 0.05, op: 1, ow: 0.3, oh: 0.14, blush: 0.95 }),
+  angry: E({ esy: 0.6, esx: 1.05, ey: -0.02, ba: 0.62, bl: -0.05, bsx: 1.1, op: 1, ow: 0.3, oh: 0.085, teeth: 1, blush: 0 }),
   dash: E({ esy: 0.72, ba: 0.32, bl: -0.025, mw: 0.12, mc: -0.45, blush: 0.25 }),
   focus: E({ esy: 0.52, ly: -0.035, ba: 0.22, bl: -0.02, mw: 0.075, mc: 0.05, tg: 1, blush: 0.4 }),
-  strain: E({ esy: 0.5, ba: 0.4, bl: -0.03, op: 1, ow: 0.21, oh: 0.075, teeth: 1, blush: 0.2 }),
-  ouch: E({ esy: 0.09, esx: 1.2, ba: -0.5, bl: 0.07, op: 1, ow: 0.17, oh: 0.27, sweat: 1, blush: 0 }),
+  strain: E({ esy: 0.5, ba: 0.4, bl: -0.03, op: 1, ow: 0.26, oh: 0.07, teeth: 1, blush: 0.2 }),
+  ouch: E({ esy: 0.12, esx: 1.25, ba: -0.55, bl: 0.07, op: 1, ow: 0.27, oh: 0.15, sweat: 1, blush: 0 }),
   sad: E({ esy: 0.88, ly: -0.03, ey: -0.01, ba: -0.42, bl: 0.03, mw: 0.12, mc: -1.1, blush: 0.2 }),
   worried: E({ esy: 1.12, esx: 0.95, ba: -0.5, bl: 0.06, mw: 0.095, mc: -0.75, sweat: 1, blush: 0.15 }),
-  surprised: E({ esy: 1.3, esx: 1.1, bl: 0.1, op: 1, ow: 0.1, oh: 0.15, blush: 0.4 }),
+  surprised: E({ esy: 1.3, esx: 1.1, bl: 0.1, op: 1, ow: 0.15, oh: 0.15, blush: 0.4 }),
   proud: E({ esy: 0.72, ba: 0.14, mw: 0.16, mc: 1.4, blush: 0.8 }),
-  dizzy: E({ esy: 1.1, esx: 1.1, asy: 0.25, ba: -0.2, op: 1, ow: 0.15, oh: 0.09, blush: 0.2 }),
+  dizzy: E({ esy: 1.1, esx: 1.1, asy: 0.25, ba: -0.2, op: 1, ow: 0.2, oh: 0.1, blush: 0.2 }),
 });
 export const EXPRESSION_NAMES = Object.keys(EXPRESSIONS);
 
