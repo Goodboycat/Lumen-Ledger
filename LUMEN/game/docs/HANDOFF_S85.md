@@ -14,7 +14,7 @@ This chat:
 6. Real-tap probe of a new deal at 568x320 (tools/probe_s85_deal.mjs fogLevy 568 320): dialogue fits, journal marks 'spotted', Cloud chip "+1 star".
 
 ## NOT done / next
-- **Journal re-shoot** after the CSS fix: `node tools/probe_s85_journal.mjs 568 320` -> look at tools/shots/s85_journal_568x320_a/b.png (the last run measured rows 64-91 px, scrollH 645; not yet viewed). Also 844x390.
+- Journal re-shot after the CSS fix at 568x320 (viewed: rows now fit their text, stamps no longer overlap; scrolls 224 px of 645). 844x390 measured (289 of 590) but its PNG was not viewed.
 - The scam NPC / Baron model does not look different per new deal (same strangers); `ledgerFlash` + Scout Fox work through eco.scams data, not re-tested per new deal in the browser (only fogLevy dialogue tested; the 48G gate walks all 8 lesson-scams trees headless; foggyInsurance-style non-'scams' lessons not applicable).
 - Accept path of freeTrial in the real UI (subscription chip / ledger line for `subscription`): the ledger UI does not show the subscription row yet. Add a line to ui/ledger.js (report.subscription) and a Cloud chip on eco:subscription.
 - Jars panel cap at 568x320 (touch.css:58) still 2 rows; not touched.
