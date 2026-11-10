@@ -14,7 +14,11 @@
 .ll-jar-name { font-size: 11px; font-weight: 900; letter-spacing: .3px; display: flex; justify-content: space-between; }
 .ll-jar-name small { font-weight: 700; opacity: .6; font-size: 9px; white-space: nowrap; display: inline-flex; align-items: center; gap: 2px; }
 .ll-jar-name small .ll-ico { width: 10px; height: 10px; vertical-align: 0; }
-.ll-jar-pct { grid-row: 1 / span 2; font-weight: 900; font-size: 14px; text-align: right; font-variant-numeric: tabular-nums; }
+.ll-jar-icon { grid-column: 1; }
+/* S84 BUGFIX: pct is row-locked, so grid auto-placement put it in the wide 1fr column and pushed the name + slider into the narrow 3rd column ("Spend 80" clipped everywhere). Pin every cell. */
+.ll-jar-name { grid-column: 2; grid-row: 1; min-width: 0; }
+.ll-jar input[type=range] { grid-column: 2; grid-row: 2; min-width: 0; }
+.ll-jar-pct { grid-column: 3; grid-row: 1 / span 2; font-weight: 900; font-size: 14px; text-align: right; font-variant-numeric: tabular-nums; }
 .ll-jar-pct small { display: block; font-size: 9px; font-weight: 700; opacity: .6; }
 .ll-jar input[type=range] { width: 100%; height: 18px; margin: 0; -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; touch-action: none; }
 .ll-jar input[type=range]::-webkit-slider-runnable-track { height: 10px; border: 2px solid var(--ink); border-radius: 6px; background: linear-gradient(90deg, var(--jar-c, var(--gold)) 0 var(--pct, 25%), #fff var(--pct, 25%) 100%); }
@@ -99,3 +103,27 @@ body.ll-dlg-open .ll-jars { display: none !important; }
 
 /* S64-B: a row of a jar that is not built yet must really disappear (the grid rule above beat the [hidden] attribute) */
 .ll-jar[hidden] { display: none; }
+
+/* S84: jars panel on SHORT LANDSCAPE phones (844x390, 568x320). It was never reviewed open: each row was 53 px tall inside a 94 px cap (one row visible), and the name column
+   was squeezed to 42 px so "Spend 80 ✦" clipped. Compact rows (~32 px: name over slider, jar icon 20 px, % and the take-back button on the right) -> Spend + Save fit without scrolling, the rest scrolls. */
+@media (orientation: landscape) and (max-height: 420px) {
+  .ll-jars { width: 204px; padding: 4px 7px 6px; }
+  .ll-jars-head { font-size: 12px; margin-bottom: 1px; }
+  body .ll-jar { gap: 0 5px; padding: 2px 0; }
+  body .ll-jar, body.is-touch .ll-jar { grid-template-columns: 20px minmax(0, 1fr) 30px; }
+  body .ll-jar.has-wd, body.is-touch .ll-jar.has-wd { grid-template-columns: 20px minmax(0, 1fr) 30px 22px; }
+  .ll-jar-icon { width: 20px; height: 24px; border-width: 2px; border-radius: 5px 5px 7px 7px; }
+  .ll-jar-icon::before { left: 4px; right: 4px; top: -2px; height: 4px; }
+  .ll-jar-name { font-size: 10px; letter-spacing: 0; }
+  .ll-jar-name small { font-size: 9px; }
+  body .ll-jar input[type=range], body.is-touch .ll-jar input[type=range] { height: 20px; }   /* still a 20 px tall touch strip, the thumb below is 16 px */
+  .ll-jar input[type=range]::-webkit-slider-runnable-track { height: 8px; }
+  body .ll-jar input[type=range]::-webkit-slider-thumb, body.is-touch .ll-jar input[type=range]::-webkit-slider-thumb { width: 16px; height: 16px; margin-top: -6px; }
+  .ll-jar-pct { font-size: 11px; }
+  .ll-jar-pct small { font-size: 8px; }
+  body .ll-jar-wd, body.is-touch .ll-jar-wd { width: 22px; height: 22px; font-size: 11px; }
+  .ll-jars-foot { margin-top: 3px; }
+  .ll-jars-foot .ll-btn { padding: 2px 5px; font-size: 10px; }
+  body.is-touch .ll-jars-foot .ll-btn, body.is-touch .ll-jars-debt .ll-btn { min-height: 30px; }
+  .ll-jars-debt { margin-top: 4px; padding: 3px 5px; }
+}

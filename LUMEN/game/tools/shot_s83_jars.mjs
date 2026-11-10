@@ -10,7 +10,7 @@ await p.waitForFunction(() => window.lg && window.ui, null, { timeout: 120000 })
 await p.evaluate(() => ui.title.buttons.story.click());
 for (let i = 0; i < 24; i++) { await p.waitForTimeout(250); if (await p.evaluate(() => ui.dialogue.isOpen)) await p.evaluate(() => { ui.dialogue.skip?.(); ui.dialogue.advance?.(); }); }
 await p.waitForTimeout(800);
-const r = await p.evaluate(() => { const e = lg.sb.eco; e.state.spark = 120; e.allocate({ save: 30, protect: 10 }); lg.sb.jarsWorld?.deposit?.('save', 10); ui.jars?.setCollapsed?.(false); ui.jars?.el?.classList?.remove('ll-staged'); return { jars: { ...e.state.jars }, panel: !!ui.jars?.el }; });
+const r = await p.evaluate(() => { const e = lg.sb.eco; e.state.spark = 120; e.allocate({ save: 30, protect: 10 }); lg.sb.jarsWorld?.deposit?.('save', 10); for (const k of ['save', 'invest', 'protect']) ui.jars?.show?.(k); ui.jars?.setBalances?.({ ...e.state.jars }); ui.jars?.setCollapsed?.(false); ui.jars?.el?.classList?.remove('ll-staged'); return { jars: { ...e.state.jars }, panel: !!ui.jars?.el }; });
 await p.waitForTimeout(1500);
 await p.screenshot({ path: `tools/shots/s83_jars_${W}x${H}.png` });
 console.log(JSON.stringify(r), 'errs', errs.slice(0, 3)); await b.close();
