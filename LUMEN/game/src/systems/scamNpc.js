@@ -40,6 +40,7 @@ export function createScamNpc(deps = {}) {
     if (id && id !== 'fair') return (eco.scams?.[id] || eco.fairs?.[id]) ? id : null;
     if (id === 'fair') { if (!fairIds.length) return null; const un = fairIds.filter((i) => !S.metFair.has(i)); const pool = un.length ? un : fairIds; return pool[Math.floor(rng() * pool.length)]; }
     if (!scamIds.length) return null;
+    if (typeof eco.pickScam === 'function') return eco.pickScam({ exclude: S.lastScam && scamIds.length > 1 ? [S.lastScam] : [] });   // S85: season-aware, no recent repeats (economy.pickScam)
     const un = scamIds.filter((i) => !S.met.has(i)); const pool = un.length ? un : (scamIds.length > 1 ? scamIds.filter((i) => i !== S.lastScam) : scamIds);
     return pool[Math.floor(rng() * pool.length)];
   }
@@ -67,7 +68,7 @@ export function createScamNpc(deps = {}) {
     look(S.to.x, S.to.z); play('walk');
     S.active = true; S.state = 'arrive'; S.id = sid; S.kind = kind; S.tell = kind === 'scam' ? (eco.scams[sid]?.tell || null) : null;
     S.t = 0; S.stayT = 0; S.stay = SCAM.stay[0] + rng() * (SCAM.stay[1] - SCAM.stay[0]); S.lureT = 1.2; S.offered = false; S.answered = false; S.wp = null; S.pauseT = 0; S.heard = 0;
-    S.stats.spawned++; if (kind === 'fair') { S.stats.fair++; S.metFair.add(sid); } else { S.met.add(sid); S.lastScam = sid; }   // a stranger the player skipped still counts: the NEXT one is always a different deal
+    S.stats.spawned++; if (kind === 'fair') { S.stats.fair++; S.metFair.add(sid); } else { S.met.add(sid); S.lastScam = sid; eco.noteScam?.(sid); }   // a stranger the player skipped still counts: the NEXT one is always a different deal
     bus.emit('scam:npc', { id: sid, kind, pos: { ...S.to }, season: eco.state?.season || 0, stay: +S.stay.toFixed(1), model: g.userData.type });
     return true;
   };

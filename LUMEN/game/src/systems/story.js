@@ -43,6 +43,7 @@ export function pickLedgerVariant(stars) { return stars >= 3 ? 'high' : stars <=
 /** Pure lookup helpers over the story.json shape (return [] when missing — never throw on content gaps). */
 /** T4: a deal delivered by a stranger is spoken by the Stranger, never by a 'collector' / 'baron'; a line may carry `stranger: "…"` as its stranger-only text. Pure. */
 export function strangerVoice(lines, offer) {
+  if (offer && offer.by === 'baron' && Array.isArray(lines)) return lines.map((l) => (l && l.speaker === 'collector') ? { ...l, speaker: 'baron' } : l);   // S85: the Baron's own visit speaks as the Baron, whatever deal he rotated to
   if (!offer || offer.by !== 'stranger' || !Array.isArray(lines)) return lines;
   return lines.map((l) => (l && (l.speaker === 'collector' || l.speaker === 'baron')) ? { ...l, speaker: 'stranger', text: l.stranger || l.text } : l);
 }

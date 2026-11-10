@@ -65,7 +65,7 @@ export async function run({ resolve, pathToFileURL }) {
   // ------------------------------------------------------------------ T4.3 every deal spawns + marker findable from 10 u
   try {
     const A0 = mk(); const ids = [...Object.keys(A0.sb.eco.scams), 'fair']; destroySandbox(A0.sb);
-    if (Object.keys(A0.sb.eco.scams || {}).length !== 6 && ids.length < 7) throw new Error('want 6 scam ids + fair, have ' + ids.join(','));
+    if (Object.keys(A0.sb.eco.scams || {}).length < 11 || ids.length < 12) throw new Error('want 11 scam ids + fair, have ' + ids.join(','));
     const W = 844, H = 390;   // phone landscape
     const cam = mkCam(W, H); const root = document.createElement('div'); root.clientWidth = W; root.clientHeight = H; document.body.append?.(root);
     const A = mk(); const { sb, bus } = A; sb.hero.root.position.set(0, 0, 0); sb.holdClock('gate', true);   // the S1 scheduler stranger must not race the debug spawns

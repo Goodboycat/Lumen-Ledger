@@ -10,12 +10,14 @@ export const BARON = { walkSec: 2.5, timeout: 25, tauntEvery: 4.2, near: 3.4, fl
 const PITCH = ['A zero-interest* loan, keeper. 150 Spark. Today only; the Baker already took one.', 'Just initial that you looked. Most pay 20 %; for you, zero*.'];   // 48G tactic vocabulary: urgency · social proof · foot-in-the-door · anchoring
 
 export function createBaronVisit() {
-  const V = { id: 'baronVisit', g: null, anim: null, state: 'off', t: 0, tauntT: 0, from: null, to: null, offered: false, answered: false, sb: null, offs: [], pitchI: 0 };
+  const V = { id: 'baronVisit', scam: BARON.scam, g: null, anim: null, state: 'off', t: 0, tauntT: 0, from: null, to: null, offered: false, answered: false, sb: null, offs: [], pitchI: 0 };
   const heroPos = (sb) => sb.hero?.root?.position || sb.hero?.position || { x: 0, z: 0 };
   const dist = (sb) => { const h = heroPos(sb), p = V.g?.position; return p ? Math.hypot(p.x - h.x, p.z - h.z) : Infinity; };
   const say = (sb, text, speaker = 'baron', ttl = 3.4) => { if (text && V.g) sb.game.bus.emit('story:bark', { speaker, text, anchor: { x: V.g.position.x, y: 2.3, z: V.g.position.z }, ttl, group: 'baronVisit' }); };
   const line = (sb, i) => { const a = sb.storyData?.barks?.seasonNovelty?.baronVisit; const b = a?.[i]; return b ? (b.text || b) : null; };
-  const pitch = (sb, i) => { const a = sb.storyData?.baron?.visit; const b = a?.[i]; return b ? (b.text || b) : PITCH[i % PITCH.length]; };
+  const pitch = (sb, i) => {
+    if (V.scam !== BARON.scam) { const ln = sb.storyData?.scams?.[V.scam]?.pitch?.[i % 2]; if (ln) return String(ln.text).replace(/\{spark\}/g, String(Math.round(sb.eco?.state?.spark || 0))).replace(/\s+/g, ' '); }   // S85: the Baron pitches whichever deal he rotated to
+    const a = sb.storyData?.baron?.visit; const b = a?.[i]; return b ? (b.text || b) : PITCH[i % PITCH.length]; };
 
   function make(sb) {                                                            // synchronous: the gate steps the clock synchronously
     const C = (!sb.headless && sb.creatures) || {};
@@ -28,8 +30,8 @@ export function createBaronVisit() {
   function remove() { if (V.g) { V.g.removeFromParent?.(); V.anim?.dispose?.(); } V.g = null; V.anim = null; V.state = 'off'; }
   function refuse(sb, why) {
     if (V.answered) return; V.answered = true;
-    const eco = sb.eco; if (eco.pendingOffer && eco.pendingOffer.id === BARON.scam) eco.refuseOffer();
-    sb.game.bus.emit('scam:refused', { id: BARON.scam, why, baron: true });
+    const eco = sb.eco; if (eco.pendingOffer && eco.pendingOffer.id === V.scam) eco.refuseOffer();
+    sb.game.bus.emit('scam:refused', { id: V.scam, why, baron: true });
   }
   function leave(sb, why) {
     if (!V.g || V.state === 'leave' || V.state === 'flee' || V.state === 'off') return;
@@ -40,6 +42,8 @@ export function createBaronVisit() {
 
   V.start = (sb, season) => {
     V.sb = sb; V.state = 'spawn'; V.offered = false; V.answered = false; V.t = 0;
+    V.scam = (sb.eco?.pickScam?.({ baron: true })) || BARON.scam;   // S85: the Baron rotates his deal (zero-interest loan, quick flip, fog levy ...) and never repeats the last ones
+    sb.eco?.noteScam?.(V.scam);
     const place = ({ g, anim }) => {
       if (V.state !== 'spawn') return;                                           // ended before the import resolved
       V.g = g; V.anim = anim;
@@ -52,15 +56,15 @@ export function createBaronVisit() {
       say(sb, line(sb, 0) || 'Baron Gilt, in person. Keep your pouch shut, Pip.', 'owl', 3.2);
     };
     place(make(sb));
-    V.offs.push(sb.game.bus.on('eco:scamResult', (res) => { if (res?.id !== BARON.scam || V.state === 'off') return; V.answered = true;
-      say(sb, res.accepted ? 'Pleasure doing business. The asterisk sends its regards.' : (line(sb, 2) || 'Refused? The owl has taught you well. Pity.'), 'baron', 2.6); leave(sb, res.accepted ? 'accepted' : 'refused'); }));
+    V.offs.push(sb.game.bus.on('eco:scamResult', (res) => { if (res?.id !== V.scam || V.state === 'off') return; V.answered = true;
+      say(sb, res.accepted ? (V.scam === BARON.scam ? 'Pleasure doing business. The asterisk sends its regards.' : 'Pleasure doing business, keeper.') : (line(sb, 2) || 'Refused? The owl has taught you well. Pity.'), 'baron', 2.6); leave(sb, res.accepted ? 'accepted' : 'refused'); }));
   };
   V.near = (r = BARON.near) => !!V.g && (V.state === 'pitch' || V.state === 'offered') && dist(V.sb) <= r;
   /** Pip talks to the Baron → the real Too-Good Deal (eco.offerScam → 8B dialogue). 'scam' | null */
   V.interact = () => {
     const sb = V.sb; if (!sb || !V.near() || V.state !== 'pitch') return null;
     if (sb.eco.pendingOffer) return null;
-    const o = sb.eco.offerScam(BARON.scam); if (!o) return null;
+    const o = sb.eco.offerScam(V.scam, { by: 'baron' }); if (!o) return null;
     V.state = 'offered'; V.offered = true; V.t = 0; const h = heroPos(sb);
     V.anim?.faceTo?.(new THREE.Vector3(h.x, 0, h.z)); V.anim?.play?.('offerDeal');
     say(sb, pitch(sb, 0), 'baron', 3.6);
@@ -69,8 +73,8 @@ export function createBaronVisit() {
   /** Ledger Flash near him: the owl names the tell (the asterisk). */
   V.flash = () => {
     const sb = V.sb; if (!sb || !V.g || (V.state !== 'pitch' && V.state !== 'offered') || dist(sb) > BARON.flashNear) return null;
-    const tell = sb.eco.scams?.[BARON.scam]?.tell || 'the asterisk';
-    sb.game.bus.emit('scam:tell', { id: BARON.scam, tell, baron: true }); say(sb, line(sb, 1) || `Look closer, Pip: ${tell}.`, 'owl', 3.6);
+    const tell = sb.eco.scams?.[V.scam]?.tell || 'the asterisk';
+    sb.game.bus.emit('scam:tell', { id: V.scam, tell, baron: true }); say(sb, line(sb, 1) || `Look closer, Pip: ${tell}.`, 'owl', 3.6);
     if (!V.offered) { refuse(sb, 'tell'); leave(sb, 'tell'); }
     return tell;
   };
@@ -83,7 +87,7 @@ export function createBaronVisit() {
     if (dir && V.anim?.faceTo) V.anim.faceTo(new THREE.Vector3(V.g.position.x - dir.x, 0, V.g.position.z - dir.z));
     return true;
   };
-  V.targets = () => (V.g && (V.state === 'pitch' || V.state === 'offered')) ? [{ root: V.g, enemy: { kind: 'baron', scam: true, id: BARON.scam, state: V.state }, hit: (dir, power) => V.hit(dir, power) }] : [];
+  V.targets = () => (V.g && (V.state === 'pitch' || V.state === 'offered')) ? [{ root: V.g, enemy: { kind: 'baron', scam: true, id: V.scam, state: V.state }, hit: (dir, power) => V.hit(dir, power) }] : [];
 
   V.update = (sb, dt) => {
     if (!V.g || V.state === 'off' || V.state === 'spawn' || !(dt > 0)) return; V.t += dt; V.anim?.update?.(dt); const g = V.g;

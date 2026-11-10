@@ -110,6 +110,7 @@ export const EVENTS = {
   marketCrash: { id: 'marketCrash', title: 'Spark Dip',          lesson: 'diversification', effect: { investPct: -0.15 },
                  text: 'The Spark Exchange dips. Invest jar loses 15 %.' },
 };
+const SCAM_RECENT = 4;   // S85: how many of the latest scams pickScam() avoids
 export const SCAMS = {
   tooGoodLoan: { id: 'tooGoodLoan', title: 'Zero-Interest* Loan', tell: 'the asterisk', trueRate: 0.35, amount: 150,
                  text: 'Baron Gilt offers 150 Spark at "zero" interest*. (*35 %/season after Season 1.)',
@@ -468,10 +469,31 @@ export class Economy {
     this.bus.emit('eco:event', out);
     return out;
   }
+  /** S85 (user: \"the scams repeat too often\"): the NEXT scam id. Season-aware (`minSeason` <= season), never one of the last SCAM_RECENT offered while another
+   *  choice exists, and unmet deals come first. opts: { baron: true } -> only deals flagged `baron` (the Baron's own visit) · { exclude: [ids] }. Uses this.rng (seeded). */
+  pickScam({ baron = false, exclude = [] } = {}) {
+    const all = Object.keys(this.scams); if (!all.length) return null;
+    const s = this.state, season = s.season || 1;
+    let ids = all.filter((id) => (this.scams[id].minSeason || 1) <= season && !exclude.includes(id));
+    if (baron) { const b = ids.filter((id) => this.scams[id].baron); if (b.length) ids = b; }
+    if (!ids.length) ids = all.filter((id) => !exclude.includes(id));
+    if (!ids.length) ids = all;
+    const recent = s.recentScams || [], n = Math.min(SCAM_RECENT, ids.length - 1);
+    let pool = ids.filter((id) => !recent.slice(-Math.max(0, n)).includes(id)); if (!pool.length) pool = ids;
+    const met = s.scamsMet || [], fresh = pool.filter((id) => !met.includes(id)); if (fresh.length) pool = fresh;
+    return pool[Math.floor(this.rng() * pool.length)];
+  }
+  /** S85: remember a scam that was put in front of the player (a stranger walking in counts too: skipping it does not make it come back next). */
+  noteScam(id) {
+    if (!id) return; const s = this.state; s.recentScams = s.recentScams || []; s.scamsMet = s.scamsMet || [];
+    if (s.recentScams[s.recentScams.length - 1] !== id) { s.recentScams.push(id); if (s.recentScams.length > 12) s.recentScams.shift(); }
+    if (!s.scamsMet.includes(id)) s.scamsMet.push(id);
+  }
   /** Pick a random "Too-Good Deal" (or by id). Returns the offer object (also stored in pendingOffer) and emits 'eco:scam'. */
   offerScam(id, { by = null } = {}) {
     const ids = Object.keys(this.scams); if (!ids.length) return null;
-    const scam = this.scams[id] || this.scams[ids[Math.floor(this.rng() * ids.length)]];
+    const scam = this.scams[id] || this.scams[this.pickScam()];
+    this.noteScam(scam.id);
     const offer = { ...scam, offeredAt: this.state.season, isScam: true, by };
     this.pendingOffer = offer;
     this.bus.emit('eco:scam', offer);
@@ -505,10 +527,11 @@ export class Economy {
     let lostSpark = 0, debtAdded = 0;
     if (offer.cost) { const paid = Math.min(this.state.spark, round(offer.cost)); if (paid) this._addSpark(-paid, 'scam:' + offer.id); this.ledger.expenses += paid; lostSpark = paid; if (offer.payout) this.earn(offer.payout, 'scam:payout'); }
     if (offer.amount) { this.state.debt += round(offer.amount); debtAdded = round(offer.amount); this._addSpark(offer.amount, 'scam:loan'); this.state.scamRate = Math.max(this.state.scamRate || 0, offer.trueRate || this.config.loanRate); this.bus.emit('eco:loan', { debt: this.state.debt, delta: debtAdded, kind: 'scam' }); }
+    if (offer.recurring && offer.recurring.amount > 0) { const sub = { id: offer.id, amount: round(offer.recurring.amount), left: Math.max(1, offer.recurring.seasons | 0) }; this.state.subs = [...(this.state.subs || []), sub]; }   // S85: the "free" trial renews by itself (freeTrial)
     this.ledger.scamsAccepted++;
     this.state.reputation = clamp(this.state.reputation - 0.05, 0, 1);
     this.pendingOffer = null;
-    const out = { accepted: true, id: offer.id, lostSpark, debtAdded, lesson: offer.lesson || 'scams', tell: offer.tell };
+    const out = { accepted: true, id: offer.id, lostSpark, debtAdded, recurring: offer.recurring || null, lesson: offer.lesson || 'scams', tell: offer.tell };
     this.bus.emit('eco:scamResult', out);
     return out;
   }
@@ -578,6 +601,8 @@ export class Economy {
     const upkeep = round((c.baseUpkeep + stallUpkeep + wages) * kS);   // 41C: scaled by the season length
     const repBonus = this.mod('reputationBonus', 0); if (repBonus) s.reputation = clamp(s.reputation + repBonus, 0, 1);   // Gardener Snail
     const upkeepRes = this.applyLoss(upkeep, 'upkeep', { useProtect: false });
+    let subCost = 0;   // S85: auto-renewing "free trial" fees (freeTrial) — routine cost like upkeep, Protect does not cover it, counts as an expense for the stars
+    if (s.subs && s.subs.length) { for (const x of s.subs) { subCost += x.amount; x.left--; } s.subs = s.subs.filter((x) => x.left > 0); if (subCost > 0) { this.applyLoss(subCost, 'subscription', { useProtect: false }); this.bus.emit('eco:subscription', { amount: subCost, season, left: s.subs.length }); } }
     // fog rules
     let fogDelta = 0;
     const _ds = L.debtStart ?? (debtBefore + L.repaid - L.loansTaken);   // S74: debt when the season began
@@ -599,7 +624,7 @@ export class Economy {
     // and closePier() re-scores the stars (before pier:done, so the ledger the player sees is final). Provisional stars = the old rule.
     const pierPending = this.pierPays && (s.debt > 0 || (s.interestOwed || 0) > 0);
     const report = {
-      season, income, expenses, interestEarned, interestPaid, investReturn, investRate: +investRate.toFixed(3), upkeep, wages, tillTax: L.tillTax || 0, tillSwept: L.tillSwept || 0,   // 42A
+      season, income, expenses, interestEarned, interestPaid, investReturn, investRate: +investRate.toFixed(3), upkeep, wages, subscription: subCost, tillTax: L.tillTax || 0, tillSwept: L.tillSwept || 0,   // 42A
       upkeepDebt: upkeepRes.debt, saved: L.saved, invested: L.invested, protected: L.protected, absorbed: L.absorbed,
       loansTaken: L.loansTaken, repaid: L.repaid, sales: L.sales, units: L.units, events: L.events.slice(),
       scamsAccepted: L.scamsAccepted, scamsRefused: L.scamsRefused, raided: L.raided || 0, recovered: L.recovered || 0,   // 42C

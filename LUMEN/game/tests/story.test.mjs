@@ -134,7 +134,7 @@ ok(linesFor(null, 'opening', 1).length === 0 && linesFor(data, 'ledger', 99, 'lo
     if (one(a, false) && one(b, true) && one(c, false) && one(d, true) && a.eco.ledger.scamsRefused === 1 && b.eco.ledger.scamsAccepted === 1 && a.choices.length === 3 && c.choices.length === 1) good++;
     else console.log('   ', id, a.res.length, b.res.length, c.res.length, d.res.length, a.owl.length, a.ends);
   }
-  ok(ids.length === 3 && good === 3, `48G ${ids.length} lesson-scams trees: look→stall→refuse / look→sign / walk / look→ask→accept → exactly one eco:scamResult each (refuse,accept,refuse,accept) + Owl afterword + one story:end`);
+  ok(ids.length >= 8 && good === ids.length, `48G ${ids.length} lesson-scams trees: look→stall→refuse / look→sign / walk / look→ask→accept → exactly one eco:scamResult each (refuse,accept,refuse,accept) + Owl afterword + one story:end`);
 }
 
 // ---- queueing: opening + event + scam back-to-back → single story:end at the very end

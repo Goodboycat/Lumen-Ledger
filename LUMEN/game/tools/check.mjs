@@ -444,7 +444,7 @@ if (doEconomy) {
     const lessons = new Set(BALANCE.lessons);
     const evIds = Object.keys(EVENTS); if (evIds.length < 8) throw new Error(`EVENTS ${evIds.length} < 8`);
     for (const id of evIds) { const e = EVENTS[id]; for (const k of ['id', 'title', 'text', 'finlit', 'lesson', 'effect']) if (!e[k]) throw new Error(`EVENTS.${id} missing ${k}`); if (e.id !== id) throw new Error(`EVENTS.${id}.id mismatch`); if (!lessons.has(e.lesson)) throw new Error(`EVENTS.${id} unknown lesson ${e.lesson}`); }
-    const scIds = Object.keys(SCAMS); if (scIds.length !== 6) throw new Error(`SCAMS ${scIds.length} ≠ 6`);
+    const scIds = Object.keys(SCAMS); if (scIds.length < 11) throw new Error(`SCAMS ${scIds.length} < 11`);
     for (const id of scIds) { const s = SCAMS[id]; for (const k of ['id', 'title', 'pitch', 'tell', 'text', 'lesson']) if (!s[k]) throw new Error(`SCAMS.${id} missing ${k}`); if (!(s.cost > 0 || s.amount > 0)) throw new Error(`SCAMS.${id} has neither cost nor amount`); if (s.amount && !(s.trueRate > BALANCE.loanRate)) throw new Error(`SCAMS.${id} trueRate must exceed loanRate`); }
     const upIds = Object.keys(UPGRADES); if (upIds.length < 8) throw new Error(`UPGRADES ${upIds.length} < 8`);
     const kinds = new Set();
