@@ -31,6 +31,7 @@ if (btn) { await p.touchscreen.tap(btn.x, btn.y); await p.waitForTimeout(1500); 
   // Boon Draft: pick a card with a REAL tap, then the chip should speak
   const card = await p.evaluate(() => { const e = document.querySelector('.ll-boon-card, .ll-boon, [class*=boon-card]'); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
   if (card) { await p.touchscreen.tap(card.x, card.y); await p.waitForTimeout(600); const pick = await p.evaluate(() => { const e = [...document.querySelectorAll('.ll-boons-pick')].find(b => !b.disabled); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }); if (pick) await p.touchscreen.tap(pick.x, pick.y); await p.waitForTimeout(1500); } else console.log('no boon card'); }
+await p.screenshot({ path: `tools/shots/s86_sub_5_chip_${W}x${H}.png` });
 console.log('events', JSON.stringify(await p.evaluate(() => window.__ev)));
 console.log('chips', JSON.stringify(await p.evaluate(() => [...document.querySelectorAll('.ll-chips .ll-chip')].map(c => c.dataset.id + ' | ' + c.textContent.trim()))));
 await p.waitForTimeout(2500); await p.screenshot({ path: `tools/shots/s86_sub_4_${W}x${H}.png` });
