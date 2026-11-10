@@ -130,3 +130,6 @@ body.tj-on .ll-joy-hint { opacity: 0 !important; }   /* S60-A: the drawn stick d
   .ll-tutor { font-size: 12.5px; max-width: min(60vw, 400px); }
   .ll-tutor-bub { gap: 4px; padding: 6px 8px 6px 10px; }
 }
+
+/* S80: the drawn stick demo (knob + cloud hand) floated OVER the open shop tray and covered the "pick a card" hint and the Scout Fox card on phones. The tray owns the screen while it is open. */
+body.ll-tray-open .ll-tutor-joy, body.ll-tray-open .ll-tutor-joy.show { display: none !important; }
