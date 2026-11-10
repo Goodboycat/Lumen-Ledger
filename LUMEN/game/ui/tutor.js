@@ -216,6 +216,8 @@ export function mountTutor(root, opts = {}) {
     retire,
     /** Restore persisted progress (save slot / CONTINUE): counts {id:n} and/or the old seen list (each id = 1). Never lowers a count. */
     merge(o = {}) { if (Array.isArray(o.seen)) for (const id of o.seen) if (typeof id === 'string') { counts[id] = Math.max(counts[id] || 0, 1); if (!seen.includes(id)) seen.push(id); } putCounts(o.counts); return api; },
+    /** S84: forget the cards whose id starts with `prefix` (a fresh PLAY re-teaches the verb chain; counts, seen, queue, cool-downs of those ids only). */
+    forget(prefix = '') { for (const c of cards.values()) { if (!String(c.id).startsWith(prefix)) continue; delete counts[c.id]; const tk = teachKey(c); if (tk) delete counts[tk]; const k = seen.indexOf(c.id); if (k >= 0) seen.splice(k, 1); delete st.last[c.id]; } st.queue = st.queue.filter((q) => !String(q.c.id).startsWith(prefix)); return api; },
     /** Debug / reset: forget every card (counts, seen, queue, cool-downs). */
     clear() { for (const k of Object.keys(counts)) delete counts[k]; seen.length = 0; st.queue.length = 0; st.last = {}; st.lullDone = false; st.lull = 0; return api; },
     has(id) { return cards.has(id); },

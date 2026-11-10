@@ -31,6 +31,9 @@
 .ll-season .ll-speed { pointer-events: auto; touch-action: manipulation; cursor: pointer; margin: -2px -8px -2px 0; min-width: 28px; height: 22px; padding: 0 6px; border: 2px solid var(--ink); border-radius: 999px; background: #fff; color: var(--ink); font: 900 12px/1 var(--font); box-shadow: 0 2px 0 var(--ink); }
 .ll-season .ll-speed:active { transform: translateY(2px); box-shadow: none; }
 .ll-season .ll-speed.on { background: var(--blue); color: #fff; }
+/* S84: the season pill's invisible hit-area (::after, S80) covered the speed button, so a REAL tap opened the season card instead of speeding up (programmatic click() hid it). Lift the button above it and give it its own >= 40 px hit area. */
+.ll-season .ll-speed { position: relative; z-index: 3; }
+.ll-season .ll-speed::after { content: ''; position: absolute; left: -7px; right: -9px; top: -12px; bottom: -12px; }
 .ll-season .ll-speed.pop { animation: ll-pulse .3s cubic-bezier(.34,1.56,.64,1); }
 /* S42/16B: the Debt-Fog bar is HIDDEN — the fog on the island is the indicator. The node stays (hud.setFog / gates). */
 .ll-fog { display: none !important; }

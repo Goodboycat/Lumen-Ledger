@@ -85,10 +85,12 @@ export function mountReveal(ui, opts = {}) {
   // --- new game: collapse jars; hide the widgets only when the guide might be skipped (first run, no save)
   on('game:start', () => {
     ui?.jars?.setCollapsed?.(true);
-    const firstRun = !tutDone();
+    const firstRun = !tutDone() && !(ui?.tutor?.seen?.length);   // S84: a profile that already met any card (save / earlier session) is a returning player: everything visible at once
     if (firstRun && hasDoc) api.hideAll(); else { st.staged = false; st.shown = new Set(REVEAL_ORDER); for (const k of REVEAL_ORDER) nodes()[k]?.classList?.remove('ll-staged'); }
   });
   on('game:resumed', () => api.revealAll({ quiet: true }));
+  // S84: nobody ever wrote the storage key, so every replay hid the speed button (and jars, stars, powers) again. The verb chain finishing (or being skipped) = done.
+  on('tut:done', () => { try { if (typeof localStorage !== 'undefined') localStorage.setItem(storageKey, '1'); } catch { /* private mode */ } api.reveal('speed', { quiet: true }); });
   on('game:title', () => { api.revealAll({ quiet: true }); ui?.jars?.setCollapsed?.(false); });
   // --- tutorial takers see everything (the hand points at jars / fog / season). Skip before the jar step → staged mode stays.
   on('ui:tutorial:open', () => { st.wasStaged = st.staged; api.revealAll({ quiet: true }); });
