@@ -100,11 +100,12 @@ export function mountLedger(root, opts = {}) {
   const btn = el('button', 'll-btn ll-ledger-continue', 'CONTINUE ▸');
   foot.append(btn);
   // S66-F: two columns on short landscape screens (phone): left = the money, right = stars / goals / lesson / button. Elsewhere display:contents = unchanged single column.
+  let api_place = null;
   const colL = el('div', 'll-ledger-col ll-ledger-col-l'); colL.append(head, table, chips, crewBox);
   const colR = el('div', 'll-ledger-col ll-ledger-col-r'); colR.append(stars, starTxt, goalList, unlockCard, lesson, foot);
   sheet.append(colL, colR);
   // very short phones (568x320): the right column is full, the left one has room -> CONTINUE lives under the money table there
-  try { const mq = typeof matchMedia === 'function' ? matchMedia('(max-height: 340px) and (min-width: 480px)') : null; const place = () => { (mq && mq.matches ? colL : colR).appendChild(foot); foot.classList.toggle('in-left', !!(mq && mq.matches)); }; place(); mq && (mq.addEventListener ? mq.addEventListener('change', place) : mq.addListener && mq.addListener(place)); } catch (e) { /* no matchMedia (tests) */ }
+  try { const mq = typeof matchMedia === 'function' ? matchMedia('(max-height: 340px) and (min-width: 480px)') : null; const place = () => { let left = !!(mq && mq.matches); if (left) { foot.remove(); const hL = colL.getBoundingClientRect().height, hR = colR.getBoundingClientRect().height; left = hL <= hR; }   /* S81: the SHORTER column takes CONTINUE (Cloud crew line / unlock card change the heights) */ (left ? colL : colR).appendChild(foot); foot.classList.toggle('in-left', left); }; place(); api_place = place; mq && (mq.addEventListener ? mq.addEventListener('change', place) : mq.addListener && mq.addListener(place)); } catch (e) { /* no matchMedia (tests) */ }
   wrap.append(backdrop, sheet);
   root.appendChild(wrap);
 
@@ -187,6 +188,7 @@ export function mountLedger(root, opts = {}) {
       const U = pendingUnlock; pendingUnlock = null; unlockCard.classList.remove('in'); unlockCard.hidden = !U; st.unlockShown = U ? U.id : null;
       if (U) { unlockTitle.textContent = `${U.title || U.id}  [${U.key || ''}]`; unlockBody.textContent = U.lesson || ''; later(rowsEnd() + STAR_GAP * 3 + 60, () => unlockCard.classList.add('in')); }
       // button
+      if (api_place) later(0, api_place);   // S81: re-pick the shorter column now that crew / unlock content is known
       btn.classList.remove('in'); btn.disabled = true; later(rowsEnd() + STAR_GAP * 3 + 420, () => { btn.classList.add('in'); btn.disabled = false; });
       btn.innerHTML = (st.outcome === 'win' ? icon('laurel') + ' ' : '') + iconize(st.outcome === 'win' ? 'THE END ▸' : st.outcome === 'lose' ? 'TRY AGAIN ▸' : 'CONTINUE ▸');
       st.openedAt = Date.now();
