@@ -173,3 +173,7 @@ body.is-touch .ll-build-demolishing .ll-btn { min-height: 40px; }
   body.is-touch .ll-build-detail .ll-btn { min-height: 40px; }
   body.is-touch .ll-build-detail .ll-btn.pm { min-width: 40px; }
 }
+
+/* S80: 341-420 px tall phones (844x390), tray open, NO card selected: the 164 px grid made the tray 298 px tall, so its top (y=26) covered the Spark pill and the PAY button.
+   Grid capped at 108 px (one full row + a peek of the next, chevron shows there is more): tray top clears the pill (bottom ~64 px). */
+@media (max-height: 420px) and (min-height: 341px) { body.is-touch .ll-build:not(.has-detail) .ll-build-grid { max-height: 108px; } }

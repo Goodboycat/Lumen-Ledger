@@ -12,7 +12,7 @@ await S('1_title');
 await p.evaluate(() => ui.title.buttons.story.click());
 for (let i = 0; i < 40; i++) { await p.waitForTimeout(250); if (await p.evaluate(() => ui.dialogue.isOpen)) await p.evaluate(() => { ui.dialogue.skip?.(); ui.dialogue.advance?.(); }); }
 await p.waitForTimeout(1500); await S('2_play');
-await p.evaluate(() => { lg.debug.grant?.(400); ui.build.open(); }); await p.waitForTimeout(900); await S('3_tray');
+await p.evaluate(() => { lg.debug.grant?.(400); ui.build.open(); }); await p.waitForTimeout(900); await S('3_tray'); console.log('tray', JSON.stringify(await p.evaluate(() => { const g = (q) => { const e = document.querySelector(q); if (!e) return null; const r = e.getBoundingClientRect(); return [Math.round(r.top), Math.round(r.bottom), Math.round(r.height)]; }; return { tray: g('.ll-build'), tray2: g('.ll-build-tray'), grid: g('.ll-build-grid'), detail: g('.ll-build-detail'), foot: g('.ll-build-foot'), spark: g('.ll-spark'), cls: document.querySelector('.ll-build')?.className, hasDetail: document.querySelector('.ll-build-tray')?.className, body: document.body.className }; })));
 await p.evaluate(() => { lg.debug.hire?.('cloud'); });   // so the card shows owned? (hire only after we shoot the unowned card first)
 await p.evaluate(() => { for (const t of document.querySelectorAll('.ll-build-tab')) if (t.dataset.cat === 'crew') t.click(); }); await p.waitForTimeout(700);
 await S('4_crew');
