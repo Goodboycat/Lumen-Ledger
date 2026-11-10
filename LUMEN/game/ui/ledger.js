@@ -188,7 +188,7 @@ export function mountLedger(root, opts = {}) {
               : (g.ok ? 'Earned more than you spent' : `Earn ${mul}× what you spend`),
             (g) => g.ok ? (report.debtBefore > 0 && report.saved < sMin ? 'Cut the debt' : `Saved ${fm(report.saved)} ✦`) : `Save ${sMin} ✦ (or cut the debt)`,
             (g) => g.ok ? 'Debt held down' + (g.paidInterest && g.interest > 0 ? ` · paid the Baron's ${fm(g.interest)} ✦` : '')
-              : (g.debtHeld ? `Pay the Baron's ${fm(g.interest)} ✦ interest` : `Debt went up — PAY ${fm(g.interest)} ✦+ at the pier`),
+              : (g.debtHeld ? `Pay the Baron's ${fm(g.interest)} ✦ interest` : g.rise > 0 ? `Debt rose ${fm(g.rise)} ✦ — repay ${fm(g.rise)} ✦ at the pier to hold it` : `Debt went up — PAY ${fm(g.interest)} ✦+ at the pier`),
           ];
           gs.forEach((g, i) => { const e = goalEls[i]; if (!e) return; e.li.classList.toggle('ok', !!g.ok); e.li.classList.toggle('miss', !g.ok); e.li.dataset.goal = g.id;
             e.ic.innerHTML = iconize(g.ok ? '✓' : '✗'); e.tx.innerHTML = iconize(txt[i](g)); });

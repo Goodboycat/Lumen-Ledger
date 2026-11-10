@@ -75,6 +75,9 @@ export function createBaronPier(deps = {}) {
   B.due = () => ({ interest: Math.round(eco.state.interestOwed || 0), minimum: Math.min(Math.round(eco.state.interestOwed || 0), Math.max(0, eco.state.spark)), debt: eco.state.debt });
   B.near = (r = PIER.near) => { if (!B.active || !B.g || B.phase === 'arrive' || B.phase === 'leave') return false; const h = heroPos(); return Math.hypot(h.x - B.g.position.x, h.z - B.g.position.z) <= r; };
 
+  /** S87: how many ✦ must still be repaid at the pier so the season's debt did not go up (the debt star). 0 when it already held. */
+  const holdNeed = () => { const r = eco._pierReport?.(); if (!r || r.debtStart == null) return 0; return Math.max(0, Math.ceil(eco.state.debt - r.debtStart - 1e-9)); };
+  B.holdNeed = holdNeed;
   /** Pay the interest from the pouch (shortfall → debt). Idempotent. */
   function settleInterest(why = 'interact') {
     if (B.settled) return { paid: B.paid, shortfall: B.shortfall };
@@ -84,7 +87,7 @@ export function createBaronPier(deps = {}) {
     B.paid = r.paid; B.shortfall = r.shortfall;
     if (r.paid > 0 && vfx?.coinFly && B.g) { const h = heroPos(); vfx.coinFly(new THREE.Vector3(h.x, 0.8, h.z), new THREE.Vector3(B.g.position.x, 1.4, B.g.position.z), null, { count: Math.min(8, 2 + Math.ceil(r.paid / 6)) }); }
     if (r.shortfall > 0) { B.stats.short++; bus.emit('pier:short', { shortfall: r.shortfall, paid: r.paid, debt: eco.state.debt, why }); say(pick('short', B.season) + ` (+${r.shortfall} ✦ debt)`); vfx?.debtPulse?.(0.5); }
-    else { B.stats.paid++; bus.emit('pier:paid', { interest: owed, repaid: 0, debt: eco.state.debt, why }); if (owed > 0) say(pick('paid', B.season)); else say('No interest due. Keep it that way… or don\u2019t.'); }
+    else { B.stats.paid++; bus.emit('pier:paid', { interest: owed, repaid: 0, debt: eco.state.debt, why, holdNeed: holdNeed() }); if (owed > 0) say(pick('paid', B.season)); else say('No interest due. Keep it that way… or don\u2019t.'); }
     B.anim?.play?.(r.shortfall > 0 ? 'taunt' : 'offerDeal');
     return r;
   }
@@ -106,7 +109,7 @@ export function createBaronPier(deps = {}) {
     // repay taps (hold E): DEPOSIT_STEP per tap, capped by debt and pouch
     if (B.phase === 'repay' && eco.state.debt > 0 && eco.state.spark > 0) {
       const amt = eco.repay(Math.min(DEPOSIT_STEP, eco.state.debt, eco.state.spark));
-      if (amt > 0) { B.repaid += amt; B.stats.repaid += amt; bus.emit('pier:repaid', { amount: amt, debt: eco.state.debt, total: B.repaid }); if (B.repaid === amt) say(pick('repaid', B.season), 2.6); vfx?.pop?.show?.(new THREE.Vector3(B.g.position.x, 2.0, B.g.position.z), `debt −${amt}`, { color: '#FFD54F', dur: 0.9 }); if (eco.state.debt <= 0) { say('Paid off?! …This is not over.'); done('debtfree'); return 'done'; } return 'repaid'; }
+      if (amt > 0) { B.repaid += amt; B.stats.repaid += amt; bus.emit('pier:repaid', { amount: amt, debt: eco.state.debt, total: B.repaid, holdNeed: holdNeed() }); if (B.repaid === amt) say(pick('repaid', B.season), 2.6); vfx?.pop?.show?.(new THREE.Vector3(B.g.position.x, 2.0, B.g.position.z), `debt −${amt}`, { color: '#FFD54F', dur: 0.9 }); if (eco.state.debt <= 0) { say('Paid off?! …This is not over.'); done('debtfree'); return 'done'; } return 'repaid'; }
     }
     done('release'); return 'done';
   };

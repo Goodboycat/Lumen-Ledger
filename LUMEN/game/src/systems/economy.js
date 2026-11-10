@@ -653,7 +653,7 @@ export class Economy {
     const goals = [
       { id: 'income', ok: income + 1e-9 >= expenses * c.starIncomeGood, income: round(income), expenses: round(expenses), need: Math.ceil(expenses * c.starIncomeGood - 1e-9) },   // S87: the numbers travel with the goal so the Ledger can SHOW the 1.25x check
       { id: 'save', ok: saved >= c.starSaveMin || (debtBefore > 0 && debtNow < debtBefore) },
-      { id: 'debt', ok: debtHeld && (fogHeld || paidInterest), debtHeld, fogHeld, paidInterest, debtStart, interest, repaid },
+      { id: 'debt', ok: debtHeld && (fogHeld || paidInterest), debtHeld, fogHeld, paidInterest, debtStart, interest, repaid, rise: Math.max(0, Math.ceil(debtNow - debtStart - 1e-9)) },   // S87: rise = how much the debt grew (what to repay to hold it)
     ];
     return { stars: goals.filter((g) => g.ok).length, goals };
   }
