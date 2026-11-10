@@ -10,8 +10,8 @@
 .ll-journal-x { flex: none; width: 44px; height: 44px; border: 3px solid var(--ink); border-radius: 12px; background: var(--orange); color: var(--ink); font: 900 18px/1 var(--font); box-shadow: 0 3px 0 var(--ink); cursor: pointer; touch-action: manipulation; }
 .ll-journal-x:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
 .ll-journal-sub { margin: 2px 2px 6px; font-size: 12px; font-weight: 700; opacity: .65; }
-.ll-journal-grid { overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 2px 2px 6px; }
-.ll-sticker { position: relative; display: flex; align-items: center; gap: 10px; min-height: 64px; padding: 6px 8px 6px 8px; border: 3px solid var(--ink); border-radius: 14px; background: #fff; font-weight: 800; font-size: 12.5px; line-height: 1.2; }
+.ll-journal-grid { overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: max-content; align-content: start; gap: 12px 8px; padding: 10px 2px 6px; }   /* S85: rows size to their text (14 stickers, long tells) and the stamps (top: -9px) get room */
+.ll-sticker { position: relative; flex: none; display: flex; align-items: center; gap: 10px; min-height: 64px; padding: 6px 8px 6px 8px; border: 3px solid var(--ink); border-radius: 14px; background: #fff; font-weight: 800; font-size: 12.5px; line-height: 1.2; }
 .ll-sticker.empty { background: #eceae3; border-color: rgba(38,50,56,.35); border-style: dashed; color: rgba(38,50,56,.5); font-weight: 700; }
 .ll-sticker.spotted, .ll-sticker.took { background: #e8f8e4; } .ll-sticker.fell { background: #ffe9e4; } .ll-sticker.refused, .ll-sticker.met, .ll-sticker.passed { background: #e9f7ff; }
 .ll-sticker.fair { border-color: #2E7D32; }
