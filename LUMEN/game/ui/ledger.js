@@ -145,7 +145,13 @@ export function mountLedger(root, opts = {}) {
       // rows
       let netSum = 0;
       LEDGER_ROWS.forEach(([key], i) => {
-        const r = rows[key]; let v = +report[key] || 0; if (key === 'expenses') v = Math.max(0, v - Math.max(0, +report.subscription || 0));   // S86: the renewal has its own row
+        const r = rows[key]; let v = +report[key] || 0;
+        // S87 BUGFIX (Ledger Net did not match the star rule): report.income ALREADY contains the Save interest, the positive Invest return and (picked-up) raid drops;
+        // report.expenses ALREADY contains the loan interest, the free-trial renewal, the Collector tax and the raided Spark. Each has its own row, so the big rows show only
+        // the REST. The table then adds up to income - expenses, exactly the two numbers the 1.25x star goal compares (nothing counted twice).
+        const N = (k) => Math.max(0, +report[k] || 0);
+        if (key === 'income') v = Math.max(0, v - N('interestEarned') - Math.max(0, +report.investReturn || 0) - Math.min(N('recovered'), Math.max(0, v - N('interestEarned') - Math.max(0, +report.investReturn || 0))));
+        if (key === 'expenses') v = Math.max(0, v - N('interestPaid') - N('subscription') - N('tillTax') - N('raided'));
         r.target = v * (r.sign < 0 ? -1 : 1); r.shown = 0; r.t = -1; r.val.textContent = '0';
         r.row.classList.remove('in', 'hidden-zero'); r.row.style.setProperty('--i', i); netSum += r.target;
         if (key === 'subscription' && v <= 0) r.row.classList.add('hidden-zero');   // S86: only when a trial renewed this season
@@ -154,6 +160,7 @@ export function mountLedger(root, opts = {}) {
         if (key === 'interestPaid') { const pct = report.debtBefore > 0 && v > 0 ? Math.round(v / report.debtBefore * 100) : null; r.row.firstChild.textContent = pct != null ? `Loan interest  ${pct} %` : (season === 1 ? 'Loan interest  15 %' : 'Loan interest  6 %'); }   // S01: S1 shows the real (half) rate
         later(ROW_STAGGER * i, () => { r.row.classList.add('in'); r.t = 0; if (!r.row.classList.contains('hidden-zero')) bus.emit('ui:ledger:row', { i, key }); });   // S83: stamp thump on every other row
       });
+      if (report.income != null || report.expenses != null) { const T = (k) => +report[k] || 0; netSum = T('income') - T('expenses') + Math.min(0, T('investReturn')); }   // S87: Net = exactly what the star rule compares (a raid drop that was never picked up is the only thing the split rows could not know)
       rows.net.target = netSum; rows.net.shown = 0; rows.net.t = -1; rows.net.val.textContent = '0'; rows.net.row.classList.remove('in', 'pos', 'neg');
       rows.net.row.classList.add(netSum >= 0 ? 'pos' : 'neg');
       later(ROW_STAGGER * LEDGER_ROWS.length, () => { rows.net.row.classList.add('in'); rows.net.t = 0; bus.emit('ui:ledger:total', { net: netSum }); });   // S83: counting ratchet + ding
@@ -177,7 +184,8 @@ export function mountLedger(root, opts = {}) {
       { const gs = Array.isArray(report.goals) ? report.goals : null; goalList.hidden = !gs; goalList.classList.remove('in');
         if (gs) { const fm = (n) => Math.round(+n || 0); const sMin = fm(report.starSaveMin ?? 20), mul = report.starIncomeGood ?? 1.25;
           const txt = [
-            (g) => g.ok ? 'Earned more than you spent' : `Earn ${mul}× what you spend`,
+            (g) => g.income != null ? (g.ok ? `Earned ${fm(g.income)} ✦, spent ${fm(g.expenses)} ✦ — ${mul}× met` : `Earn ${fm(g.need)} ✦ (${mul}× your ${fm(g.expenses)} spent) — you made ${fm(g.income)}`)
+              : (g.ok ? 'Earned more than you spent' : `Earn ${mul}× what you spend`),
             (g) => g.ok ? (report.debtBefore > 0 && report.saved < sMin ? 'Cut the debt' : `Saved ${fm(report.saved)} ✦`) : `Save ${sMin} ✦ (or cut the debt)`,
             (g) => g.ok ? 'Debt held down' + (g.paidInterest && g.interest > 0 ? ` · paid the Baron's ${fm(g.interest)} ✦` : '')
               : (g.debtHeld ? `Pay the Baron's ${fm(g.interest)} ✦ interest` : `Debt went up — PAY ${fm(g.interest)} ✦+ at the pier`),

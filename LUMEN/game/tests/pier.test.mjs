@@ -97,3 +97,16 @@ test('S76 debt paid to zero at the pier after the last season -> eco.tryWin() wi
   const e3 = makeEconomy({ bus, seed: 1, autoSeason: false, pierPays: true }); e3.state.season = 5; e3.state.debt = 0;
   assert.equal(e3.tryWin(), false, 'a debt-free S5 is not the ending');
 });
+
+test('S87: chip turns green on pier:paid even if it was red (short) when he arrived; pier:short stays red', () => {
+  const { bus, chip } = mkHud(); bus.emit('pier:due', { interest: 15, spark: 3, canPay: false, waitCap: 20 });
+  assert.ok(chip().classList.contains('short'));
+  bus.emit('pier:paid', { interest: 15 }); assert.ok(!chip().classList.contains('short'), 'no red once paid'); assert.ok(chip().classList.contains('repay'));
+  bus.emit('pier:done', {});
+  bus.emit('pier:due', { interest: 15, spark: 20, canPay: true, waitCap: 20 }); bus.emit('pier:short', { shortfall: 5 });
+  assert.ok(chip().classList.contains('short') && !chip().classList.contains('repay'), 'short = red only');
+});
+test('S87: a tip / jar withdraw while he is still WALKING IN flips the chip (pouch event no longer ignored in the arrive phase)', () => {
+  const { eco, B, ev } = mkPier({ spark: 3, owed: 15 }); B.begin(); assert.equal(B.phase, 'arrive'); eco.gain(20);
+  assert.equal(ev.pouch.at(-1).canPay, true); assert.equal(B.t, 0); assert.equal(B.grace, PIER.graceMax, 'no grace spent while walking in');
+});

@@ -146,6 +146,31 @@ ok(typeof Economy === 'function' && BALANCE && EVENTS && SCAMS && UPGRADES, 'exp
   const n = mk({ startDebt: 300, startFog: 0.4, startSpark: 400 }); for (let i = 0; i < 20; i++) n.sell('fruit', 'regular', 5); const rn = n.endSeason(); ok(!rn.pier, 'S70: auto path has no pier block');
 }
 
+// ---- S87: "I paid the Baron what he asked in season 3, got the check, no star" + the 1.25x income star
+{
+  const e = mk({ startDebt: 100, startFog: 0.4, startSpark: 0 }, { pierPays: true });
+  // season 1: broke at the pier -> the shortfall lands on the debt AFTER the new ledger was opened
+  const r1 = e.endSeason(); const sf = e.settleInterest(); e.closePier('done');
+  ok(sf.shortfall > 0 && e.state.debt > 100, 'S87: season 1 short at the pier -> shortfall added to the debt');
+  ok(e.ledger.debtStart === e.state.debt, `S87: the next season starts from the debt AFTER the pier (${e.ledger.debtStart} == ${e.state.debt})`);
+  // season 2: earn well, pay the Baron in full -> debt held (no 'debt went up' from last season's shortfall) -> debt star
+  e.ledger.income += 400; e.state.spark = 400;
+  const r2 = e.endSeason(); const p2 = e.settleInterest(); e.closePier('done');
+  ok(p2.shortfall === 0 && r2.goals[2].debtHeld && r2.goals[2].ok, 'S87: paid in full in season 2 -> debt star (used to be lost to last season\'s pier shortfall)');
+  ok(r2.goals[0].ok && r2.goals[0].income >= r2.goals[0].need && r2.goals[0].need === Math.ceil(r2.goals[0].expenses * 1.25), 'S87: 1.25x goal carries income / expenses / need for the Ledger checklist');
+  // repaying debt at the pier must not make the next season\'s start look higher than it is
+  const f = mk({ startDebt: 200, startFog: 0.4, startSpark: 300 }, { pierPays: true }); f.endSeason(); f.settleInterest(); f.repay(100); f.closePier('done');
+  ok(f.ledger.debtStart === f.state.debt, 'S87: repaying at the pier re-bases the next season too');
+  // 1.25 boundary: exactly 1.25x counts, 1 spark less does not
+  const g = mk({ startDebt: 0, startFog: 0.4 }); const sc = g._scoreSeason.bind(g);
+  ok(sc({ income: 125, expenses: 100, saved: 0, debtBefore: 0, debtNow: 0, debtStart: 0, fogHeld: true, repaid: 0, interest: 0 }).goals[0].ok, 'S87: income exactly 1.25x expenses = star');
+  ok(!sc({ income: 124, expenses: 100, saved: 0, debtBefore: 0, debtNow: 0, debtStart: 0, fogHeld: true, repaid: 0, interest: 0 }).goals[0].ok, 'S87: 124 vs 100 = no star');
+  // every season 1..6: a player who earns 2x and pays the Baron in full always gets the income + debt stars
+  const h = mk({ startDebt: 120, startFog: 0.4, startSpark: 300 }, { pierPays: true }); let allOk = true;
+  for (let i = 0; i < 6; i++) { h.ledger.income += 300; h.state.spark += 300; const r = h.endSeason(); h.settleInterest(); h.closePier('done'); if (!(r.goals[0].ok && r.goals[2].ok)) { allOk = false; console.log('  season', r.season, JSON.stringify(r.goals)); } }
+  ok(allOk, 'S87: 6 seasons earning well + paying the Baron in full: income and debt stars every time');
+}
+
 // ---- loans / repay
 {
   const e = mk({ startDebt: 0 }); let loanEv = null; e.bus.on('eco:loan', (l) => { loanEv = l; });

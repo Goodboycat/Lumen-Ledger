@@ -1182,8 +1182,8 @@ if (doUI) {
     if (!q('.ll-ledger-continue').disabled) throw new Error('continue should be disabled while animating');
     await sleep(ROW_WAIT); // let the stagger timers arm the rows (90 ms × 5 + net)
     for (let i = 0; i < 60; i++) ledger.update(1 / 60); // 1 s > 650 ms count-up
-    if (ledger.rows.income.val.textContent !== '312' || ledger.rows.interestPaid.val.textContent !== '−36' || ledger.rows.investReturn.val.textContent !== '−8') throw new Error(`count-up income=${ledger.rows.income.val.textContent} interestPaid=${ledger.rows.interestPaid.val.textContent} invest=${ledger.rows.investReturn.val.textContent}`);
-    if (ledger.rows.net.target !== 312 + 14 - 8 - 180 - 36 || ledger.rows.net.val.textContent !== '102' || !ledger.rows.net.row.classList.contains('pos')) throw new Error('net ' + ledger.rows.net.target + ' ' + ledger.rows.net.val.textContent);
+    if (ledger.rows.income.val.textContent !== '298' || ledger.rows.interestPaid.val.textContent !== '−36' || ledger.rows.investReturn.val.textContent !== '−8') throw new Error(`count-up income=${ledger.rows.income.val.textContent} interestPaid=${ledger.rows.interestPaid.val.textContent} invest=${ledger.rows.investReturn.val.textContent}`);
+    if (ledger.rows.net.target !== 312 - 180 - 8 || ledger.rows.net.val.textContent !== '124' || !ledger.rows.net.row.classList.contains('pos')) throw new Error('net ' + ledger.rows.net.target + ' ' + ledger.rows.net.val.textContent);
     ledger.skip();
     const on = ledger.el.querySelectorAll('.ll-ledger-stars i.on').length; if (on !== 2 || !q('.ll-ledger-continue').classList.contains('in') || q('.ll-ledger-continue').disabled) throw new Error('skip → stars ' + on);
     if (!/Two stars/.test(q('.ll-ledger-startxt').textContent)) throw new Error('star text');

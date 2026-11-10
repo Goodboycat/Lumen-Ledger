@@ -156,9 +156,9 @@ export function createBaronPier(deps = {}) {
   // S72: a short player who gets Spark into the pouch while he waits (jar withdraw ↩, tip coin; tills are already swept at season end) sees the chip update live
   // ('need N more' -> 'pay it all = star'), and each gain buys a few extra seconds (graceMax in total) so the fix is not a race against the countdown.
   offs.push(bus.on('eco:spark', (p) => {
-    if (!B.active || B.settled || B.phase !== 'wait' || !(B.interest > 0)) return;
+    if (!B.active || B.settled || (B.phase !== 'wait' && B.phase !== 'arrive') || !(B.interest > 0)) return;   // S87: also while he is still walking in (a tip / jar withdraw then used to leave the chip red 'need N more' although the pouch was full)
     const spark = Math.round(eco.state.spark || 0), can = eco.state.spark + 1e-9 >= B.interest;
-    if (!B.canPay && p?.delta > 0 && B.grace > 0) { const add = Math.min(PIER.graceStep, B.grace, B.t); if (add > 0) { B.grace -= add; B.t -= add; bus.emit('pier:grace', { added: add, left: B.grace }); } }   // only time really given back is charged to the grace budget
+    if (B.phase === 'wait' && !B.canPay && p?.delta > 0 && B.grace > 0) { const add = Math.min(PIER.graceStep, B.grace, B.t); if (add > 0) { B.grace -= add; B.t -= add; bus.emit('pier:grace', { added: add, left: B.grace }); } }   // only time really given back is charged to the grace budget
     B.canPay = can;
     bus.emit('pier:pouch', { spark, interest: B.interest, canPay: can, jar: jarCash(), need: Math.max(0, Math.ceil(B.interest - eco.state.spark - 1e-9)) });
   }));

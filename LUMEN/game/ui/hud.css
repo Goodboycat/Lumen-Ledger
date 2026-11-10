@@ -145,6 +145,7 @@
 .ll-focus.shake { animation: ll-shake .36s linear; }
 @media (max-width: 640px) { .ll-focus { padding-right: 6px; } .ll-focus-bar { width: 28px; } }
 .ll-pier-chip.short { background: #ff9e80; }   /* S71: pouch cannot cover the interest -> no star */
+.ll-pier-chip.repay:not(.short) { background: #a5d6a7; }   /* S87: paid = green, and it wins over .short whatever the order */
 
 /* S77-B: HUD chips = the CLOUD speaking in drawn icons only. Each new one stacks BELOW the older ones and fades to transparent over its 5 s (--say-ms), then hud.js removes it. */
 .ll-chips .ll-chip.ll-chip { background: none; border: 0; box-shadow: none; padding: 0; border-radius: 0; color: inherit; display: block; animation: ll-say-in .28s cubic-bezier(.2,1.4,.4,1) both, ll-say-fade var(--say-ms, 5000ms) linear forwards; }

@@ -651,7 +651,7 @@ export class Economy {
     const c = this.config;
     const debtHeld = debtNow <= debtStart + 1e-9, paidInterest = repaid + 1e-9 >= interest || !!interestCleared;
     const goals = [
-      { id: 'income', ok: income >= expenses * c.starIncomeGood },
+      { id: 'income', ok: income + 1e-9 >= expenses * c.starIncomeGood, income: round(income), expenses: round(expenses), need: Math.ceil(expenses * c.starIncomeGood - 1e-9) },   // S87: the numbers travel with the goal so the Ledger can SHOW the 1.25x check
       { id: 'save', ok: saved >= c.starSaveMin || (debtBefore > 0 && debtNow < debtBefore) },
       { id: 'debt', ok: debtHeld && (fogHeld || paidInterest), debtHeld, fogHeld, paidInterest, debtStart, interest, repaid },
     ];
@@ -675,6 +675,10 @@ export class Economy {
     const cleared = p.shortfall <= 0 && p.paid + 1e-9 >= r.interestPaid;
     const { stars, goals } = this._scoreSeason({ income: r.income, expenses: r.expenses, saved: r.saved, debtBefore: r.debtBefore, debtNow: r.debt, debtStart: r.debtStart, fogHeld: r.fogHeld, repaid: r.repaid, interest: r.interestPaid, interestCleared: cleared });
     r.stars = stars; r.goals = goals; r.pier.cleared = cleared;
+    // S87 BUGFIX ("I paid the Baron in season 3, got the check, but no star"): the NEW season's ledger took its debtStart the instant the old season closed, BEFORE the pier.
+    // A shortfall at the pier (or any debt that landed after) then looked like "debt went up" in the NEXT season, so paying in full later could never earn the debt star.
+    // The next season really starts when the Baron leaves: re-base it on the debt as it stands now (minus what was borrowed / plus what was repaid inside the new ledger).
+    if (why !== 'next' && this.ledger) this.ledger.debtStart = s.debt + (this.ledger.repaid || 0) - (this.ledger.loansTaken || 0);
     this.bus.emit('eco:stars', { season: r.season, stars, from, report: r, why });
     return r;
   }
