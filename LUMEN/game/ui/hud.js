@@ -204,8 +204,8 @@ export function mountHUD(root, opts = {}) {
       const cx = W / 2, cy = H / 2, dx = (sc.behind ? -1 : 1) * (sc.x - cx), dy = (sc.behind ? -1 : 1) * (sc.y - cy), L = Math.hypot(dx, dy) || 1;
       const k = Math.min((cx - 28) / Math.abs(dx || 1e-6), (cy - 28) / Math.abs(dy || 1e-6));
       raidArrow.style.left = (cx + dx * k) + 'px'; raidArrow.style.top = (cy + dy * k) + 'px'; raidArrow.style.transform = `translate(-50%,-50%) rotate(${Math.atan2(dy, dx)}rad)`; void L; }),
-    bus.on('eco:subscription', (p) => { if (p && p.amount > 0) st.subPend = p; }),   // S86: the free trial renewed at season end; the Ledger covers the HUD, so the Cloud says it once the Ledger closes
-    bus.on('ui:ledger:close', () => { const p = st.subPend; st.subPend = null; if (!p) return; setTimeout(() => cloudSay('sub', ['trialcard', 'spark'], { text: `Free trial renewed: -${Math.round(p.amount)} Spark` + (p.left > 0 ? `, ${p.left} more to come` : ', last one'), num: '\u2212' + Math.round(p.amount), tone: 'loss', cls: 'll-chip-loss', ms: 5000 }), 350); }),
+    bus.on('eco:subscription', (p) => { if (p && p.amount > 0) st.subPend = p; }),   // S86: the free trial renewed at season end; the Ledger covers the HUD, so the Cloud says it once the player continues (after the Boon Draft, which also covers the HUD)
+    bus.on('ui:continue', () => { const p = st.subPend; st.subPend = null; if (!p) return; setTimeout(() => cloudSay('sub', ['trialcard', 'spark'], { text: `Free trial renewed: -${Math.round(p.amount)} Spark` + (p.left > 0 ? `, ${p.left} more to come` : ', last one'), num: '\u2212' + Math.round(p.amount), tone: 'loss', cls: 'll-chip-loss', ms: 5000 }), 350); }),
     bus.on('game:title', () => { st.subPend = null; }),
     bus.on('hud:new', (p) => { if (p?.text) api.newChip(p.text, 5000, p.id); }),                      // 43D: story.js fires once per novelty id (noveltiesSeen)
     bus.on('hud:chip', (p) => { if (!p || !p.id) return; const old = [...chips.children].find((n) => n.dataset?.id === p.id) || null; if (p.on === false) { if (old) { clearTimeout(old._ttl); old.remove(); } return; }
