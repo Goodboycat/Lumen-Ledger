@@ -1,11 +1,11 @@
 // LUMEN LEDGER — Scam Journal sheet (T5, S58). DOM only, no Three, zero gameplay logic (data = src/systems/scamJournal.js).
 //   const jr = mountJournal(root, { bus, journal: () => lg.sb?.journal });   jr.open() · jr.close() · jr.isOpen · jr.render() · jr.destroy()
-// Opened by the pause menu's JOURNAL button (bus 'ui:journal:open'). 9 sticker slots (6 Too-Good Deals, 3 fair deals), a 2-column grid on phones.
+// Opened by the pause menu's JOURNAL button (bus 'ui:journal:open'). 14 sticker slots (11 Too-Good Deals, 3 fair deals), a 2-column grid on phones.
 // Filled sticker = drawn icon + name + ONE tell line + stamp (spotted / fell for it / took it / passed). Empty sticker = grey "?" (collecting hook).
 // Touch-only: every target >= 44 px, the sheet scrolls, Esc / back tap / X close it. Never invents text: tells come from data (economyData SCAMS/FAIRS).
 import { icon } from './icons.js';
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
-const DEAL_ICON = { zeroInterestLoan: 'scroll', doubleSpark: 'sparkle', luckyLantern: 'lantern', foggyInsurance: 'umbrella', premiumStallKit: 'hammer', quickFlip: 'chart', coopCrate: 'crate', honestSwap: 'lantern', neighborGift: 'basket' };
+const DEAL_ICON = { zeroInterestLoan: 'scroll', doubleSpark: 'sparkle', luckyLantern: 'lantern', foggyInsurance: 'umbrella', premiumStallKit: 'hammer', quickFlip: 'chart', parcelFee: 'parcel', fakeCharity: 'tin', freeTrial: 'trialcard', fogLevy: 'notice', bringAFriend: 'pyramid', coopCrate: 'crate', honestSwap: 'lantern', neighborGift: 'basket' };
 const STAMP = { spotted: ['check', 'SPOTTED'], fell: ['cross', 'FELL FOR IT'], refused: ['check', 'SAID NO'], met: ['sticker', 'MET'], took: ['check', 'TOOK IT'], passed: ['sticker', 'PASSED'] };
 
 export function mountJournal(root, opts = {}) {

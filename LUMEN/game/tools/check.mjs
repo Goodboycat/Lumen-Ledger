@@ -898,7 +898,7 @@ if (doStory) {
       if (story.current?.group !== 'ledger') throw new Error('S' + s + ' ledger lines not playing');
       let openings = 0; const offB = bus.on('story:begin', (p) => { if (p.group === 'opening' && p.season === s + 1) openings++; });
       drain(); offB();   // ledger lines → story:review → ui:continue → S(s+1) opening starts synchronously and is drained by the same loop
-      if (!eco.state.ended && openings !== 1) throw new Error('S' + (s + 1) + ' opening after ui:continue ×' + openings);
+      if (!eco.state.ended && s < 10 && openings !== 1) throw new Error('S' + (s + 1) + ' opening after ui:continue ×' + openings);   // S85: S10 has no S11 opening any more (Endless was removed in S66-B)
     }
     if (lessons.join() !== BALANCE.lessons.join()) throw new Error('lessons ' + lessons.join());
     if (reviews !== 10) throw new Error('reviews ' + reviews);
