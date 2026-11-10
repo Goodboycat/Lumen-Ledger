@@ -41,7 +41,17 @@ test('no grace once he is paid-up capable, spend is not a gain, and grace never 
 });
 test('grace is charged only for time really given back (early gain at t~0 keeps the budget)', () => { const { eco, B } = mkPier({ spark: 0, owed: 400 }); arrive(B); B.t = 0.5; eco.gain(1); assert.equal(B.t, 0); assert.equal(B.grace, PIER.graceMax - 0.5); });
 test('after he is paid (repay phase) pouch events are ignored', () => { const { eco, B, ev } = mkPier({ spark: 15, owed: 15 }); arrive(B); B.interact(); const n = ev.pouch.length; eco.gain(5); assert.equal(ev.pouch.length, n); });
-test('timeout still settles short with the shortfall on the debt', () => { const { eco, B, ev } = mkPier({ spark: 3, owed: 15 }); arrive(B); B.update(PIER.waitCap + 1); assert.equal(ev.done.length, 1); assert.equal(eco.state.debt, 112); });
+test('S85: wait ran out -> the Baron SEEKS Pip (nothing is taken from afar), contact settles short with the shortfall on the debt', () => {
+  const { eco, B, ev, bus } = mkPier({ spark: 3, owed: 15 }); const seek = []; bus.on('pier:seek', (p) => seek.push(p)); arrive(B);
+  B.update(PIER.waitCap + 0.1); assert.equal(B.phase, 'seek'); assert.equal(seek.length, 1); assert.equal(eco.state.spark, 3, 'pouch untouched while he walks'); assert.equal(ev.done.length, 0);
+  for (let i = 0; i < 400 && B.phase === 'seek'; i++) B.update(0.05); assert.equal(B.phase, 'leave', 'contact settles'); assert.equal(ev.done.length, 1); assert.equal(ev.done[0].why, 'timeout'); assert.equal(eco.state.debt, 112);
+});
+test('S85: a far-away hero is still reached (seek walks across the island) and a tap on him in seek phase pays normally', () => {
+  const hero = { root: { position: { x: 30, z: 20 } } }; const bus = new EventBus(), eco = mkEco(bus, { spark: 40, owed: 15 });
+  const B = createBaronPier({ bus, eco, world: { pierSpawn: { x: 0, z: -10 } }, hero }); arrive(B); B.update(PIER.waitCap + 0.1); assert.equal(B.phase, 'seek');
+  for (let i = 0; i < 40; i++) B.update(0.1); assert.equal(B.phase, 'seek', 'still walking after 4 s'); assert.ok(eco.state.spark === 40);
+  hero.root.position.x = B.g.position.x + 1; hero.root.position.z = B.g.position.z; assert.equal(B.interact(), 'paid'); assert.equal(eco.state.spark, 25);
+});
 
 // ---- HUD ----
 const mkHud = () => { const bus = new EventBus(); const root = document.createElement('div'); document.body.append(root); const hud = mountHUD(root, { bus, seasonsToWin: 10, selfDrive: false }); const chip = () => root.querySelectorAll('.ll-pier-chip')[0]; return { bus, root, hud, chip }; };

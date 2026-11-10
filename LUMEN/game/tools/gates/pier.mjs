@@ -23,7 +23,7 @@ export async function run({ resolve, pathToFileURL }) {
   const { DEPOSIT_STEP } = await imp('src/systems/jarsWorld.js');
   const mkGame = (bus, scene) => ({ scene, bus, sequences: new SequencePlayer(), tweens, hitStop: new HitStop(), input: { pointerWorld: new THREE.Vector3(), hasPointerWorld: false, move: new THREE.Vector2(), joystick: new THREE.Vector2(), actions: {}, pressed: () => false }, camera: { zoom: 1, shake() {} }, time: 0, timeScale: 1, paused: false, stats: {}, followTarget: null, systems: [], add(s) { this.systems.push(s); return s; }, remove(s) { const i = this.systems.indexOf(s); if (i >= 0) this.systems.splice(i, 1); }, hitstop() {} });
   const listen = (bus, names) => { const ev = {}; for (const n of names) { ev[n] = []; bus.on(n, (p) => ev[n].push(p)); } return ev; };
-  const PIER_EV = ['pier:due', 'pier:paid', 'pier:short', 'pier:repaid', 'pier:done', 'pier:skip', 'eco:season', 'eco:interest', 'eco:clock'];
+  const PIER_EV = ['pier:due', 'pier:paid', 'pier:short', 'pier:repaid', 'pier:done', 'pier:seek', 'pier:skip', 'eco:season', 'eco:interest', 'eco:clock'];
   const mkSb = (opts) => { const bus = new EventBus(), scene = new THREE.Scene(), game = mkGame(bus, scene); const ev = listen(bus, PIER_EV); const sb = createSandbox(game, { headless: true, seasonSeconds: 20, seed: 7, ...opts }); const dt = 1 / 30; const step = () => { game.time += dt; game.sequences.update(dt); game.tweens.update(dt); for (const s of game.systems) s.update?.(dt); if (sb.eco.pendingOffer) sb.eco.refuseOffer(); }; const run = (sec) => { for (let i = 0; i < sec * 30; i++) step(); }; return { bus, scene, game, ev, sb, step, run }; };
   const baronMeshes = (scene) => { let n = 0; scene.traverse((o) => { if (o.userData?.pier && o.userData?.type === 'baron') n++; }); return n; };
   const endSeason = (sb) => { sb.eco.state.day01 = 1; sb.eco.tick(0.05); };   // the clock crosses the season line
@@ -83,6 +83,9 @@ export async function run({ resolve, pathToFileURL }) {
     eco.state.spark = 200; sb.hero.root.position.set(0, 0, 0); endSeason(sb); const due2 = Math.round(eco.state.interestOwed); eco.state.spark = due2 + 20; const debt2 = eco.state.debt;
     if (ev['pier:due'].length !== 2 || !B.active) throw new Error('second visit missing');
     run(PIER.walkSec + PIER.waitCap + 0.5);
+    if (B.phase !== 'seek') throw new Error('S85: after the wait the Baron should be seeking, phase ' + B.phase);
+    for (let i = 0; i < PIER.seekMax * 4 && ev['pier:done'].length < 2; i++) run(0.25);   // S85: he walks to Pip (hero stands at the plaza centre), then settles on contact; stop at pier:done so the new season clock does not eat the pouch
+    if (!ev['pier:seek'] || ev['pier:seek'].length !== 1) throw new Error('S85: pier:seek not emitted once');
     if (ev['pier:done'].length !== 2 || ev['pier:done'][1].why !== 'timeout' || B.stats.timeouts !== 1) throw new Error(`timeout: done ${ev['pier:done'].length} why ${ev['pier:done'][1]?.why}`);
     if (ev['pier:due'][1].interest !== due2 || eco.state.spark !== 20 || eco.state.debt !== debt2 || eco.state.interestOwed !== 0) throw new Error(`timeout auto-settle spark ${eco.state.spark} debt ${eco.state.debt}`);
     run(PIER.leaveSec + 0.2); if (B.active || baronMeshes(scene)) throw new Error('timeout: Baron still there');
