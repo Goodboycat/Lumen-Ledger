@@ -33,7 +33,7 @@ export const CINE = {
   victoryFly: 2.4, victoryLamp: 5.0, victorySweepEnd: 9.2, victoryClear: 9.6, victoryDur: 13.8, victoryReturn: 1.6, victoryHold: 9.8, victoryDist: 11, victoryHeight: 8,   // S66-D: seconds on the shot clock (hold = dur - fly - return, kept for old callers)
   beamBoost: 3.6, beamBase: 0.6,                                    // rad/s of the lamp beam: ignition spins it up to boost, after the sweep it settles back to base
   fogPuffs: 120,
-  reduceCut: 0.6,
+  reduceCut: 0.6, skipArmMs: 900,                                  // S85: SKIP ignores taps for the first 0.9 s of a shot (a tap that ended the last scene cannot skip this one)
 };
 
 const _v = new THREE.Vector3(), _w = new THREE.Vector3();
@@ -137,6 +137,7 @@ export class CinematicDirector {
     this._compute(S, 0);                                                                 // first frame: rig valid before camera.update
     this.game?.camera?.setCine?.(this.rig, shot === 'title' ? 1 : 0);
     if (this._el) { this._el.classList.toggle('on', shot !== 'title'); this._el.classList.toggle('letterbox', shot !== 'title'); }
+    this._armedAt = Date.now();
     this.bus?.emit('cine:begin', { shot, reduceMotion: rm });
     return S;
   }
@@ -297,12 +298,14 @@ export class CinematicDirector {
     const top = document.createElement('div'); top.className = 'll-cine-bar top';
     const bot = document.createElement('div'); bot.className = 'll-cine-bar bot';
     const skip = document.createElement('button'); skip.type = 'button'; skip.className = 'll-cine-skip'; skip.innerHTML = '<span class="ll-cine-skip-txt">SKIP</span>' + icon('skip'); skip.setAttribute('aria-label', 'Skip cinematic');
-    skip.addEventListener('click', (e) => { e.stopPropagation(); this.skip(); });
+    // S85 (user: "at the end I skipped the movie accidentally"): ONLY the SKIP button skips. A tap anywhere else, Enter, Space and Escape are swallowed (they must not
+    //   reach the game underneath either). The button ignores clicks for SKIP_ARM_MS after the shot starts, so the tap that started / ended the last scene cannot land on it.
+    skip.addEventListener('click', (e) => { e.stopPropagation(); if (this._armedAt && Date.now() - this._armedAt < CINE.skipArmMs) return; this.skip(); });
     el.addEventListener('pointerdown', (e) => { e.stopPropagation(); }, true);
-    el.addEventListener('click', () => this.skip());
+    el.addEventListener('click', (e) => { e.stopPropagation(); });
     el.append(top, bot, skip);
     container.appendChild(el); this._el = el;
-    this._onKey = (e) => { if (!this.active || this.active === 'title') return; if (e.code === 'Escape' || e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); e.stopImmediatePropagation?.(); this.skip(); } };
+    this._onKey = (e) => { if (!this.active || this.active === 'title') return; if (e.code === 'Escape' || e.code === 'Enter' || e.code === 'Space') { if (e.target === skip) return; e.preventDefault(); e.stopImmediatePropagation?.(); } };   // S85: swallowed, never skips (a focused SKIP button still works natively)
     window.addEventListener('keydown', this._onKey, true);
   }
 }

@@ -167,3 +167,9 @@
 .ll-spark-pay, .ll-season.is-tappable { position: relative; }
 .ll-spark-pay::after { content: ''; position: absolute; left: -6px; right: -6px; top: -20px; bottom: -20px; }
 .ll-season.is-tappable::after { content: ''; position: absolute; left: 0; right: 0; top: -9px; bottom: -11px; border-radius: 999px; }
+
+/* S85: the Cloud announces a deal result at the side (replaces the big Owl reveal card): icons + one number. */
+.ll-chips .ll-chip-num { font: 900 17px/1 var(--font, system-ui, sans-serif); color: var(--ink, #263238); letter-spacing: .2px; padding: 0 3px 0 2px; }
+.ll-chips .ll-chip-num.win { color: #2E7D32; } .ll-chips .ll-chip-num.loss { color: #C62828; }
+.ll-chips .ll-chip-win .ll-say-bub { background: #E8F5E9; } .ll-chips .ll-chip-loss .ll-say-bub { background: #FFEBEE; } .ll-chips .ll-chip-star .ll-say-bub { background: #FFF3C4; }
+@media (max-height: 460px) { .ll-chips .ll-chip-num { font-size: 14px; } }

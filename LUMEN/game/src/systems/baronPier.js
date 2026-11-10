@@ -8,7 +8,7 @@
 //   import { createBaronPier, PIER } from './systems/baronPier.js';
 //   const B = createBaronPier({ bus, eco, world, hero, vfx, creatures, scene, game, story });
 //   B.active            true while the Baron is at the pier (Game.js: state 'pier', eco clock does not tick)
-//   B.phase             'off' | 'arrive' | 'wait' | 'repay' | 'leave'
+//   B.phase             'off' | 'arrive' | 'wait' | 'seek' | 'repay' | 'leave'   (S85: 'seek' = wait ran out, the Baron strides over to Pip; he only collects once he stands next to him)
 //   B.due()             { interest, minimum, debt }   (minimum = interest the pouch can cover right now)
 //   B.near(r = 3.4)     hero within r of the Baron (and he is waiting / repaying)
 //   B.interact()        'paid' | 'short' | 'repaid' | 'done' | null      B.release() ends a repay hold
@@ -21,7 +21,7 @@
 import * as THREE from '../../vendor/three.module.js';
 import { DEPOSIT_STEP } from './jarsWorld.js';
 
-export const PIER = { walkSec: 2.5, waitCap: 20, repayIdle: 10, tauntEvery: 3.4, standIn: 1.1, near: 3.4, leaveSec: 2.2, graceMax: 12, graceStep: 4 };   // S72: graceMax/Step = extra seconds a SHORT player earns by getting ✦ into the pouch while he waits
+export const PIER = { walkSec: 2.5, waitCap: 20, repayIdle: 10, tauntEvery: 3.4, standIn: 1.1, near: 3.4, leaveSec: 2.2, graceMax: 12, graceStep: 4, seekSpeed: 3.4, seekReach: 1.5, seekMax: 14 };   // S85: seek* = when the wait runs out the Baron WALKS TO PIP (speed u/s, reach u, hard cap s) instead of taking the money from afar   // S72: graceMax/Step = extra seconds a SHORT player earns by getting ✦ into the pouch while he waits
 
 const FALLBACK = {
   paid:  { t1: ['Interest, on time. How… dull of you.', 'Every coin counted. The fog will have to wait.'],
@@ -38,7 +38,7 @@ export function createBaronPier(deps = {}) {
   const { bus, eco, world = {}, hero, vfx, creatures = {}, scene = null, game = null, story = null } = deps;
   const jarCash = () => { const j = eco.state.jars || {}; return Math.round((j.spend || 0) + (j.save || 0) + (j.protect || 0)); };   // S72: Invest is locked mid-season, so it is not withdrawable
   const B = { active: false, phase: 'off', g: null, anim: null, t: 0, idle: 0, tauntT: 0, from: null, to: null, season: 0,
-    interest: 0, paid: 0, shortfall: 0, repaid: 0, settled: false, canPay: true, grace: 0, stats: { visits: 0, paid: 0, short: 0, repaid: 0, timeouts: 0, skips: 0 } };
+    interest: 0, paid: 0, shortfall: 0, repaid: 0, settled: false, leaveFrom: null, canPay: true, grace: 0, stats: { visits: 0, paid: 0, short: 0, repaid: 0, timeouts: 0, skips: 0 } };
   const offs = [];
   const heroPos = () => hero?.root?.position || hero?.position || { x: 0, z: 0 };
   const spawn = () => world.pierSpawn || { x: 0, z: -10 };
@@ -91,7 +91,7 @@ export function createBaronPier(deps = {}) {
   function done(why = 'release') {
     if (!B.active || B.phase === 'leave') return;
     if (!B.settled) settleInterest(why);
-    B.phase = 'leave'; B.t = 0;
+    B.phase = 'leave'; B.t = 0; B.leaveFrom = B.g ? { x: B.g.position.x, z: B.g.position.z } : { ...B.to };   // S85: he may have walked to Pip (seek) -> leave from there, no teleport back
     B.anim?.faceTo?.(new THREE.Vector3(B.from.x, 0, B.from.z)); B.anim?.play?.('strut');
     eco.closePier?.(why);   // S70: what was paid / repaid at the pier counts for the season that just closed → final stars, BEFORE the ledger opens
     // S76: debt cleared at the pier in the final season (or later) = the win. eco:win BEFORE pier:done: Game.js moves to 'ending' (victory cinematic + dialogue), so the 'pier' -> 'review' hop is skipped.
@@ -114,6 +114,16 @@ export function createBaronPier(deps = {}) {
   B.settle = (why = 'timeout') => { if (!B.active) return; if (why === 'timeout') B.stats.timeouts++; done(why); };
   B.done = () => done('done');
 
+  /** S85: the wait ran out and nobody paid. He walks to Pip (phase 'seek'); contact (or seekMax s) settles the interest -> pier:paid | pier:short, then he leaves. A tap on him still works meanwhile. */
+  B.beginSeek = () => {
+    if (!B.active || B.phase !== 'wait') return false;
+    B.phase = 'seek'; B.t = 0; B.tauntT = 0; B.stats.seeks = (B.stats.seeks || 0) + 1;
+    B.anim?.play?.('strut');
+    bus.emit('pier:seek', { interest: B.interest, season: B.season });
+    say('Too slow, keeper. I will collect it myself.', 2.6);
+    return true;
+  };
+
   B.update = (dt) => {
     if (!B.active || !(dt > 0)) return;
     B.t += dt; B.anim?.update?.(dt);
@@ -126,11 +136,17 @@ export function createBaronPier(deps = {}) {
       const h = heroPos(); if (Math.hypot(h.x - g.position.x, h.z - g.position.z) < 6) B.anim?.faceTo?.(new THREE.Vector3(h.x, 0, h.z));
       B.tauntT -= dt; if (B.tauntT <= 0 && B.phase === 'wait') { B.tauntT = PIER.tauntEvery; B.anim?.play?.('taunt'); }
       if (B.phase === 'wait') { const left = Math.max(0, PIER.waitCap - B.t), sec = Math.ceil(left); if (sec !== B.lastTick) { B.lastTick = sec; bus.emit('pier:tick', { left, cap: PIER.waitCap }); } }   // 42D P2: HUD countdown (≤ 1 Hz)
-      if (B.phase === 'wait' && B.t >= PIER.waitCap) { B.settle('timeout'); return; }
+      if (B.phase === 'wait' && B.t >= PIER.waitCap) { B.beginSeek(); return; }   // S85: no more silent debit from across the island
       if (B.phase === 'repay') { B.idle += dt; if (B.idle >= PIER.repayIdle) done('idle'); }
+    } else if (B.phase === 'seek') {   // S85 (user: "when a season finishes I lose money without getting close to the Baron"): he comes to Pip and takes it where Pip can SEE it
+      const h = heroPos(), dx = h.x - g.position.x, dz = h.z - g.position.z, d = Math.hypot(dx, dz) || 1e-6;
+      if (d <= PIER.seekReach || B.t >= PIER.seekMax) { B.settle('timeout'); return; }
+      const step = Math.min(d - PIER.seekReach, PIER.seekSpeed * dt); g.position.x += dx / d * step; g.position.z += dz / d * step;
+      B.anim?.faceTo?.(new THREE.Vector3(h.x, 0, h.z));
+      B.tauntT -= dt; if (B.tauntT <= 0) { B.tauntT = 99; B.anim?.play?.('strut'); }
     } else if (B.phase === 'leave') {
       const k = Math.min(1, B.t / PIER.leaveSec);
-      g.position.set(B.to.x + (B.from.x - B.to.x) * k, 0, B.to.z + (B.from.z - B.to.z) * k);
+      const lf = B.leaveFrom || B.to; g.position.set(lf.x + (B.from.x - lf.x) * k, 0, lf.z + (B.from.z - lf.z) * k);
       if (k >= 1) { B.active = false; B.phase = 'off'; remove(); }
     }
   };
