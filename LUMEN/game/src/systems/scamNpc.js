@@ -77,7 +77,7 @@ export function createScamNpc(deps = {}) {
     if (!S.near() || S.state !== 'pitch') return null;
     const o = S.kind === 'fair' ? eco.offerFair(S.id) : eco.offerScam(S.id); if (!o) return null;
     if (S.kind === 'scam') { S.met.add(S.id); S.lastScam = S.id; } else S.metFair.add(S.id);
-    S.state = 'offered'; S.offered = true; S.stats.offered++; S.t = 0;
+    S.state = 'offered'; S.offered = true; S.stats.offered++; S.t = 0; bus.emit('scam:talk', { id: S.id });   // S83: friendly pip greeting blip
     look(heroPos().x, heroPos().z); S.anim?.play?.('offerDeal');
     return 'scam';
   };

@@ -20,11 +20,11 @@ export const DEFAULT_EVENTS = {
   'eco:sale':          { sfx: 'coin',        cooldown: 0.08 },
   'eco:spark':         { sfx: 'spark_tick',  cooldown: 0.25, vol: 0.5 },
   'eco:denied':        { sfx: 'deny',        cooldown: 0.3 },
-  'build:denied':      { sfx: 'deny',        cooldown: 0.3 },
+  'build:denied':      { sfx: 'deny',        cooldown: 0.3, pick: (p) => p?.why === 'blocked' ? { sfx: 'place_blocked' } : null },
   'sandbox:denied':    { sfx: 'deny',        cooldown: 0.3 },
-  'ui:build':          { sfx: 'click',       cooldown: 0.1, vol: 0.5, pick: (p) => p?.action === 'denied' ? { sfx: 'deny' } : p?.action === 'select' ? { sfx: 'click' } : { sfx: null } },
+  'ui:build':          { sfx: 'click',       cooldown: 0.1, vol: 0.5, pick: (p) => p?.action === 'denied' ? { sfx: 'deny' } : p?.action === 'select' ? { sfx: 'click' } : p?.action === 'pick' ? { sfx: 'card_select', vol: 0.6 } : { sfx: null } },
   'build:enter':       { sfx: 'pick_up',     cooldown: 0.2 },
-  'build:placed':      { sfx: 'hammer',      cooldown: 0.12 },
+  'build:placed':      { sfx: 'hammer',      cooldown: 0.12, pick: (p) => p?.entry?.category && p.entry.category !== 'stall' && p.entry.category !== 'scenery' ? { sfx: 'place_confirm' } : null },   // S83: stalls hammer, jars + decor get the soft thunk
   'build:moved':       { sfx: 'hammer',      cooldown: 0.12, vol: 0.7 },   // S36: a dragged prop lands
   'build:drag':        { sfx: 'pick_up',     cooldown: 0.2, pick: (p) => p?.phase === 'start' ? { sfx: 'pick_up' } : { sfx: null } },   // S36: lift
   'build:removed':     { sfx: 'crumble',     cooldown: 0.2 },
@@ -33,7 +33,34 @@ export const DEFAULT_EVENTS = {
   'ui:build:close':    { sfx: 'tray_close',  cooldown: 0.2 },
   'eco:season':        { sfx: 'season_bell', cooldown: 1 },
   'eco:loan':          { sfx: 'loan_stamp',  cooldown: 0.3, pick: (p) => p?.kind === 'forced' ? { sfx: 'debt_fall', vol: 0.8 } : null },   // forced debt (event / Baron bill) = the heavier fall sting
-  'eco:jar':           { sfx: 'jar_fill',    cooldown: 0.15 },
+  'eco:jar':           { sfx: 'jar_fill',    cooldown: 0.15, pick: (p) => p?.reason === 'exposed' ? { sfx: 'jar_spill' } : p?.deltas ? { sfx: null } : null },   // S83: deposits / withdraws have their own jars:* sounds; only the exposed-savings hit keeps a jar sound here
+  // S83: the real Ludo.ai jar / deal / ledger / UI pack (docs/SFX_LUDO_S64.md ids). `also` = extra sounds after `delay` s.
+  'jars:deposit':      { sfx: 'jar_deposit', cooldown: 0.08 },
+  'jars:withdraw':     { sfx: 'jar_withdraw', cooldown: 0.08 },
+  'jars:unlocked':     { sfx: 'jar_unlock',  cooldown: 0.5, pick: (p) => p?.how === 'restore' || p?.how === 'start' ? { sfx: null } : null },
+  'jars:locked':       { sfx: 'jar_locked',  cooldown: 0.5 },
+  'jars:spill':        { sfx: 'jar_spill',   cooldown: 0.5 },
+  'tutor:shown':       { sfx: 'tutor_show',  cooldown: 0.6, vol: 0.7 },
+  'tutor:dismissed':   { sfx: 'tutor_dismiss', cooldown: 0.3, pick: (p) => p?.why === 'tap' || p?.why === 'followed' || p?.why === 'done' ? null : { sfx: null } },
+  'combat:combo':      { sfx: 'sword_swing', cooldown: 0.12 },
+  'combat:hit':        { sfx: 'sword_hit',   cooldown: 0.08, pick: (p) => p?.enemy ? { sfx: null } : null },   // enemies already answer with enemy_hit
+  'till:collect':      { sfx: 'till_collect', cooldown: 0.12 },
+  'ui:price':          { sfx: 'price_up',    cooldown: 0.08, pick: (p) => p?.delta < 0 ? { sfx: 'price_down' } : null },
+  'scam:npc':          { sfx: 'stranger_arrive', cooldown: 1 },
+  'scam:talk':         { sfx: 'stranger_talk', cooldown: 0.5 },
+  'scam:tell':         { sfx: 'owl_hoot',    cooldown: 1, vol: 0.8 },
+  'eco:fairResult':    { sfx: null, pick: (p) => p?.accepted ? { sfx: 'deal_accept', also: [{ sfx: 'deal_fair_ok', delay: 0.28 }] } : { sfx: null } },
+  'ui:build:tab':      { sfx: 'tab_switch',  cooldown: 0.08 },
+  'hud:chip':          { sfx: null, cooldown: 3, pick: (p) => p?.id === 'storm' && p?.on ? { sfx: null, also: [{ sfx: 'storm_chip', delay: 0.5 }] } : { sfx: null } },
+  'crew:arrive':       { sfx: 'crew_walkin', cooldown: 0.5 },
+  'ui:ledger:row':     { sfx: 'ledger_stamp', cooldown: 0.05, pick: (p) => (p?.i | 0) % 2 === 0 ? null : { sfx: null } },
+  'ui:ledger:total':   { sfx: 'ledger_total', cooldown: 0.3 },
+  'ui:ledger:stars':   { sfx: 'season_end_ok', cooldown: 1, pick: (p) => p?.outcome && p.outcome !== 'season' ? { sfx: null } : (p?.stars | 0) >= 2 ? { sfx: 'season_end_win' } : (p?.stars | 0) === 0 ? { sfx: 'season_end_ok', vol: 0.5 } : null },
+  'game:repaid':       { sfx: 'debt_pay',    cooldown: 0.3, pick: (p) => p?.debt === 0 ? { sfx: 'debt_free' } : null },
+  'pier:repaid':       { sfx: 'debt_pay',    cooldown: 0.3, vol: 0.8, pick: (p) => p?.debt === 0 ? { sfx: 'debt_free' } : null },
+  'season:demand':     { sfx: 'hot_ding',    cooldown: 1, pick: (p) => p?.hot ? { sfx: 'hot_ding', also: p?.cold ? [{ sfx: 'cold_ding', delay: 0.7 }] : null } : p?.cold ? { sfx: 'cold_ding' } : { sfx: null } },
+  'ui:joy':            { sfx: 'joystick_on', cooldown: 1.5 },
+  'ui:start':          { sfx: 'title_play',  cooldown: 1 },
   'ui:jar:apply':      { sfx: 'jar_apply',   cooldown: 0.3 },
   'eco:scam':          { sfx: 'scam_sting',  cooldown: 1 },
   'eco:scamResult':    { sfx: 'scam_refuse', cooldown: 1, pick: (p) => p?.accepted ? { sfx: 'scam_fell' } : null },
@@ -52,13 +79,14 @@ export const DEFAULT_EVENTS = {
   'ui:ledger:close':   { duck: false },
   'ui:dialogue:open':  { duck: true },
   'ui:dialogue:close': { duck: false },
-  'ui:pause:open':     { sfx: 'tray_open',   cooldown: 0.2, duck: true },
+  'ui:pause:open':     { sfx: 'pause_open',  cooldown: 0.2, duck: true },
   'ui:pause:close':    { sfx: 'tray_close',  cooldown: 0.2, duck: false },
   'ui:title:open':     { music: 'title' },
   'ui:credits:music':  { music: 'credits' },                                                       // S73: credits roll (victory.ogg as a loop); ui/credits.js re-sends it when the title opens underneath
   'ui:credits:close':  { music: 'title' },
   'game:endless':      { music: 'island_endless' },
   'sandbox:ability':   { sfx: 'ability',     cooldown: 0.2, pick: (p) => ({ sfx: ABILITY_SFX[p?.name] || 'ability' }) },
+  'sandbox:ability:start': { sfx: null, pick: (p) => p?.name === 'coinMagnetDash' ? { sfx: 'dash', cooldown: 0.3, vol: 0.5 } : { sfx: null } },   // S83: breezy dash whoosh under the Magnet sound
   'sandbox:hired':     { sfx: 'hire',        cooldown: 0.5, pick: (p) => ({ sfx: p?.type === 'cloud' ? 'cloud_hello' : 'hire' }) },   // S80: the Cloud greets with its own pwuff (placeholder wind_chime until the Ludo.ai file lands)
   'crew:payoff':       { sfx: 'crew_payoff', cooldown: 0.12, vol: 0.5 },                            // S80: the Cloud / crew +N pop (synth until the Ludo.ai file lands: docs/SFX_LUDO_S64.md)
   'sandbox:tip':       { sfx: 'coin',        cooldown: 0.1, vol: 0.5, pitch: 1.3 },
@@ -105,7 +133,7 @@ export function createAudio(opts = {}) {
     // ambience beds (manifest "ambience"): mode 'off' | 'always' | 'storm' | 'calm' (= back to always). `beds` = id → { s, g, vol } live loops.
     ambMode: 'off', ambOn: {}, beds: {}, ambLog: [],
   };
-  const offs = [];
+  const offs = [], alive = new Set();   // alive = pending `also` timers (cleared on destroy)
   let sfxGain = null, musicGain = null, musicDuck = null, ambGain = null;
 
   // seconds clock for cooldowns: AudioContext time when live, wall clock when inert; `api._now` can override it (check.mjs drives cooldowns deterministically)
@@ -157,7 +185,7 @@ export function createAudio(opts = {}) {
     /** Ambience beds. mode: 'off' (title / lose) · 'always' (surf + birds) · 'storm' (+ rain + wind, birds ducked) · 'calm' (storm → always).
      *  Headless-safe: state.ambMode / state.ambOn record the intent so check.mjs can gate the bus wiring without an AudioContext. */
     ambience(mode = 'always', fade = 1.5) { return setAmbience(mode, fade); },
-    destroy() { for (const off of offs) off(); offs.length = 0; stopLayer(0); stopMusic(0); setAmbience('off', 0); if (state.ctx && typeof window !== 'undefined' && state.ctx !== window.lumenAudioCtx) state.ctx.close?.(); },
+    destroy() { for (const off of offs) off(); offs.length = 0; for (const id of alive) clearTimeout(id); alive.clear(); stopLayer(0); stopMusic(0); setAmbience('off', 0); if (state.ctx && typeof window !== 'undefined' && state.ctx !== window.lumenAudioCtx) state.ctx.close?.(); },
     _now: null,
   };
 
@@ -299,11 +327,12 @@ export function createAudio(opts = {}) {
         if (r.music !== undefined) { if (r.music) api.music(r.music); else api.stopMusic(); }
         if (r.layer !== undefined) { if (r.layer) api.layer(r.layer); else api.stopLayer(r.layerFade ?? 1.2); }   // S74: boss stem on / off
         if (r.ambience) setAmbience(r.ambience, r.ambience === 'off' ? 1 : r.ambience === 'storm' ? 2 : 2.5);
-        if (!r.sfx) return;
-        const cd = r.cooldown ?? 0.05, last = state.lastFire[ev] ?? -1e9, t = now();
+        if (!r.sfx && !r.also) return;
+        const cd = r.cooldown ?? rule.cooldown ?? 0.05, last = state.lastFire[ev] ?? -1e9, t = now();   // S83: a pick() variant inherits the row's cooldown
         if (t - last < cd) { state.throttled = (state.throttled || 0) + 1; return; }
         state.lastFire[ev] = t; state.fired[ev] = (state.fired[ev] || 0) + 1;
-        api.play(r.sfx, { vol: r.vol, pitch: r.pitch });
+        if (r.sfx) api.play(r.sfx, { vol: r.vol, pitch: r.pitch });
+        if (r.also) for (const a of r.also) { if (!(a.delay > 0)) api.play(a.sfx, { vol: a.vol, pitch: a.pitch }); else { const id = setTimeout(() => { alive.delete(id); if (offs.length) api.play(a.sfx, { vol: a.vol, pitch: a.pitch }); }, a.delay * 1000); alive.add(id); } }   // S83: follow-up sounds (stamp then chime)
       }));
     }
     state.wired = Object.keys(events).length;

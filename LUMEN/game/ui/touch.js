@@ -113,7 +113,7 @@ export function mountTouch(root, input, opts = {}) {
     if (st.joy.active) return;
     st.joy.active = true; st.joy.id = e.pointerId ?? 0; st.joy.ox = e.clientX; st.joy.oy = e.clientY; st.joy.t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now()); st.joy.maxD = 0; st.joy.x = st.joy.y = st.joy.nx = st.joy.ny = st.joy.mag = 0;
     base.style.left = e.clientX + 'px'; base.style.top = e.clientY + 'px'; base.classList.add('on'); knob.classList.remove('release'); knob.style.transform = 'translate(-50%, -50%)'; ring.style.opacity = '0';
-    zone.classList.add('used'); try { zone.setPointerCapture && e.pointerId != null && zone.setPointerCapture(e.pointerId); } catch (_) { /* S60: simulated pointer (tests / tutorial) has no real id */ }
+    zone.classList.add('used'); bus.emit('ui:joy', {}); try { zone.setPointerCapture && e.pointerId != null && zone.setPointerCapture(e.pointerId); } catch (_) { /* S60: simulated pointer (tests / tutorial) has no real id */ }
     feed(true, 0, 0); e.preventDefault && e.preventDefault();
   };
   const joyMove = (e) => {

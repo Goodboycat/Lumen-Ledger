@@ -149,11 +149,11 @@ export function mountLedger(root, opts = {}) {
         if (key === 'tillTax' && v <= 0) r.row.classList.add('hidden-zero');   // 42A: the Collector-tax row only appears when money was left on the counters
         if ((key === 'raided' || key === 'recovered') && v <= 0) r.row.classList.add('hidden-zero');   // 42C: raid rows only when a raid happened
         if (key === 'interestPaid') { const pct = report.debtBefore > 0 && v > 0 ? Math.round(v / report.debtBefore * 100) : null; r.row.firstChild.textContent = pct != null ? `Loan interest  ${pct} %` : (season === 1 ? 'Loan interest  15 %' : 'Loan interest  6 %'); }   // S01: S1 shows the real (half) rate
-        later(ROW_STAGGER * i, () => { r.row.classList.add('in'); r.t = 0; });
+        later(ROW_STAGGER * i, () => { r.row.classList.add('in'); r.t = 0; if (!r.row.classList.contains('hidden-zero')) bus.emit('ui:ledger:row', { i, key }); });   // S83: stamp thump on every other row
       });
       rows.net.target = netSum; rows.net.shown = 0; rows.net.t = -1; rows.net.val.textContent = '0'; rows.net.row.classList.remove('in', 'pos', 'neg');
       rows.net.row.classList.add(netSum >= 0 ? 'pos' : 'neg');
-      later(ROW_STAGGER * LEDGER_ROWS.length, () => { rows.net.row.classList.add('in'); rows.net.t = 0; });
+      later(ROW_STAGGER * LEDGER_ROWS.length, () => { rows.net.row.classList.add('in'); rows.net.t = 0; bus.emit('ui:ledger:total', { net: netSum }); });   // S83: counting ratchet + ding
       // chips
       chipFog.textContent = `Fog ${Math.round((report.fog01 ?? 0) * 100)} %` + (report.fogDelta ? ` (${report.fogDelta > 0 ? '+' : '−'}${Math.round(Math.abs(report.fogDelta) * 100)})` : '');
       chipFog.classList.toggle('bad', (report.fogDelta || 0) > 0); chipFog.classList.toggle('good', (report.fogDelta || 0) < 0);
@@ -166,6 +166,7 @@ export function mountLedger(root, opts = {}) {
           crewHead.textContent = cr.total > 0 ? `Crew  ${Math.round(cr.total * 10) / 10 >= 10 ? Math.round(cr.total) : Math.round(cr.total * 10) / 10} ✦` : 'Crew'; crewBox.dataset.total = String(cr.total || 0); later(rowsEnd() - 100, () => crewBox.classList.add('in')); } }
       // stars
       starEls.forEach((s) => s.classList.remove('on', 'pop'));
+      later(rowsEnd() + STAR_GAP * 3, () => bus.emit('ui:ledger:stars', { stars: starsN, outcome: st.outcome }));   // S83: season-end stinger once the stars are in
       for (let i = 0; i < 3; i++) later(rowsEnd() + STAR_GAP * i, () => { if (i < starsN) { starEls[i].classList.add('on'); retrigger(starEls[i], 'pop'); } else starEls[i].classList.add('pop'); });
       starTxt.textContent = ['No stars — the Fog is winning. Save first, spend second.', 'One star. Steady. Try to earn more than you spend.', 'Two stars! Solid season — keep the debt down.', 'Three stars! A perfect ledger ✦'][starsN];
       starTxt.classList.remove('in'); later(rowsEnd() + STAR_GAP * 3, () => starTxt.classList.add('in'));
