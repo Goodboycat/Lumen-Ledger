@@ -2,8 +2,8 @@
 import { launch, startStory } from './rig76.mjs';
 const { p, b, errs } = await launch(844, 390); await startStory(p);
 const r = await p.evaluate(() => {
-  const sb = lg.sb; try { sb.enemies.enabled = false; } catch {}
-  const C = sb.combat || lg.combat || sb.hero?.combat; if (!C) return { err: 'no combat', keys: Object.keys(sb).slice(0, 40) };
+  const sb = lg.sb; const game = lg.game || sb.game || window.game; try { sb.enemies.enabled = false; } catch {}
+  const C = sb.combat || lg.combat || sb.hero?.combat; if (!game) return { err: 'no game', lg: Object.keys(lg) }; if (!C) return { err: 'no combat', keys: Object.keys(sb).slice(0, 40) };
   const log = []; const dt = 1 / 60; let t = 0; const seen = [];
   const press = (ms) => log.push({ at: ms, ev: 'press' });
   const presses = [0, 330, 640];   // spaced like a thumb tapping ATTACK ~3x/s
@@ -11,7 +11,7 @@ const r = await p.evaluate(() => {
   for (let i = 0; i < 60 * 3; i++) {
     const ms = t * 1000;
     if (pi < presses.length && ms >= presses[pi]) { C.attack(); log.push({ at: Math.round(ms), ev: 'press' }); pi++; }
-    sb.game.update ? sb.game.update(dt) : (sb.hero.update?.(dt), C.update(dt)); t += dt;
+    game.sequences.update(dt); C.update(dt); t += dt;
     if (C.step !== prevStep) { seen.push({ at: Math.round(ms), step: C.step, combo: C.combo }); prevStep = C.step; }
   }
   return { seen, log };
