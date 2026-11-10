@@ -133,3 +133,6 @@ body.tj-on .ll-joy-hint { opacity: 0 !important; }   /* S60-A: the drawn stick d
 
 /* S80: the drawn stick demo (knob + cloud hand) floated OVER the open shop tray and covered the "pick a card" hint and the Scout Fox card on phones. The tray owns the screen while it is open. */
 body.ll-tray-open .ll-tutor-joy, body.ll-tray-open .ll-tutor-joy.show { display: none !important; }
+
+/* S80-B2: phone landscape, the 3rd Cloud chip (y ~170-196) sat under the drawn stick demo (top ~180). Chips live 5 s, so the demo steps aside while any chip is on screen. */
+@media (max-height: 360px) { body:has(.ll-chips .ll-chip) .ll-tutor-joy { opacity: 0; } }
