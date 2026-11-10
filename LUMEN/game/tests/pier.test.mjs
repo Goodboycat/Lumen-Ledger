@@ -110,3 +110,7 @@ test('S87: a tip / jar withdraw while he is still WALKING IN flips the chip (pou
   const { eco, B, ev } = mkPier({ spark: 3, owed: 15 }); B.begin(); assert.equal(B.phase, 'arrive'); eco.gain(20);
   assert.equal(ev.pouch.at(-1).canPay, true); assert.equal(B.t, 0); assert.equal(B.grace, PIER.graceMax, 'no grace spent while walking in');
 });
+test('S87: chip promises the star honestly - forced debt this season = "pay it all + repay N = ★"', () => {
+  const { bus, chip } = mkHud(); bus.emit('pier:due', { interest: 15, spark: 40, canPay: true, waitCap: 20, holdNeed: 25 });
+  assert.match(chip().textContent, /repay 25/); bus.emit('pier:due', { interest: 15, spark: 40, canPay: true, waitCap: 20, holdNeed: 0 }); assert.doesNotMatch(chip().textContent, /repay 25/); assert.match(chip().textContent, /pay it all/);
+});

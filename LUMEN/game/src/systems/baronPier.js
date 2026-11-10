@@ -68,7 +68,7 @@ export function createBaronPier(deps = {}) {
     anim.faceTo?.(new THREE.Vector3(B.to.x, 0, B.to.z)); anim.play?.('strut');
     B.active = true; B.phase = 'arrive'; B.t = 0; B.lastTick = -1; B.idle = 0; B.tauntT = 1.2; B.settled = false; B.season = s.season;
     B.interest = owed; B.canPay = (s.spark || 0) + 1e-9 >= owed; B.grace = PIER.graceMax; B.paid = 0; B.shortfall = 0; B.repaid = 0; B.stats.visits++;
-    bus.emit('pier:due', { interest: owed, debt: s.debt, pos: { ...B.to }, season: s.season, waitCap: PIER.waitCap, spark: Math.round(s.spark || 0), canPay: (s.spark || 0) + 1e-9 >= owed, jar: jarCash() });   // S71: canPay → the HUD hint 'pay it all = ★' / 'need N more'
+    bus.emit('pier:due', { interest: owed, debt: s.debt, pos: { ...B.to }, season: s.season, waitCap: PIER.waitCap, spark: Math.round(s.spark || 0), canPay: (s.spark || 0) + 1e-9 >= owed, jar: jarCash(), holdNeed: holdNeed() });   // S71: canPay → the HUD hint 'pay it all = ★' / 'need N more'
     return true;
   };
 
@@ -163,7 +163,7 @@ export function createBaronPier(deps = {}) {
     const spark = Math.round(eco.state.spark || 0), can = eco.state.spark + 1e-9 >= B.interest;
     if (B.phase === 'wait' && !B.canPay && p?.delta > 0 && B.grace > 0) { const add = Math.min(PIER.graceStep, B.grace, B.t); if (add > 0) { B.grace -= add; B.t -= add; bus.emit('pier:grace', { added: add, left: B.grace }); } }   // only time really given back is charged to the grace budget
     B.canPay = can;
-    bus.emit('pier:pouch', { spark, interest: B.interest, canPay: can, jar: jarCash(), need: Math.max(0, Math.ceil(B.interest - eco.state.spark - 1e-9)) });
+    bus.emit('pier:pouch', { spark, interest: B.interest, canPay: can, holdNeed: holdNeed(), jar: jarCash(), need: Math.max(0, Math.ceil(B.interest - eco.state.spark - 1e-9)) });
   }));
   offs.push(bus.on('eco:win', () => B.destroyVisit())); offs.push(bus.on('eco:lose', () => B.destroyVisit()));
   B.destroyVisit = () => { B.active = false; B.phase = 'off'; remove(); };
