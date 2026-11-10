@@ -1,5 +1,5 @@
 {
-  "_": "Chat 12 — Lumen Ledger audio manifest. `file` is relative to `base`; a missing file (404/decode error) silently falls back to `synth`. Ludo.ai prompts for every id: docs/audio_prompts.md. `events` overrides src/core/Audio.js DEFAULT_EVENTS.",
+  "_": "Chat 12 \u2014 Lumen Ledger audio manifest. `file` is relative to `base`; a missing file (404/decode error) silently falls back to `synth`. Ludo.ai prompts for every id: docs/audio_prompts.md. `events` overrides src/core/Audio.js DEFAULT_EVENTS.",
   "base": "./audio/",
   "fetchFiles": true,
   "_fetchFiles": "true since the Ludo.ai files landed (2026-10-20). 2026-10-24: user sfx pack mapped onto the 13 enemy/storm/cine ids (all real files now) + 7 new ids + 4 ambience loops in amb/.",
@@ -680,6 +680,28 @@
         "f": 990,
         "dur": 0.4
       }
+    },
+    "crew_payoff": {
+      "file": "sfx/coin.ogg",
+      "vol": 0.4,
+      "pitchVar": 0.1,
+      "_note": "S80 placeholder = coin.ogg until the Ludo.ai Crew Payoff file lands (docs/SFX_LUDO_S64.md)",
+      "synth": {
+        "type": "coin",
+        "f": 1568,
+        "dur": 0.14
+      }
+    },
+    "cloud_hello": {
+      "file": "sfx/wind_chime.ogg",
+      "vol": 0.5,
+      "pitchVar": 0.05,
+      "_note": "S80 placeholder = wind_chime.ogg until the Ludo.ai Cloud Hello file lands",
+      "synth": {
+        "type": "blip",
+        "f": 880,
+        "dur": 0.3
+      }
     }
   },
   "music": {
@@ -972,7 +994,7 @@
       }
     }
   },
-  "_voices": "Character voice blurbs (cartoon hums, Zelda-style) — played by Audio.js on ui:dialogue:say when the dialogue box starts a line; speaker → voice_<speaker>, narrator → dlg_blip. solo:\"voice\" cuts the previous blurb; preload:true decodes them on unlock().",
+  "_voices": "Character voice blurbs (cartoon hums, Zelda-style) \u2014 played by Audio.js on ui:dialogue:say when the dialogue box starts a line; speaker \u2192 voice_<speaker>, narrator \u2192 dlg_blip. solo:\"voice\" cuts the previous blurb; preload:true decodes them on unlock().",
   "ambience": {
     "_": "Looping beds mixed on the sfx bus (own ambGain). `always` beds run from game:start to game:title; `storm` beds fade in on storm:hit and out on storm:clear. Audio.js api.ambience(id,on,fade).",
     "surf": {

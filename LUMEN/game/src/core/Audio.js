@@ -59,7 +59,8 @@ export const DEFAULT_EVENTS = {
   'ui:credits:close':  { music: 'title' },
   'game:endless':      { music: 'island_endless' },
   'sandbox:ability':   { sfx: 'ability',     cooldown: 0.2, pick: (p) => ({ sfx: ABILITY_SFX[p?.name] || 'ability' }) },
-  'sandbox:hired':     { sfx: 'hire',        cooldown: 0.5 },
+  'sandbox:hired':     { sfx: 'hire',        cooldown: 0.5, pick: (p) => ({ sfx: p?.type === 'cloud' ? 'cloud_hello' : 'hire' }) },   // S80: the Cloud greets with its own pwuff (placeholder wind_chime until the Ludo.ai file lands)
+  'crew:payoff':       { sfx: 'crew_payoff', cooldown: 0.12, vol: 0.5 },                            // S80: the Cloud / crew +N pop (synth until the Ludo.ai file lands: docs/SFX_LUDO_S64.md)
   'sandbox:tip':       { sfx: 'coin',        cooldown: 0.1, vol: 0.5, pitch: 1.3 },
   'cust:state':        { sfx: 'cust_happy',  cooldown: 0.25, vol: 0.5, pick: (p) => p?.state !== 'react' ? { sfx: null } : p?.reaction === 'happy' ? { sfx: 'cust_happy' } : { sfx: 'cust_grumble' } },
   'ui:touch':          { sfx: 'click',       cooldown: 0.08, vol: 0.4 },
