@@ -1170,7 +1170,7 @@ if (doUI) {
   // 4. Ledger
   try {
     const { mountLedger, LESSONS, LEDGER_ROWS } = await import(pathToFileURL(resolve('ui/ledger.js')).href);
-    if (Object.keys(LESSONS).length !== 10 || LEDGER_ROWS.length !== 8) throw new Error(`LESSONS ${Object.keys(LESSONS).length} / rows ${LEDGER_ROWS.length}`);
+    if (Object.keys(LESSONS).length !== 10 || LEDGER_ROWS.length !== 9) throw new Error(`LESSONS ${Object.keys(LESSONS).length} / rows ${LEDGER_ROWS.length}`);
     const ledger = mountLedger(root, { bus, seasonsToWin: 10, selfDrive: false });
     const q = (s) => ledger.el.querySelector(s);
     const rep = { season: 3, income: 312, expenses: 180, interestEarned: 14, interestPaid: 36, investReturn: -8, debt: 216, fog01: 0.42, fogDelta: 0.05, spark: 240, jars: { save: 90 }, netWorth: 534, lessonId: 'emergencyFund', stars: 2 };
