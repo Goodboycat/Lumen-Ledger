@@ -8,7 +8,7 @@ import * as THREE from '../../vendor/three.module.js';
 import { G } from './geo.js';
 import { PALETTE as P, flatMat } from '../core/Toon.js';
 
-const INK = 0x263238, BROW = 0x3e2723, TONGUE = 0xf06292, BLUSH = 0xff8a80, SWEAT = 0x81d4fa;
+const INK = 0x263238, BROW = 0x3e2723, TONGUE = 0xf06292, BLUSH = 0xff8a80, SWEAT = 0x29b6f6;
 const fm = (c, o) => { const m = flatMat(c, o); m.polygonOffset = true; m.polygonOffsetFactor = -2; m.polygonOffsetUnits = -2; return m; };
 const flat = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.userData.noOutline = true; m.castShadow = m.receiveShadow = false; return m; };
 
@@ -47,7 +47,7 @@ export function buildHeroFace(head, C = {}) {
     const arc = new Ribbon(inkM, 8, false); arc.set(0.085, -0.9, 0.034); arc.group.position.set(0, -0.01, 0.01); arc.group.visible = false; eye.add(arc.group);
     eyes.push({ g: eye, oval, glint, arc, sx });
     const brow = new THREE.Group(); brow.position.set(sx * 0.2, 0.21, 0.004); face.add(brow);
-    const bm = flat(G.box(0.23, 0.08, 0.03), browM); brow.add(bm);
+    const bm = flat(G.box(0.25, 0.108, 0.03), browM); brow.add(bm);
     brows.push({ g: brow, sx });
     const b = flat(G.sphere(0.5, 6, 4), blushM, sx * 0.335, -0.13, -0.005); b.scale.set(0.14, 0.08, 0.03); face.add(b); blush.push(b);
   }
@@ -58,10 +58,10 @@ export function buildHeroFace(head, C = {}) {
   const hole = flat(G.sphere(0.5, 10, 8), inkM); open.add(hole);
   const tongue = flat(G.sphere(0.5, 8, 6), tongueM, 0, -0.28, 0.012); open.add(tongue);
   const teeth = flat(G.box(1, 0.3, 0.2), whiteM, 0, 0.26, 0.014); open.add(teeth);
-  const tongueOut = flat(G.sphere(0.5, 8, 6), tongueM, 0.08, -0.045, 0.006); tongueOut.scale.set(0.06, 0.07, 0.03); tongueOut.visible = false; mouth.add(tongueOut);
+  const tongueOut = flat(G.sphere(0.5, 8, 6), tongueM, 0.08, -0.045, 0.006); tongueOut.scale.set(0.095, 0.11, 0.03); tongueOut.visible = false; mouth.add(tongueOut);
   const sweat = new THREE.Group(); sweat.position.set(0.43, 0.16, 0.002); sweat.visible = false; face.add(sweat);
-  const dropB = flat(G.sphere(0.5, 7, 5), sweatM); dropB.scale.set(0.07, 0.085, 0.03); sweat.add(dropB);
-  const dropT = flat(G.cone(0.5, 1, 6), sweatM, 0, 0.07, 0); dropT.scale.set(0.06, 0.08, 0.03); sweat.add(dropT);
+  const dropB = flat(G.sphere(0.5, 7, 5), sweatM); dropB.scale.set(0.105, 0.125, 0.03); sweat.add(dropB);
+  const dropT = flat(G.cone(0.5, 1, 6), sweatM, 0, 0.1, 0); dropT.scale.set(0.09, 0.12, 0.03); sweat.add(dropT);
 
   const rig = {
     group: face, mouth, eyes, brows, blush, sweat, open,
@@ -80,7 +80,7 @@ export function buildHeroFace(head, C = {}) {
       for (const b of brows) { b.g.position.set(b.sx * 0.2 * Q.espread + Q.lx * 0.4, 0.21 + Q.bl, 0.004); b.g.rotation.z = b.sx * Q.ba; b.g.scale.x = Q.bsx; }
       const useOpen = Q.op > 0.3, o = Math.min(1, Q.op);
       rib.group.visible = !useOpen; open.visible = useOpen;
-      if (!useOpen) rib.set(Q.mw, Q.mc, 0.062);
+      if (!useOpen) rib.set(Q.mw, Q.mc, 0.074);
       else {
         const w = Q.ow, h = Math.max(0.02, Q.oh * o);
         hole.scale.set(w, h, 0.05);

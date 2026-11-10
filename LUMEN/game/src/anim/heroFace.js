@@ -8,7 +8,7 @@ import { damp } from './Easing.js';
 import { buildHeroFace } from '../assets/heroFace.js';
 
 export const BASE = Object.freeze({ espread: 1, ey: 0, lx: 0, ly: 0, esx: 1, esy: 1, asy: 0, happy: 0, ac: -1.2, bl: 0, ba: 0, bsx: 1,
-  mw: 0.11, mc: 0.9, op: 0, ow: 0.2, oh: 0.14, teeth: 0, tg: 0, blush: 0.55, sweat: 0 });
+  mw: 0.11, mc: 0.55, op: 0, ow: 0.2, oh: 0.14, teeth: 0, tg: 0, blush: 0.55, sweat: 0 });
 const E = (o) => Object.freeze({ ...BASE, ...o });
 export const EXPRESSIONS = Object.freeze({
   neutral: BASE,
@@ -16,7 +16,7 @@ export const EXPRESSIONS = Object.freeze({
   cheer: E({ happy: 1, ac: -0.95, bl: 0.05, op: 1, ow: 0.3, oh: 0.14, blush: 0.95 }),
   angry: E({ esy: 0.6, esx: 1.05, ey: -0.02, ba: 0.62, bl: -0.05, bsx: 1.1, op: 1, ow: 0.3, oh: 0.085, teeth: 1, blush: 0 }),
   dash: E({ esy: 0.72, ba: 0.32, bl: -0.025, mw: 0.12, mc: -0.45, blush: 0.25 }),
-  focus: E({ esy: 0.52, ly: -0.035, ba: 0.22, bl: -0.02, mw: 0.075, mc: 0.05, tg: 1, blush: 0.4 }),
+  focus: E({ esy: 0.42, esx: 0.9, ly: -0.04, ba: 0.34, bl: -0.04, bsx: 1.05, mw: 0.07, mc: -0.1, tg: 1, blush: 0.5, espread: 0.94 }),
   strain: E({ esy: 0.5, ba: 0.4, bl: -0.03, op: 1, ow: 0.26, oh: 0.07, teeth: 1, blush: 0.2 }),
   ouch: E({ esy: 0.12, esx: 1.25, ba: -0.55, bl: 0.07, op: 1, ow: 0.27, oh: 0.15, sweat: 1, blush: 0 }),
   sad: E({ esy: 0.88, ly: -0.03, ey: -0.01, ba: -0.42, bl: 0.03, mw: 0.12, mc: -1.1, blush: 0.2 }),
