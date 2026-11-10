@@ -682,10 +682,10 @@
       }
     },
     "crew_payoff": {
-      "file": "sfx/coin.ogg",
+      "file": "sfx/crew_payoff.ogg",
       "vol": 0.4,
       "pitchVar": 0.1,
-      "_note": "S80 placeholder = coin.ogg until the Ludo.ai Crew Payoff file lands (docs/SFX_LUDO_S64.md)",
+      "_note": "S82: real Ludo.ai Crew Payoff file (user sfx pack)",
       "synth": {
         "type": "coin",
         "f": 1568,
@@ -693,10 +693,10 @@
       }
     },
     "cloud_hello": {
-      "file": "sfx/wind_chime.ogg",
+      "file": "sfx/cloud_hello.ogg",
       "vol": 0.5,
       "pitchVar": 0.05,
-      "_note": "S80 placeholder = wind_chime.ogg until the Ludo.ai Cloud Hello file lands",
+      "_note": "S82: real Ludo.ai Cloud Hello file (user sfx pack)",
       "synth": {
         "type": "blip",
         "f": 880,
