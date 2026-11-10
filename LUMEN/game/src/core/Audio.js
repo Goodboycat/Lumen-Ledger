@@ -51,7 +51,7 @@ export const DEFAULT_EVENTS = {
   'scam:tell':         { sfx: 'owl_hoot',    cooldown: 1, vol: 0.8 },
   'eco:fairResult':    { sfx: null, pick: (p) => p?.accepted ? { sfx: 'deal_accept', also: [{ sfx: 'deal_fair_ok', delay: 0.28 }] } : { sfx: null } },
   'ui:build:tab':      { sfx: 'tab_switch',  cooldown: 0.08 },
-  'hud:chip':          { sfx: null, cooldown: 3, pick: (p) => p?.id === 'storm' && p?.on ? { sfx: null, also: [{ sfx: 'storm_chip', delay: 0.5 }] } : { sfx: null } },
+  'hud:chip':          { sfx: null, cooldown: 3, pick: (p) => p?.id === 'storm' && p?.on ? { sfx: null, also: [{ sfx: 'storm_chip', delay: 0.6, vol: 0.45 }] } : { sfx: null } },
   'crew:arrive':       { sfx: 'crew_walkin', cooldown: 0.5 },
   'ui:ledger:row':     { sfx: 'ledger_stamp', cooldown: 0.05, pick: (p) => (p?.i | 0) % 2 === 0 ? null : { sfx: null } },
   'ui:ledger:total':   { sfx: 'ledger_total', cooldown: 0.3 },
