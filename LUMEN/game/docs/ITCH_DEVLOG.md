@@ -1,4 +1,4 @@
-# Lumen Ledger - Devlog: "We took the words out of the UI" (S69 - S82)
+# Lumen Ledger - Devlog: "We took the words out of the UI" (S69 - S83)
 
 *Paste-ready for itch.io (Devlog -> New post). Everything between the rules is post text; the rest is notes for whoever fills the form.*
 
@@ -6,7 +6,7 @@
 |---|---|
 | Post title | **We took the words out of the UI: Lumen Ledger on a phone, in landscape** |
 | Game | Lumen Ledger (Zoud GameLab jam, theme "Make FinLit Fun") |
-| Version string | **S82** (shown bottom-right of the title screen) |
+| Version string | **S83** (shown bottom-right of the title screen) |
 | Tags | `finlit` `devlog` `3d` `mobile` `cozy` `educational` `tycoon` |
 | Screenshots (real captures of this build, in `LUMEN/game/tools/shots/`) | 0. `s82_fp_sheet.png` (Pip's faces: neutral, angry, focus, ouch, happy, worried) 1. `s80_final_1_title_844x390.png` 2. `s80_final_2_play_844x390.png` 3. `s80_final_3_tray_844x390.png` 4. `s80_final_5_boss_844x390.png` 5. `s80_final_6_ledger_568x320.png` (phone-size ledger) - optional: `s80_final_sheet_568x320.png`, `s80_final_2_play_1280x720.png` |
 | Credits | Game design, code and drawn art by the Lumen team (many AI chats, one repo). Procedural icons and 3D toon models are generated in code. Sound effects generated with Ludo.ai (prompts in `lumen_sfx_prompts.txt`); music and a few ambience beds are synth |
@@ -48,6 +48,6 @@ Play in the browser (landscape, fullscreen button on). **Touch:** left thumb dra
 
 ## Next
 
-A human playtest of the slash chain and of Pip's faces on a real phone, more faces for the crew, and trying a modelled and rigged Cloud if we get modelling tools. The Cloud now has its real hello giggle and coin-tink sounds.
+A human playtest of the slash chain and of Pip's faces on a real phone, more faces for the crew, and trying a modelled and rigged Cloud if we get modelling tools. The Cloud has its real hello giggle and coin-tink sounds, and in S83 the game got its full sound pack: jars clink, deposit and spill, the ledger stamps and counts, the stranger rings a hand bell, and the Baron fight now plays real boss music (tuned to the island theme's key and tempo). Pip's brows, mouth and sweat drop were made bolder so faces read on a small phone.
 
 ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
