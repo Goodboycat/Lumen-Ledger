@@ -1559,6 +1559,746 @@
           ]
         }
       ]
+    },
+    "parcelFee": {
+      "id": "parcelFee",
+      "lesson": "scams",
+      "season": 2,
+      "pitch": [
+        {
+          "speaker": "collector",
+          "text": "CONGRATULATIONS! You WON the Grand Glow Parcel, worth 300! You are our lucky keeper today!",
+          "mood": "happy"
+        },
+        {
+          "speaker": "collector",
+          "text": "Nothing to enter, nothing to sign. Come and see the parcel card. Looking is free.",
+          "choices": [
+            {
+              "id": "look",
+              "text": "See the parcel card"
+            },
+            {
+              "id": "walk",
+              "text": "Not today"
+            }
+          ]
+        }
+      ],
+      "walk": [
+        {
+          "speaker": "collector",
+          "text": "No peek at the card? A winner who walks away! Unheard of. Hmph."
+        },
+        {
+          "speaker": "owl",
+          "text": "You never entered a draw, so what did you win? A prize from nowhere is bait."
+        }
+      ],
+      "look": [
+        {
+          "speaker": "collector",
+          "text": "Grand Glow Parcel! Worth 300, flies to your door. Only 35 Spark handling and the prize is yours!",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Look closer, Pip: you never entered a draw. A prize you did not enter, with a fee to open it, is bait.",
+          "tell": true
+        },
+        {
+          "speaker": "collector",
+          "text": "Handling closes at sunset. Someone else gets the parcel if you wait!",
+          "mood": "shout",
+          "choices": [
+            {
+              "id": "sign",
+              "text": "Pay 35 handling"
+            },
+            {
+              "id": "ask",
+              "text": "Which draw did I win?"
+            },
+            {
+              "id": "stall",
+              "text": "Show me the parcel first"
+            }
+          ]
+        }
+      ],
+      "sign": [
+        {
+          "speaker": "collector",
+          "text": "Wonderful! Your parcel is on its way. It may take, ah, a very long time. Shipping is slow.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "You paid to collect a prize from a draw you never entered. Real prizes never charge to open."
+        }
+      ],
+      "ask": [
+        {
+          "speaker": "collector",
+          "text": "Which draw? THE draw! Everyone is entered automatically. Everyone is a winner!"
+        },
+        {
+          "speaker": "collector",
+          "text": "Handling is thirty-five, Pip. Sunset is close.",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "Pay 35 handling"
+            },
+            {
+              "id": "refuse",
+              "text": "No draw, no fee"
+            }
+          ]
+        }
+      ],
+      "stall": [
+        {
+          "speaker": "collector",
+          "text": "Show you the parcel? It is sealed. Sealed parcels stay sealed until handling is paid. Rules!"
+        },
+        {
+          "speaker": "collector",
+          "text": "Thirty-five and it is yours. Else it goes to the next name on the list!",
+          "mood": "shout",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "Pay 35 handling"
+            },
+            {
+              "id": "refuse",
+              "text": "No draw, no fee"
+            }
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "speaker": "collector",
+          "text": "Handling received! Your parcel is in the post. It is always in the post.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Paying first to collect a prize is the whole trick. If the prize were real, it would already be here."
+        }
+      ],
+      "refuse": [
+        {
+          "speaker": "collector",
+          "text": "Fine! FINE! Your parcel goes to someone who says yes!",
+          "mood": "angry"
+        },
+        {
+          "speaker": "pip",
+          "text": "I never entered anything. No draw, no fee, no parcel.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Right. A real prize costs nothing to receive. Asking about the draw was the clever move."
+        }
+      ],
+      "tell": "A prize you never entered for, with a fee to collect it. A real prize never asks you to pay first."
+    },
+    "fakeCharity": {
+      "id": "fakeCharity",
+      "lesson": "scams",
+      "season": 3,
+      "pitch": [
+        {
+          "speaker": "collector",
+          "text": "Glow Relief Fund! Spark in your pouch? Fifty helps the lighthouse children. Every coin, every one!",
+          "mood": "happy"
+        },
+        {
+          "speaker": "collector",
+          "text": "No name, no list, just a kind heart. Come and see our little tin. Looking is free.",
+          "choices": [
+            {
+              "id": "look",
+              "text": "Let me see the tin"
+            },
+            {
+              "id": "walk",
+              "text": "Not today"
+            }
+          ]
+        }
+      ],
+      "walk": [
+        {
+          "speaker": "collector",
+          "text": "Not even a peek at the tin? Think of the little ones, Pip. Hm."
+        },
+        {
+          "speaker": "owl",
+          "text": "Giving is lovely. Giving to someone who will not say where it goes is a different thing."
+        }
+      ],
+      "look": [
+        {
+          "speaker": "collector",
+          "text": "Here is the tin! The children cannot thank you in person, you see. They are, er, very busy.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "A good cause shows you its name, its books and its receipts. This tin has none of them.",
+          "tell": true
+        },
+        {
+          "speaker": "collector",
+          "text": "Fifty Spark, and the children smile tonight! Every other keeper gave. Do not be the only one!",
+          "mood": "shout",
+          "choices": [
+            {
+              "id": "sign",
+              "text": "Give fifty (50 Spark)"
+            },
+            {
+              "id": "ask",
+              "text": "Which children, where?"
+            },
+            {
+              "id": "stall",
+              "text": "Ask who counts it"
+            }
+          ]
+        }
+      ],
+      "sign": [
+        {
+          "speaker": "collector",
+          "text": "Thank you, thank you! Fifty Spark, and the tin is, ahem, very safe with me.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "A warm feeling cannot be checked. Names, receipts and a place to visit can. He had none of them."
+        }
+      ],
+      "ask": [
+        {
+          "speaker": "collector",
+          "text": "Which children? Where? Who counts the tin? That is a lot of questions for a kind heart."
+        },
+        {
+          "speaker": "collector",
+          "text": "Fifty. For the children. They are watching you right now, Pip. Quite sad, really.",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "Give fifty (50 Spark)"
+            },
+            {
+              "id": "refuse",
+              "text": "Show me the books first"
+            }
+          ]
+        }
+      ],
+      "stall": [
+        {
+          "speaker": "collector",
+          "text": "Who counts it? Me! I count it. Honestly. With my own eyes. Nobody else needs to."
+        },
+        {
+          "speaker": "collector",
+          "text": "Hand it over, and the children will know your name. Or mine. Probably mine.",
+          "mood": "shout",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "Give fifty (50 Spark)"
+            },
+            {
+              "id": "refuse",
+              "text": "Show me the books first"
+            }
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "speaker": "collector",
+          "text": "Wonderful! The lighthouse children will hear about it, by which I mean nobody will.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Giving is generous. Giving blind is how kindness gets used. Ask where it goes first."
+        }
+      ],
+      "refuse": [
+        {
+          "speaker": "collector",
+          "text": "Questions? About a CHARITY? Well. The children will hear who asked. Hmph.",
+          "mood": "angry"
+        },
+        {
+          "speaker": "pip",
+          "text": "I will give to a fund that shows me its books, and not before. That is still kind.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "A kind heart with a clear head: ask for the books, and a real charity says yes with a smile."
+        }
+      ],
+      "tell": "A good cause with no name, no books and a deadline. Pressure through pity is the oldest tin on the sea."
+    },
+    "freeTrial": {
+      "id": "freeTrial",
+      "lesson": "scams",
+      "season": 4,
+      "pitch": [
+        {
+          "speaker": "collector",
+          "text": "A FREE week of Spark Tips! Only 10 Spark to start, cancel any time! Your pouch has {spark}, easy!",
+          "mood": "happy"
+        },
+        {
+          "speaker": "collector",
+          "text": "One tiny card, one tiny signature. Come and read the card. Reading is free.",
+          "choices": [
+            {
+              "id": "look",
+              "text": "Read the card"
+            },
+            {
+              "id": "walk",
+              "text": "Not today"
+            }
+          ]
+        }
+      ],
+      "walk": [
+        {
+          "speaker": "collector",
+          "text": "No card? Everyone is free-trialling this week, Pip. Your loss. Hm."
+        },
+        {
+          "speaker": "owl",
+          "text": "'Free' is a hook. The question is what comes after the free part."
+        }
+      ],
+      "look": [
+        {
+          "speaker": "collector",
+          "text": "Here is the card! Ten Spark and the Tips begin. Cancel any time, it says so, somewhere, in there.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Look closer, Pip: the card never says what comes after the free week. Ask the price AFTER the trial.",
+          "tell": true
+        },
+        {
+          "speaker": "collector",
+          "text": "Sign now and the first Tip is in your pouch by dusk. The card closes at dusk, you know!",
+          "mood": "shout",
+          "choices": [
+            {
+              "id": "sign",
+              "text": "Sign the card (10 Spark)"
+            },
+            {
+              "id": "ask",
+              "text": "What after the trial?"
+            },
+            {
+              "id": "stall",
+              "text": "How do I cancel?"
+            }
+          ]
+        }
+      ],
+      "sign": [
+        {
+          "speaker": "collector",
+          "text": "Signed! Welcome to the club. The Tips arrive each season. So, ah, does the bill.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "The trial renewed on its own: 20 Spark a season for three seasons. Tiny print hides the real price."
+        }
+      ],
+      "ask": [
+        {
+          "speaker": "collector",
+          "text": "After the trial? A trifle. A small fee, per season. Nothing to worry about, friend!"
+        },
+        {
+          "speaker": "collector",
+          "text": "Cancelling? A form. A rather long form. Sign first, we can talk cancelling later.",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "Sign the card (10 Spark)"
+            },
+            {
+              "id": "refuse",
+              "text": "No price, no signature"
+            }
+          ]
+        }
+      ],
+      "stall": [
+        {
+          "speaker": "collector",
+          "text": "Take your time! Only the card is in a hurry. Everyone else signed already, you know."
+        },
+        {
+          "speaker": "collector",
+          "text": "Ten to start, Pip. Sign, or lose your free week to the next keeper in line!",
+          "mood": "shout",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "Sign the card (10 Spark)"
+            },
+            {
+              "id": "refuse",
+              "text": "No price, no signature"
+            }
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "speaker": "collector",
+          "text": "Ten Spark, thank you! See you every season. I will be here. So will the bill.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Ask what it costs after the trial. If nobody will say, the answer is: more than the trial."
+        }
+      ],
+      "refuse": [
+        {
+          "speaker": "collector",
+          "text": "Questions about cancelling already? Hmph. Suit yourself, no free week for you!",
+          "mood": "angry"
+        },
+        {
+          "speaker": "pip",
+          "text": "No price after the trial, no signature. Free is only free if it ends.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Exactly. If they will not tell you what it costs later, the free part is the bait."
+        }
+      ],
+      "tell": "A \"free\" start that renews by itself. Ask what it costs AFTER the trial, and how you cancel."
+    },
+    "fogLevy": {
+      "id": "fogLevy",
+      "lesson": "scams",
+      "season": 5,
+      "pitch": [
+        {
+          "speaker": "baron",
+          "text": "Official FOG OFFICE notice, keeper. You owe a back-levy of 60 Spark. {spark} in your pouch, I see.",
+          "mood": "happy",
+          "stranger": "Official FOG OFFICE notice, friend. You owe a back-levy of 60 Spark. {spark} in your pouch, I see."
+        },
+        {
+          "speaker": "baron",
+          "text": "Pay the inspector now and the matter is closed. Or read the notice first. Reading is free.",
+          "choices": [
+            {
+              "id": "look",
+              "text": "Read the notice"
+            },
+            {
+              "id": "walk",
+              "text": "Not today"
+            }
+          ],
+          "stranger": "Pay the inspector now and the matter is closed. Or read the notice first. Reading is free."
+        }
+      ],
+      "walk": [
+        {
+          "speaker": "baron",
+          "text": "No reading? The fines only grow, keeper. Fog Office rules. Hm."
+        },
+        {
+          "speaker": "owl",
+          "text": "A real office sends a letter and gives you time. A person at your door with a deadline is a worry."
+        }
+      ],
+      "look": [
+        {
+          "speaker": "baron",
+          "text": "Notice 7: back-levy of 60 Spark, payable to me, in cash, today. Signed, the Fog Office. Stamped!",
+          "mood": "happy",
+          "stranger": "Notice 7: back-levy of 60 Spark, payable to me, in cash, today. Signed, the Fog Office. Stamped!"
+        },
+        {
+          "speaker": "owl",
+          "text": "Look closer, Pip: a threat, a deadline, and the payee is the person standing here. Real offices write.",
+          "tell": true
+        },
+        {
+          "speaker": "baron",
+          "text": "Fines double at dusk, keeper! The inspector does not wait. Do you pay the levy or not?",
+          "mood": "shout",
+          "choices": [
+            {
+              "id": "sign",
+              "text": "Pay the levy (60 Spark)"
+            },
+            {
+              "id": "ask",
+              "text": "Which office, which law?"
+            },
+            {
+              "id": "stall",
+              "text": "Can I check first?"
+            }
+          ],
+          "stranger": "Fines double at dusk, friend! The inspector does not wait. Do you pay the levy or not?"
+        }
+      ],
+      "sign": [
+        {
+          "speaker": "baron",
+          "text": "Sensible. The levy is paid. The Fog Office thanks you, which is to say, me.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Fear made you pay a person who does not work there. If it is official, it comes in writing."
+        }
+      ],
+      "ask": [
+        {
+          "speaker": "baron",
+          "text": "Which office? The Fog Office! Large building. Far away. You would not like it there."
+        },
+        {
+          "speaker": "baron",
+          "text": "Sixty Spark. Cash. Fines at dusk. I am on a very tight schedule here.",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "Pay the levy (60 Spark)"
+            },
+            {
+              "id": "refuse",
+              "text": "Send it in writing"
+            }
+          ]
+        }
+      ],
+      "stall": [
+        {
+          "speaker": "baron",
+          "text": "Check? Check with whom? The Fog Office is closed, keeper. Closed for, ah, paperwork."
+        },
+        {
+          "speaker": "baron",
+          "text": "Sixty Spark now, or the fines double. I will not ask three times.",
+          "mood": "shout",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "Pay the levy (60 Spark)"
+            },
+            {
+              "id": "refuse",
+              "text": "Send it in writing"
+            }
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "speaker": "baron",
+          "text": "Sixty Spark, received, stamped, and filed. Under 'mine'. Pleasure.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Threats plus a deadline plus cash to a stranger: a pushing scheme. Ask for the notice in writing."
+        }
+      ],
+      "refuse": [
+        {
+          "speaker": "baron",
+          "text": "Refuse an official notice?! The fines will find you! Probably. Eventually.",
+          "mood": "angry"
+        },
+        {
+          "speaker": "pip",
+          "text": "Send me the notice in writing and I will look at it. No letter, no cash.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Right. A real office sends a letter and lets you check it. You asked for the letter. That is it."
+        }
+      ],
+      "tell": "A \"notice\" with a threat and a deadline, paid in cash to the person at your door. Real offices send letters."
+    },
+    "bringAFriend": {
+      "id": "bringAFriend",
+      "lesson": "scams",
+      "season": 6,
+      "pitch": [
+        {
+          "speaker": "collector",
+          "text": "Join the Glow Club! 70 Spark gets you in, then earn 30 for every friend you bring. Easy money!",
+          "mood": "happy",
+          "stranger": "Join the Glow Club, friend! 70 Spark gets you in, then earn 30 for every friend you bring. Easy money!"
+        },
+        {
+          "speaker": "collector",
+          "text": "No stalls, no stock, no work. Come and see the club chart. Looking is free.",
+          "choices": [
+            {
+              "id": "look",
+              "text": "See the club chart"
+            },
+            {
+              "id": "walk",
+              "text": "Not today"
+            }
+          ]
+        }
+      ],
+      "walk": [
+        {
+          "speaker": "collector",
+          "text": "No chart? Everybody in town is already in. Well. Nearly everybody. Hm."
+        },
+        {
+          "speaker": "owl",
+          "text": "If the only way to earn is finding more members, the club sells nothing. The last members pay for the first."
+        }
+      ],
+      "look": [
+        {
+          "speaker": "collector",
+          "text": "Look! Three friends, ninety Spark, in one day! Bring thirty friends and you are RICH, Pip!",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Look closer, Pip: who pays the 30? New members, not customers. The club sells nothing.",
+          "tell": true
+        },
+        {
+          "speaker": "collector",
+          "text": "Spots are filling, Pip. Join today and your friends can join under YOU. Are you in?",
+          "mood": "shout",
+          "choices": [
+            {
+              "id": "sign",
+              "text": "Join the club (70 Spark)"
+            },
+            {
+              "id": "ask",
+              "text": "What does the club sell?"
+            },
+            {
+              "id": "stall",
+              "text": "Let me think about it"
+            }
+          ]
+        }
+      ],
+      "sign": [
+        {
+          "speaker": "collector",
+          "text": "Welcome to the Club! Now, find three friends. And they find three. And so on. Forever!",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Pay comes from newcomers, and newcomers run out. Most members lose, and the latest ones lose most."
+        }
+      ],
+      "ask": [
+        {
+          "speaker": "collector",
+          "text": "What does the club sell? Opportunity! Membership! The great feeling of having a club!"
+        },
+        {
+          "speaker": "collector",
+          "text": "Seventy, Pip. Then thirty for every friend. You do the maths. I certainly will not.",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "Join the club (70 Spark)"
+            },
+            {
+              "id": "refuse",
+              "text": "No selling, no joining"
+            }
+          ]
+        }
+      ],
+      "stall": [
+        {
+          "speaker": "collector",
+          "text": "Think? The club thinks too, in fact. It thinks you should join before the spots go."
+        },
+        {
+          "speaker": "collector",
+          "text": "Seventy now, or your friend takes your spot. Maybe the Baker. He is very keen.",
+          "mood": "shout",
+          "choices": [
+            {
+              "id": "accept",
+              "text": "Join the club (70 Spark)"
+            },
+            {
+              "id": "refuse",
+              "text": "No selling, no joining"
+            }
+          ]
+        }
+      ],
+      "accept": [
+        {
+          "speaker": "collector",
+          "text": "Seventy Spark, welcome in! Now go and find friends. Preferably rich ones.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "If you earn only by bringing new members, you are the product. Ask what the club sells."
+        }
+      ],
+      "refuse": [
+        {
+          "speaker": "collector",
+          "text": "Refuse the Glow Club? Your friends will join under SOMEONE ELSE. Hmph.",
+          "mood": "angry"
+        },
+        {
+          "speaker": "pip",
+          "text": "What does the club sell? Nothing? Then who pays me the 30? Not for me, thanks.",
+          "mood": "happy"
+        },
+        {
+          "speaker": "owl",
+          "text": "Right. If the money only comes from the next recruit, the chain breaks and someone is left holding it."
+        }
+      ],
+      "tell": "Pay comes from new members, not from selling anything. When recruits run out, the latest ones lose."
     }
   },
   "events": {
