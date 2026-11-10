@@ -35,16 +35,18 @@ export const DEFAULT_EVENTS = {
   'eco:loan':          { sfx: 'loan_stamp',  cooldown: 0.3, pick: (p) => p?.kind === 'forced' ? { sfx: 'debt_fall', vol: 0.8 } : null },   // forced debt (event / Baron bill) = the heavier fall sting
   'eco:jar':           { sfx: 'jar_fill',    cooldown: 0.15, pick: (p) => p?.reason === 'exposed' ? { sfx: 'jar_spill' } : p?.deltas ? { sfx: null } : null },   // S83: deposits / withdraws have their own jars:* sounds; only the exposed-savings hit keeps a jar sound here
   // S83: the real Ludo.ai jar / deal / ledger / UI pack (docs/SFX_LUDO_S64.md ids). `also` = extra sounds after `delay` s.
-  'jars:deposit':      { sfx: 'jar_deposit', cooldown: 0.08 },
-  'jars:withdraw':     { sfx: 'jar_withdraw', cooldown: 0.08 },
+  'jars:deposit':      { sfx: 'jar_deposit', cooldown: 0.12, vol: 0.85 },   // S84: tap = one deposit; a held jar withdraws (own sound), so 0.12 only guards double taps
+  'jars:withdraw':     { sfx: 'jar_withdraw', cooldown: 0.2, vol: 0.85 },   // S84: hold-repeat is every 0.25 s -> each tick sounds, never stacks
   'jars:unlocked':     { sfx: 'jar_unlock',  cooldown: 0.5, pick: (p) => p?.how === 'restore' || p?.how === 'start' ? { sfx: null } : null },
   'jars:locked':       { sfx: 'jar_locked',  cooldown: 0.5 },
   'jars:spill':        { sfx: 'jar_spill',   cooldown: 0.5 },
-  'tutor:shown':       { sfx: 'tutor_show',  cooldown: 0.6, vol: 0.7 },
+  'tutor:shown':       { sfx: 'tutor_show',  cooldown: 1.5, vol: 0.6 },   // S84: cards queue one at a time, 1.5 s keeps a burst of cards to ONE chime
+  'ui:jars:toggle':    { sfx: 'jar_tap',     cooldown: 0.15 },          // S84: the jars header / panel tap (ui/jars.js)
+  'tutor:hand':        { sfx: 'hand_tap',    cooldown: 2.5, vol: 0.8 },   // S84: the cloud hand lands on its target (once per appearance, not per finger loop)
   'tutor:dismissed':   { sfx: 'tutor_dismiss', cooldown: 0.3, pick: (p) => p?.why === 'tap' || p?.why === 'followed' || p?.why === 'done' ? null : { sfx: null } },
-  'combat:combo':      { sfx: 'sword_swing', cooldown: 0.12 },
+  'combat:combo':      { sfx: 'sword_swing', cooldown: 0.2, vol: 0.85 },   // S84: one swish per combo step, never faster than the swing animation
   'combat:hit':        { sfx: 'sword_hit',   cooldown: 0.08, pick: (p) => p?.enemy ? { sfx: null } : null },   // enemies already answer with enemy_hit
-  'till:collect':      { sfx: 'till_collect', cooldown: 0.12 },
+  'till:collect':      { sfx: 'till_collect', cooldown: 0.25, vol: 0.75 },   // S84: coin is also playing on the same frame -> till is the quieter layer; a sweep of 6 tills = 2-3 chimes
   'ui:price':          { sfx: 'price_up',    cooldown: 0.08, pick: (p) => p?.delta < 0 ? { sfx: 'price_down' } : null },
   'scam:npc':          { sfx: 'stranger_arrive', cooldown: 1 },
   'scam:talk':         { sfx: 'stranger_talk', cooldown: 0.5 },
@@ -53,7 +55,7 @@ export const DEFAULT_EVENTS = {
   'ui:build:tab':      { sfx: 'tab_switch',  cooldown: 0.08 },
   'hud:chip':          { sfx: null, cooldown: 3, pick: (p) => p?.id === 'storm' && p?.on ? { sfx: null, also: [{ sfx: 'storm_chip', delay: 0.6, vol: 0.45 }] } : { sfx: null } },
   'crew:arrive':       { sfx: 'crew_walkin', cooldown: 0.5 },
-  'ui:ledger:row':     { sfx: 'ledger_stamp', cooldown: 0.05, pick: (p) => (p?.i | 0) % 2 === 0 ? null : { sfx: null } },
+  'ui:ledger:row':     { sfx: 'ledger_stamp', cooldown: 0.14, vol: 0.85, pick: (p) => (p?.i | 0) % 2 === 0 ? null : { sfx: null } },
   'ui:ledger:total':   { sfx: 'ledger_total', cooldown: 0.3 },
   'ui:ledger:stars':   { sfx: 'season_end_ok', cooldown: 1, pick: (p) => p?.outcome && p.outcome !== 'season' ? { sfx: null } : (p?.stars | 0) >= 2 ? { sfx: 'season_end_win' } : (p?.stars | 0) === 0 ? { sfx: 'season_end_ok', vol: 0.5 } : null },
   'game:repaid':       { sfx: 'debt_pay',    cooldown: 0.3, pick: (p) => p?.debt === 0 ? { sfx: 'debt_free' } : null },

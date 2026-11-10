@@ -19,6 +19,7 @@ await p.evaluate(() => lg.save.write());
 console.log('save verbStep', await p.evaluate(() => { const s = JSON.parse(localStorage['lumen.save']); return JSON.stringify({ v: s.story?.verbStep, c: s.tutorCounts, seen: s.tutorSeen }); }));
 await boot();
 await p.evaluate((w) => { (ui.title.buttons[w] || ui.title.buttons.story).click(); }, which); await skipDlg(); await p.waitForTimeout(2500);
+for (let i=0;i<20;i++){ const v=await p.evaluate(()=>[String(ui.tutor?.visible), String(ui.tutor?.current?.id)]); if(v[0]==='true'){console.log('tutor visible after',i,'s',JSON.stringify(v)); break;} await p.waitForTimeout(1000);}
 console.log('play2', which, JSON.stringify(await snap('p2')));
 const r = await p.evaluate(() => { const sp = document.querySelector('.ll-speed'); const rc = sp.getBoundingClientRect(); return { x: rc.x + rc.width / 2, y: rc.y + rc.height / 2 }; });
 if (r.x) { await p.touchscreen.tap(r.x, r.y); await p.waitForTimeout(600); console.log('speed after real tap', await p.evaluate(() => lg.speed), 'seasonCard', await p.evaluate(() => getComputedStyle(document.querySelector('.ll-season-back')).display)); }

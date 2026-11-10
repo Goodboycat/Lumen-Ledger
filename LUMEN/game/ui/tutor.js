@@ -115,7 +115,7 @@ export function mountTutor(root, opts = {}) {
     const host = root || document, vw = () => (typeof window !== 'undefined' && window.innerWidth) || 800, vh = () => (typeof window !== 'undefined' && window.innerHeight) || 450;
     const size = () => hand.offsetWidth || 56;
     const put = (x, topBelow, topAbove, above) => {                                            // under the target, finger up — or above it, finger down, when the bottom edge is too close (or `above`: tabs, so the glove never covers the cards under them)
-      const flip = above ? topAbove >= 4 : (topBelow + size() > vh() - 4 && topAbove >= 4); hand.classList.add('show'); hand.classList.toggle('flip', flip);
+      const flip = above ? topAbove >= 4 : (topBelow + size() > vh() - 4 && topAbove >= 4); if (!hand.classList.contains('show')) bus.emit('tutor:hand', { id: c?.id });   /* S84: hand_tap sfx once per appearance */ hand.classList.add('show'); hand.classList.toggle('flip', flip);
       hand.style.left = `${Math.round(Math.max(size() / 2 + 4, Math.min(vw() - size() / 2 - 4, x)))}px`; hand.style.top = `${Math.round(flip ? topAbove : topBelow)}px`;
     };
     const tick = () => {

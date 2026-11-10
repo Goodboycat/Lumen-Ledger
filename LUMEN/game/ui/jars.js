@@ -78,7 +78,7 @@ export function mountJars(root, opts = {}) {
   const total = el('span', 'll-jars-total', '100 %'); const caret = el('span', 'll-caret', '▾');
   head.append(title, total, caret);
   panel.append(head);
-  head.addEventListener('click', () => { panel.classList.toggle('collapsed'); caret.innerHTML = iconize(panel.classList.contains('collapsed') ? '▸' : '▾'); });
+  head.addEventListener('click', () => { bus.emit('ui:jars:toggle', { collapsed: !panel.classList.contains('collapsed') }); panel.classList.toggle('collapsed'); caret.innerHTML = iconize(panel.classList.contains('collapsed') ? '▸' : '▾'); });
 
   const rows = {};
   for (const k of JAR_ORDER) {
