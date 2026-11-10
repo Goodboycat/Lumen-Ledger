@@ -56,6 +56,22 @@
 body.is-touch .ll-jars { max-height: calc(100vh - max(10px, env(safe-area-inset-top)) - 64px - 190px); max-height: calc(100dvh - max(10px, env(safe-area-inset-top)) - 64px - 190px); overflow-y: auto; overscroll-behavior: contain; }
 @media (orientation: portrait) { body.is-touch .ll-jars { max-height: calc(100dvh - max(10px, env(safe-area-inset-top)) - 64px - 176px); } }
 @media (orientation: landscape) and (max-height: 420px) { body.is-touch .ll-jars { max-height: calc(100dvh - max(10px, env(safe-area-inset-top)) - 64px - 152px); } }
+/* S86 (HANDOFF_S85 item 3): phone landscape showed the Jars header + only 2 rows (cap 94 px at 568x320, 263 px of content). Compact rows (one tight line + a thin bar),
+   the footer (hint chip, Spend hint, Debt row) folds away - the HUD PAY chip already pays the Baron - and the cap reaches the Dash button instead of stopping 20 px short. */
+@media (orientation: landscape) and (max-height: 420px) {
+  body.is-touch .ll-jars { padding: 4px 8px 5px; }
+  body.is-touch .ll-jars .ll-jars-head { margin-bottom: 2px; font-size: 12px; }
+  body.is-touch .ll-jars .ll-jar, body.is-touch .ll-jars .ll-jar.has-wd { grid-template-columns: 20px 1fr 34px 26px; padding: 0; gap: 0 5px; }
+  body.is-touch .ll-jars .ll-jar-icon { width: 17px; height: 20px; border-width: 2px; border-radius: 4px 4px 7px 7px; box-shadow: 0 1px 0 var(--ink); }
+  body.is-touch .ll-jars .ll-jar-name { font-size: 10px; line-height: 1.1; }
+  body.is-touch .ll-jars .ll-jar input[type=range] { height: 10px; }
+  body.is-touch .ll-jars .ll-jar input[type=range]::-webkit-slider-runnable-track { height: 6px; border-width: 1.5px; }
+  body.is-touch .ll-jars .ll-jar-pct { font-size: 11px; }
+  body.is-touch .ll-jars .ll-jar-wd { width: 22px; height: 22px; align-self: center; margin: -1px 0; }
+  body.is-touch .ll-jars { mask-image: none; -webkit-mask-image: none; } body.is-touch .ll-jars::after { display: none; }   /* all rows fit: no fade, no chevron */
+  body.is-touch .ll-jars .ll-jars-foot, body.is-touch .ll-jars .ll-jars-hint, body.is-touch .ll-jars .ll-jars-debt { display: none; }
+}
+@media (orientation: landscape) and (max-height: 340px) { body.is-touch .ll-jars { max-height: calc(100dvh - max(10px, env(safe-area-inset-top)) - 56px - 142px); } }
 /* hide Foundation's inline help line while touch controls are shown */
 body.is-touch .help { display: none; }
 
