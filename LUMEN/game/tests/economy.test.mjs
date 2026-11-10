@@ -2,6 +2,7 @@
 // Prints PASS/FAIL per assert and exits 1 on any failure. No browser, no Three.
 import { Economy, BALANCE, EVENTS, SCAMS, UPGRADES, demand, makeRng } from '../src/systems/economy.js';
 import { EventBus } from '../src/core/EventBus.js';
+import { SCAMS as DEALS } from '../src/systems/economyData.js';   // S85: the real 11-deal table (economy.js only carries a 2-deal skeleton)
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('PASS', msg); } else { fail++; console.log('FAIL', msg); } };
@@ -232,6 +233,27 @@ ok(typeof Economy === 'function' && BALANCE && EVENTS && SCAMS && UPGRADES, 'exp
   ok(same && a.endSeason().investReturn === b.endSeason().investReturn, 'same seed → identical sales + invest returns (reproducible)');
   const r = makeRng(1); const v = r(); ok(v >= 0 && v < 1 && r() !== v, 'makeRng yields [0,1) values');
   const fresh = mk(); fresh.pushFog(1); ok(near(fresh.state.fog01, BALANCE.startFog - 0.05), 'pushFog(1) → fog −0.05 (Fog Sweep hook)');
+}
+
+const mkD = (cfg = {}) => new Economy(cfg, { bus: new EventBus(), seed: 7, scams: DEALS });
+// ---- S85: more scam schemes — season-aware picker, no recent repeats, Baron rotation, auto-renewing free trial
+{
+  const e = mkD(); e.state.season = 1;
+  const early = new Set(); for (let i = 0; i < 40; i++) { const id = e.pickScam(); early.add(id); e.noteScam(id); }
+  ok([...early].every((id) => (DEALS[id].minSeason || 1) <= 2) && !early.has('bringAFriend'), 'pickScam in season 1 only offers the easiest deals (minSeason <= 2, never Bring-a-Friend) (' + [...early].join(',') + ')');
+  const f = mkD(); f.state.season = 8; let rep = 0, last = null; const seen = new Set();
+  for (let i = 0; i < 60; i++) { const id = f.pickScam(); if (id === last) rep++; if (i > 3) { const r4 = f.state.recentScams.slice(-4); if (r4.includes(id)) rep += 100; } seen.add(id); f.noteScam(id); last = id; }
+  ok(rep === 0 && seen.size === Object.keys(DEALS).length, 'pickScam in season 8: 60 picks, never one of the last 4, all ' + seen.size + ' deals appear');
+  const g = mkD(); g.state.season = 8; const b = new Set(); for (let i = 0; i < 30; i++) { const id = g.pickScam({ baron: true }); b.add(id); g.noteScam(id); }
+  ok(b.size >= 3 && [...b].every((id) => DEALS[id].baron), 'Baron rotation: ' + b.size + ' distinct baron deals (' + [...b].join(',') + ')');
+  const h = mkD(); h.state.season = 5; h.state.spark = 200; const fresh = new Set(); for (let i = 0; i < 6; i++) { const o = h.offerScam(); fresh.add(o.id); h.pendingOffer = null; }
+  ok(fresh.size === 6, 'offerScam() without id walks through unmet deals first: 6 offers, 6 different ids');
+  const t = mkD(); t.state.season = 4; t.state.spark = 200; t.offerScam('freeTrial'); const r = t.acceptOffer();
+  ok(r.lostSpark === 10 && t.state.spark === 190 && t.state.subs.length === 1 && r.recurring.amount === 20, 'freeTrial accept: 10 Spark now, a 20/season subscription is on the books');
+  let charged = 0; t.bus.on('eco:subscription', (p) => { charged += p.amount; });
+  const s1 = t.state.spark, rep1 = t.endSeason(); const afterOne = t.state.subs.length; t.endSeason(); t.endSeason(); t.endSeason();
+  ok(charged === 60 && t.state.subs.length === 0 && afterOne === 1 && rep1.subscription === 20, 'freeTrial renews 3 seasons x 20 = 60 then stops (report.subscription = ' + rep1.subscription + ')');
+  const back = Economy.deserialize(t.serialize(), BALANCE, { bus: new EventBus() }); ok(Array.isArray(back.state.recentScams) && back.state.scamsMet.includes('freeTrial'), 'recentScams / scamsMet survive serialize -> deserialize');
 }
 
 console.log(`\n${pass} PASS, ${fail} FAIL`);

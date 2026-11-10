@@ -473,7 +473,7 @@ export class Economy {
    *  choice exists, and unmet deals come first. opts: { baron: true } -> only deals flagged `baron` (the Baron's own visit) · { exclude: [ids] }. Uses this.rng (seeded). */
   pickScam({ baron = false, exclude = [] } = {}) {
     const all = Object.keys(this.scams); if (!all.length) return null;
-    const s = this.state, season = s.season || 1;
+    const s = this.state, floor = Math.min(...all.map((id) => this.scams[id].minSeason || 1)), season = Math.max(s.season || 1, floor);   // floor: a season earlier than the easiest deal still gets the EASIEST deals, never the hardest ones
     let ids = all.filter((id) => (this.scams[id].minSeason || 1) <= season && !exclude.includes(id));
     if (baron) { const b = ids.filter((id) => this.scams[id].baron); if (b.length) ids = b; }
     if (!ids.length) ids = all.filter((id) => !exclude.includes(id));
